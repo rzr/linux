@@ -2373,6 +2373,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 				__releases(kernel_lock)
 				__acquires(kernel_lock)
 {
+	char *orig_data = kstrdup(data, GFP_KERNEL);
 	struct buffer_head *bh;
 	struct ext4_super_block *es = NULL;
 	struct ext4_sb_info *sbi;
@@ -2978,9 +2979,11 @@ no_journal:
 	} else
 		descr = "out journal";
 
-	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s", descr);
+	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+		"Opts: %s", descr, orig_data);
 
 	lock_kernel();
+	kfree(orig_data);
 	return 0;
 
 cantfind_ext4:
@@ -3027,6 +3030,7 @@ out_fail:
 	kfree(sbi->s_blockgroup_lock);
 	kfree(sbi);
 	lock_kernel();
+	kfree(orig_data);
 	return ret;
 }
 
@@ -3518,6 +3522,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 #ifdef CONFIG_QUOTA
 	int i;
 #endif
+	char *orig_data = kstrdup(data, GFP_KERNEL);
 
 	lock_kernel();
 
@@ -3651,6 +3656,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 #endif
 	unlock_super(sb);
 	unlock_kernel();
+
+	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+	kfree(orig_data);
 	return 0;
 
 restore_opts:
@@ -3672,6 +3680,7 @@ restore_opts:
 #endif
 	unlock_super(sb);
 	unlock_kernel();
+	kfree(orig_data);
 	return err;
 }
 
