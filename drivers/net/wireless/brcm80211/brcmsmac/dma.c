@@ -371,7 +371,7 @@ static uint _dma_ctrlflags(struct dma_info *di, uint mask, uint flags)
 	uint dmactrlflags;
 
 	if (di == NULL) {
-		DMA_ERROR("NULL dma handle\n");
+		DMA_ERROR(("_dma_ctrlflags: NULL dma handle\n"));
 		return 0;
 	}
 
