@@ -1596,14 +1596,49 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 	basic_rates = 0;
 	sband = local->hw.wiphy->bands[wk->chan->band];
 
-	ieee80211_get_rates(sband, elems.supp_rates, elems.supp_rates_len,
-			    &rates, &basic_rates, &have_higher_than_11mbit,
-			    &min_rate, &min_rate_index);
+	for (i = 0; i < elems.supp_rates_len; i++) {
+		int rate = (elems.supp_rates[i] & 0x7f) * 5;
+		bool is_basic = !!(elems.supp_rates[i] & 0x80);
+
+		if (rate > 110)
+			have_higher_than_11mbit = true;
+
+		for (j = 0; j < sband->n_bitrates; j++) {
+			if (sband->bitrates[j].bitrate == rate) {
+				rates |= BIT(j);
+				if (is_basic)
+					basic_rates |= BIT(j);
+				if (rate < min_rate) {
+					min_rate = rate;
+					min_rate_index = j;
+				}
+				break;
+			}
+		}
+	}
+
+	for (i = 0; i < elems.ext_supp_rates_len; i++) {
+		int rate = (elems.ext_supp_rates[i] & 0x7f) * 5;
+		bool is_basic = !!(elems.ext_supp_rates[i] & 0x80);
 
 	ieee80211_get_rates(sband, elems.ext_supp_rates,
 			    elems.ext_supp_rates_len, &rates, &basic_rates,
 			    &have_higher_than_11mbit,
 			    &min_rate, &min_rate_index);
+
+		for (j = 0; j < sband->n_bitrates; j++) {
+			if (sband->bitrates[j].bitrate == rate) {
+				rates |= BIT(j);
+				if (is_basic)
+					basic_rates |= BIT(j);
+				if (rate < min_rate) {
+					min_rate = rate;
+					min_rate_index = j;
+				}
+				break;
+			}
+		}
+	}
 
 	/*
 	 * some buggy APs don't advertise basic_rates. use the lowest
