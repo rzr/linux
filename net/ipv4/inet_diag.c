@@ -119,8 +119,10 @@ int inet_sk_diag_fill(struct sock *sk, struct inet_connection_sock *icsk,
 	if (r->idiag_family == AF_INET6) {
 		const struct ipv6_pinfo *np = inet6_sk(sk);
 
-		*(struct in6_addr *)r->id.idiag_src = np->rcv_saddr;
-		*(struct in6_addr *)r->id.idiag_dst = np->daddr;
+		ipv6_addr_copy((struct in6_addr *)r->id.idiag_src,
+			       &np->rcv_saddr);
+		ipv6_addr_copy((struct in6_addr *)r->id.idiag_dst,
+			       &np->daddr);
 		if (ext & (1 << (INET_DIAG_TCLASS - 1)))
 			RTA_PUT_U8(skb, INET_DIAG_TCLASS, np->tclass);
 	}
