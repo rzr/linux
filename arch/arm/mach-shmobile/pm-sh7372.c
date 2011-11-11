@@ -146,7 +146,7 @@ static int pd_power_up(struct generic_pm_domain *genpd)
 	 return __pd_power_up(to_sh7372_pd(genpd), true);
 }
 
-static int sh7372_a4r_suspend(void)
+static void sh7372_a4r_suspend(void)
 {
 	sh7372_intcs_suspend();
 	__raw_writel(0x300fffff, WUPRMSK); /* avoid wakeup */
