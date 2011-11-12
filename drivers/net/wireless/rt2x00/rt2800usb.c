@@ -904,7 +904,6 @@ static struct usb_device_id rt2800usb_device_table[] = {
 	/* Buffalo */
 	{ USB_DEVICE(0x0411, 0x00e8) },
 	{ USB_DEVICE(0x0411, 0x0158) },
-	{ USB_DEVICE(0x0411, 0x015d) },
 	{ USB_DEVICE(0x0411, 0x016f) },
 	{ USB_DEVICE(0x0411, 0x01a2) },
 	/* Corega */
