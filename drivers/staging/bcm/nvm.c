@@ -4013,8 +4013,7 @@ INT BcmCopyISO(PMINI_ADAPTER Adapter, FLASH2X_COPY_SECTION sCopySectStrut)
 		if(uiTotalDataToCopy < ISOLength)
 		{
 			BCM_DEBUG_PRINT(Adapter,DBG_TYPE_PRINTK, 0, 0,"error as Source ISO Section does not have valid signature");
-			Status = STATUS_FAILURE;
-			goto out;
+			return STATUS_FAILURE;
 		}
 
 		uiTotalDataToCopy =(Adapter->psFlash2xCSInfo->OffsetISOImage2Part1End) -
@@ -4027,8 +4026,7 @@ INT BcmCopyISO(PMINI_ADAPTER Adapter, FLASH2X_COPY_SECTION sCopySectStrut)
 		if(uiTotalDataToCopy < ISOLength)
 		{
 			BCM_DEBUG_PRINT(Adapter,DBG_TYPE_PRINTK, 0, 0,"error as Dest ISO Section does not have enough section size");
-			Status = STATUS_FAILURE;
-			goto out;
+			return STATUS_FAILURE;
 		}
 
 		uiTotalDataToCopy = ISOLength;
@@ -4145,8 +4143,7 @@ INT BcmCopyISO(PMINI_ADAPTER Adapter, FLASH2X_COPY_SECTION sCopySectStrut)
 		if(uiTotalDataToCopy < ISOLength)
 		{
 			BCM_DEBUG_PRINT(Adapter,DBG_TYPE_PRINTK, 0, 0,"error as Source ISO Section does not have valid signature");
-			Status = STATUS_FAILURE;
-			goto out;
+			return STATUS_FAILURE;
 		}
 
 		uiTotalDataToCopy =(Adapter->psFlash2xCSInfo->OffsetISOImage1Part1End) -
@@ -4159,8 +4156,7 @@ INT BcmCopyISO(PMINI_ADAPTER Adapter, FLASH2X_COPY_SECTION sCopySectStrut)
 		if(uiTotalDataToCopy < ISOLength)
 		{
 			BCM_DEBUG_PRINT(Adapter,DBG_TYPE_PRINTK, 0, 0,"error as Dest ISO Section does not have enough section size");
-			Status = STATUS_FAILURE;
-			goto out;
+			return STATUS_FAILURE;
 		}
 
 		uiTotalDataToCopy = ISOLength;
@@ -4261,7 +4257,6 @@ INT BcmCopyISO(PMINI_ADAPTER Adapter, FLASH2X_COPY_SECTION sCopySectStrut)
 
 	}
 
-out:
 	kfree(Buff);
 
 	return Status;

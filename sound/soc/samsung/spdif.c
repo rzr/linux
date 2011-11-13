@@ -12,7 +12,6 @@
 
 #include <linux/clk.h>
 #include <linux/io.h>
-#include <linux/module.h>
 
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
@@ -341,7 +340,7 @@ static struct snd_soc_dai_ops spdif_dai_ops = {
 	.shutdown	= spdif_shutdown,
 };
 
-static struct snd_soc_dai_driver samsung_spdif_dai = {
+struct snd_soc_dai_driver samsung_spdif_dai = {
 	.name = "samsung-spdif",
 	.playback = {
 		.stream_name = "S/PDIF Playback",
@@ -476,7 +475,7 @@ static __devexit int spdif_remove(struct platform_device *pdev)
 
 static struct platform_driver samsung_spdif_driver = {
 	.probe	= spdif_probe,
-	.remove	= __devexit_p(spdif_remove),
+	.remove	= spdif_remove,
 	.driver	= {
 		.name	= "samsung-spdif",
 		.owner	= THIS_MODULE,

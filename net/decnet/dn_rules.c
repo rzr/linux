@@ -23,7 +23,6 @@
 #include <linux/spinlock.h>
 #include <linux/list.h>
 #include <linux/rcupdate.h>
-#include <linux/export.h>
 #include <net/neighbour.h>
 #include <net/dst.h>
 #include <net/flow.h>

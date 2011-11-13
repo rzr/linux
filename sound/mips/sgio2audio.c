@@ -30,7 +30,6 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/slab.h>
-#include <linux/module.h>
 
 #include <asm/ip32/ip32_ints.h>
 #include <asm/ip32/mace.h>

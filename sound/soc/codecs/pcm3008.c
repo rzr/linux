@@ -20,7 +20,6 @@
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/initval.h>

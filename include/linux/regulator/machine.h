@@ -95,7 +95,7 @@ struct regulator_state {
  */
 struct regulation_constraints {
 
-	const char *name;
+	char *name;
 
 	/* voltage output range (inclusive) - for voltage control */
 	int min_uV;

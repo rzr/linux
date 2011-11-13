@@ -46,7 +46,6 @@
 #include <linux/mutex.h>
 #include <linux/io.h>
 #include <linux/slab.h>
-#include <linux/module.h>
 
 #include <asm/page.h>
 #include <asm/pgtable.h>
@@ -310,7 +309,8 @@ void xenbus_unregister_driver(struct xenbus_driver *drv)
 }
 EXPORT_SYMBOL_GPL(xenbus_unregister_driver);
 
-struct xb_find_info {
+struct xb_find_info
+{
 	struct xenbus_device *dev;
 	const char *nodename;
 };
@@ -639,7 +639,7 @@ int xenbus_dev_cancel(struct device *dev)
 EXPORT_SYMBOL_GPL(xenbus_dev_cancel);
 
 /* A flag to determine if xenstored is 'ready' (i.e. has started) */
-int xenstored_ready;
+int xenstored_ready = 0;
 
 
 int register_xenstore_notifier(struct notifier_block *nb)
@@ -684,74 +684,64 @@ static int __init xenbus_probe_initcall(void)
 
 device_initcall(xenbus_probe_initcall);
 
-/* Set up event channel for xenstored which is run as a local process
- * (this is normally used only in dom0)
- */
-static int __init xenstored_local_init(void)
-{
-	int err = 0;
-	unsigned long page = 0;
-	struct evtchn_alloc_unbound alloc_unbound;
-
-	/* Allocate Xenstore page */
-	page = get_zeroed_page(GFP_KERNEL);
-	if (!page)
-		goto out_err;
-
-	xen_store_mfn = xen_start_info->store_mfn =
-		pfn_to_mfn(virt_to_phys((void *)page) >>
-			   PAGE_SHIFT);
-
-	/* Next allocate a local port which xenstored can bind to */
-	alloc_unbound.dom        = DOMID_SELF;
-	alloc_unbound.remote_dom = DOMID_SELF;
-
-	err = HYPERVISOR_event_channel_op(EVTCHNOP_alloc_unbound,
-					  &alloc_unbound);
-	if (err == -ENOSYS)
-		goto out_err;
-
-	BUG_ON(err);
-	xen_store_evtchn = xen_start_info->store_evtchn =
-		alloc_unbound.port;
-
-	return 0;
-
- out_err:
-	if (page != 0)
-		free_page(page);
-	return err;
-}
-
 static int __init xenbus_init(void)
 {
 	int err = 0;
+	unsigned long page = 0;
 
+	DPRINTK("");
+
+	err = -ENODEV;
 	if (!xen_domain())
-		return -ENODEV;
+		return err;
 
-	if (xen_hvm_domain()) {
-		uint64_t v = 0;
-		err = hvm_get_parameter(HVM_PARAM_STORE_EVTCHN, &v);
-		if (err)
+	/*
+	 * Domain0 doesn't have a store_evtchn or store_mfn yet.
+	 */
+	if (xen_initial_domain()) {
+		struct evtchn_alloc_unbound alloc_unbound;
+
+		/* Allocate Xenstore page */
+		page = get_zeroed_page(GFP_KERNEL);
+		if (!page)
 			goto out_error;
-		xen_store_evtchn = (int)v;
-		err = hvm_get_parameter(HVM_PARAM_STORE_PFN, &v);
-		if (err)
+
+		xen_store_mfn = xen_start_info->store_mfn =
+			pfn_to_mfn(virt_to_phys((void *)page) >>
+				   PAGE_SHIFT);
+
+		/* Next allocate a local port which xenstored can bind to */
+		alloc_unbound.dom        = DOMID_SELF;
+		alloc_unbound.remote_dom = 0;
+
+		err = HYPERVISOR_event_channel_op(EVTCHNOP_alloc_unbound,
+						  &alloc_unbound);
+		if (err == -ENOSYS)
 			goto out_error;
-		xen_store_mfn = (unsigned long)v;
-		xen_store_interface = ioremap(xen_store_mfn << PAGE_SHIFT, PAGE_SIZE);
+
+		BUG_ON(err);
+		xen_store_evtchn = xen_start_info->store_evtchn =
+			alloc_unbound.port;
+
+		xen_store_interface = mfn_to_virt(xen_store_mfn);
 	} else {
-		xen_store_evtchn = xen_start_info->store_evtchn;
-		xen_store_mfn = xen_start_info->store_mfn;
-		if (xen_store_evtchn)
-			xenstored_ready = 1;
-		else {
-			err = xenstored_local_init();
+		if (xen_hvm_domain()) {
+			uint64_t v = 0;
+			err = hvm_get_parameter(HVM_PARAM_STORE_EVTCHN, &v);
 			if (err)
 				goto out_error;
+			xen_store_evtchn = (int)v;
+			err = hvm_get_parameter(HVM_PARAM_STORE_PFN, &v);
+			if (err)
+				goto out_error;
+			xen_store_mfn = (unsigned long)v;
+			xen_store_interface = ioremap(xen_store_mfn << PAGE_SHIFT, PAGE_SIZE);
+		} else {
+			xen_store_evtchn = xen_start_info->store_evtchn;
+			xen_store_mfn = xen_start_info->store_mfn;
+			xen_store_interface = mfn_to_virt(xen_store_mfn);
+			xenstored_ready = 1;
 		}
-		xen_store_interface = mfn_to_virt(xen_store_mfn);
 	}
 
 	/* Initialize the interface to xenstore. */
@@ -770,7 +760,12 @@ static int __init xenbus_init(void)
 	proc_mkdir("xen", NULL);
 #endif
 
-out_error:
+	return 0;
+
+  out_error:
+	if (page != 0)
+		free_page(page);
+
 	return err;
 }
 

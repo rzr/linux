@@ -23,6 +23,7 @@
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/version.h>
 #include <generated/utsrelease.h>
 #include <linux/utsname.h>
 #include <linux/init.h>
@@ -31,7 +32,6 @@
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/configfs.h>
-#include <linux/kernel.h>
 #include <linux/ctype.h>
 #include <asm/unaligned.h>
 #include <scsi/scsi.h>
@@ -71,10 +71,10 @@ static ssize_t ft_parse_wwn(const char *name, u64 *wwn, int strict)
 {
 	const char *cp;
 	char c;
+	u32 nibble;
 	u32 byte = 0;
 	u32 pos = 0;
 	u32 err;
-	int val;
 
 	*wwn = 0;
 	for (cp = name; cp < &name[FT_NAMELEN - 1]; cp++) {
@@ -95,10 +95,13 @@ static ssize_t ft_parse_wwn(const char *name, u64 *wwn, int strict)
 			return cp - name;
 		}
 		err = 3;
-		val = hex_to_bin(c);
-		if (val < 0 || (strict && isupper(c)))
+		if (isdigit(c))
+			nibble = c - '0';
+		else if (isxdigit(c) && (islower(c) || !strict))
+			nibble = tolower(c) - 'a' + 10;
+		else
 			goto fail;
-		*wwn = (*wwn << 4) | val;
+		*wwn = (*wwn << 4) | nibble;
 	}
 	err = 4;
 fail:

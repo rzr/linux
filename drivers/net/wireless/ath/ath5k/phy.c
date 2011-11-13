@@ -26,9 +26,9 @@
 
 #include "ath5k.h"
 #include "reg.h"
+#include "base.h"
 #include "rfbuffer.h"
 #include "rfgain.h"
-#include "../regd.h"
 
 
 /******************\
@@ -38,7 +38,7 @@
 /*
  * Get the PHY Chip revision
  */
-u16 ath5k_hw_radio_revision(struct ath5k_hw *ah, enum ieee80211_band band)
+u16 ath5k_hw_radio_revision(struct ath5k_hw *ah, unsigned int chan)
 {
 	unsigned int i;
 	u32 srev;
@@ -47,11 +47,11 @@ u16 ath5k_hw_radio_revision(struct ath5k_hw *ah, enum ieee80211_band band)
 	/*
 	 * Set the radio chip access register
 	 */
-	switch (band) {
-	case IEEE80211_BAND_2GHZ:
+	switch (chan) {
+	case CHANNEL_2GHZ:
 		ath5k_hw_reg_write(ah, AR5K_PHY_SHIFT_2GHZ, AR5K_PHY(0));
 		break;
-	case IEEE80211_BAND_5GHZ:
+	case CHANNEL_5GHZ:
 		ath5k_hw_reg_write(ah, AR5K_PHY_SHIFT_5GHZ, AR5K_PHY(0));
 		break;
 	default:
@@ -84,16 +84,14 @@ u16 ath5k_hw_radio_revision(struct ath5k_hw *ah, enum ieee80211_band band)
 /*
  * Check if a channel is supported
  */
-bool ath5k_channel_ok(struct ath5k_hw *ah, struct ieee80211_channel *channel)
+bool ath5k_channel_ok(struct ath5k_hw *ah, u16 freq, unsigned int flags)
 {
-	u16 freq = channel->center_freq;
-
 	/* Check if the channel is in our supported range */
-	if (channel->band == IEEE80211_BAND_2GHZ) {
+	if (flags & CHANNEL_2GHZ) {
 		if ((freq >= ah->ah_capabilities.cap_range.range_2ghz_min) &&
 		    (freq <= ah->ah_capabilities.cap_range.range_2ghz_max))
 			return true;
-	} else if (channel->band == IEEE80211_BAND_5GHZ)
+	} else if (flags & CHANNEL_5GHZ)
 		if ((freq >= ah->ah_capabilities.cap_range.range_5ghz_min) &&
 		    (freq <= ah->ah_capabilities.cap_range.range_5ghz_max))
 			return true;
@@ -226,7 +224,7 @@ static inline int ath5k_hw_write_ofdm_timings(struct ath5k_hw *ah,
 		ds_coef_exp, ds_coef_man, clock;
 
 	BUG_ON(!(ah->ah_version == AR5K_AR5212) ||
-		(channel->hw_value == AR5K_MODE_11B));
+		!(channel->hw_value & CHANNEL_OFDM));
 
 	/* Get coefficient
 	 * ALGO: coef = (5 * clock / carrier_freq) / 2
@@ -300,7 +298,7 @@ static void ath5k_hw_wait_for_synth(struct ath5k_hw *ah,
 		u32 delay;
 		delay = ath5k_hw_reg_read(ah, AR5K_PHY_RX_DELAY) &
 			AR5K_PHY_RX_DELAY_M;
-		delay = (channel->hw_value == AR5K_MODE_11B) ?
+		delay = (channel->hw_value & CHANNEL_CCK) ?
 			((delay << 2) / 22) : (delay / 10);
 		if (ah->ah_bwmode == AR5K_BWMODE_10MHZ)
 			delay = delay << 1;
@@ -800,9 +798,9 @@ static int ath5k_hw_rfregs_init(struct ath5k_hw *ah,
 	}
 
 	/* Set Output and Driver bias current (OB/DB) */
-	if (channel->band == IEEE80211_BAND_2GHZ) {
+	if (channel->hw_value & CHANNEL_2GHZ) {
 
-		if (channel->hw_value == AR5K_MODE_11B)
+		if (channel->hw_value & CHANNEL_CCK)
 			ee_mode = AR5K_EEPROM_MODE_11B;
 		else
 			ee_mode = AR5K_EEPROM_MODE_11G;
@@ -827,7 +825,7 @@ static int ath5k_hw_rfregs_init(struct ath5k_hw *ah,
 						AR5K_RF_DB_2GHZ, true);
 
 	/* RF5111 always needs OB/DB for 5GHz, even if we use 2GHz */
-	} else if ((channel->band == IEEE80211_BAND_5GHZ) ||
+	} else if ((channel->hw_value & CHANNEL_5GHZ) ||
 			(ah->ah_radio == AR5K_RF5111)) {
 
 		/* For 11a, Turbo and XR we need to choose
@@ -859,7 +857,7 @@ static int ath5k_hw_rfregs_init(struct ath5k_hw *ah,
 	if (ah->ah_radio == AR5K_RF5111) {
 
 		/* Set gain_F settings according to current step */
-		if (channel->hw_value != AR5K_MODE_11B) {
+		if (channel->hw_value & CHANNEL_OFDM) {
 
 			AR5K_REG_WRITE_BITS(ah, AR5K_PHY_FRAME_CTL,
 					AR5K_PHY_FRAME_CTL_TX_CLIP,
@@ -916,7 +914,7 @@ static int ath5k_hw_rfregs_init(struct ath5k_hw *ah,
 	if (ah->ah_radio == AR5K_RF5112) {
 
 		/* Set gain_F settings according to current step */
-		if (channel->hw_value != AR5K_MODE_11B) {
+		if (channel->hw_value & CHANNEL_OFDM) {
 
 			ath5k_hw_rfb_op(ah, rf_regs, g_step->gos_param[0],
 						AR5K_RF_MIXGAIN_OVR, true);
@@ -1028,7 +1026,7 @@ static int ath5k_hw_rfregs_init(struct ath5k_hw *ah,
 	}
 
 	if (ah->ah_radio == AR5K_RF5413 &&
-	channel->band == IEEE80211_BAND_2GHZ) {
+	channel->hw_value & CHANNEL_2GHZ) {
 
 		ath5k_hw_rfb_op(ah, rf_regs, 1, AR5K_RF_DERBY_CHAN_SEL_MODE,
 									true);
@@ -1140,7 +1138,7 @@ static int ath5k_hw_rf5111_channel(struct ath5k_hw *ah,
 	 */
 	data0 = data1 = 0;
 
-	if (channel->band == IEEE80211_BAND_2GHZ) {
+	if (channel->hw_value & CHANNEL_2GHZ) {
 		/* Map 2GHz channel to 5GHz Atheros channel ID */
 		ret = ath5k_hw_rf5111_chan2athchan(
 			ieee80211_frequency_to_channel(channel->center_freq),
@@ -1267,9 +1265,10 @@ static int ath5k_hw_channel(struct ath5k_hw *ah,
 	int ret;
 	/*
 	 * Check bounds supported by the PHY (we don't care about regulatory
-	 * restrictions at this point).
-	 */
-	if (!ath5k_channel_ok(ah, channel)) {
+	 * restrictions at this point). Note: hw_value already has the band
+	 * (CHANNEL_2GHZ, or CHANNEL_5GHZ) so we inform ath5k_channel_ok()
+	 * of the band by that */
+	if (!ath5k_channel_ok(ah, channel->center_freq, channel->hw_value)) {
 		ATH5K_ERR(ah,
 			"channel frequency (%u MHz) out of supported "
 			"band range\n",
@@ -1615,7 +1614,7 @@ int ath5k_hw_phy_calibrate(struct ath5k_hw *ah,
 	ret = ath5k_hw_rf511x_iq_calibrate(ah);
 
 	if ((ah->ah_radio == AR5K_RF5111 || ah->ah_radio == AR5K_RF5112) &&
-	    (channel->hw_value != AR5K_MODE_11B))
+	    (channel->hw_value & CHANNEL_OFDM))
 		ath5k_hw_request_rfgain_probe(ah);
 
 	return ret;
@@ -1642,7 +1641,7 @@ ath5k_hw_set_spur_mitigation_filter(struct ath5k_hw *ah,
 	/* Convert current frequency to fbin value (the same way channels
 	 * are stored on EEPROM, check out ath5k_eeprom_bin2freq) and scale
 	 * up by 2 so we can compare it later */
-	if (channel->band == IEEE80211_BAND_2GHZ) {
+	if (channel->hw_value & CHANNEL_2GHZ) {
 		chan_fbin = (channel->center_freq - 2300) * 10;
 		freq_band = AR5K_EEPROM_BAND_2GHZ;
 	} else {
@@ -1704,7 +1703,7 @@ ath5k_hw_set_spur_mitigation_filter(struct ath5k_hw *ah,
 			spur_freq_sigma_delta = (spur_delta_phase >> 10);
 			symbol_width = AR5K_SPUR_SYMBOL_WIDTH_BASE_100Hz / 4;
 		default:
-			if (channel->band == IEEE80211_BAND_5GHZ) {
+			if (channel->hw_value == CHANNEL_A) {
 				/* Both sample_freq and chip_freq are 40MHz */
 				spur_delta_phase = (spur_offset << 17) / 25;
 				spur_freq_sigma_delta =
@@ -2227,20 +2226,15 @@ ath5k_get_chan_pcal_surrounding_piers(struct ath5k_hw *ah,
 	idx_l = 0;
 	idx_r = 0;
 
-	switch (channel->hw_value) {
-	case AR5K_EEPROM_MODE_11A:
-		pcinfo = ee->ee_pwr_cal_a;
-		mode = AR5K_EEPROM_MODE_11A;
-		break;
-	case AR5K_EEPROM_MODE_11B:
+	if (!(channel->hw_value & CHANNEL_OFDM)) {
 		pcinfo = ee->ee_pwr_cal_b;
 		mode = AR5K_EEPROM_MODE_11B;
-		break;
-	case AR5K_EEPROM_MODE_11G:
-	default:
+	} else if (channel->hw_value & CHANNEL_2GHZ) {
 		pcinfo = ee->ee_pwr_cal_g;
 		mode = AR5K_EEPROM_MODE_11G;
-		break;
+	} else {
+		pcinfo = ee->ee_pwr_cal_a;
+		mode = AR5K_EEPROM_MODE_11A;
 	}
 	max = ee->ee_n_piers[mode] - 1;
 
@@ -2309,20 +2303,15 @@ ath5k_get_rate_pcal_data(struct ath5k_hw *ah,
 	idx_l = 0;
 	idx_r = 0;
 
-	switch (channel->hw_value) {
-	case AR5K_MODE_11A:
-		rpinfo = ee->ee_rate_tpwr_a;
-		mode = AR5K_EEPROM_MODE_11A;
-		break;
-	case AR5K_MODE_11B:
+	if (!(channel->hw_value & CHANNEL_OFDM)) {
 		rpinfo = ee->ee_rate_tpwr_b;
 		mode = AR5K_EEPROM_MODE_11B;
-		break;
-	case AR5K_MODE_11G:
-	default:
+	} else if (channel->hw_value & CHANNEL_2GHZ) {
 		rpinfo = ee->ee_rate_tpwr_g;
 		mode = AR5K_EEPROM_MODE_11G;
-		break;
+	} else {
+		rpinfo = ee->ee_rate_tpwr_a;
+		mode = AR5K_EEPROM_MODE_11A;
 	}
 	max = ee->ee_rate_target_pwr_num[mode] - 1;
 
@@ -2403,22 +2392,24 @@ ath5k_get_max_ctl_power(struct ath5k_hw *ah,
 
 	ctl_mode = ath_regd_get_band_ctl(regulatory, channel->band);
 
-	switch (channel->hw_value) {
-	case AR5K_MODE_11A:
+	switch (channel->hw_value & CHANNEL_MODES) {
+	case CHANNEL_A:
 		if (ah->ah_bwmode == AR5K_BWMODE_40MHZ)
 			ctl_mode |= AR5K_CTL_TURBO;
 		else
 			ctl_mode |= AR5K_CTL_11A;
 		break;
-	case AR5K_MODE_11G:
+	case CHANNEL_G:
 		if (ah->ah_bwmode == AR5K_BWMODE_40MHZ)
 			ctl_mode |= AR5K_CTL_TURBOG;
 		else
 			ctl_mode |= AR5K_CTL_11G;
 		break;
-	case AR5K_MODE_11B:
+	case CHANNEL_B:
 		ctl_mode |= AR5K_CTL_11B;
 		break;
+	case CHANNEL_XR:
+		/* Fall through */
 	default:
 		return;
 	}
@@ -3301,7 +3292,7 @@ int ath5k_hw_phy_init(struct ath5k_hw *ah, struct ieee80211_channel *channel,
 
 	/* Write OFDM timings on 5212*/
 	if (ah->ah_version == AR5K_AR5212 &&
-		channel->hw_value != AR5K_MODE_11B) {
+		channel->hw_value & CHANNEL_OFDM) {
 
 		ret = ath5k_hw_write_ofdm_timings(ah, channel);
 		if (ret)

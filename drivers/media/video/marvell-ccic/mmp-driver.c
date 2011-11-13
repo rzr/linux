@@ -29,7 +29,6 @@
 
 #include "mcam-core.h"
 
-MODULE_ALIAS("platform:mmp-camera");
 MODULE_AUTHOR("Jonathan Corbet <corbet@lwn.net>");
 MODULE_LICENSE("GPL");
 

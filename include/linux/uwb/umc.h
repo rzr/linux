@@ -111,9 +111,10 @@ int __must_check __umc_driver_register(struct umc_driver *umc_drv,
  * umc_driver_register - register a UMC capabiltity driver.
  * @umc_drv:  pointer to the driver.
  */
-#define umc_driver_register(umc_drv) \
-	__umc_driver_register(umc_drv, THIS_MODULE, KBUILD_MODNAME)
-
+static inline int __must_check umc_driver_register(struct umc_driver *umc_drv)
+{
+	return __umc_driver_register(umc_drv, THIS_MODULE, KBUILD_MODNAME);
+}
 void umc_driver_unregister(struct umc_driver *umc_drv);
 
 /*

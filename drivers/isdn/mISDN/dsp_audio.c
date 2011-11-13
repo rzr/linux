@@ -12,7 +12,6 @@
 #include <linux/delay.h>
 #include <linux/mISDNif.h>
 #include <linux/mISDNdsp.h>
-#include <linux/export.h>
 #include "core.h"
 #include "dsp.h"
 

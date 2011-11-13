@@ -22,7 +22,6 @@
 #include <linux/kernel.h>
 #include <linux/major.h>
 #include <linux/errno.h>
-#include <linux/export.h>
 #include <linux/tty.h>
 #include <linux/interrupt.h>
 #include <linux/mm.h>

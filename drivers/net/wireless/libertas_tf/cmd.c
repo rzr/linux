@@ -11,7 +11,6 @@
 
 #include <linux/hardirq.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 
 #include "libertas_tf.h"
 

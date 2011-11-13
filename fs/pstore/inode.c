@@ -24,7 +24,6 @@
 #include <linux/highmem.h>
 #include <linux/time.h>
 #include <linux/init.h>
-#include <linux/list.h>
 #include <linux/string.h>
 #include <linux/mount.h>
 #include <linux/ramfs.h>
@@ -33,18 +32,13 @@
 #include <linux/magic.h>
 #include <linux/pstore.h>
 #include <linux/slab.h>
-#include <linux/spinlock.h>
 #include <linux/uaccess.h>
 
 #include "internal.h"
 
 #define	PSTORE_NAMELEN	64
 
-static DEFINE_SPINLOCK(allpstore_lock);
-static LIST_HEAD(allpstore);
-
 struct pstore_private {
-	struct list_head list;
 	struct pstore_info *psi;
 	enum pstore_type_id type;
 	u64	id;
@@ -87,16 +81,8 @@ static int pstore_unlink(struct inode *dir, struct dentry *dentry)
 
 static void pstore_evict_inode(struct inode *inode)
 {
-	struct pstore_private	*p = inode->i_private;
-	unsigned long		flags;
-
 	end_writeback(inode);
-	if (p) {
-		spin_lock_irqsave(&allpstore_lock, flags);
-		list_del(&p->list);
-		spin_unlock_irqrestore(&allpstore_lock, flags);
-		kfree(p);
-	}
+	kfree(inode->i_private);
 }
 
 static const struct inode_operations pstore_dir_inode_operations = {
@@ -196,23 +182,9 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id,
 	struct dentry		*root = pstore_sb->s_root;
 	struct dentry		*dentry;
 	struct inode		*inode;
-	int			rc = 0;
+	int			rc;
 	char			name[PSTORE_NAMELEN];
-	struct pstore_private	*private, *pos;
-	unsigned long		flags;
-
-	spin_lock_irqsave(&allpstore_lock, flags);
-	list_for_each_entry(pos, &allpstore, list) {
-		if (pos->type == type &&
-		    pos->id == id &&
-		    pos->psi == psi) {
-			rc = -EEXIST;
-			break;
-		}
-	}
-	spin_unlock_irqrestore(&allpstore_lock, flags);
-	if (rc)
-		return rc;
+	struct pstore_private	*private;
 
 	rc = -ENOMEM;
 	inode = pstore_get_inode(pstore_sb, root->d_inode, S_IFREG | 0444, 0);
@@ -256,10 +228,6 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id,
 		inode->i_mtime = inode->i_ctime = time;
 
 	d_add(dentry, inode);
-
-	spin_lock_irqsave(&allpstore_lock, flags);
-	list_add(&private->list, &allpstore);
-	spin_unlock_irqrestore(&allpstore_lock, flags);
 
 	mutex_unlock(&root->d_inode->i_mutex);
 
@@ -309,7 +277,7 @@ int pstore_fill_super(struct super_block *sb, void *data, int silent)
 		goto fail;
 	}
 
-	pstore_get_records(0);
+	pstore_get_records();
 
 	return 0;
 fail:

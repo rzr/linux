@@ -1598,8 +1598,8 @@ int dib7000pc_detection(struct i2c_adapter *i2c_adap)
 		return -ENOMEM;
 	rx = kzalloc(2*sizeof(u8), GFP_KERNEL);
 	if (!rx) {
-		ret = -ENOMEM;
 		goto rx_memory_error;
+		ret = -ENOMEM;
 	}
 
 	msg[0].buf = tx;

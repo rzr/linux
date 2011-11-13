@@ -29,7 +29,6 @@
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
 #include <linux/mISDNhw.h>
-#include <linux/module.h>
 #include "isar.h"
 
 #define ISAR_REV	"2.1"

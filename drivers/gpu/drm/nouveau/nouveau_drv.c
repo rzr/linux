@@ -23,7 +23,6 @@
  */
 
 #include <linux/console.h>
-#include <linux/module.h>
 
 #include "drmP.h"
 #include "drm.h"
@@ -42,7 +41,7 @@ int nouveau_agpmode = -1;
 module_param_named(agpmode, nouveau_agpmode, int, 0400);
 
 MODULE_PARM_DESC(modeset, "Enable kernel modesetting");
-int nouveau_modeset = -1;
+static int nouveau_modeset = -1; /* kms */
 module_param_named(modeset, nouveau_modeset, int, 0400);
 
 MODULE_PARM_DESC(vbios, "Override default VBIOS location");

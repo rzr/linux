@@ -131,8 +131,10 @@ struct sa_subdev_info {
 };
 
 struct sa_info {
+	struct mtd_partition	*parts;
 	struct mtd_info		*mtd;
 	int			num_subdev;
+	unsigned int		nr_parts;
 	struct sa_subdev_info	subdev[0];
 };
 
@@ -228,6 +230,8 @@ static void sa1100_destroy(struct sa_info *info, struct flash_platform_data *pla
 		if (info->mtd != info->subdev[0].mtd)
 			mtd_concat_destroy(info->mtd);
 	}
+
+	kfree(info->parts);
 
 	for (i = info->num_subdev - 1; i >= 0; i--)
 		sa1100_destroy_subdev(&info->subdev[i]);
@@ -337,8 +341,10 @@ static const char *part_probes[] = { "cmdlinepart", "RedBoot", NULL };
 static int __devinit sa1100_mtd_probe(struct platform_device *pdev)
 {
 	struct flash_platform_data *plat = pdev->dev.platform_data;
+	struct mtd_partition *parts;
+	const char *part_type = NULL;
 	struct sa_info *info;
-	int err;
+	int err, nr_parts = 0;
 
 	if (!plat)
 		return -ENODEV;
@@ -352,8 +358,26 @@ static int __devinit sa1100_mtd_probe(struct platform_device *pdev)
 	/*
 	 * Partition selection stuff.
 	 */
-	mtd_device_parse_register(info->mtd, part_probes, 0,
-			plat->parts, plat->nr_parts);
+	nr_parts = parse_mtd_partitions(info->mtd, part_probes, &parts, 0);
+	if (nr_parts > 0) {
+		info->parts = parts;
+		part_type = "dynamic";
+	} else {
+		parts = plat->parts;
+		nr_parts = plat->nr_parts;
+		part_type = "static";
+	}
+
+	if (nr_parts == 0)
+		printk(KERN_NOTICE "SA1100 flash: no partition info "
+			"available, registering whole flash\n");
+	else
+		printk(KERN_NOTICE "SA1100 flash: using %s partition "
+			"definition\n", part_type);
+
+	mtd_device_register(info->mtd, parts, nr_parts);
+
+	info->nr_parts = nr_parts;
 
 	platform_set_drvdata(pdev, info);
 	err = 0;

@@ -11,6 +11,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/physmap.h>
 #include <linux/mtd/nand-gpio.h>

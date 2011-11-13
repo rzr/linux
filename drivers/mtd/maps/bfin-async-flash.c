@@ -41,6 +41,7 @@ struct async_state {
 	uint32_t flash_ambctl0, flash_ambctl1;
 	uint32_t save_ambctl0, save_ambctl1;
 	unsigned long irq_flags;
+	struct mtd_partition *parts;
 };
 
 static void switch_to_flash(struct async_state *state)
@@ -164,8 +165,18 @@ static int __devinit bfin_flash_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	mtd_device_parse_register(state->mtd, part_probe_types, 0,
-			pdata->parts, pdata->nr_parts);
+	ret = parse_mtd_partitions(state->mtd, part_probe_types, &pdata->parts, 0);
+	if (ret > 0) {
+		pr_devinit(KERN_NOTICE DRIVER_NAME ": Using commandline partition definition\n");
+		mtd_device_register(state->mtd, pdata->parts, ret);
+		state->parts = pdata->parts;
+	} else if (pdata->nr_parts) {
+		pr_devinit(KERN_NOTICE DRIVER_NAME ": Using board partition definition\n");
+		mtd_device_register(state->mtd, pdata->parts, pdata->nr_parts);
+	} else {
+		pr_devinit(KERN_NOTICE DRIVER_NAME ": no partition info available, registering whole flash at once\n");
+		mtd_device_register(state->mtd, NULL, 0);
+	}
 
 	platform_set_drvdata(pdev, state);
 
@@ -177,6 +188,7 @@ static int __devexit bfin_flash_remove(struct platform_device *pdev)
 	struct async_state *state = platform_get_drvdata(pdev);
 	gpio_free(state->enet_flash_pin);
 	mtd_device_unregister(state->mtd);
+	kfree(state->parts);
 	map_destroy(state->mtd);
 	kfree(state);
 	return 0;

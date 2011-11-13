@@ -270,7 +270,7 @@ static int install_session_keyring(struct key *keyring)
 	if (!new)
 		return -ENOMEM;
 
-	ret = install_session_keyring_to_cred(new, keyring);
+	ret = install_session_keyring_to_cred(new, NULL);
 	if (ret < 0) {
 		abort_creds(new);
 		return ret;
@@ -589,19 +589,9 @@ try_again:
 			ret = install_user_keyrings();
 			if (ret < 0)
 				goto error;
-			if (lflags & KEY_LOOKUP_CREATE)
-				ret = join_session_keyring(NULL);
-			else
-				ret = install_session_keyring(
-					cred->user->session_keyring);
+			ret = install_session_keyring(
+				cred->user->session_keyring);
 
-			if (ret < 0)
-				goto error;
-			goto reget_creds;
-		} else if (cred->tgcred->session_keyring ==
-			   cred->user->session_keyring &&
-			   lflags & KEY_LOOKUP_CREATE) {
-			ret = join_session_keyring(NULL);
 			if (ret < 0)
 				goto error;
 			goto reget_creds;

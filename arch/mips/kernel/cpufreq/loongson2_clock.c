@@ -7,7 +7,6 @@
  * for more details.
  */
 
-#include <linux/module.h>
 #include <linux/cpufreq.h>
 #include <linux/platform_device.h>
 

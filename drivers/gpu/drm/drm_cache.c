@@ -28,7 +28,6 @@
  * Authors: Thomas Hellström <thomas-at-tungstengraphics-dot-com>
  */
 
-#include <linux/export.h>
 #include "drmP.h"
 
 #if defined(CONFIG_X86)

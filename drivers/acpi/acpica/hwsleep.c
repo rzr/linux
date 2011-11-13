@@ -46,7 +46,6 @@
 #include "accommon.h"
 #include "actables.h"
 #include <linux/tboot.h>
-#include <linux/module.h>
 
 #define _COMPONENT          ACPI_HARDWARE
 ACPI_MODULE_NAME("hwsleep")

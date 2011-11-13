@@ -1,8 +1,10 @@
 #ifndef _RAID1_H
 #define _RAID1_H
 
+typedef struct mirror_info mirror_info_t;
+
 struct mirror_info {
-	struct md_rdev	*rdev;
+	mdk_rdev_t	*rdev;
 	sector_t	head_position;
 };
 
@@ -15,81 +17,60 @@ struct mirror_info {
  */
 
 struct pool_info {
-	struct mddev *mddev;
+	mddev_t *mddev;
 	int	raid_disks;
 };
 
-struct r1conf {
-	struct mddev		*mddev;
-	struct mirror_info		*mirrors;
-	int			raid_disks;
 
-	/* When choose the best device for a read (read_balance())
-	 * we try to keep sequential reads one the same device
-	 * using 'last_used' and 'next_seq_sect'
-	 */
+typedef struct r1bio_s r1bio_t;
+
+struct r1_private_data_s {
+	mddev_t			*mddev;
+	mirror_info_t		*mirrors;
+	int			raid_disks;
 	int			last_used;
 	sector_t		next_seq_sect;
-	/* During resync, read_balancing is only allowed on the part
-	 * of the array that has been resynced.  'next_resync' tells us
-	 * where that is.
-	 */
-	sector_t		next_resync;
-
 	spinlock_t		device_lock;
 
-	/* list of 'struct r1bio' that need to be processed by raid1d,
-	 * whether to retry a read, writeout a resync or recovery
-	 * block, or anything else.
-	 */
 	struct list_head	retry_list;
-
-	/* queue pending writes to be submitted on unplug */
+	/* queue pending writes and submit them on unplug */
 	struct bio_list		pending_bio_list;
-	int			pending_count;
 
-	/* for use when syncing mirrors:
-	 * We don't allow both normal IO and resync/recovery IO at
-	 * the same time - resync/recovery can only happen when there
-	 * is no other IO.  So when either is active, the other has to wait.
-	 * See more details description in raid1.c near raise_barrier().
-	 */
-	wait_queue_head_t	wait_barrier;
+	/* for use when syncing mirrors: */
+
 	spinlock_t		resync_lock;
 	int			nr_pending;
 	int			nr_waiting;
 	int			nr_queued;
 	int			barrier;
+	sector_t		next_resync;
+	int			fullsync;  /* set to 1 if a full sync is needed,
+					    * (fresh device added).
+					    * Cleared when a sync completes.
+					    */
+	int			recovery_disabled; /* when the same as
+						    * mddev->recovery_disabled
+						    * we don't allow recovery
+						    * to be attempted as we
+						    * expect a read error
+						    */
 
-	/* Set to 1 if a full sync is needed, (fresh device added).
-	 * Cleared when a sync completes.
-	 */
-	int			fullsync;
+	wait_queue_head_t	wait_barrier;
 
-	/* When the same as mddev->recovery_disabled we don't allow
-	 * recovery to be attempted as we expect a read error.
-	 */
-	int			recovery_disabled;
-
-
-	/* poolinfo contains information about the content of the
-	 * mempools - it changes when the array grows or shrinks
-	 */
 	struct pool_info	*poolinfo;
-	mempool_t		*r1bio_pool;
-	mempool_t		*r1buf_pool;
 
-	/* temporary buffer to synchronous IO when attempting to repair
-	 * a read error.
-	 */
 	struct page		*tmppage;
 
+	mempool_t *r1bio_pool;
+	mempool_t *r1buf_pool;
 
 	/* When taking over an array from a different personality, we store
 	 * the new thread here until we fully activate the array.
 	 */
-	struct md_thread	*thread;
+	struct mdk_thread_s	*thread;
 };
+
+typedef struct r1_private_data_s conf_t;
 
 /*
  * this is our 'private' RAID1 bio.
@@ -98,7 +79,7 @@ struct r1conf {
  * for this RAID1 operation, and about their status:
  */
 
-struct r1bio {
+struct r1bio_s {
 	atomic_t		remaining; /* 'have we finished' count,
 					    * used from IRQ handlers
 					    */
@@ -108,7 +89,7 @@ struct r1bio {
 	sector_t		sector;
 	int			sectors;
 	unsigned long		state;
-	struct mddev		*mddev;
+	mddev_t			*mddev;
 	/*
 	 * original bio going to /dev/mdx
 	 */
@@ -167,6 +148,6 @@ struct r1bio {
 #define	R1BIO_MadeGood 7
 #define	R1BIO_WriteError 8
 
-extern int md_raid1_congested(struct mddev *mddev, int bits);
+extern int md_raid1_congested(mddev_t *mddev, int bits);
 
 #endif

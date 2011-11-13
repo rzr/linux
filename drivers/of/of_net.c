@@ -9,7 +9,6 @@
 #include <linux/kernel.h>
 #include <linux/of_net.h>
 #include <linux/phy.h>
-#include <linux/export.h>
 
 /**
  * It maps 'enum phy_interface_t' found in include/linux/phy.h

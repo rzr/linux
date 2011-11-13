@@ -59,7 +59,6 @@ enum cmd {
 struct anysee_state {
 	u8 hw; /* PCB ID */
 	u8 seq;
-	u8 fe_id:1; /* frondend ID */
 };
 
 #define ANYSEE_HW_507T    2 /* E30 */

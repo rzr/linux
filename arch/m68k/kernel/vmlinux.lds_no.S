@@ -77,6 +77,7 @@ SECTIONS {
 
 		*(.rodata) *(.rodata.*)
 		*(__vermagic)		/* Kernel version magic */
+		*(__markers_strings)
 		*(.rodata1)
 		*(.rodata.str1.1)
 

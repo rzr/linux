@@ -287,8 +287,7 @@ u16 hdr_checksum(struct pseudo_hdr *pHdr)
 	return chksum;
 }
 
-int card_download(struct net_device *dev, const u8 *pFileStart,
-		  size_t FileLength)
+int card_download(struct net_device *dev, const u8 *pFileStart, u32 FileLength)
 {
 	struct ft1000_info *info = (struct ft1000_info *) netdev_priv(dev);
 	int Status = SUCCESS;

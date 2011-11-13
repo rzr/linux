@@ -26,7 +26,6 @@
 #include <linux/tty.h>
 #include <linux/serial_core.h>
 #include <linux/of_platform.h>
-#include <linux/module.h>
 
 #include <asm/system.h>
 #include <asm/time.h>

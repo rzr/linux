@@ -14,7 +14,6 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/gfp.h>
-#include <linux/module.h>
 
 
 #define RTC_TIME_REG_OFFS	0

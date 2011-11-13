@@ -19,11 +19,7 @@
 #include <linux/mtd/partitions.h>
 #include <asm/io.h>
 
-#ifdef CONFIG_MIPS_PB1550
-#include <asm/mach-pb1x00/pb1550.h>
-#elif defined(CONFIG_MIPS_DB1550)
-#include <asm/mach-db1x00/db1x00.h>
-#endif
+#include <asm/mach-au1x00/au1xxx.h>
 #include <asm/mach-db1x00/bcsr.h>
 
 /*
@@ -52,7 +48,7 @@ static const struct mtd_partition partition_info[] = {
  * au_read_byte -  read one byte from the chip
  * @mtd:	MTD device structure
  *
- * read function for 8bit buswidth
+ *  read function for 8bit buswith
  */
 static u_char au_read_byte(struct mtd_info *mtd)
 {
@@ -67,7 +63,7 @@ static u_char au_read_byte(struct mtd_info *mtd)
  * @mtd:	MTD device structure
  * @byte:	pointer to data byte to write
  *
- * write function for 8it buswidth
+ *  write function for 8it buswith
  */
 static void au_write_byte(struct mtd_info *mtd, u_char byte)
 {
@@ -77,10 +73,11 @@ static void au_write_byte(struct mtd_info *mtd, u_char byte)
 }
 
 /**
- * au_read_byte16 -  read one byte endianness aware from the chip
+ * au_read_byte16 -  read one byte endianess aware from the chip
  * @mtd:	MTD device structure
  *
- * read function for 16bit buswidth with endianness conversion
+ *  read function for 16bit buswith with
+ * endianess conversion
  */
 static u_char au_read_byte16(struct mtd_info *mtd)
 {
@@ -91,11 +88,12 @@ static u_char au_read_byte16(struct mtd_info *mtd)
 }
 
 /**
- * au_write_byte16 -  write one byte endianness aware to the chip
+ * au_write_byte16 -  write one byte endianess aware to the chip
  * @mtd:	MTD device structure
  * @byte:	pointer to data byte to write
  *
- * write function for 16bit buswidth with endianness conversion
+ *  write function for 16bit buswith with
+ * endianess conversion
  */
 static void au_write_byte16(struct mtd_info *mtd, u_char byte)
 {
@@ -108,7 +106,8 @@ static void au_write_byte16(struct mtd_info *mtd, u_char byte)
  * au_read_word -  read one word from the chip
  * @mtd:	MTD device structure
  *
- * read function for 16bit buswidth without endianness conversion
+ *  read function for 16bit buswith without
+ * endianess conversion
  */
 static u16 au_read_word(struct mtd_info *mtd)
 {
@@ -124,7 +123,7 @@ static u16 au_read_word(struct mtd_info *mtd)
  * @buf:	data buffer
  * @len:	number of bytes to write
  *
- * write function for 8bit buswidth
+ *  write function for 8bit buswith
  */
 static void au_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 {
@@ -143,7 +142,7 @@ static void au_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
  * @buf:	buffer to store date
  * @len:	number of bytes to read
  *
- * read function for 8bit buswidth
+ *  read function for 8bit buswith
  */
 static void au_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 {
@@ -162,7 +161,7 @@ static void au_read_buf(struct mtd_info *mtd, u_char *buf, int len)
  * @buf:	buffer containing the data to compare
  * @len:	number of bytes to compare
  *
- * verify function for 8bit buswidth
+ *  verify function for 8bit buswith
  */
 static int au_verify_buf(struct mtd_info *mtd, const u_char *buf, int len)
 {
@@ -184,7 +183,7 @@ static int au_verify_buf(struct mtd_info *mtd, const u_char *buf, int len)
  * @buf:	data buffer
  * @len:	number of bytes to write
  *
- * write function for 16bit buswidth
+ *  write function for 16bit buswith
  */
 static void au_write_buf16(struct mtd_info *mtd, const u_char *buf, int len)
 {
@@ -206,7 +205,7 @@ static void au_write_buf16(struct mtd_info *mtd, const u_char *buf, int len)
  * @buf:	buffer to store date
  * @len:	number of bytes to read
  *
- * read function for 16bit buswidth
+ *  read function for 16bit buswith
  */
 static void au_read_buf16(struct mtd_info *mtd, u_char *buf, int len)
 {
@@ -227,7 +226,7 @@ static void au_read_buf16(struct mtd_info *mtd, u_char *buf, int len)
  * @buf:	buffer containing the data to compare
  * @len:	number of bytes to compare
  *
- * verify function for 16bit buswidth
+ *  verify function for 16bit buswith
  */
 static int au_verify_buf16(struct mtd_info *mtd, const u_char *buf, int len)
 {

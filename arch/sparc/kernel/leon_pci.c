@@ -9,7 +9,6 @@
 #include <linux/of_device.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
-#include <linux/export.h>
 #include <asm/leon.h>
 #include <asm/leon_pci.h>
 

@@ -21,7 +21,6 @@
 #include <linux/smp.h>
 #include <linux/param.h>
 #include <linux/string.h>
-#include <linux/export.h>
 #include <linux/seq_file.h>
 #include <linux/kdev_t.h>
 #include <linux/kexec.h>

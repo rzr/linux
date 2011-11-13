@@ -30,7 +30,7 @@ void fimc_hw_reset(struct fimc_dev *dev)
 	cfg = readl(dev->regs + S5P_CIGCTRL);
 	cfg |= (S5P_CIGCTRL_SWRST | S5P_CIGCTRL_IRQ_LEVEL);
 	writel(cfg, dev->regs + S5P_CIGCTRL);
-	udelay(10);
+	udelay(1000);
 
 	cfg = readl(dev->regs + S5P_CIGCTRL);
 	cfg &= ~S5P_CIGCTRL_SWRST;
@@ -41,11 +41,19 @@ static u32 fimc_hw_get_in_flip(struct fimc_ctx *ctx)
 {
 	u32 flip = S5P_MSCTRL_FLIP_NORMAL;
 
-	if (ctx->hflip)
+	switch (ctx->flip) {
+	case FLIP_X_AXIS:
 		flip = S5P_MSCTRL_FLIP_X_MIRROR;
-	if (ctx->vflip)
+		break;
+	case FLIP_Y_AXIS:
 		flip = S5P_MSCTRL_FLIP_Y_MIRROR;
-
+		break;
+	case FLIP_XY_AXIS:
+		flip = S5P_MSCTRL_FLIP_180;
+		break;
+	default:
+		break;
+	}
 	if (ctx->rotation <= 90)
 		return flip;
 
@@ -56,11 +64,19 @@ static u32 fimc_hw_get_target_flip(struct fimc_ctx *ctx)
 {
 	u32 flip = S5P_CITRGFMT_FLIP_NORMAL;
 
-	if (ctx->hflip)
-		flip |= S5P_CITRGFMT_FLIP_X_MIRROR;
-	if (ctx->vflip)
-		flip |= S5P_CITRGFMT_FLIP_Y_MIRROR;
-
+	switch (ctx->flip) {
+	case FLIP_X_AXIS:
+		flip = S5P_CITRGFMT_FLIP_X_MIRROR;
+		break;
+	case FLIP_Y_AXIS:
+		flip = S5P_CITRGFMT_FLIP_Y_MIRROR;
+		break;
+	case FLIP_XY_AXIS:
+		flip = S5P_CITRGFMT_FLIP_180;
+		break;
+	default:
+		break;
+	}
 	if (ctx->rotation <= 90)
 		return flip;
 
@@ -352,19 +368,17 @@ void fimc_hw_en_capture(struct fimc_ctx *ctx)
 	writel(cfg | S5P_CIIMGCPT_IMGCPTEN, dev->regs + S5P_CIIMGCPT);
 }
 
-void fimc_hw_set_effect(struct fimc_ctx *ctx, bool active)
+void fimc_hw_set_effect(struct fimc_ctx *ctx)
 {
 	struct fimc_dev *dev = ctx->fimc_dev;
 	struct fimc_effect *effect = &ctx->effect;
-	u32 cfg = 0;
+	u32 cfg = (S5P_CIIMGEFF_IE_ENABLE | S5P_CIIMGEFF_IE_SC_AFTER);
 
-	if (active) {
-		cfg |= S5P_CIIMGEFF_IE_SC_AFTER | S5P_CIIMGEFF_IE_ENABLE;
-		cfg |= effect->type;
-		if (effect->type == S5P_FIMC_EFFECT_ARBITRARY) {
-			cfg |= S5P_CIIMGEFF_PAT_CB(effect->pat_cb);
-			cfg |= S5P_CIIMGEFF_PAT_CR(effect->pat_cr);
-		}
+	cfg |= effect->type;
+
+	if (effect->type == S5P_FIMC_EFFECT_ARBITRARY) {
+		cfg |= S5P_CIIMGEFF_PAT_CB(effect->pat_cb);
+		cfg |= S5P_CIIMGEFF_PAT_CR(effect->pat_cr);
 	}
 
 	writel(cfg, dev->regs + S5P_CIIMGEFF);
@@ -533,23 +547,19 @@ int fimc_hw_set_camera_polarity(struct fimc_dev *fimc,
 	u32 cfg = readl(fimc->regs + S5P_CIGCTRL);
 
 	cfg &= ~(S5P_CIGCTRL_INVPOLPCLK | S5P_CIGCTRL_INVPOLVSYNC |
-		 S5P_CIGCTRL_INVPOLHREF | S5P_CIGCTRL_INVPOLHSYNC |
-		 S5P_CIGCTRL_INVPOLFIELD);
+		 S5P_CIGCTRL_INVPOLHREF | S5P_CIGCTRL_INVPOLHSYNC);
 
-	if (cam->flags & V4L2_MBUS_PCLK_SAMPLE_FALLING)
+	if (cam->flags & FIMC_CLK_INV_PCLK)
 		cfg |= S5P_CIGCTRL_INVPOLPCLK;
 
-	if (cam->flags & V4L2_MBUS_VSYNC_ACTIVE_LOW)
+	if (cam->flags & FIMC_CLK_INV_VSYNC)
 		cfg |= S5P_CIGCTRL_INVPOLVSYNC;
 
-	if (cam->flags & V4L2_MBUS_HSYNC_ACTIVE_LOW)
+	if (cam->flags & FIMC_CLK_INV_HREF)
 		cfg |= S5P_CIGCTRL_INVPOLHREF;
 
-	if (cam->flags & V4L2_MBUS_HSYNC_ACTIVE_LOW)
+	if (cam->flags & FIMC_CLK_INV_HSYNC)
 		cfg |= S5P_CIGCTRL_INVPOLHSYNC;
-
-	if (cam->flags & V4L2_MBUS_FIELD_EVEN_LOW)
-		cfg |= S5P_CIGCTRL_INVPOLFIELD;
 
 	writel(cfg, fimc->regs + S5P_CIGCTRL);
 
@@ -578,7 +588,7 @@ int fimc_hw_set_camera_source(struct fimc_dev *fimc,
 
 	if (cam->bus_type == FIMC_ITU_601 || cam->bus_type == FIMC_ITU_656) {
 		for (i = 0; i < ARRAY_SIZE(pix_desc); i++) {
-			if (fimc->vid_cap.mf.code == pix_desc[i].pixelcode) {
+			if (fimc->vid_cap.fmt.code == pix_desc[i].pixelcode) {
 				cfg = pix_desc[i].cisrcfmt;
 				bus_width = pix_desc[i].bus_width;
 				break;
@@ -586,9 +596,9 @@ int fimc_hw_set_camera_source(struct fimc_dev *fimc,
 		}
 
 		if (i == ARRAY_SIZE(pix_desc)) {
-			v4l2_err(fimc->vid_cap.vfd,
+			v4l2_err(&fimc->vid_cap.v4l2_dev,
 				 "Camera color format not supported: %d\n",
-				 fimc->vid_cap.mf.code);
+				 fimc->vid_cap.fmt.code);
 			return -EINVAL;
 		}
 
@@ -598,9 +608,6 @@ int fimc_hw_set_camera_source(struct fimc_dev *fimc,
 			else if (bus_width == 16)
 				cfg |= S5P_CISRCFMT_ITU601_16BIT;
 		} /* else defaults to ITU-R BT.656 8-bit */
-	} else if (cam->bus_type == FIMC_MIPI_CSI2) {
-		if (fimc_fmt_is_jpeg(f->fmt->color))
-			cfg |= S5P_CISRCFMT_ITU601_8BIT;
 	}
 
 	cfg |= S5P_CISRCFMT_HSIZE(f->o_width) | S5P_CISRCFMT_VSIZE(f->o_height);
@@ -642,7 +649,7 @@ int fimc_hw_set_camera_type(struct fimc_dev *fimc,
 	/* Select ITU B interface, disable Writeback path and test pattern. */
 	cfg &= ~(S5P_CIGCTRL_TESTPAT_MASK | S5P_CIGCTRL_SELCAM_ITU_A |
 		S5P_CIGCTRL_SELCAM_MIPI | S5P_CIGCTRL_CAMIF_SELWB |
-		S5P_CIGCTRL_SELCAM_MIPI_A | S5P_CIGCTRL_CAM_JPEG);
+		S5P_CIGCTRL_SELCAM_MIPI_A);
 
 	if (cam->bus_type == FIMC_MIPI_CSI2) {
 		cfg |= S5P_CIGCTRL_SELCAM_MIPI;
@@ -651,18 +658,11 @@ int fimc_hw_set_camera_type(struct fimc_dev *fimc,
 			cfg |= S5P_CIGCTRL_SELCAM_MIPI_A;
 
 		/* TODO: add remaining supported formats. */
-		switch (vid_cap->mf.code) {
-		case V4L2_MBUS_FMT_VYUY8_2X8:
+		if (vid_cap->fmt.code == V4L2_MBUS_FMT_VYUY8_2X8) {
 			tmp = S5P_CSIIMGFMT_YCBCR422_8BIT;
-			break;
-		case V4L2_MBUS_FMT_JPEG_1X8:
-			tmp = S5P_CSIIMGFMT_USER(1);
-			cfg |= S5P_CIGCTRL_CAM_JPEG;
-			break;
-		default:
-			v4l2_err(fimc->vid_cap.vfd,
-				 "Not supported camera pixel format: %d",
-				 vid_cap->mf.code);
+		} else {
+			err("camera image format not supported: %d",
+			    vid_cap->fmt.code);
 			return -EINVAL;
 		}
 		tmp |= (cam->csi_data_align == 32) << 8;

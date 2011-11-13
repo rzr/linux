@@ -10,7 +10,6 @@
 
 #include <linux/ssb/ssb.h>
 #include <linux/pci.h>
-#include <linux/export.h>
 #include <linux/delay.h>
 #include <linux/ssb/ssb_embedded.h>
 

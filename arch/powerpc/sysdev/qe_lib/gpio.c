@@ -20,7 +20,6 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 #include <asm/qe.h>
 
 struct qe_gpio_chip {

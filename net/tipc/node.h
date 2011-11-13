@@ -42,12 +42,6 @@
 #include "net.h"
 #include "bearer.h"
 
-/* Flags used to block (re)establishment of contact with a neighboring node */
-
-#define WAIT_PEER_DOWN	0x0001	/* wait to see that peer's links are down */
-#define WAIT_NAMES_GONE	0x0002	/* wait for peer's publications to be purged */
-#define WAIT_NODE_DOWN	0x0004	/* wait until peer node is declared down */
-
 /**
  * struct tipc_node - TIPC node structure
  * @addr: network address of node
@@ -58,7 +52,7 @@
  * @active_links: pointers to active links to node
  * @links: pointers to all links to node
  * @working_links: number of working links to node (both active and standby)
- * @block_setup: bit mask of conditions preventing link establishment to node
+ * @cleanup_required: non-zero if cleaning up after a prior loss of contact
  * @link_cnt: number of links to node
  * @permit_changeover: non-zero if node has redundant links to this system
  * @bclink: broadcast-related info
@@ -83,7 +77,7 @@ struct tipc_node {
 	struct link *links[MAX_BEARERS];
 	int link_cnt;
 	int working_links;
-	int block_setup;
+	int cleanup_required;
 	int permit_changeover;
 	struct {
 		int supported;

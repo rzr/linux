@@ -613,7 +613,7 @@ static int hci_dev_do_close(struct hci_dev *hdev)
 	if (!test_bit(HCI_RAW, &hdev->flags)) {
 		set_bit(HCI_INIT, &hdev->flags);
 		__hci_request(hdev, hci_reset_req, 0,
-					msecs_to_jiffies(HCI_INIT_TIMEOUT));
+					msecs_to_jiffies(250));
 		clear_bit(HCI_INIT, &hdev->flags);
 	}
 
@@ -1312,41 +1312,59 @@ int hci_blacklist_clear(struct hci_dev *hdev)
 int hci_blacklist_add(struct hci_dev *hdev, bdaddr_t *bdaddr)
 {
 	struct bdaddr_list *entry;
+	int err;
 
 	if (bacmp(bdaddr, BDADDR_ANY) == 0)
 		return -EBADF;
 
-	if (hci_blacklist_lookup(hdev, bdaddr))
-		return -EEXIST;
+	hci_dev_lock_bh(hdev);
+
+	if (hci_blacklist_lookup(hdev, bdaddr)) {
+		err = -EEXIST;
+		goto err;
+	}
 
 	entry = kzalloc(sizeof(struct bdaddr_list), GFP_KERNEL);
-	if (!entry)
-		return -ENOMEM;
+	if (!entry) {
+		err = -ENOMEM;
+		goto err;
+	}
 
 	bacpy(&entry->bdaddr, bdaddr);
 
 	list_add(&entry->list, &hdev->blacklist);
 
-	return mgmt_device_blocked(hdev->id, bdaddr);
+	err = 0;
+
+err:
+	hci_dev_unlock_bh(hdev);
+	return err;
 }
 
 int hci_blacklist_del(struct hci_dev *hdev, bdaddr_t *bdaddr)
 {
 	struct bdaddr_list *entry;
+	int err = 0;
+
+	hci_dev_lock_bh(hdev);
 
 	if (bacmp(bdaddr, BDADDR_ANY) == 0) {
-		return hci_blacklist_clear(hdev);
+		hci_blacklist_clear(hdev);
+		goto done;
 	}
 
 	entry = hci_blacklist_lookup(hdev, bdaddr);
 	if (!entry) {
-		return -ENOENT;
+		err = -ENOENT;
+		goto done;
 	}
 
 	list_del(&entry->list);
 	kfree(entry);
 
-	return mgmt_device_unblocked(hdev->id, bdaddr);
+done:
+	hci_dev_unlock_bh(hdev);
+	return err;
 }
 
 static void hci_clear_adv_cache(unsigned long arg)
@@ -1505,6 +1523,11 @@ int hci_register_dev(struct hci_dev *hdev)
 	if (!hdev->workqueue)
 		goto nomem;
 
+	hdev->tfm = crypto_alloc_blkcipher("ecb(aes)", 0, CRYPTO_ALG_ASYNC);
+	if (IS_ERR(hdev->tfm))
+		BT_INFO("Failed to load transform for ecb(aes): %ld",
+							PTR_ERR(hdev->tfm));
+
 	hci_register_sysfs(hdev);
 
 	hdev->rfkill = rfkill_alloc(hdev->name, &hdev->dev,
@@ -1552,6 +1575,9 @@ int hci_unregister_dev(struct hci_dev *hdev)
 	if (!test_bit(HCI_INIT, &hdev->flags) &&
 					!test_bit(HCI_SETUP, &hdev->flags))
 		mgmt_index_removed(hdev->id);
+
+	if (!IS_ERR(hdev->tfm))
+		crypto_free_blkcipher(hdev->tfm);
 
 	hci_notify(hdev, HCI_DEV_UNREG);
 
@@ -2048,9 +2074,6 @@ static inline struct hci_conn *hci_low_sent(struct hci_dev *hdev, __u8 type, int
 			min  = c->sent;
 			conn = c;
 		}
-
-		if (hci_conn_num(hdev, type) == num)
-			break;
 	}
 
 	if (conn) {
@@ -2108,9 +2131,6 @@ static inline void hci_sched_acl(struct hci_dev *hdev)
 
 	BT_DBG("%s", hdev->name);
 
-	if (!hci_conn_num(hdev, ACL_LINK))
-		return;
-
 	if (!test_bit(HCI_RAW, &hdev->flags)) {
 		/* ACL tx timeout must be longer than maximum
 		 * link supervision timeout (40.9 seconds) */
@@ -2142,9 +2162,6 @@ static inline void hci_sched_sco(struct hci_dev *hdev)
 
 	BT_DBG("%s", hdev->name);
 
-	if (!hci_conn_num(hdev, SCO_LINK))
-		return;
-
 	while (hdev->sco_cnt && (conn = hci_low_sent(hdev, SCO_LINK, &quote))) {
 		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
 			BT_DBG("skb %p len %d", skb, skb->len);
@@ -2165,9 +2182,6 @@ static inline void hci_sched_esco(struct hci_dev *hdev)
 
 	BT_DBG("%s", hdev->name);
 
-	if (!hci_conn_num(hdev, ESCO_LINK))
-		return;
-
 	while (hdev->sco_cnt && (conn = hci_low_sent(hdev, ESCO_LINK, &quote))) {
 		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
 			BT_DBG("skb %p len %d", skb, skb->len);
@@ -2187,9 +2201,6 @@ static inline void hci_sched_le(struct hci_dev *hdev)
 	int quote, cnt;
 
 	BT_DBG("%s", hdev->name);
-
-	if (!hci_conn_num(hdev, LE_LINK))
-		return;
 
 	if (!test_bit(HCI_RAW, &hdev->flags)) {
 		/* LE tx timeout must be longer than maximum

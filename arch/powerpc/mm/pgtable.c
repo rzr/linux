@@ -27,7 +27,6 @@
 #include <linux/init.h>
 #include <linux/percpu.h>
 #include <linux/hardirq.h>
-#include <linux/hugetlb.h>
 #include <asm/pgalloc.h>
 #include <asm/tlbflush.h>
 #include <asm/tlb.h>
@@ -213,7 +212,7 @@ int ptep_set_access_flags(struct vm_area_struct *vma, unsigned long address,
 	entry = set_access_flags_filter(entry, vma, dirty);
 	changed = !pte_same(*(ptep), entry);
 	if (changed) {
-		if (!is_vm_hugetlb_page(vma))
+		if (!(vma->vm_flags & VM_HUGETLB))
 			assert_pte_locked(vma->vm_mm, address);
 		__ptep_set_access_flags(ptep, entry);
 		flush_tlb_page_nohash(vma, address);

@@ -26,7 +26,6 @@
 #include <linux/err.h>
 #include <linux/math64.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 #include "ubi.h"
 
 #ifdef CONFIG_MTD_UBI_DEBUG

@@ -442,7 +442,8 @@ static int spu_request_irqs(struct spu *spu)
 		snprintf(spu->irq_c0, sizeof (spu->irq_c0), "spe%02d.0",
 			 spu->number);
 		ret = request_irq(spu->irqs[0], spu_irq_class_0,
-				  0, spu->irq_c0, spu);
+				  IRQF_DISABLED,
+				  spu->irq_c0, spu);
 		if (ret)
 			goto bail0;
 	}
@@ -450,7 +451,8 @@ static int spu_request_irqs(struct spu *spu)
 		snprintf(spu->irq_c1, sizeof (spu->irq_c1), "spe%02d.1",
 			 spu->number);
 		ret = request_irq(spu->irqs[1], spu_irq_class_1,
-				  0, spu->irq_c1, spu);
+				  IRQF_DISABLED,
+				  spu->irq_c1, spu);
 		if (ret)
 			goto bail1;
 	}
@@ -458,7 +460,8 @@ static int spu_request_irqs(struct spu *spu)
 		snprintf(spu->irq_c2, sizeof (spu->irq_c2), "spe%02d.2",
 			 spu->number);
 		ret = request_irq(spu->irqs[2], spu_irq_class_2,
-				  0, spu->irq_c2, spu);
+				  IRQF_DISABLED,
+				  spu->irq_c2, spu);
 		if (ret)
 			goto bail2;
 	}

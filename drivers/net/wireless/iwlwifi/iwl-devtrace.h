@@ -29,8 +29,6 @@
 
 #include <linux/tracepoint.h>
 
-struct iwl_priv;
-
 #if !defined(CONFIG_IWLWIFI_DEVICE_TRACING) || defined(__CHECKER__)
 #undef TRACE_EVENT
 #define TRACE_EVENT(name, proto, ...) \

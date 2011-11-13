@@ -62,7 +62,6 @@ MACHINE_START(BUG, "BugLabs BUGBase")
 	.map_io = mx31_map_io,
 	.init_early = imx31_init_early,
 	.init_irq = mx31_init_irq,
-	.handle_irq = imx31_handle_irq,
 	.timer = &bug_timer,
 	.init_machine = bug_board_init,
 MACHINE_END

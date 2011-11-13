@@ -9,7 +9,6 @@
 
 /* TZIC */
 #define MX53_TZIC_BASE_ADDR		0x0FFFC000
-#define MX53_TZIC_SIZE			SZ_16K
 
 /*
  * AHCI SATA

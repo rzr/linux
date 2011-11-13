@@ -21,7 +21,6 @@
 #include <linux/suspend.h>
 #include <linux/fsl_devices.h>
 #include <linux/of_platform.h>
-#include <linux/export.h>
 
 #include <asm/reg.h>
 #include <asm/io.h>

@@ -1,10 +1,7 @@
-#include <linux/bitops.h>
-#include <linux/types.h>
-#include <linux/slab.h>
+#ifdef CONFIG_CPU_SUP_INTEL
 
-#include <asm/perf_event.h>
-
-#include "perf_event.h"
+/* The maximal number of PEBS events: */
+#define MAX_PEBS_EVENTS		4
 
 /* The size of a BTS record in bytes: */
 #define BTS_RECORD_SIZE		24
@@ -40,7 +37,24 @@ struct pebs_record_nhm {
 	u64 status, dla, dse, lat;
 };
 
-void init_debug_store_on_cpu(int cpu)
+/*
+ * A debug store configuration.
+ *
+ * We only support architectures that use 64bit fields.
+ */
+struct debug_store {
+	u64	bts_buffer_base;
+	u64	bts_index;
+	u64	bts_absolute_maximum;
+	u64	bts_interrupt_threshold;
+	u64	pebs_buffer_base;
+	u64	pebs_index;
+	u64	pebs_absolute_maximum;
+	u64	pebs_interrupt_threshold;
+	u64	pebs_event_reset[MAX_PEBS_EVENTS];
+};
+
+static void init_debug_store_on_cpu(int cpu)
 {
 	struct debug_store *ds = per_cpu(cpu_hw_events, cpu).ds;
 
@@ -52,7 +66,7 @@ void init_debug_store_on_cpu(int cpu)
 		     (u32)((u64)(unsigned long)ds >> 32));
 }
 
-void fini_debug_store_on_cpu(int cpu)
+static void fini_debug_store_on_cpu(int cpu)
 {
 	if (!per_cpu(cpu_hw_events, cpu).ds)
 		return;
@@ -161,7 +175,7 @@ static void release_ds_buffer(int cpu)
 	kfree(ds);
 }
 
-void release_ds_buffers(void)
+static void release_ds_buffers(void)
 {
 	int cpu;
 
@@ -180,7 +194,7 @@ void release_ds_buffers(void)
 	put_online_cpus();
 }
 
-void reserve_ds_buffers(void)
+static void reserve_ds_buffers(void)
 {
 	int bts_err = 0, pebs_err = 0;
 	int cpu;
@@ -246,10 +260,10 @@ void reserve_ds_buffers(void)
  * BTS
  */
 
-struct event_constraint bts_constraint =
+static struct event_constraint bts_constraint =
 	EVENT_CONSTRAINT(0, 1ULL << X86_PMC_IDX_FIXED_BTS, 0);
 
-void intel_pmu_enable_bts(u64 config)
+static void intel_pmu_enable_bts(u64 config)
 {
 	unsigned long debugctlmsr;
 
@@ -268,7 +282,7 @@ void intel_pmu_enable_bts(u64 config)
 	update_debugctlmsr(debugctlmsr);
 }
 
-void intel_pmu_disable_bts(void)
+static void intel_pmu_disable_bts(void)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 	unsigned long debugctlmsr;
@@ -285,7 +299,7 @@ void intel_pmu_disable_bts(void)
 	update_debugctlmsr(debugctlmsr);
 }
 
-int intel_pmu_drain_bts_buffer(void)
+static int intel_pmu_drain_bts_buffer(void)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 	struct debug_store *ds = cpuc->ds;
@@ -347,7 +361,7 @@ int intel_pmu_drain_bts_buffer(void)
 /*
  * PEBS
  */
-struct event_constraint intel_core2_pebs_event_constraints[] = {
+static struct event_constraint intel_core2_pebs_event_constraints[] = {
 	INTEL_UEVENT_CONSTRAINT(0x00c0, 0x1), /* INST_RETIRED.ANY */
 	INTEL_UEVENT_CONSTRAINT(0xfec1, 0x1), /* X87_OPS_RETIRED.ANY */
 	INTEL_UEVENT_CONSTRAINT(0x00c5, 0x1), /* BR_INST_RETIRED.MISPRED */
@@ -356,14 +370,14 @@ struct event_constraint intel_core2_pebs_event_constraints[] = {
 	EVENT_CONSTRAINT_END
 };
 
-struct event_constraint intel_atom_pebs_event_constraints[] = {
+static struct event_constraint intel_atom_pebs_event_constraints[] = {
 	INTEL_UEVENT_CONSTRAINT(0x00c0, 0x1), /* INST_RETIRED.ANY */
 	INTEL_UEVENT_CONSTRAINT(0x00c5, 0x1), /* MISPREDICTED_BRANCH_RETIRED */
 	INTEL_EVENT_CONSTRAINT(0xcb, 0x1),    /* MEM_LOAD_RETIRED.* */
 	EVENT_CONSTRAINT_END
 };
 
-struct event_constraint intel_nehalem_pebs_event_constraints[] = {
+static struct event_constraint intel_nehalem_pebs_event_constraints[] = {
 	INTEL_EVENT_CONSTRAINT(0x0b, 0xf),    /* MEM_INST_RETIRED.* */
 	INTEL_EVENT_CONSTRAINT(0x0f, 0xf),    /* MEM_UNCORE_RETIRED.* */
 	INTEL_UEVENT_CONSTRAINT(0x010c, 0xf), /* MEM_STORE_RETIRED.DTLB_MISS */
@@ -378,7 +392,7 @@ struct event_constraint intel_nehalem_pebs_event_constraints[] = {
 	EVENT_CONSTRAINT_END
 };
 
-struct event_constraint intel_westmere_pebs_event_constraints[] = {
+static struct event_constraint intel_westmere_pebs_event_constraints[] = {
 	INTEL_EVENT_CONSTRAINT(0x0b, 0xf),    /* MEM_INST_RETIRED.* */
 	INTEL_EVENT_CONSTRAINT(0x0f, 0xf),    /* MEM_UNCORE_RETIRED.* */
 	INTEL_UEVENT_CONSTRAINT(0x010c, 0xf), /* MEM_STORE_RETIRED.DTLB_MISS */
@@ -393,7 +407,7 @@ struct event_constraint intel_westmere_pebs_event_constraints[] = {
 	EVENT_CONSTRAINT_END
 };
 
-struct event_constraint intel_snb_pebs_event_constraints[] = {
+static struct event_constraint intel_snb_pebs_events[] = {
 	INTEL_UEVENT_CONSTRAINT(0x01c0, 0x2), /* INST_RETIRED.PRECDIST */
 	INTEL_UEVENT_CONSTRAINT(0x01c2, 0xf), /* UOPS_RETIRED.ALL */
 	INTEL_UEVENT_CONSTRAINT(0x02c2, 0xf), /* UOPS_RETIRED.RETIRE_SLOTS */
@@ -414,7 +428,8 @@ struct event_constraint intel_snb_pebs_event_constraints[] = {
 	EVENT_CONSTRAINT_END
 };
 
-struct event_constraint *intel_pebs_constraints(struct perf_event *event)
+static struct event_constraint *
+intel_pebs_constraints(struct perf_event *event)
 {
 	struct event_constraint *c;
 
@@ -431,7 +446,7 @@ struct event_constraint *intel_pebs_constraints(struct perf_event *event)
 	return &emptyconstraint;
 }
 
-void intel_pmu_pebs_enable(struct perf_event *event)
+static void intel_pmu_pebs_enable(struct perf_event *event)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 	struct hw_perf_event *hwc = &event->hw;
@@ -445,7 +460,7 @@ void intel_pmu_pebs_enable(struct perf_event *event)
 		intel_pmu_lbr_enable(event);
 }
 
-void intel_pmu_pebs_disable(struct perf_event *event)
+static void intel_pmu_pebs_disable(struct perf_event *event)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 	struct hw_perf_event *hwc = &event->hw;
@@ -460,7 +475,7 @@ void intel_pmu_pebs_disable(struct perf_event *event)
 		intel_pmu_lbr_disable(event);
 }
 
-void intel_pmu_pebs_enable_all(void)
+static void intel_pmu_pebs_enable_all(void)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 
@@ -468,7 +483,7 @@ void intel_pmu_pebs_enable_all(void)
 		wrmsrl(MSR_IA32_PEBS_ENABLE, cpuc->pebs_enabled);
 }
 
-void intel_pmu_pebs_disable_all(void)
+static void intel_pmu_pebs_disable_all(void)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 
@@ -560,6 +575,8 @@ static int intel_pmu_pebs_fixup_ip(struct pt_regs *regs)
 	 */
 	return 0;
 }
+
+static int intel_pmu_save_and_restart(struct perf_event *event);
 
 static void __intel_pmu_pebs_event(struct perf_event *event,
 				   struct pt_regs *iregs, void *__pebs)
@@ -699,7 +716,7 @@ static void intel_pmu_drain_pebs_nhm(struct pt_regs *iregs)
  * BTS, PEBS probe and setup
  */
 
-void intel_ds_init(void)
+static void intel_ds_init(void)
 {
 	/*
 	 * No support for 32bit formats
@@ -732,3 +749,15 @@ void intel_ds_init(void)
 		}
 	}
 }
+
+#else /* CONFIG_CPU_SUP_INTEL */
+
+static void reserve_ds_buffers(void)
+{
+}
+
+static void release_ds_buffers(void)
+{
+}
+
+#endif /* CONFIG_CPU_SUP_INTEL */

@@ -16,12 +16,10 @@
 #include <linux/skbuff.h>
 #include <linux/if_arp.h>
 #include <linux/etherdevice.h>
-#include <linux/moduleparam.h>
 #include <linux/rtnetlink.h>
-#include <linux/pm_qos.h>
+#include <linux/pm_qos_params.h>
 #include <linux/crc32.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 #include <net/mac80211.h>
 #include <asm/unaligned.h>
 
@@ -162,8 +160,7 @@ static int ecw2cw(int ecw)
  */
 static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 			       struct ieee80211_ht_info *hti,
-			       const u8 *bssid, u16 ap_ht_cap_flags,
-			       bool beacon_htcap_ie)
+			       const u8 *bssid, u16 ap_ht_cap_flags)
 {
 	struct ieee80211_local *local = sdata->local;
 	struct ieee80211_supported_band *sband;
@@ -235,21 +232,6 @@ static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 		WARN_ON(!ieee80211_set_channel_type(local, sdata, channel_type));
 	}
 
-	if (beacon_htcap_ie && (prev_chantype != channel_type)) {
-		/*
-		 * Whenever the AP announces the HT mode change that can be
-		 * 40MHz intolerant or etc., it would be safer to stop tx
-		 * queues before doing hw config to avoid buffer overflow.
-		 */
-		ieee80211_stop_queues_by_reason(&sdata->local->hw,
-				IEEE80211_QUEUE_STOP_REASON_CHTYPE_CHANGE);
-
-		/* flush out all packets */
-		synchronize_net();
-
-		drv_flush(local, false);
-	}
-
 	/* channel_type change automatically detected */
 	ieee80211_hw_config(local, 0);
 
@@ -261,10 +243,6 @@ static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 						 IEEE80211_RC_HT_CHANGED,
 						 channel_type);
 		rcu_read_unlock();
-
-		if (beacon_htcap_ie)
-			ieee80211_wake_queues_by_reason(&sdata->local->hw,
-				IEEE80211_QUEUE_STOP_REASON_CHTYPE_CHANGE);
 	}
 
 	ht_opmode = le16_to_cpu(hti->operation_mode);
@@ -293,9 +271,11 @@ static void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 	struct ieee80211_mgmt *mgmt;
 
 	skb = dev_alloc_skb(local->hw.extra_tx_headroom + sizeof(*mgmt));
-	if (!skb)
+	if (!skb) {
+		printk(KERN_DEBUG "%s: failed to allocate buffer for "
+		       "deauth/disassoc frame\n", sdata->name);
 		return;
-
+	}
 	skb_reserve(skb, local->hw.extra_tx_headroom);
 
 	mgmt = (struct ieee80211_mgmt *) skb_put(skb, 24);
@@ -350,7 +330,6 @@ void ieee80211_send_nullfunc(struct ieee80211_local *local,
 {
 	struct sk_buff *skb;
 	struct ieee80211_hdr_3addr *nullfunc;
-	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 
 	skb = ieee80211_nullfunc_get(&local->hw, &sdata->vif);
 	if (!skb)
@@ -361,10 +340,6 @@ void ieee80211_send_nullfunc(struct ieee80211_local *local,
 		nullfunc->frame_control |= cpu_to_le16(IEEE80211_FCTL_PM);
 
 	IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT;
-	if (ifmgd->flags & (IEEE80211_STA_BEACON_POLL |
-			    IEEE80211_STA_CONNECTION_POLL))
-		IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_CTL_USE_MINRATE;
-
 	ieee80211_tx_skb(sdata, skb);
 }
 
@@ -379,9 +354,11 @@ static void ieee80211_send_4addr_nullfunc(struct ieee80211_local *local,
 		return;
 
 	skb = dev_alloc_skb(local->hw.extra_tx_headroom + 30);
-	if (!skb)
+	if (!skb) {
+		printk(KERN_DEBUG "%s: failed to allocate buffer for 4addr "
+		       "nullfunc frame\n", sdata->name);
 		return;
-
+	}
 	skb_reserve(skb, local->hw.extra_tx_headroom);
 
 	nullfunc = (struct ieee80211_hdr *) skb_put(skb, 30);
@@ -417,9 +394,6 @@ static void ieee80211_chswitch_work(struct work_struct *work)
 		/* call "hw_config" only if doing sw channel switch */
 		ieee80211_hw_config(sdata->local,
 			IEEE80211_CONF_CHANGE_CHANNEL);
-	} else {
-		/* update the device channel directly */
-		sdata->local->hw.conf.channel = sdata->local->oper_channel;
 	}
 
 	/* XXX: shouldn't really modify cfg80211-owned data! */
@@ -634,7 +608,7 @@ static bool ieee80211_powersave_allowed(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_if_managed *mgd = &sdata->u.mgd;
 	struct sta_info *sta = NULL;
-	bool authorized = false;
+	u32 sta_flags = 0;
 
 	if (!mgd->powersave)
 		return false;
@@ -655,10 +629,13 @@ static bool ieee80211_powersave_allowed(struct ieee80211_sub_if_data *sdata)
 	rcu_read_lock();
 	sta = sta_info_get(sdata, mgd->bssid);
 	if (sta)
-		authorized = test_sta_flag(sta, WLAN_STA_AUTHORIZED);
+		sta_flags = get_sta_flags(sta);
 	rcu_read_unlock();
 
-	return authorized;
+	if (!(sta_flags & WLAN_STA_AUTHORIZED))
+		return false;
+
+	return true;
 }
 
 /* need to hold RTNL or interface lock */
@@ -943,8 +920,8 @@ static void ieee80211_sta_wmm_params(struct ieee80211_local *local,
 			    params.aifs, params.cw_min, params.cw_max,
 			    params.txop, params.uapsd);
 #endif
-		sdata->tx_conf[queue] = params;
-		if (drv_conf_tx(local, sdata, queue, &params))
+		local->tx_conf[queue] = params;
+		if (drv_conf_tx(local, queue, &params))
 			wiphy_debug(local->hw.wiphy,
 				    "failed to set TX queue parameters for queue %d\n",
 				    queue);
@@ -1102,7 +1079,7 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	mutex_lock(&local->sta_mtx);
 	sta = sta_info_get(sdata, bssid);
 	if (sta) {
-		set_sta_flag(sta, WLAN_STA_BLOCK_BA);
+		set_sta_flags(sta, WLAN_STA_BLOCK_BA);
 		ieee80211_sta_tear_down_BA_sessions(sta, tx);
 	}
 	mutex_unlock(&local->sta_mtx);
@@ -1144,9 +1121,8 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	changed |= BSS_CHANGED_BSSID | BSS_CHANGED_HT;
 	ieee80211_bss_info_change_notify(sdata, changed);
 
-	/* remove AP and TDLS peers */
 	if (remove_sta)
-		sta_info_flush(local, sdata);
+		sta_info_destroy_addr(sdata, bssid);
 
 	del_timer_sync(&sdata->u.mgd.conn_mon_timer);
 	del_timer_sync(&sdata->u.mgd.bcn_mon_timer);
@@ -1247,7 +1223,7 @@ static void ieee80211_mgd_probe_ap_send(struct ieee80211_sub_if_data *sdata)
 	} else {
 		ssid = ieee80211_bss_get_ie(ifmgd->associated, WLAN_EID_SSID);
 		ieee80211_send_probe_req(sdata, dst, ssid + 2, ssid[1], NULL, 0,
-					 (u32) -1, true, false);
+					 (u32) -1, true);
 	}
 
 	ifmgd->probe_send_count++;
@@ -1487,7 +1463,6 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 	int i, j, err;
 	bool have_higher_than_11mbit = false;
 	u16 ap_ht_cap_flags;
-	int min_rate = INT_MAX, min_rate_index = -1;
 
 	/* AssocResp and ReassocResp have identical structure */
 
@@ -1521,22 +1496,17 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 
 	ifmgd->aid = aid;
 
-	mutex_lock(&sdata->local->sta_mtx);
-	/*
-	 * station info was already allocated and inserted before
-	 * the association and should be available to us
-	 */
-	sta = sta_info_get_rx(sdata, cbss->bssid);
-	if (WARN_ON(!sta)) {
-		mutex_unlock(&sdata->local->sta_mtx);
+	sta = sta_info_alloc(sdata, cbss->bssid, GFP_KERNEL);
+	if (!sta) {
+		printk(KERN_DEBUG "%s: failed to alloc STA entry for"
+		       " the AP\n", sdata->name);
 		return false;
 	}
 
-	set_sta_flag(sta, WLAN_STA_AUTH);
-	set_sta_flag(sta, WLAN_STA_ASSOC);
-	set_sta_flag(sta, WLAN_STA_ASSOC_AP);
+	set_sta_flags(sta, WLAN_STA_AUTH | WLAN_STA_ASSOC |
+			   WLAN_STA_ASSOC_AP);
 	if (!(ifmgd->flags & IEEE80211_STA_CONTROL_PORT))
-		set_sta_flag(sta, WLAN_STA_AUTHORIZED);
+		set_sta_flags(sta, WLAN_STA_AUTHORIZED);
 
 	rates = 0;
 	basic_rates = 0;
@@ -1554,10 +1524,6 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 				rates |= BIT(j);
 				if (is_basic)
 					basic_rates |= BIT(j);
-				if (rate < min_rate) {
-					min_rate = rate;
-					min_rate_index = j;
-				}
 				break;
 			}
 		}
@@ -1575,23 +1541,9 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 				rates |= BIT(j);
 				if (is_basic)
 					basic_rates |= BIT(j);
-				if (rate < min_rate) {
-					min_rate = rate;
-					min_rate_index = j;
-				}
 				break;
 			}
 		}
-	}
-
-	/*
-	 * some buggy APs don't advertise basic_rates. use the lowest
-	 * supported rate instead.
-	 */
-	if (unlikely(!basic_rates) && min_rate_index >= 0) {
-		printk(KERN_DEBUG "%s: No basic rates in AssocResp. "
-		       "Using min supported rate instead.\n", sdata->name);
-		basic_rates = BIT(min_rate_index);
 	}
 
 	sta->sta.supp_rates[wk->chan->band] = rates;
@@ -1613,13 +1565,12 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 	rate_control_rate_init(sta);
 
 	if (ifmgd->flags & IEEE80211_STA_MFP_ENABLED)
-		set_sta_flag(sta, WLAN_STA_MFP);
+		set_sta_flags(sta, WLAN_STA_MFP);
 
 	if (elems.wmm_param)
-		set_sta_flag(sta, WLAN_STA_WME);
+		set_sta_flags(sta, WLAN_STA_WME);
 
-	/* sta_info_reinsert will also unlock the mutex lock */
-	err = sta_info_reinsert(sta);
+	err = sta_info_insert(sta);
 	sta = NULL;
 	if (err) {
 		printk(KERN_DEBUG "%s: failed to insert STA entry for"
@@ -1647,8 +1598,7 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 	    (sdata->local->hw.queues >= 4) &&
 	    !(ifmgd->flags & IEEE80211_STA_DISABLE_11N))
 		changed |= ieee80211_enable_ht(sdata, elems.ht_info_elem,
-					       cbss->bssid, ap_ht_cap_flags,
-					       false);
+					       cbss->bssid, ap_ht_cap_flags);
 
 	/* set AID and assoc capability,
 	 * ieee80211_set_associated() will tell the driver */
@@ -1982,7 +1932,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_sub_if_data *sdata,
 		rcu_read_unlock();
 
 		changed |= ieee80211_enable_ht(sdata, elems.ht_info_elem,
-					       bssid, ap_ht_cap_flags, true);
+					       bssid, ap_ht_cap_flags);
 	}
 
 	/* Note: country IE parsing is done for us by cfg80211 */
@@ -2288,7 +2238,6 @@ void ieee80211_sta_quiesce(struct ieee80211_sub_if_data *sdata)
 
 	cancel_work_sync(&ifmgd->request_smps_work);
 
-	cancel_work_sync(&ifmgd->monitor_work);
 	cancel_work_sync(&ifmgd->beacon_connection_loss_work);
 	if (del_timer_sync(&ifmgd->timer))
 		set_bit(TMR_RUNNING_TIMER, &ifmgd->timers_running);
@@ -2297,6 +2246,7 @@ void ieee80211_sta_quiesce(struct ieee80211_sub_if_data *sdata)
 	if (del_timer_sync(&ifmgd->chswitch_timer))
 		set_bit(TMR_RUNNING_CHANSW, &ifmgd->timers_running);
 
+	cancel_work_sync(&ifmgd->monitor_work);
 	/* these will just be re-established on connection */
 	del_timer_sync(&ifmgd->conn_mon_timer);
 	del_timer_sync(&ifmgd->bcn_mon_timer);
@@ -2493,29 +2443,6 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	return 0;
 }
 
-/* create and insert a dummy station entry */
-static int ieee80211_pre_assoc(struct ieee80211_sub_if_data *sdata,
-				u8 *bssid) {
-	struct sta_info *sta;
-	int err;
-
-	sta = sta_info_alloc(sdata, bssid, GFP_KERNEL);
-	if (!sta)
-		return -ENOMEM;
-
-	sta->dummy = true;
-
-	err = sta_info_insert(sta);
-	sta = NULL;
-	if (err) {
-		printk(KERN_DEBUG "%s: failed to insert Dummy STA entry for"
-		       " the AP (error %d)\n", sdata->name, err);
-		return err;
-	}
-
-	return 0;
-}
-
 static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 						  struct sk_buff *skb)
 {
@@ -2523,11 +2450,9 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 	struct ieee80211_mgmt *mgmt;
 	struct ieee80211_rx_status *rx_status;
 	struct ieee802_11_elems elems;
-	struct cfg80211_bss *cbss = wk->assoc.bss;
 	u16 status;
 
 	if (!skb) {
-		sta_info_destroy_addr(wk->sdata, cbss->bssid);
 		cfg80211_send_assoc_timeout(wk->sdata->dev, wk->filter_ta);
 		goto destroy;
 	}
@@ -2557,16 +2482,12 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 		if (!ieee80211_assoc_success(wk, mgmt, skb->len)) {
 			mutex_unlock(&wk->sdata->u.mgd.mtx);
 			/* oops -- internal error -- send timeout for now */
-			sta_info_destroy_addr(wk->sdata, cbss->bssid);
 			cfg80211_send_assoc_timeout(wk->sdata->dev,
 						    wk->filter_ta);
 			return WORK_DONE_DESTROY;
 		}
 
 		mutex_unlock(&wk->sdata->u.mgd.mtx);
-	} else {
-		/* assoc failed - destroy the dummy station entry */
-		sta_info_destroy_addr(wk->sdata, cbss->bssid);
 	}
 
 	cfg80211_send_rx_assoc(wk->sdata->dev, skb->data, skb->len);
@@ -2585,7 +2506,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	struct ieee80211_bss *bss = (void *)req->bss->priv;
 	struct ieee80211_work *wk;
 	const u8 *ssid;
-	int i, err;
+	int i;
 
 	mutex_lock(&ifmgd->mtx);
 	if (ifmgd->associated) {
@@ -2609,16 +2530,6 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	wk = kzalloc(sizeof(*wk) + req->ie_len, GFP_KERNEL);
 	if (!wk)
 		return -ENOMEM;
-
-	/*
-	 * create a dummy station info entry in order
-	 * to start accepting incoming EAPOL packets from the station
-	 */
-	err = ieee80211_pre_assoc(sdata, req->bss->bssid);
-	if (err) {
-		kfree(wk);
-		return err;
-	}
 
 	ifmgd->flags &= ~IEEE80211_STA_DISABLE_11N;
 	ifmgd->flags &= ~IEEE80211_STA_NULLFUNC_ACKED;
@@ -2777,7 +2688,7 @@ int ieee80211_mgd_deauth(struct ieee80211_sub_if_data *sdata,
 				       req->reason_code, cookie,
 				       !req->local_state_change);
 	if (assoc_bss)
-		sta_info_flush(sdata->local, sdata);
+		sta_info_destroy_addr(sdata, bssid);
 
 	mutex_lock(&sdata->local->mtx);
 	ieee80211_recalc_idle(sdata->local);
@@ -2817,7 +2728,7 @@ int ieee80211_mgd_disassoc(struct ieee80211_sub_if_data *sdata,
 	ieee80211_send_deauth_disassoc(sdata, req->bss->bssid,
 			IEEE80211_STYPE_DISASSOC, req->reason_code,
 			cookie, !req->local_state_change);
-	sta_info_flush(sdata->local, sdata);
+	sta_info_destroy_addr(sdata, bssid);
 
 	mutex_lock(&sdata->local->mtx);
 	ieee80211_recalc_idle(sdata->local);

@@ -951,12 +951,13 @@ static unsigned long atalk_sum_skb(const struct sk_buff *skb, int offset,
 	/* checksum stuff in frags */
 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
 		int end;
-		const skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
+
 		WARN_ON(start > offset + len);
 
-		end = start + skb_frag_size(frag);
+		end = start + skb_shinfo(skb)->frags[i].size;
 		if ((copy = end - offset) > 0) {
 			u8 *vaddr;
+			skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
 
 			if (copy > len)
 				copy = len;

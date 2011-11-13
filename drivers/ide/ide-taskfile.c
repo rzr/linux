@@ -11,7 +11,6 @@
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/kernel.h>
-#include <linux/export.h>
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/errno.h>

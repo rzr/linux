@@ -488,18 +488,17 @@ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
 				      struct xdr_stream *xdr,
 				      struct cb_recallanyargs *args)
 {
-	uint32_t bitmap[2];
-	__be32 *p, status;
+	__be32 *p;
 
 	args->craa_addr = svc_addr(rqstp);
 	p = read_buf(xdr, 4);
 	if (unlikely(p == NULL))
 		return htonl(NFS4ERR_BADXDR);
 	args->craa_objs_to_keep = ntohl(*p++);
-	status = decode_bitmap(xdr, bitmap);
-	if (unlikely(status))
-		return status;
-	args->craa_type_mask = bitmap[0];
+	p = read_buf(xdr, 4);
+	if (unlikely(p == NULL))
+		return htonl(NFS4ERR_BADXDR);
+	args->craa_type_mask = ntohl(*p);
 
 	return 0;
 }
@@ -987,5 +986,4 @@ struct svc_version nfs4_callback_version4 = {
 	.vs_proc = nfs4_callback_procedures1,
 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
 	.vs_dispatch = NULL,
-	.vs_hidden = 1,
 };

@@ -19,8 +19,12 @@ struct dma_pl330_peri {
 	 * Peri_Req i/f of the DMAC that is
 	 * peripheral could be reached from.
 	 */
-	u8 peri_id; /* specific dma id */
+	u8 peri_id; /* {0, 31} */
 	enum pl330_reqtype rqtype;
+
+	/* For M->D and D->M Channels */
+	int burst_sz; /* in power of 2 */
+	dma_addr_t fifo_addr;
 };
 
 struct dma_pl330_platdata {

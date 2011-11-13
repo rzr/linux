@@ -8,7 +8,6 @@
  */
 
 #include <linux/resume-trace.h>
-#include <linux/export.h>
 #include <linux/rtc.h>
 
 #include <asm/rtc.h>

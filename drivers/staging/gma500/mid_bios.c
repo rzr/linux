@@ -23,7 +23,6 @@
  * - Check ioremap failures
  */
 
-#include <linux/moduleparam.h>
 #include <drm/drmP.h>
 #include <drm/drm.h>
 #include "psb_drm.h"

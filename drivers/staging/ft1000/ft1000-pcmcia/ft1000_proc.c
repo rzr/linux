@@ -48,8 +48,8 @@
 	} \
 	len += snprintf(page+len, PAGE_SIZE - len, "%d\n", var[i])
 
-static int ft1000ReadProc(char *page, char **start, off_t off,
-			  int count, int *eof, void *data)
+int ft1000ReadProc(char *page, char **start, off_t off,
+		   int count, int *eof, void *data)
 {
 	struct net_device *dev;
 	int len;

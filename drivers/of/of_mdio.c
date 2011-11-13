@@ -83,6 +83,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 				addr);
 			continue;
 		}
+		phy_scan_fixups(phy);
 
 		/* Associate the OF node with the device structure so it
 		 * can be looked up later */

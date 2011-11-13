@@ -18,7 +18,6 @@
 #include <linux/input.h>
 #include <linux/slab.h>
 #include <linux/device.h>
-#include <linux/module.h>
 #include "rc-core-priv.h"
 
 /* Sizes are in bytes, 256 bytes allows for 32 entries on x64 */
@@ -929,6 +928,10 @@ out:
 
 static void rc_dev_release(struct device *device)
 {
+	struct rc_dev *dev = to_rc_dev(device);
+
+	kfree(dev);
+	module_put(THIS_MODULE);
 }
 
 #define ADD_HOTPLUG_VAR(fmt, val...)					\
@@ -941,9 +944,6 @@ static void rc_dev_release(struct device *device)
 static int rc_dev_uevent(struct device *device, struct kobj_uevent_env *env)
 {
 	struct rc_dev *dev = to_rc_dev(device);
-
-	if (!dev || !dev->input_dev)
-		return -ENODEV;
 
 	if (dev->rc_map.name)
 		ADD_HOTPLUG_VAR("NAME=%s", dev->rc_map.name);
@@ -1013,16 +1013,10 @@ EXPORT_SYMBOL_GPL(rc_allocate_device);
 
 void rc_free_device(struct rc_dev *dev)
 {
-	if (!dev)
-		return;
-
-	if (dev->input_dev)
+	if (dev) {
 		input_free_device(dev->input_dev);
-
-	put_device(&dev->dev);
-
-	kfree(dev);
-	module_put(THIS_MODULE);
+		put_device(&dev->dev);
+	}
 }
 EXPORT_SYMBOL_GPL(rc_free_device);
 
@@ -1149,18 +1143,14 @@ void rc_unregister_device(struct rc_dev *dev)
 	if (dev->driver_type == RC_DRIVER_IR_RAW)
 		ir_raw_event_unregister(dev);
 
-	/* Freeing the table should also call the stop callback */
-	ir_free_table(&dev->rc_map);
-	IR_dprintk(1, "Freed keycode table\n");
-
 	input_unregister_device(dev->input_dev);
 	dev->input_dev = NULL;
 
-	device_del(&dev->dev);
+	ir_free_table(&dev->rc_map);
+	IR_dprintk(1, "Freed keycode table\n");
 
-	rc_free_device(dev);
+	device_unregister(&dev->dev);
 }
-
 EXPORT_SYMBOL_GPL(rc_unregister_device);
 
 /*

@@ -24,9 +24,8 @@ union jump_code_union {
 	} __attribute__((packed));
 };
 
-static void __jump_label_transform(struct jump_entry *entry,
-				   enum jump_label_type type,
-				   void *(*poker)(void *, const void *, size_t))
+void arch_jump_label_transform(struct jump_entry *entry,
+			       enum jump_label_type type)
 {
 	union jump_code_union code;
 
@@ -36,24 +35,17 @@ static void __jump_label_transform(struct jump_entry *entry,
 				(entry->code + JUMP_LABEL_NOP_SIZE);
 	} else
 		memcpy(&code, ideal_nops[NOP_ATOMIC5], JUMP_LABEL_NOP_SIZE);
-
-	(*poker)((void *)entry->code, &code, JUMP_LABEL_NOP_SIZE);
-}
-
-void arch_jump_label_transform(struct jump_entry *entry,
-			       enum jump_label_type type)
-{
 	get_online_cpus();
 	mutex_lock(&text_mutex);
-	__jump_label_transform(entry, type, text_poke_smp);
+	text_poke_smp((void *)entry->code, &code, JUMP_LABEL_NOP_SIZE);
 	mutex_unlock(&text_mutex);
 	put_online_cpus();
 }
 
-void arch_jump_label_transform_static(struct jump_entry *entry,
-				      enum jump_label_type type)
+void arch_jump_label_text_poke_early(jump_label_t addr)
 {
-	__jump_label_transform(entry, type, text_poke_early);
+	text_poke_early((void *)addr, ideal_nops[NOP_ATOMIC5],
+			JUMP_LABEL_NOP_SIZE);
 }
 
 #endif

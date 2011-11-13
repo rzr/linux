@@ -10,7 +10,6 @@
 
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
-#include <linux/module.h>
 
 #include "kprobes.h"
 
@@ -944,9 +943,6 @@ const union decode_item kprobe_decode_thumb32_table[] = {
 	 */
 	DECODE_END
 };
-#ifdef CONFIG_ARM_KPROBES_TEST_MODULE
-EXPORT_SYMBOL_GPL(kprobe_decode_thumb32_table);
-#endif
 
 static void __kprobes
 t16_simulate_bxblx(struct kprobe *p, struct pt_regs *regs)
@@ -1427,9 +1423,6 @@ const union decode_item kprobe_decode_thumb16_table[] = {
 
 	DECODE_END
 };
-#ifdef CONFIG_ARM_KPROBES_TEST_MODULE
-EXPORT_SYMBOL_GPL(kprobe_decode_thumb16_table);
-#endif
 
 static unsigned long __kprobes thumb_check_cc(unsigned long cpsr)
 {

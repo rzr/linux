@@ -92,7 +92,7 @@ static void __init mp900c_init(void)
 
 /* Maintainer - Michael Petchkovsky <mkpetch@internode.on.net> */
 MACHINE_START(NEC_MP900, "MobilePro900/C")
-	.atag_offset	= 0x220100,
+	.boot_params	= 0xa0220100,
 	.timer		= &pxa_timer,
 	.map_io		= pxa25x_map_io,
 	.init_irq	= pxa25x_init_irq,

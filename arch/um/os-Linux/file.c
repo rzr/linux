@@ -13,7 +13,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include "kern_constants.h"
 #include "os.h"
+#include "user.h"
 
 static void copy_stat(struct uml_stat *dst, const struct stat64 *src)
 {

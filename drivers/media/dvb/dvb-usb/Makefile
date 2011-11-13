@@ -64,9 +64,6 @@ obj-$(CONFIG_DVB_USB_AF9005_REMOTE) += dvb-usb-af9005-remote.o
 dvb-usb-anysee-objs = anysee.o
 obj-$(CONFIG_DVB_USB_ANYSEE) += dvb-usb-anysee.o
 
-dvb-usb-pctv452e-objs = pctv452e.o
-obj-$(CONFIG_DVB_USB_PCTV452E) += dvb-usb-pctv452e.o
-
 dvb-usb-dw2102-objs = dw2102.o
 obj-$(CONFIG_DVB_USB_DW2102) += dvb-usb-dw2102.o
 
@@ -97,16 +94,7 @@ obj-$(CONFIG_DVB_USB_LME2510) += dvb-usb-lmedm04.o
 dvb-usb-technisat-usb2-objs = technisat-usb2.o
 obj-$(CONFIG_DVB_USB_TECHNISAT_USB2) += dvb-usb-technisat-usb2.o
 
-dvb-usb-it913x-objs := it913x.o
-obj-$(CONFIG_DVB_USB_IT913X) += dvb-usb-it913x.o
-
-dvb-usb-mxl111sf-objs = mxl111sf.o mxl111sf-phy.o mxl111sf-i2c.o mxl111sf-gpio.o
-obj-$(CONFIG_DVB_USB_MXL111SF) += dvb-usb-mxl111sf.o
-obj-$(CONFIG_DVB_USB_MXL111SF) += mxl111sf-demod.o
-obj-$(CONFIG_DVB_USB_MXL111SF) += mxl111sf-tuner.o
-
-ccflags-y += -Idrivers/media/dvb/dvb-core/ -Idrivers/media/dvb/frontends/
+EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core/ -Idrivers/media/dvb/frontends/
 # due to tuner-xc3028
-ccflags-y += -Idrivers/media/common/tuners
-EXTRA_CFLAGS += -Idrivers/media/dvb/ttpci
+EXTRA_CFLAGS += -Idrivers/media/common/tuners
 

@@ -156,8 +156,8 @@ static int uni16_to_x8(struct super_block *sb, unsigned char *ascii,
 		} else {
 			if (uni_xlate == 1) {
 				*op++ = ':';
-				op = hex_byte_pack(op, ec >> 8);
-				op = hex_byte_pack(op, ec);
+				op = pack_hex_byte(op, ec >> 8);
+				op = pack_hex_byte(op, ec);
 				len -= 5;
 			} else {
 				*op++ = '?';

@@ -1849,12 +1849,6 @@ static void add_header(struct buffer *b, struct module *mod)
 	buf_printf(b, "};\n");
 }
 
-static void add_intree_flag(struct buffer *b, int is_intree)
-{
-	if (is_intree)
-		buf_printf(b, "\nMODULE_INFO(intree, \"Y\");\n");
-}
-
 static void add_staging_flag(struct buffer *b, const char *name)
 {
 	static const char *staging_dir = "drivers/staging";
@@ -2175,7 +2169,6 @@ int main(int argc, char **argv)
 		buf.pos = 0;
 
 		add_header(&buf, mod);
-		add_intree_flag(&buf, !external_module);
 		add_staging_flag(&buf, mod->name);
 		err |= add_versions(&buf, mod);
 		add_depends(&buf, mod, modules);

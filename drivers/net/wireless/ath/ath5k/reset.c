@@ -30,6 +30,7 @@
 #include <linux/platform_device.h>
 #include "ath5k.h"
 #include "reg.h"
+#include "base.h"
 #include "debug.h"
 
 
@@ -101,18 +102,12 @@ static void ath5k_hw_init_core_clock(struct ath5k_hw *ah)
 	/*
 	 * Set core clock frequency
 	 */
-	switch (channel->hw_value) {
-	case AR5K_MODE_11A:
-		clock = 40;
-		break;
-	case AR5K_MODE_11B:
-		clock = 22;
-		break;
-	case AR5K_MODE_11G:
-	default:
-		clock = 44;
-		break;
-	}
+	if (channel->hw_value & CHANNEL_5GHZ)
+		clock = 40; /* 802.11a */
+	else if (channel->hw_value & CHANNEL_CCK)
+		clock = 22; /* 802.11b */
+	else
+		clock = 44; /* 802.11g */
 
 	/* Use clock multiplier for non-default
 	 * bwmode */
@@ -586,9 +581,8 @@ int ath5k_hw_on_hold(struct ath5k_hw *ah)
 
 /*
  * Bring up MAC + PHY Chips and program PLL
- * Channel is NULL for the initial wakeup.
  */
-int ath5k_hw_nic_wakeup(struct ath5k_hw *ah, struct ieee80211_channel *channel)
+int ath5k_hw_nic_wakeup(struct ath5k_hw *ah, int flags, bool initial)
 {
 	struct pci_dev *pdev = ah->pdev;
 	u32 turbo, mode, clock, bus_flags;
@@ -598,7 +592,7 @@ int ath5k_hw_nic_wakeup(struct ath5k_hw *ah, struct ieee80211_channel *channel)
 	mode = 0;
 	clock = 0;
 
-	if ((ath5k_get_bus_type(ah) != ATH_AHB) || channel) {
+	if ((ath5k_get_bus_type(ah) != ATH_AHB) || !initial) {
 		/* Wakeup the device */
 		ret = ath5k_hw_set_power(ah, AR5K_PM_AWAKE, true, 0);
 		if (ret) {
@@ -658,7 +652,7 @@ int ath5k_hw_nic_wakeup(struct ath5k_hw *ah, struct ieee80211_channel *channel)
 
 	/* On initialization skip PLL programming since we don't have
 	 * a channel / mode set yet */
-	if (!channel)
+	if (initial)
 		return 0;
 
 	if (ah->ah_version != AR5K_AR5210) {
@@ -674,13 +668,13 @@ int ath5k_hw_nic_wakeup(struct ath5k_hw *ah, struct ieee80211_channel *channel)
 			clock = AR5K_PHY_PLL_RF5111;		/*Zero*/
 		}
 
-		if (channel->band == IEEE80211_BAND_2GHZ) {
+		if (flags & CHANNEL_2GHZ) {
 			mode |= AR5K_PHY_MODE_FREQ_2GHZ;
 			clock |= AR5K_PHY_PLL_44MHZ;
 
-			if (channel->hw_value == AR5K_MODE_11B) {
+			if (flags & CHANNEL_CCK) {
 				mode |= AR5K_PHY_MODE_MOD_CCK;
-			} else {
+			} else if (flags & CHANNEL_OFDM) {
 				/* XXX Dynamic OFDM/CCK is not supported by the
 				 * AR5211 so we set MOD_OFDM for plain g (no
 				 * CCK headers) operation. We need to test
@@ -692,16 +686,27 @@ int ath5k_hw_nic_wakeup(struct ath5k_hw *ah, struct ieee80211_channel *channel)
 					mode |= AR5K_PHY_MODE_MOD_OFDM;
 				else
 					mode |= AR5K_PHY_MODE_MOD_DYN;
+			} else {
+				ATH5K_ERR(ah,
+					"invalid radio modulation mode\n");
+				return -EINVAL;
 			}
-		} else if (channel->band == IEEE80211_BAND_5GHZ) {
-			mode |= (AR5K_PHY_MODE_FREQ_5GHZ |
-				 AR5K_PHY_MODE_MOD_OFDM);
+		} else if (flags & CHANNEL_5GHZ) {
+			mode |= AR5K_PHY_MODE_FREQ_5GHZ;
 
 			/* Different PLL setting for 5413 */
 			if (ah->ah_radio == AR5K_RF5413)
 				clock = AR5K_PHY_PLL_40MHZ_5413;
 			else
 				clock |= AR5K_PHY_PLL_40MHZ;
+
+			if (flags & CHANNEL_OFDM)
+				mode |= AR5K_PHY_MODE_MOD_OFDM;
+			else {
+				ATH5K_ERR(ah,
+					"invalid radio modulation mode\n");
+				return -EINVAL;
+			}
 		} else {
 			ATH5K_ERR(ah, "invalid radio frequency mode\n");
 			return -EINVAL;
@@ -817,7 +822,7 @@ static void ath5k_hw_tweak_initval_settings(struct ath5k_hw *ah,
 		u32 data;
 		ath5k_hw_reg_write(ah, AR5K_PHY_CCKTXCTL_WORLD,
 				AR5K_PHY_CCKTXCTL);
-		if (channel->band == IEEE80211_BAND_5GHZ)
+		if (channel->hw_value & CHANNEL_5GHZ)
 			data = 0xffb81020;
 		else
 			data = 0xffb80d20;
@@ -900,7 +905,7 @@ static void ath5k_hw_commit_eeprom_settings(struct ath5k_hw *ah,
 	/* Set CCK to OFDM power delta on tx power
 	 * adjustment register */
 	if (ah->ah_phy_revision >= AR5K_SREV_PHY_5212A) {
-		if (channel->hw_value == AR5K_MODE_11G)
+		if (channel->hw_value == CHANNEL_G)
 			ath5k_hw_reg_write(ah,
 			AR5K_REG_SM((ee->ee_cck_ofdm_gain_delta * -1),
 				AR5K_PHY_TX_PWR_ADJ_CCK_GAIN_DELTA) |
@@ -1079,23 +1084,37 @@ int ath5k_hw_reset(struct ath5k_hw *ah, enum nl80211_iftype op_mode,
 		ret = 0;
 	}
 
-	mode = channel->hw_value;
-	switch (mode) {
-	case AR5K_MODE_11A:
+	switch (channel->hw_value & CHANNEL_MODES) {
+	case CHANNEL_A:
+		mode = AR5K_MODE_11A;
 		break;
-	case AR5K_MODE_11G:
+	case CHANNEL_G:
+
 		if (ah->ah_version <= AR5K_AR5211) {
 			ATH5K_ERR(ah,
 				"G mode not available on 5210/5211");
 			return -EINVAL;
 		}
+
+		mode = AR5K_MODE_11G;
 		break;
-	case AR5K_MODE_11B:
+	case CHANNEL_B:
+
 		if (ah->ah_version < AR5K_AR5211) {
 			ATH5K_ERR(ah,
 				"B mode not available on 5210");
 			return -EINVAL;
 		}
+
+		mode = AR5K_MODE_11B;
+		break;
+	case CHANNEL_XR:
+		if (ah->ah_version == AR5K_AR5211) {
+			ATH5K_ERR(ah,
+				"XR mode not available on 5211");
+			return -EINVAL;
+		}
+		mode = AR5K_MODE_XR;
 		break;
 	default:
 		ATH5K_ERR(ah,
@@ -1181,7 +1200,7 @@ int ath5k_hw_reset(struct ath5k_hw *ah, enum nl80211_iftype op_mode,
 	}
 
 	/* Wakeup the device */
-	ret = ath5k_hw_nic_wakeup(ah, channel);
+	ret = ath5k_hw_nic_wakeup(ah, channel->hw_value, false);
 	if (ret)
 		return ret;
 

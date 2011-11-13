@@ -17,7 +17,6 @@
 #include <linux/highmem.h>
 #include <linux/memstick.h>
 #include <linux/slab.h>
-#include <linux/module.h>
 
 #define DRIVER_NAME "jmb38x_ms"
 

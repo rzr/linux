@@ -134,8 +134,7 @@ struct compat_statfs {
 	compat_fsid_t	f_fsid;
 	int		f_namelen;	/* SunOS ignores this field. */
 	int		f_frsize;
-	int		f_flags;
-	int		f_spare[4];
+	int		f_spare[5];
 };
 
 #define COMPAT_RLIM_INFINITY 0x7fffffff

@@ -6,7 +6,6 @@
  */
 
 #include <linux/slab.h>
-#include <linux/module.h>
 
 #include "md.h"
 #include "raid1.h"
@@ -38,7 +37,7 @@ struct raid_dev {
 	 */
 	struct dm_dev *meta_dev;
 	struct dm_dev *data_dev;
-	struct md_rdev rdev;
+	struct mdk_rdev_s rdev;
 };
 
 /*
@@ -58,7 +57,7 @@ struct raid_set {
 
 	uint64_t print_flags;
 
-	struct mddev md;
+	struct mddev_s md;
 	struct raid_type *raid_type;
 	struct dm_target_callbacks callbacks;
 
@@ -595,7 +594,7 @@ struct dm_raid_superblock {
 				/* Always set to 0 when writing. */
 } __packed;
 
-static int read_disk_sb(struct md_rdev *rdev, int size)
+static int read_disk_sb(mdk_rdev_t *rdev, int size)
 {
 	BUG_ON(!rdev->sb_page);
 
@@ -612,9 +611,9 @@ static int read_disk_sb(struct md_rdev *rdev, int size)
 	return 0;
 }
 
-static void super_sync(struct mddev *mddev, struct md_rdev *rdev)
+static void super_sync(mddev_t *mddev, mdk_rdev_t *rdev)
 {
-	struct md_rdev *r, *t;
+	mdk_rdev_t *r, *t;
 	uint64_t failed_devices;
 	struct dm_raid_superblock *sb;
 
@@ -652,7 +651,7 @@ static void super_sync(struct mddev *mddev, struct md_rdev *rdev)
  *
  * Return: 1 if use rdev, 0 if use refdev, -Exxx otherwise
  */
-static int super_load(struct md_rdev *rdev, struct md_rdev *refdev)
+static int super_load(mdk_rdev_t *rdev, mdk_rdev_t *refdev)
 {
 	int ret;
 	struct dm_raid_superblock *sb;
@@ -690,7 +689,7 @@ static int super_load(struct md_rdev *rdev, struct md_rdev *refdev)
 	return (events_sb > events_refsb) ? 1 : 0;
 }
 
-static int super_init_validation(struct mddev *mddev, struct md_rdev *rdev)
+static int super_init_validation(mddev_t *mddev, mdk_rdev_t *rdev)
 {
 	int role;
 	struct raid_set *rs = container_of(mddev, struct raid_set, md);
@@ -699,7 +698,7 @@ static int super_init_validation(struct mddev *mddev, struct md_rdev *rdev)
 	struct dm_raid_superblock *sb;
 	uint32_t new_devs = 0;
 	uint32_t rebuilds = 0;
-	struct md_rdev *r, *t;
+	mdk_rdev_t *r, *t;
 	struct dm_raid_superblock *sb2;
 
 	sb = page_address(rdev->sb_page);
@@ -810,7 +809,7 @@ static int super_init_validation(struct mddev *mddev, struct md_rdev *rdev)
 	return 0;
 }
 
-static int super_validate(struct mddev *mddev, struct md_rdev *rdev)
+static int super_validate(mddev_t *mddev, mdk_rdev_t *rdev)
 {
 	struct dm_raid_superblock *sb = page_address(rdev->sb_page);
 
@@ -850,8 +849,8 @@ static int super_validate(struct mddev *mddev, struct md_rdev *rdev)
 static int analyse_superblocks(struct dm_target *ti, struct raid_set *rs)
 {
 	int ret;
-	struct md_rdev *rdev, *freshest, *tmp;
-	struct mddev *mddev = &rs->md;
+	mdk_rdev_t *rdev, *freshest, *tmp;
+	mddev_t *mddev = &rs->md;
 
 	freshest = NULL;
 	rdev_for_each(rdev, tmp, mddev) {
@@ -1005,7 +1004,7 @@ static void raid_dtr(struct dm_target *ti)
 static int raid_map(struct dm_target *ti, struct bio *bio, union map_info *map_context)
 {
 	struct raid_set *rs = ti->private;
-	struct mddev *mddev = &rs->md;
+	mddev_t *mddev = &rs->md;
 
 	mddev->pers->make_request(mddev, bio);
 
@@ -1018,56 +1017,30 @@ static int raid_status(struct dm_target *ti, status_type_t type,
 	struct raid_set *rs = ti->private;
 	unsigned raid_param_cnt = 1; /* at least 1 for chunksize */
 	unsigned sz = 0;
-	int i, array_in_sync = 0;
+	int i;
 	sector_t sync;
 
 	switch (type) {
 	case STATUSTYPE_INFO:
 		DMEMIT("%s %d ", rs->raid_type->name, rs->md.raid_disks);
 
+		for (i = 0; i < rs->md.raid_disks; i++) {
+			if (test_bit(Faulty, &rs->dev[i].rdev.flags))
+				DMEMIT("D");
+			else if (test_bit(In_sync, &rs->dev[i].rdev.flags))
+				DMEMIT("A");
+			else
+				DMEMIT("a");
+		}
+
 		if (test_bit(MD_RECOVERY_RUNNING, &rs->md.recovery))
 			sync = rs->md.curr_resync_completed;
 		else
 			sync = rs->md.recovery_cp;
 
-		if (sync >= rs->md.resync_max_sectors) {
-			array_in_sync = 1;
+		if (sync > rs->md.resync_max_sectors)
 			sync = rs->md.resync_max_sectors;
-		} else {
-			/*
-			 * The array may be doing an initial sync, or it may
-			 * be rebuilding individual components.  If all the
-			 * devices are In_sync, then it is the array that is
-			 * being initialized.
-			 */
-			for (i = 0; i < rs->md.raid_disks; i++)
-				if (!test_bit(In_sync, &rs->dev[i].rdev.flags))
-					array_in_sync = 1;
-		}
-		/*
-		 * Status characters:
-		 *  'D' = Dead/Failed device
-		 *  'a' = Alive but not in-sync
-		 *  'A' = Alive and in-sync
-		 */
-		for (i = 0; i < rs->md.raid_disks; i++) {
-			if (test_bit(Faulty, &rs->dev[i].rdev.flags))
-				DMEMIT("D");
-			else if (!array_in_sync ||
-				 !test_bit(In_sync, &rs->dev[i].rdev.flags))
-				DMEMIT("a");
-			else
-				DMEMIT("A");
-		}
 
-		/*
-		 * In-sync ratio:
-		 *  The in-sync ratio shows the progress of:
-		 *   - Initializing the array
-		 *   - Rebuilding a subset of devices of the array
-		 *  The user can distinguish between the two by referring
-		 *  to the status characters.
-		 */
 		DMEMIT(" %llu/%llu",
 		       (unsigned long long) sync,
 		       (unsigned long long) rs->md.resync_max_sectors);
@@ -1124,7 +1097,7 @@ static int raid_status(struct dm_target *ti, status_type_t type,
 			       rs->md.bitmap_info.max_write_behind);
 
 		if (rs->print_flags & DMPF_STRIPE_CACHE) {
-			struct r5conf *conf = rs->md.private;
+			raid5_conf_t *conf = rs->md.private;
 
 			/* convert from kiB to sectors */
 			DMEMIT(" stripe_cache %d",
@@ -1173,7 +1146,7 @@ static void raid_io_hints(struct dm_target *ti, struct queue_limits *limits)
 {
 	struct raid_set *rs = ti->private;
 	unsigned chunk_size = rs->md.chunk_sectors << 9;
-	struct r5conf *conf = rs->md.private;
+	raid5_conf_t *conf = rs->md.private;
 
 	blk_limits_io_min(limits, chunk_size);
 	blk_limits_io_opt(limits, chunk_size * (conf->raid_disks - conf->max_degraded));

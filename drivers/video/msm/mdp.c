@@ -28,7 +28,6 @@
 #include <mach/msm_iomap.h>
 #include <mach/msm_fb.h>
 #include <linux/platform_device.h>
-#include <linux/export.h>
 
 #include "mdp_hw.h"
 
@@ -422,11 +421,10 @@ int mdp_probe(struct platform_device *pdev)
 	clk = clk_get(&pdev->dev, "mdp_clk");
 	if (IS_ERR(clk)) {
 		printk(KERN_INFO "mdp: failed to get mdp clk");
-		ret = PTR_ERR(clk);
-		goto error_get_clk;
+		return PTR_ERR(clk);
 	}
 
-	ret = request_irq(mdp->irq, mdp_isr, 0, "msm_mdp", mdp);
+	ret = request_irq(mdp->irq, mdp_isr, IRQF_DISABLED, "msm_mdp", mdp);
 	if (ret)
 		goto error_request_irq;
 	disable_irq(mdp->irq);
@@ -497,7 +495,6 @@ int mdp_probe(struct platform_device *pdev)
 error_device_register:
 	free_irq(mdp->irq, mdp);
 error_request_irq:
-error_get_clk:
 	iounmap(mdp->base);
 error_get_irq:
 error_ioremap:

@@ -28,6 +28,7 @@
 
 #include <linux/compiler.h>
 #include <linux/types.h>
+#include <linux/version.h>
 #include <linux/list.h>
 #include <linux/sched.h>
 #include <linux/bitops.h>
@@ -927,7 +928,7 @@ struct drbd_md {
 #define NL_INT64(pn,pr,member) __u64 member;
 #define NL_BIT(pn,pr,member)   unsigned member:1;
 #define NL_STRING(pn,pr,member,len) unsigned char member[len]; int member ## _len;
-#include <linux/drbd_nl.h>
+#include "linux/drbd_nl.h"
 
 struct drbd_backing_dev {
 	struct block_device *backing_bdev;
@@ -1506,7 +1507,7 @@ extern void drbd_free_mdev(struct drbd_conf *mdev);
 extern int proc_details;
 
 /* drbd_req */
-extern void drbd_make_request(struct request_queue *q, struct bio *bio);
+extern int drbd_make_request(struct request_queue *q, struct bio *bio);
 extern int drbd_read_remote(struct drbd_conf *mdev, struct drbd_request *req);
 extern int drbd_merge_bvec(struct request_queue *q, struct bvec_merge_data *bvm, struct bio_vec *bvec);
 extern int is_valid_ar_handle(struct drbd_request *, sector_t);

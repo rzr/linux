@@ -173,7 +173,8 @@ static void alc889_automute_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[2] = 0x17;
 	spec->autocfg.speaker_pins[3] = 0x19;
 	spec->autocfg.speaker_pins[4] = 0x1a;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc889_intel_init_hook(struct hda_codec *codec)
@@ -190,7 +191,8 @@ static void alc888_fujitsu_xa3530_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[1] = 0x1b; /* hp */
 	spec->autocfg.speaker_pins[0] = 0x14; /* speaker */
 	spec->autocfg.speaker_pins[1] = 0x15; /* bass */
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 /*
@@ -473,7 +475,8 @@ static void alc888_acer_aspire_4930g_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x16;
 	spec->autocfg.speaker_pins[2] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc888_acer_aspire_6530g_setup(struct hda_codec *codec)
@@ -484,7 +487,8 @@ static void alc888_acer_aspire_6530g_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x16;
 	spec->autocfg.speaker_pins[2] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc888_acer_aspire_7730g_setup(struct hda_codec *codec)
@@ -495,7 +499,8 @@ static void alc888_acer_aspire_7730g_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x16;
 	spec->autocfg.speaker_pins[2] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc889_acer_aspire_8930g_setup(struct hda_codec *codec)
@@ -506,7 +511,8 @@ static void alc889_acer_aspire_8930g_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x16;
 	spec->autocfg.speaker_pins[2] = 0x1b;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 #define ALC882_DIGOUT_NID	0x06
@@ -1705,7 +1711,8 @@ static void alc885_imac24_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x18;
 	spec->autocfg.speaker_pins[1] = 0x1a;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 #define alc885_mb5_setup	alc885_imac24_setup
@@ -1714,11 +1721,12 @@ static void alc885_imac24_setup(struct hda_codec *codec)
 /* Macbook Air 2,1 */
 static void alc885_mba21_setup(struct hda_codec *codec)
 {
-	struct alc_spec *spec = codec->spec;
+       struct alc_spec *spec = codec->spec;
 
-	spec->autocfg.hp_pins[0] = 0x14;
-	spec->autocfg.speaker_pins[0] = 0x18;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+       spec->autocfg.hp_pins[0] = 0x14;
+       spec->autocfg.speaker_pins[0] = 0x18;
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 
@@ -1729,7 +1737,8 @@ static void alc885_mbp3_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x15;
 	spec->autocfg.speaker_pins[0] = 0x14;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc885_imac91_setup(struct hda_codec *codec)
@@ -1739,7 +1748,8 @@ static void alc885_imac91_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x18;
 	spec->autocfg.speaker_pins[1] = 0x1a;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct hda_verb alc882_targa_verbs[] = {
@@ -1763,7 +1773,7 @@ static void alc882_targa_automute(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 	alc_hp_automute(codec);
 	snd_hda_codec_write_cache(codec, 1, 0, AC_VERB_SET_GPIO_DATA,
-				  spec->hp_jack_present ? 1 : 3);
+				  spec->jack_present ? 1 : 3);
 }
 
 static void alc882_targa_setup(struct hda_codec *codec)
@@ -1772,7 +1782,8 @@ static void alc882_targa_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x1b;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc882_targa_unsol_event(struct hda_codec *codec, unsigned int res)
@@ -2176,7 +2187,8 @@ static void alc883_medion_wim2160_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x1a;
 	spec->autocfg.speaker_pins[0] = 0x15;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct snd_kcontrol_new alc883_acer_aspire_mixer[] = {
@@ -2329,7 +2341,8 @@ static void alc883_mitac_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x15;
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct hda_verb alc883_mitac_verbs[] = {
@@ -2494,7 +2507,8 @@ static void alc888_3st_hp_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x16;
 	spec->autocfg.speaker_pins[2] = 0x18;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct hda_verb alc888_3st_hp_verbs[] = {
@@ -2554,7 +2568,8 @@ static void alc888_lenovo_ms7195_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x1b;
 	spec->autocfg.line_out_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 /* toggle speaker-output according to the hp-jack state */
@@ -2564,7 +2579,8 @@ static void alc883_lenovo_nb0763_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 /* toggle speaker-output according to the hp-jack state */
@@ -2577,7 +2593,8 @@ static void alc883_clevo_m720_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x15;
 	spec->autocfg.speaker_pins[0] = 0x14;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc883_clevo_m720_init_hook(struct hda_codec *codec)
@@ -2606,7 +2623,8 @@ static void alc883_2ch_fujitsu_pi2515_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc883_haier_w66_setup(struct hda_codec *codec)
@@ -2615,7 +2633,8 @@ static void alc883_haier_w66_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x1b;
 	spec->autocfg.speaker_pins[0] = 0x14;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc883_lenovo_101e_setup(struct hda_codec *codec)
@@ -2625,7 +2644,10 @@ static void alc883_lenovo_101e_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x1b;
 	spec->autocfg.line_out_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->detect_line = 1;
+	spec->automute_lines = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 /* toggle speaker-output according to the hp-jack state */
@@ -2636,7 +2658,8 @@ static void alc883_acer_aspire_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
 	spec->autocfg.speaker_pins[1] = 0x16;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct hda_verb alc883_acer_eapd_verbs[] = {
@@ -2666,7 +2689,8 @@ static void alc888_6st_dell_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[1] = 0x15;
 	spec->autocfg.speaker_pins[2] = 0x16;
 	spec->autocfg.speaker_pins[3] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc888_lenovo_sky_setup(struct hda_codec *codec)
@@ -2679,7 +2703,8 @@ static void alc888_lenovo_sky_setup(struct hda_codec *codec)
 	spec->autocfg.speaker_pins[2] = 0x16;
 	spec->autocfg.speaker_pins[3] = 0x17;
 	spec->autocfg.speaker_pins[4] = 0x1a;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc883_vaiott_setup(struct hda_codec *codec)
@@ -2689,7 +2714,8 @@ static void alc883_vaiott_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x15;
 	spec->autocfg.speaker_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[1] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct hda_verb alc888_asus_m90v_verbs[] = {
@@ -2713,7 +2739,8 @@ static void alc883_mode2_setup(struct hda_codec *codec)
 	spec->ext_mic_pin = 0x18;
 	spec->int_mic_pin = 0x19;
 	spec->auto_mic = 1;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct hda_verb alc888_asus_eee1601_verbs[] = {

@@ -29,7 +29,6 @@
 #include <net/bluetooth/hci.h>
 
 #include <linux/ti_wilink_st.h>
-#include <linux/module.h>
 
 /* Bluetooth Driver Version */
 #define VERSION               "1.0"

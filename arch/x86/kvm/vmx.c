@@ -39,7 +39,6 @@
 #include <asm/mce.h>
 #include <asm/i387.h>
 #include <asm/xcr.h>
-#include <asm/perf_event.h>
 
 #include "trace.h"
 
@@ -71,9 +70,6 @@ module_param(vmm_exclusive, bool, S_IRUGO);
 
 static int __read_mostly yield_on_hlt = 1;
 module_param(yield_on_hlt, bool, S_IRUGO);
-
-static int __read_mostly fasteoi = 1;
-module_param(fasteoi, bool, S_IRUGO);
 
 /*
  * If nested=1, nested virtualization is supported, i.e., guests may use
@@ -119,7 +115,7 @@ module_param(ple_gap, int, S_IRUGO);
 static int ple_window = KVM_VMX_DEFAULT_PLE_WINDOW;
 module_param(ple_window, int, S_IRUGO);
 
-#define NR_AUTOLOAD_MSRS 8
+#define NR_AUTOLOAD_MSRS 1
 #define VMCS02_POOL_SIZE 1
 
 struct vmcs {
@@ -623,7 +619,6 @@ static unsigned long *vmx_msr_bitmap_legacy;
 static unsigned long *vmx_msr_bitmap_longmode;
 
 static bool cpu_has_load_ia32_efer;
-static bool cpu_has_load_perf_global_ctrl;
 
 static DECLARE_BITMAP(vmx_vpid_bitmap, VMX_NR_VPIDS);
 static DEFINE_SPINLOCK(vmx_vpid_lock);
@@ -1193,34 +1188,15 @@ static void update_exception_bitmap(struct kvm_vcpu *vcpu)
 	vmcs_write32(EXCEPTION_BITMAP, eb);
 }
 
-static void clear_atomic_switch_msr_special(unsigned long entry,
-		unsigned long exit)
-{
-	vmcs_clear_bits(VM_ENTRY_CONTROLS, entry);
-	vmcs_clear_bits(VM_EXIT_CONTROLS, exit);
-}
-
 static void clear_atomic_switch_msr(struct vcpu_vmx *vmx, unsigned msr)
 {
 	unsigned i;
 	struct msr_autoload *m = &vmx->msr_autoload;
 
-	switch (msr) {
-	case MSR_EFER:
-		if (cpu_has_load_ia32_efer) {
-			clear_atomic_switch_msr_special(VM_ENTRY_LOAD_IA32_EFER,
-					VM_EXIT_LOAD_IA32_EFER);
-			return;
-		}
-		break;
-	case MSR_CORE_PERF_GLOBAL_CTRL:
-		if (cpu_has_load_perf_global_ctrl) {
-			clear_atomic_switch_msr_special(
-					VM_ENTRY_LOAD_IA32_PERF_GLOBAL_CTRL,
-					VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL);
-			return;
-		}
-		break;
+	if (msr == MSR_EFER && cpu_has_load_ia32_efer) {
+		vmcs_clear_bits(VM_ENTRY_CONTROLS, VM_ENTRY_LOAD_IA32_EFER);
+		vmcs_clear_bits(VM_EXIT_CONTROLS, VM_EXIT_LOAD_IA32_EFER);
+		return;
 	}
 
 	for (i = 0; i < m->nr; ++i)
@@ -1236,55 +1212,25 @@ static void clear_atomic_switch_msr(struct vcpu_vmx *vmx, unsigned msr)
 	vmcs_write32(VM_EXIT_MSR_LOAD_COUNT, m->nr);
 }
 
-static void add_atomic_switch_msr_special(unsigned long entry,
-		unsigned long exit, unsigned long guest_val_vmcs,
-		unsigned long host_val_vmcs, u64 guest_val, u64 host_val)
-{
-	vmcs_write64(guest_val_vmcs, guest_val);
-	vmcs_write64(host_val_vmcs, host_val);
-	vmcs_set_bits(VM_ENTRY_CONTROLS, entry);
-	vmcs_set_bits(VM_EXIT_CONTROLS, exit);
-}
-
 static void add_atomic_switch_msr(struct vcpu_vmx *vmx, unsigned msr,
 				  u64 guest_val, u64 host_val)
 {
 	unsigned i;
 	struct msr_autoload *m = &vmx->msr_autoload;
 
-	switch (msr) {
-	case MSR_EFER:
-		if (cpu_has_load_ia32_efer) {
-			add_atomic_switch_msr_special(VM_ENTRY_LOAD_IA32_EFER,
-					VM_EXIT_LOAD_IA32_EFER,
-					GUEST_IA32_EFER,
-					HOST_IA32_EFER,
-					guest_val, host_val);
-			return;
-		}
-		break;
-	case MSR_CORE_PERF_GLOBAL_CTRL:
-		if (cpu_has_load_perf_global_ctrl) {
-			add_atomic_switch_msr_special(
-					VM_ENTRY_LOAD_IA32_PERF_GLOBAL_CTRL,
-					VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL,
-					GUEST_IA32_PERF_GLOBAL_CTRL,
-					HOST_IA32_PERF_GLOBAL_CTRL,
-					guest_val, host_val);
-			return;
-		}
-		break;
+	if (msr == MSR_EFER && cpu_has_load_ia32_efer) {
+		vmcs_write64(GUEST_IA32_EFER, guest_val);
+		vmcs_write64(HOST_IA32_EFER, host_val);
+		vmcs_set_bits(VM_ENTRY_CONTROLS, VM_ENTRY_LOAD_IA32_EFER);
+		vmcs_set_bits(VM_EXIT_CONTROLS, VM_EXIT_LOAD_IA32_EFER);
+		return;
 	}
 
 	for (i = 0; i < m->nr; ++i)
 		if (m->guest[i].index == msr)
 			break;
 
-	if (i == NR_AUTOLOAD_MSRS) {
-		printk_once(KERN_WARNING"Not enough mst switch entries. "
-				"Can't add msr %x\n", msr);
-		return;
-	} else if (i == m->nr) {
+	if (i == m->nr) {
 		++m->nr;
 		vmcs_write32(VM_ENTRY_MSR_LOAD_COUNT, m->nr);
 		vmcs_write32(VM_EXIT_MSR_LOAD_COUNT, m->nr);
@@ -1802,21 +1748,6 @@ static u64 guest_read_tsc(void)
 }
 
 /*
- * Like guest_read_tsc, but always returns L1's notion of the timestamp
- * counter, even if a nested guest (L2) is currently running.
- */
-u64 vmx_read_l1_tsc(struct kvm_vcpu *vcpu)
-{
-	u64 host_tsc, tsc_offset;
-
-	rdtscll(host_tsc);
-	tsc_offset = is_guest_mode(vcpu) ?
-		to_vmx(vcpu)->nested.vmcs01_tsc_offset :
-		vmcs_read64(TSC_OFFSET);
-	return host_tsc + tsc_offset;
-}
-
-/*
  * Empty call-back. Needs to be implemented when VMX enables the SET_TSC_KHZ
  * ioctl. In this case the call-back should update internal vmx state to make
  * the changes effective.
@@ -1831,23 +1762,15 @@ static void vmx_set_tsc_khz(struct kvm_vcpu *vcpu, u32 user_tsc_khz)
  */
 static void vmx_write_tsc_offset(struct kvm_vcpu *vcpu, u64 offset)
 {
-	if (is_guest_mode(vcpu)) {
+	vmcs_write64(TSC_OFFSET, offset);
+	if (is_guest_mode(vcpu))
 		/*
-		 * We're here if L1 chose not to trap WRMSR to TSC. According
-		 * to the spec, this should set L1's TSC; The offset that L1
-		 * set for L2 remains unchanged, and still needs to be added
-		 * to the newly set TSC to get L2's TSC.
+		 * We're here if L1 chose not to trap the TSC MSR. Since
+		 * prepare_vmcs12() does not copy tsc_offset, we need to also
+		 * set the vmcs12 field here.
 		 */
-		struct vmcs12 *vmcs12;
-		to_vmx(vcpu)->nested.vmcs01_tsc_offset = offset;
-		/* recalculate vmcs02.TSC_OFFSET: */
-		vmcs12 = get_vmcs12(vcpu);
-		vmcs_write64(TSC_OFFSET, offset +
-			(nested_cpu_has(vmcs12, CPU_BASED_USE_TSC_OFFSETING) ?
-			 vmcs12->tsc_offset : 0));
-	} else {
-		vmcs_write64(TSC_OFFSET, offset);
-	}
+		get_vmcs12(vcpu)->tsc_offset = offset -
+			to_vmx(vcpu)->nested.vmcs01_tsc_offset;
 }
 
 static void vmx_adjust_tsc_offset(struct kvm_vcpu *vcpu, s64 adjustment)
@@ -2506,42 +2429,6 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf)
 		&& allow_1_setting(MSR_IA32_VMX_EXIT_CTLS,
 				   VM_EXIT_LOAD_IA32_EFER);
 
-	cpu_has_load_perf_global_ctrl =
-		allow_1_setting(MSR_IA32_VMX_ENTRY_CTLS,
-				VM_ENTRY_LOAD_IA32_PERF_GLOBAL_CTRL)
-		&& allow_1_setting(MSR_IA32_VMX_EXIT_CTLS,
-				   VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL);
-
-	/*
-	 * Some cpus support VM_ENTRY_(LOAD|SAVE)_IA32_PERF_GLOBAL_CTRL
-	 * but due to arrata below it can't be used. Workaround is to use
-	 * msr load mechanism to switch IA32_PERF_GLOBAL_CTRL.
-	 *
-	 * VM Exit May Incorrectly Clear IA32_PERF_GLOBAL_CTRL [34:32]
-	 *
-	 * AAK155             (model 26)
-	 * AAP115             (model 30)
-	 * AAT100             (model 37)
-	 * BC86,AAY89,BD102   (model 44)
-	 * BA97               (model 46)
-	 *
-	 */
-	if (cpu_has_load_perf_global_ctrl && boot_cpu_data.x86 == 0x6) {
-		switch (boot_cpu_data.x86_model) {
-		case 26:
-		case 30:
-		case 37:
-		case 44:
-		case 46:
-			cpu_has_load_perf_global_ctrl = false;
-			printk_once(KERN_WARNING"kvm: VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL "
-					"does not work properly. Using workaround\n");
-			break;
-		default:
-			break;
-		}
-	}
-
 	return 0;
 }
 
@@ -2849,8 +2736,8 @@ static void enter_lmode(struct kvm_vcpu *vcpu)
 
 	guest_tr_ar = vmcs_read32(GUEST_TR_AR_BYTES);
 	if ((guest_tr_ar & AR_TYPE_MASK) != AR_TYPE_BUSY_64_TSS) {
-		pr_debug_ratelimited("%s: tss fixup for long mode. \n",
-				     __func__);
+		printk(KERN_DEBUG "%s: tss fixup for long mode. \n",
+		       __func__);
 		vmcs_write32(GUEST_TR_AR_BYTES,
 			     (guest_tr_ar & ~AR_TYPE_MASK)
 			     | AR_TYPE_BUSY_64_TSS);
@@ -4228,7 +4115,8 @@ static int handle_exception(struct kvm_vcpu *vcpu)
 		error_code = vmcs_read32(VM_EXIT_INTR_ERROR_CODE);
 	if (is_page_fault(intr_info)) {
 		/* EPT won't cause page fault directly */
-		BUG_ON(enable_ept);
+		if (enable_ept)
+			BUG();
 		cr2 = vmcs_readl(EXIT_QUALIFICATION);
 		trace_kvm_page_fault(cr2, error_code);
 
@@ -4630,24 +4518,6 @@ static int handle_xsetbv(struct kvm_vcpu *vcpu)
 
 static int handle_apic_access(struct kvm_vcpu *vcpu)
 {
-	if (likely(fasteoi)) {
-		unsigned long exit_qualification = vmcs_readl(EXIT_QUALIFICATION);
-		int access_type, offset;
-
-		access_type = exit_qualification & APIC_ACCESS_TYPE;
-		offset = exit_qualification & APIC_ACCESS_OFFSET;
-		/*
-		 * Sane guest uses MOV to write EOI, with written value
-		 * not cared. So make a short-circuit here by avoiding
-		 * heavy instruction emulation.
-		 */
-		if ((access_type == TYPE_LINEAR_APIC_INST_WRITE) &&
-		    (offset == APIC_EOI)) {
-			kvm_lapic_set_eoi(vcpu);
-			skip_emulated_instruction(vcpu);
-			return 1;
-		}
-	}
 	return emulate_instruction(vcpu, 0) == EMULATE_DONE;
 }
 
@@ -5721,8 +5591,8 @@ static bool nested_vmx_exit_handled(struct kvm_vcpu *vcpu)
 		return 0;
 
 	if (unlikely(vmx->fail)) {
-		pr_info_ratelimited("%s failed vm entry %x\n", __func__,
-				    vmcs_read32(VM_INSTRUCTION_ERROR));
+		printk(KERN_INFO "%s failed vm entry %x\n",
+		       __func__, vmcs_read32(VM_INSTRUCTION_ERROR));
 		return 1;
 	}
 
@@ -5825,6 +5695,8 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u32 exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
+
+	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
 
 	/* If guest state is invalid, start emulating */
 	if (vmx->emulation_required && emulate_invalid_guest_state)
@@ -6055,24 +5927,6 @@ static void vmx_cancel_injection(struct kvm_vcpu *vcpu)
 	vmcs_write32(VM_ENTRY_INTR_INFO_FIELD, 0);
 }
 
-static void atomic_switch_perf_msrs(struct vcpu_vmx *vmx)
-{
-	int i, nr_msrs;
-	struct perf_guest_switch_msr *msrs;
-
-	msrs = perf_guest_get_msrs(&nr_msrs);
-
-	if (!msrs)
-		return;
-
-	for (i = 0; i < nr_msrs; i++)
-		if (msrs[i].host == msrs[i].guest)
-			clear_atomic_switch_msr(vmx, msrs[i].msr);
-		else
-			add_atomic_switch_msr(vmx, msrs[i].msr, msrs[i].guest,
-					msrs[i].host);
-}
-
 #ifdef CONFIG_X86_64
 #define R "r"
 #define Q "q"
@@ -6121,8 +5975,6 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	 * case. */
 	if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP)
 		vmx_set_interrupt_shadow(vcpu, 0);
-
-	atomic_switch_perf_msrs(vmx);
 
 	vmx->__launched = vmx->loaded_vmcs->launched;
 	asm(
@@ -6249,7 +6101,6 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	vmx->loaded_vmcs->launched = 1;
 
 	vmx->exit_reason = vmcs_read32(VM_EXIT_REASON);
-	trace_kvm_exit(vmx->exit_reason, vcpu, KVM_ISA_VMX);
 
 	vmx_complete_atomic_exit(vmx);
 	vmx_recover_nmi_blocking(vmx);
@@ -6389,6 +6240,49 @@ static u64 vmx_get_mt_mask(struct kvm_vcpu *vcpu, gfn_t gfn, bool is_mmio)
 
 	return ret;
 }
+
+#define _ER(x) { EXIT_REASON_##x, #x }
+
+static const struct trace_print_flags vmx_exit_reasons_str[] = {
+	_ER(EXCEPTION_NMI),
+	_ER(EXTERNAL_INTERRUPT),
+	_ER(TRIPLE_FAULT),
+	_ER(PENDING_INTERRUPT),
+	_ER(NMI_WINDOW),
+	_ER(TASK_SWITCH),
+	_ER(CPUID),
+	_ER(HLT),
+	_ER(INVLPG),
+	_ER(RDPMC),
+	_ER(RDTSC),
+	_ER(VMCALL),
+	_ER(VMCLEAR),
+	_ER(VMLAUNCH),
+	_ER(VMPTRLD),
+	_ER(VMPTRST),
+	_ER(VMREAD),
+	_ER(VMRESUME),
+	_ER(VMWRITE),
+	_ER(VMOFF),
+	_ER(VMON),
+	_ER(CR_ACCESS),
+	_ER(DR_ACCESS),
+	_ER(IO_INSTRUCTION),
+	_ER(MSR_READ),
+	_ER(MSR_WRITE),
+	_ER(MWAIT_INSTRUCTION),
+	_ER(MONITOR_INSTRUCTION),
+	_ER(PAUSE_INSTRUCTION),
+	_ER(MCE_DURING_VMENTRY),
+	_ER(TPR_BELOW_THRESHOLD),
+	_ER(APIC_ACCESS),
+	_ER(EPT_VIOLATION),
+	_ER(EPT_MISCONFIG),
+	_ER(WBINVD),
+	{ -1, NULL }
+};
+
+#undef _ER
 
 static int vmx_get_lpage_level(void)
 {
@@ -6620,11 +6514,8 @@ static void prepare_vmcs02(struct kvm_vcpu *vcpu, struct vmcs12 *vmcs12)
 
 	set_cr4_guest_host_mask(vmx);
 
-	if (vmcs12->cpu_based_vm_exec_control & CPU_BASED_USE_TSC_OFFSETING)
-		vmcs_write64(TSC_OFFSET,
-			vmx->nested.vmcs01_tsc_offset + vmcs12->tsc_offset);
-	else
-		vmcs_write64(TSC_OFFSET, vmx->nested.vmcs01_tsc_offset);
+	vmcs_write64(TSC_OFFSET,
+		vmx->nested.vmcs01_tsc_offset + vmcs12->tsc_offset);
 
 	if (enable_vpid) {
 		/*
@@ -6719,8 +6610,9 @@ static int nested_vmx_run(struct kvm_vcpu *vcpu, bool launch)
 	if (vmcs12->vm_entry_msr_load_count > 0 ||
 	    vmcs12->vm_exit_msr_load_count > 0 ||
 	    vmcs12->vm_exit_msr_store_count > 0) {
-		pr_warn_ratelimited("%s: VMCS MSR_{LOAD,STORE} unsupported\n",
-				    __func__);
+		if (printk_ratelimit())
+			printk(KERN_WARNING
+			  "%s: VMCS MSR_{LOAD,STORE} unsupported\n", __func__);
 		nested_vmx_failValid(vcpu, VMXERR_ENTRY_INVALID_CONTROL_FIELD);
 		return 1;
 	}
@@ -7030,7 +6922,7 @@ static void nested_vmx_vmexit(struct kvm_vcpu *vcpu)
 
 	load_vmcs12_host_state(vcpu, vmcs12);
 
-	/* Update TSC_OFFSET if TSC was changed while L2 ran */
+	/* Update TSC_OFFSET if vmx_adjust_tsc_offset() was used while L2 ran */
 	vmcs_write64(TSC_OFFSET, vmx->nested.vmcs01_tsc_offset);
 
 	/* This is needed for same reason as it was needed in prepare_vmcs02 */
@@ -7147,6 +7039,7 @@ static struct kvm_x86_ops vmx_x86_ops = {
 	.get_mt_mask = vmx_get_mt_mask,
 
 	.get_exit_info = vmx_get_exit_info,
+	.exit_reasons_str = vmx_exit_reasons_str,
 
 	.get_lpage_level = vmx_get_lpage_level,
 
@@ -7162,7 +7055,6 @@ static struct kvm_x86_ops vmx_x86_ops = {
 	.write_tsc_offset = vmx_write_tsc_offset,
 	.adjust_tsc_offset = vmx_adjust_tsc_offset,
 	.compute_tsc_offset = vmx_compute_tsc_offset,
-	.read_l1_tsc = vmx_read_l1_tsc,
 
 	.set_tdp_cr3 = vmx_set_cr3,
 

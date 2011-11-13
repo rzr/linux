@@ -336,7 +336,6 @@ static int handle_tprot(struct kvm_vcpu *vcpu)
 	u64 address1 = disp1 + base1 ? vcpu->arch.guest_gprs[base1] : 0;
 	u64 address2 = disp2 + base2 ? vcpu->arch.guest_gprs[base2] : 0;
 	struct vm_area_struct *vma;
-	unsigned long user_address;
 
 	vcpu->stat.instruction_tprot++;
 
@@ -350,14 +349,9 @@ static int handle_tprot(struct kvm_vcpu *vcpu)
 		return -EOPNOTSUPP;
 
 
-	/* we must resolve the address without holding the mmap semaphore.
-	 * This is ok since the userspace hypervisor is not supposed to change
-	 * the mapping while the guest queries the memory. Otherwise the guest
-	 * might crash or get wrong info anyway. */
-	user_address = (unsigned long) __guestaddr_to_user(vcpu, address1);
-
 	down_read(&current->mm->mmap_sem);
-	vma = find_vma(current->mm, user_address);
+	vma = find_vma(current->mm,
+			(unsigned long) __guestaddr_to_user(vcpu, address1));
 	if (!vma) {
 		up_read(&current->mm->mmap_sem);
 		return kvm_s390_inject_program_int(vcpu, PGM_ADDRESSING);

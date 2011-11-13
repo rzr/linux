@@ -11,7 +11,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -21,13 +20,13 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/i2c/pxa-i2c.h>
-#include <linux/gpio.h>
 
 #include <asm/mach/map.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
 #include <asm/suspend.h>
 #include <mach/irqs.h>
+#include <mach/gpio.h>
 #include <mach/pxa27x.h>
 #include <mach/reset.h>
 #include <mach/ohci.h>
@@ -391,7 +390,7 @@ void __init pxa27x_init_irq(void)
 
 static struct map_desc pxa27x_io_desc[] __initdata = {
 	{	/* Mem Ctl */
-		.virtual	= (unsigned long)SMEMC_VIRT,
+		.virtual	= SMEMC_VIRT,
 		.pfn		= __phys_to_pfn(PXA2XX_SMEMC_BASE),
 		.length		= 0x00200000,
 		.type		= MT_DEVICE

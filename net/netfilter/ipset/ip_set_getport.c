@@ -17,7 +17,6 @@
 #include <net/ipv6.h>
 
 #include <linux/netfilter/ipset/ip_set_getport.h>
-#include <linux/export.h>
 
 /* We must handle non-linear skbs */
 static bool

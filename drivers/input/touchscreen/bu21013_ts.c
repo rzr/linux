@@ -13,7 +13,6 @@
 #include <linux/input/bu21013.h>
 #include <linux/slab.h>
 #include <linux/regulator/consumer.h>
-#include <linux/module.h>
 
 #define PEN_DOWN_INTR	0
 #define MAX_FINGERS	2

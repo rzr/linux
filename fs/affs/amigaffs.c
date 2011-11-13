@@ -215,7 +215,7 @@ affs_remove_link(struct dentry *dentry)
 				break;
 			default:
 				if (!AFFS_TAIL(sb, bh)->link_chain)
-					set_nlink(inode, 1);
+					inode->i_nlink = 1;
 			}
 			affs_free_block(sb, link_ino);
 			goto done;
@@ -316,7 +316,7 @@ affs_remove_header(struct dentry *dentry)
 	if (inode->i_nlink > 1)
 		retval = affs_remove_link(dentry);
 	else
-		clear_nlink(inode);
+		inode->i_nlink = 0;
 	affs_unlock_link(inode);
 	inode->i_ctime = CURRENT_TIME_SEC;
 	mark_inode_dirty(inode);

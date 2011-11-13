@@ -55,8 +55,7 @@ struct wl1271_static_data {
 #define OCP_REG_CLK_POLARITY 0x0cb2
 #define OCP_REG_CLK_PULL     0x0cb4
 
-#define WL127X_REG_FUSE_DATA_2_1    0x050a
-#define WL128X_REG_FUSE_DATA_2_1    0x2152
+#define REG_FUSE_DATA_2_1    0x050a
 #define PG_VER_MASK          0x3c
 #define PG_VER_OFFSET        2
 

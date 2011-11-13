@@ -202,7 +202,7 @@ static void s5p_mfc_handle_frame_copy_time(struct s5p_mfc_ctx *ctx)
 	   appropraite flags */
 	src_buf = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
 	list_for_each_entry(dst_buf, &ctx->dst_queue, list) {
-		if (vb2_dma_contig_plane_dma_addr(dst_buf->b, 0) == dec_y_addr) {
+		if (vb2_dma_contig_plane_paddr(dst_buf->b, 0) == dec_y_addr) {
 			memcpy(&dst_buf->b->v4l2_buf.timecode,
 				&src_buf->b->v4l2_buf.timecode,
 				sizeof(struct v4l2_timecode));
@@ -248,7 +248,7 @@ static void s5p_mfc_handle_frame_new(struct s5p_mfc_ctx *ctx, unsigned int err)
 	 * check which videobuf does it correspond to */
 	list_for_each_entry(dst_buf, &ctx->dst_queue, list) {
 		/* Check if this is the buffer we're looking for */
-		if (vb2_dma_contig_plane_dma_addr(dst_buf->b, 0) == dspl_y_addr) {
+		if (vb2_dma_contig_plane_paddr(dst_buf->b, 0) == dspl_y_addr) {
 			list_del(&dst_buf->list);
 			ctx->dst_queue_cnt--;
 			dst_buf->b->v4l2_buf.sequence = ctx->sequence;
@@ -940,8 +940,9 @@ static int match_child(struct device *dev, void *data)
 	return !strcmp(dev_name(dev), (char *)data);
 }
 
+
 /* MFC probe function */
-static int s5p_mfc_probe(struct platform_device *pdev)
+static int __devinit s5p_mfc_probe(struct platform_device *pdev)
 {
 	struct s5p_mfc_dev *dev;
 	struct video_device *vfd;
@@ -1235,7 +1236,7 @@ static const struct dev_pm_ops s5p_mfc_pm_ops = {
 			   NULL)
 };
 
-static struct platform_driver s5p_mfc_driver = {
+static struct platform_driver s5p_mfc_pdrv = {
 	.probe	= s5p_mfc_probe,
 	.remove	= __devexit_p(s5p_mfc_remove),
 	.driver	= {
@@ -1253,15 +1254,15 @@ static int __init s5p_mfc_init(void)
 	int ret;
 
 	pr_info("%s", banner);
-	ret = platform_driver_register(&s5p_mfc_driver);
+	ret = platform_driver_register(&s5p_mfc_pdrv);
 	if (ret)
 		pr_err("Platform device registration failed.\n");
 	return ret;
 }
 
-static void __exit s5p_mfc_exit(void)
+static void __devexit s5p_mfc_exit(void)
 {
-	platform_driver_unregister(&s5p_mfc_driver);
+	platform_driver_unregister(&s5p_mfc_pdrv);
 }
 
 module_init(s5p_mfc_init);

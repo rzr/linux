@@ -1027,7 +1027,7 @@ void r852_shutdown(struct pci_dev *pci_dev)
 }
 
 #ifdef CONFIG_PM
-static int r852_suspend(struct device *device)
+int r852_suspend(struct device *device)
 {
 	struct r852_device *dev = pci_get_drvdata(to_pci_dev(device));
 
@@ -1048,7 +1048,7 @@ static int r852_suspend(struct device *device)
 	return 0;
 }
 
-static int r852_resume(struct device *device)
+int r852_resume(struct device *device)
 {
 	struct r852_device *dev = pci_get_drvdata(to_pci_dev(device));
 
@@ -1092,7 +1092,7 @@ static const struct pci_device_id r852_pci_id_tbl[] = {
 
 MODULE_DEVICE_TABLE(pci, r852_pci_id_tbl);
 
-static SIMPLE_DEV_PM_OPS(r852_pm_ops, r852_suspend, r852_resume);
+SIMPLE_DEV_PM_OPS(r852_pm_ops, r852_suspend, r852_resume);
 
 static struct pci_driver r852_pci_driver = {
 	.name		= DRV_NAME,

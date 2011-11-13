@@ -18,7 +18,6 @@
 #include <linux/netdevice.h>
 #include <linux/trdevice.h>
 #include <linux/skbuff.h>
-#include <linux/export.h>
 #include <net/llc.h>
 #include <net/llc_pdu.h>
 

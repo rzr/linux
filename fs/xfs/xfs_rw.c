@@ -92,6 +92,24 @@ xfs_do_force_shutdown(
 }
 
 /*
+ * Prints out an ALERT message about I/O error.
+ */
+void
+xfs_ioerror_alert(
+	char			*func,
+	struct xfs_mount	*mp,
+	xfs_buf_t		*bp,
+	xfs_daddr_t		blkno)
+{
+	xfs_alert(mp,
+		 "I/O error occurred: meta-data dev %s block 0x%llx"
+		 "       (\"%s\") error %d buf count %zd",
+		xfs_buf_target_name(bp->b_target),
+		(__uint64_t)blkno, func,
+		bp->b_error, XFS_BUF_COUNT(bp));
+}
+
+/*
  * This isn't an absolute requirement, but it is
  * just a good idea to call xfs_read_buf instead of
  * directly doing a read_buf call. For one, we shouldn't
@@ -125,13 +143,14 @@ xfs_read_buf(
 	} else {
 		*bpp = NULL;
 		if (error) {
-			xfs_buf_ioerror_alert(bp, __func__);
+			xfs_ioerror_alert("xfs_read_buf", mp, bp, XFS_BUF_ADDR(bp));
 		} else {
 			error = XFS_ERROR(EIO);
 		}
 		if (bp) {
 			XFS_BUF_UNDONE(bp);
-			xfs_buf_stale(bp);
+			XFS_BUF_UNDELAYWRITE(bp);
+			XFS_BUF_STALE(bp);
 			/*
 			 * brelse clears B_ERROR and b_error
 			 */

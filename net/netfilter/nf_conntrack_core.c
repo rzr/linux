@@ -661,6 +661,7 @@ __nf_conntrack_alloc(struct net *net, u16 zone,
 	 */
 	ct = kmem_cache_alloc(net->ct.nf_conntrack_cachep, gfp);
 	if (ct == NULL) {
+		pr_debug("nf_conntrack_alloc: Can't alloc conntrack.\n");
 		atomic_dec(&net->ct.count);
 		return ERR_PTR(-ENOMEM);
 	}
@@ -748,8 +749,10 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
 
 	ct = __nf_conntrack_alloc(net, zone, tuple, &repl_tuple, GFP_ATOMIC,
 				  hash);
-	if (IS_ERR(ct))
+	if (IS_ERR(ct)) {
+		pr_debug("Can't allocate conntrack.\n");
 		return (struct nf_conntrack_tuple_hash *)ct;
+	}
 
 	if (!l4proto->new(ct, skb, dataoff)) {
 		nf_conntrack_free(ct);
@@ -776,7 +779,7 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
 		if (exp->helper) {
 			help = nf_ct_helper_ext_add(ct, GFP_ATOMIC);
 			if (help)
-				RCU_INIT_POINTER(help->helper, exp->helper);
+				rcu_assign_pointer(help->helper, exp->helper);
 		}
 
 #ifdef CONFIG_NF_CONNTRACK_MARK
@@ -1314,7 +1317,7 @@ static void nf_conntrack_cleanup_net(struct net *net)
 void nf_conntrack_cleanup(struct net *net)
 {
 	if (net_eq(net, &init_net))
-		RCU_INIT_POINTER(ip_ct_attach, NULL);
+		rcu_assign_pointer(ip_ct_attach, NULL);
 
 	/* This makes sure all current packets have passed through
 	   netfilter framework.  Roll on, two-stage module
@@ -1324,7 +1327,7 @@ void nf_conntrack_cleanup(struct net *net)
 	nf_conntrack_cleanup_net(net);
 
 	if (net_eq(net, &init_net)) {
-		RCU_INIT_POINTER(nf_ct_destroy, NULL);
+		rcu_assign_pointer(nf_ct_destroy, NULL);
 		nf_conntrack_cleanup_init_net();
 	}
 }
@@ -1573,11 +1576,11 @@ int nf_conntrack_init(struct net *net)
 
 	if (net_eq(net, &init_net)) {
 		/* For use by REJECT target */
-		RCU_INIT_POINTER(ip_ct_attach, nf_conntrack_attach);
-		RCU_INIT_POINTER(nf_ct_destroy, destroy_conntrack);
+		rcu_assign_pointer(ip_ct_attach, nf_conntrack_attach);
+		rcu_assign_pointer(nf_ct_destroy, destroy_conntrack);
 
 		/* Howto get NAT offsets */
-		RCU_INIT_POINTER(nf_ct_nat_offset, NULL);
+		rcu_assign_pointer(nf_ct_nat_offset, NULL);
 	}
 	return 0;
 

@@ -18,7 +18,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #include <linux/kernel.h>
-#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
@@ -312,7 +311,7 @@ done:
 	return value;
 }
 
-static int __devinit spi_gpio_probe(struct platform_device *pdev)
+static int __init spi_gpio_probe(struct platform_device *pdev)
 {
 	int				status;
 	struct spi_master		*master;
@@ -380,7 +379,7 @@ gpio_free:
 	return status;
 }
 
-static int __devexit spi_gpio_remove(struct platform_device *pdev)
+static int __exit spi_gpio_remove(struct platform_device *pdev)
 {
 	struct spi_gpio			*spi_gpio;
 	struct spi_gpio_platform_data	*pdata;
@@ -409,10 +408,21 @@ MODULE_ALIAS("platform:" DRIVER_NAME);
 static struct platform_driver spi_gpio_driver = {
 	.driver.name	= DRIVER_NAME,
 	.driver.owner	= THIS_MODULE,
-	.probe		= spi_gpio_probe,
-	.remove		= __devexit_p(spi_gpio_remove),
+	.remove		= __exit_p(spi_gpio_remove),
 };
-module_platform_driver(spi_gpio_driver);
+
+static int __init spi_gpio_init(void)
+{
+	return platform_driver_probe(&spi_gpio_driver, spi_gpio_probe);
+}
+module_init(spi_gpio_init);
+
+static void __exit spi_gpio_exit(void)
+{
+	platform_driver_unregister(&spi_gpio_driver);
+}
+module_exit(spi_gpio_exit);
+
 
 MODULE_DESCRIPTION("SPI master driver using generic bitbanged GPIO ");
 MODULE_AUTHOR("David Brownell");

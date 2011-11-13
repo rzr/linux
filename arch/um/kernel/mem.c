@@ -4,7 +4,6 @@
  */
 
 #include <linux/stddef.h>
-#include <linux/module.h>
 #include <linux/bootmem.h>
 #include <linux/highmem.h>
 #include <linux/mm.h>
@@ -21,7 +20,6 @@
 
 /* allocated in paging_init, zeroed in mem_init, and unchanged thereafter */
 unsigned long *empty_zero_page = NULL;
-EXPORT_SYMBOL(empty_zero_page);
 /* allocated in paging_init and unchanged thereafter */
 static unsigned long *empty_bad_page = NULL;
 

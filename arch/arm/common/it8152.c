@@ -25,7 +25,6 @@
 #include <linux/ioport.h>
 #include <linux/irq.h>
 #include <linux/io.h>
-#include <linux/export.h>
 
 #include <asm/mach/pci.h>
 #include <asm/hardware/it8152.h>

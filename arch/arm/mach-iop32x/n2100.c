@@ -327,7 +327,7 @@ static void __init n2100_init_machine(void)
 
 MACHINE_START(N2100, "Thecus N2100")
 	/* Maintainer: Lennert Buytenhek <buytenh@wantstofly.org> */
-	.atag_offset	= 0x100,
+	.boot_params	= 0xa0000100,
 	.map_io		= n2100_map_io,
 	.init_irq	= iop32x_init_irq,
 	.timer		= &n2100_timer,

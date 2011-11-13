@@ -181,7 +181,7 @@ struct kretprobe {
 	int nmissed;
 	size_t data_size;
 	struct hlist_head free_instances;
-	raw_spinlock_t lock;
+	spinlock_t lock;
 };
 
 struct kretprobe_instance {

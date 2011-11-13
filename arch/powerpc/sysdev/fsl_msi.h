@@ -28,7 +28,8 @@ struct fsl_msi {
 
 	unsigned long cascade_irq;
 
-	u32 msiir_offset; /* Offset of MSIIR, relative to start of CCSR */
+	u32 msi_addr_lo;
+	u32 msi_addr_hi;
 	void __iomem *msi_regs;
 	u32 feature;
 	int msi_virqs[NR_MSI_REG];

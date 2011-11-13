@@ -1343,6 +1343,10 @@ void bond_alb_monitor(struct work_struct *work)
 
 	read_lock(&bond->lock);
 
+	if (bond->kill_timers) {
+		goto out;
+	}
+
 	if (bond->slave_cnt == 0) {
 		bond_info->tx_rebalance_counter = 0;
 		bond_info->lp_counter = 0;
@@ -1397,13 +1401,10 @@ void bond_alb_monitor(struct work_struct *work)
 
 			/*
 			 * dev_set_promiscuity requires rtnl and
-			 * nothing else.  Avoid race with bond_close.
+			 * nothing else.
 			 */
 			read_unlock(&bond->lock);
-			if (!rtnl_trylock()) {
-				read_lock(&bond->lock);
-				goto re_arm;
-			}
+			rtnl_lock();
 
 			bond_info->rlb_promisc_timeout_counter = 0;
 
@@ -1439,8 +1440,9 @@ void bond_alb_monitor(struct work_struct *work)
 	}
 
 re_arm:
-	queue_delayed_work(bond->wq, &bond->alb_work, alb_delta_in_ticks);
-
+	if (!bond->kill_timers)
+		queue_delayed_work(bond->wq, &bond->alb_work, alb_delta_in_ticks);
+out:
 	read_unlock(&bond->lock);
 }
 

@@ -23,7 +23,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 
-#include <asm/gpio.h>
+#include <mach/gpio.h>
 #include <plat/mux.h>
 #include "omapfb.h"
 

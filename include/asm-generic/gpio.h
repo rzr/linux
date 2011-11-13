@@ -41,7 +41,6 @@ static inline bool gpio_is_valid(int number)
 }
 
 struct device;
-struct gpio;
 struct seq_file;
 struct module;
 struct device_node;
@@ -171,6 +170,18 @@ extern int __gpio_cansleep(unsigned gpio);
 
 extern int __gpio_to_irq(unsigned gpio);
 
+/**
+ * struct gpio - a structure describing a GPIO with configuration
+ * @gpio:	the GPIO number
+ * @flags:	GPIO configuration as specified by GPIOF_*
+ * @label:	a literal description string of this GPIO
+ */
+struct gpio {
+	unsigned	gpio;
+	unsigned long	flags;
+	const char	*label;
+};
+
 extern int gpio_request_one(unsigned gpio, unsigned long flags, const char *label);
 extern int gpio_request_array(const struct gpio *array, size_t num);
 extern void gpio_free_array(const struct gpio *array, size_t num);
@@ -209,13 +220,13 @@ static inline int gpio_cansleep(unsigned gpio)
 static inline int gpio_get_value_cansleep(unsigned gpio)
 {
 	might_sleep();
-	return __gpio_get_value(gpio);
+	return gpio_get_value(gpio);
 }
 
 static inline void gpio_set_value_cansleep(unsigned gpio, int value)
 {
 	might_sleep();
-	__gpio_set_value(gpio, value);
+	gpio_set_value(gpio, value);
 }
 
 #endif /* !CONFIG_GPIOLIB */

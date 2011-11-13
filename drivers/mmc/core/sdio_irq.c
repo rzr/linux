@@ -16,7 +16,6 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
-#include <linux/export.h>
 #include <linux/wait.h>
 #include <linux/delay.h>
 
@@ -46,7 +45,7 @@ static int process_sdio_pending_irqs(struct mmc_card *card)
 
 	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_INTx, 0, &pending);
 	if (ret) {
-		pr_debug("%s: error %d reading SDIO_CCCR_INTx\n",
+		printk(KERN_DEBUG "%s: error %d reading SDIO_CCCR_INTx\n",
 		       mmc_card_id(card), ret);
 		return ret;
 	}
@@ -56,7 +55,7 @@ static int process_sdio_pending_irqs(struct mmc_card *card)
 		if (pending & (1 << i)) {
 			func = card->sdio_func[i - 1];
 			if (!func) {
-				pr_warning("%s: pending IRQ for "
+				printk(KERN_WARNING "%s: pending IRQ for "
 					"non-existent function\n",
 					mmc_card_id(card));
 				ret = -EINVAL;
@@ -64,7 +63,7 @@ static int process_sdio_pending_irqs(struct mmc_card *card)
 				func->irq_handler(func);
 				count++;
 			} else {
-				pr_warning("%s: pending IRQ with no handler\n",
+				printk(KERN_WARNING "%s: pending IRQ with no handler\n",
 				       sdio_func_id(func));
 				ret = -EINVAL;
 			}

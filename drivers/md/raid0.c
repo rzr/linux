@@ -20,7 +20,6 @@
 
 #include <linux/blkdev.h>
 #include <linux/seq_file.h>
-#include <linux/module.h>
 #include <linux/slab.h>
 #include "md.h"
 #include "raid0.h"
@@ -28,9 +27,9 @@
 
 static int raid0_congested(void *data, int bits)
 {
-	struct mddev *mddev = data;
-	struct r0conf *conf = mddev->private;
-	struct md_rdev **devlist = conf->devlist;
+	mddev_t *mddev = data;
+	raid0_conf_t *conf = mddev->private;
+	mdk_rdev_t **devlist = conf->devlist;
 	int raid_disks = conf->strip_zone[0].nb_dev;
 	int i, ret = 0;
 
@@ -48,53 +47,52 @@ static int raid0_congested(void *data, int bits)
 /*
  * inform the user of the raid configuration
 */
-static void dump_zones(struct mddev *mddev)
+static void dump_zones(mddev_t *mddev)
 {
-	int j, k;
+	int j, k, h;
 	sector_t zone_size = 0;
 	sector_t zone_start = 0;
 	char b[BDEVNAME_SIZE];
-	struct r0conf *conf = mddev->private;
+	raid0_conf_t *conf = mddev->private;
 	int raid_disks = conf->strip_zone[0].nb_dev;
-	printk(KERN_INFO "md: RAID0 configuration for %s - %d zone%s\n",
-	       mdname(mddev),
-	       conf->nr_strip_zones, conf->nr_strip_zones==1?"":"s");
+	printk(KERN_INFO "******* %s configuration *********\n",
+		mdname(mddev));
+	h = 0;
 	for (j = 0; j < conf->nr_strip_zones; j++) {
-		printk(KERN_INFO "md: zone%d=[", j);
+		printk(KERN_INFO "zone%d=[", j);
 		for (k = 0; k < conf->strip_zone[j].nb_dev; k++)
-			printk(KERN_CONT "%s%s", k?"/":"",
+			printk(KERN_CONT "%s/",
 			bdevname(conf->devlist[j*raid_disks
 						+ k]->bdev, b));
 		printk(KERN_CONT "]\n");
 
 		zone_size  = conf->strip_zone[j].zone_end - zone_start;
-		printk(KERN_INFO "      zone-offset=%10lluKB, "
-				"device-offset=%10lluKB, size=%10lluKB\n",
+		printk(KERN_INFO "        zone offset=%llukb "
+				"device offset=%llukb size=%llukb\n",
 			(unsigned long long)zone_start>>1,
 			(unsigned long long)conf->strip_zone[j].dev_start>>1,
 			(unsigned long long)zone_size>>1);
 		zone_start = conf->strip_zone[j].zone_end;
 	}
-	printk(KERN_INFO "\n");
+	printk(KERN_INFO "**********************************\n\n");
 }
 
-static int create_strip_zones(struct mddev *mddev, struct r0conf **private_conf)
+static int create_strip_zones(mddev_t *mddev, raid0_conf_t **private_conf)
 {
 	int i, c, err;
 	sector_t curr_zone_end, sectors;
-	struct md_rdev *smallest, *rdev1, *rdev2, *rdev, **dev;
+	mdk_rdev_t *smallest, *rdev1, *rdev2, *rdev, **dev;
 	struct strip_zone *zone;
 	int cnt;
 	char b[BDEVNAME_SIZE];
-	char b2[BDEVNAME_SIZE];
-	struct r0conf *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+	raid0_conf_t *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
 
 	if (!conf)
 		return -ENOMEM;
 	list_for_each_entry(rdev1, &mddev->disks, same_set) {
-		pr_debug("md/raid0:%s: looking at %s\n",
-			 mdname(mddev),
-			 bdevname(rdev1->bdev, b));
+		printk(KERN_INFO "md/raid0:%s: looking at %s\n",
+		       mdname(mddev),
+		       bdevname(rdev1->bdev, b));
 		c = 0;
 
 		/* round size to chunk_size */
@@ -103,16 +101,16 @@ static int create_strip_zones(struct mddev *mddev, struct r0conf **private_conf)
 		rdev1->sectors = sectors * mddev->chunk_sectors;
 
 		list_for_each_entry(rdev2, &mddev->disks, same_set) {
-			pr_debug("md/raid0:%s:   comparing %s(%llu)"
-				 " with %s(%llu)\n",
-				 mdname(mddev),
-				 bdevname(rdev1->bdev,b),
-				 (unsigned long long)rdev1->sectors,
-				 bdevname(rdev2->bdev,b2),
-				 (unsigned long long)rdev2->sectors);
+			printk(KERN_INFO "md/raid0:%s:   comparing %s(%llu)",
+			       mdname(mddev),
+			       bdevname(rdev1->bdev,b),
+			       (unsigned long long)rdev1->sectors);
+			printk(KERN_CONT " with %s(%llu)\n",
+			       bdevname(rdev2->bdev,b),
+			       (unsigned long long)rdev2->sectors);
 			if (rdev2 == rdev1) {
-				pr_debug("md/raid0:%s:   END\n",
-					 mdname(mddev));
+				printk(KERN_INFO "md/raid0:%s:   END\n",
+				       mdname(mddev));
 				break;
 			}
 			if (rdev2->sectors == rdev1->sectors) {
@@ -120,30 +118,30 @@ static int create_strip_zones(struct mddev *mddev, struct r0conf **private_conf)
 				 * Not unique, don't count it as a new
 				 * group
 				 */
-				pr_debug("md/raid0:%s:   EQUAL\n",
-					 mdname(mddev));
+				printk(KERN_INFO "md/raid0:%s:   EQUAL\n",
+				       mdname(mddev));
 				c = 1;
 				break;
 			}
-			pr_debug("md/raid0:%s:   NOT EQUAL\n",
-				 mdname(mddev));
+			printk(KERN_INFO "md/raid0:%s:   NOT EQUAL\n",
+			       mdname(mddev));
 		}
 		if (!c) {
-			pr_debug("md/raid0:%s:   ==> UNIQUE\n",
-				 mdname(mddev));
+			printk(KERN_INFO "md/raid0:%s:   ==> UNIQUE\n",
+			       mdname(mddev));
 			conf->nr_strip_zones++;
-			pr_debug("md/raid0:%s: %d zones\n",
-				 mdname(mddev), conf->nr_strip_zones);
+			printk(KERN_INFO "md/raid0:%s: %d zones\n",
+			       mdname(mddev), conf->nr_strip_zones);
 		}
 	}
-	pr_debug("md/raid0:%s: FINAL %d zones\n",
-		 mdname(mddev), conf->nr_strip_zones);
+	printk(KERN_INFO "md/raid0:%s: FINAL %d zones\n",
+	       mdname(mddev), conf->nr_strip_zones);
 	err = -ENOMEM;
 	conf->strip_zone = kzalloc(sizeof(struct strip_zone)*
 				conf->nr_strip_zones, GFP_KERNEL);
 	if (!conf->strip_zone)
 		goto abort;
-	conf->devlist = kzalloc(sizeof(struct md_rdev*)*
+	conf->devlist = kzalloc(sizeof(mdk_rdev_t*)*
 				conf->nr_strip_zones*mddev->raid_disks,
 				GFP_KERNEL);
 	if (!conf->devlist)
@@ -220,45 +218,44 @@ static int create_strip_zones(struct mddev *mddev, struct r0conf **private_conf)
 		zone = conf->strip_zone + i;
 		dev = conf->devlist + i * mddev->raid_disks;
 
-		pr_debug("md/raid0:%s: zone %d\n", mdname(mddev), i);
+		printk(KERN_INFO "md/raid0:%s: zone %d\n",
+		       mdname(mddev), i);
 		zone->dev_start = smallest->sectors;
 		smallest = NULL;
 		c = 0;
 
 		for (j=0; j<cnt; j++) {
 			rdev = conf->devlist[j];
+			printk(KERN_INFO "md/raid0:%s: checking %s ...",
+			       mdname(mddev),
+			       bdevname(rdev->bdev, b));
 			if (rdev->sectors <= zone->dev_start) {
-				pr_debug("md/raid0:%s: checking %s ... nope\n",
-					 mdname(mddev),
-					 bdevname(rdev->bdev, b));
+				printk(KERN_CONT " nope.\n");
 				continue;
 			}
-			pr_debug("md/raid0:%s: checking %s ..."
-				 " contained as device %d\n",
-				 mdname(mddev),
-				 bdevname(rdev->bdev, b), c);
+			printk(KERN_CONT " contained as device %d\n", c);
 			dev[c] = rdev;
 			c++;
 			if (!smallest || rdev->sectors < smallest->sectors) {
 				smallest = rdev;
-				pr_debug("md/raid0:%s:  (%llu) is smallest!.\n",
-					 mdname(mddev),
-					 (unsigned long long)rdev->sectors);
+				printk(KERN_INFO "md/raid0:%s:  (%llu) is smallest!.\n",
+				       mdname(mddev),
+				       (unsigned long long)rdev->sectors);
 			}
 		}
 
 		zone->nb_dev = c;
 		sectors = (smallest->sectors - zone->dev_start) * c;
-		pr_debug("md/raid0:%s: zone->nb_dev: %d, sectors: %llu\n",
-			 mdname(mddev),
-			 zone->nb_dev, (unsigned long long)sectors);
+		printk(KERN_INFO "md/raid0:%s: zone->nb_dev: %d, sectors: %llu\n",
+		       mdname(mddev),
+		       zone->nb_dev, (unsigned long long)sectors);
 
 		curr_zone_end += sectors;
 		zone->zone_end = curr_zone_end;
 
-		pr_debug("md/raid0:%s: current zone start: %llu\n",
-			 mdname(mddev),
-			 (unsigned long long)smallest->sectors);
+		printk(KERN_INFO "md/raid0:%s: current zone start: %llu\n",
+		       mdname(mddev),
+		       (unsigned long long)smallest->sectors);
 	}
 	mddev->queue->backing_dev_info.congested_fn = raid0_congested;
 	mddev->queue->backing_dev_info.congested_data = mddev;
@@ -278,7 +275,7 @@ static int create_strip_zones(struct mddev *mddev, struct r0conf **private_conf)
 	blk_queue_io_opt(mddev->queue,
 			 (mddev->chunk_sectors << 9) * mddev->raid_disks);
 
-	pr_debug("md/raid0:%s: done.\n", mdname(mddev));
+	printk(KERN_INFO "md/raid0:%s: done.\n", mdname(mddev));
 	*private_conf = conf;
 
 	return 0;
@@ -302,7 +299,7 @@ static int raid0_mergeable_bvec(struct request_queue *q,
 				struct bvec_merge_data *bvm,
 				struct bio_vec *biovec)
 {
-	struct mddev *mddev = q->queuedata;
+	mddev_t *mddev = q->queuedata;
 	sector_t sector = bvm->bi_sector + get_start_sect(bvm->bi_bdev);
 	int max;
 	unsigned int chunk_sectors = mddev->chunk_sectors;
@@ -321,10 +318,10 @@ static int raid0_mergeable_bvec(struct request_queue *q,
 		return max;
 }
 
-static sector_t raid0_size(struct mddev *mddev, sector_t sectors, int raid_disks)
+static sector_t raid0_size(mddev_t *mddev, sector_t sectors, int raid_disks)
 {
 	sector_t array_sectors = 0;
-	struct md_rdev *rdev;
+	mdk_rdev_t *rdev;
 
 	WARN_ONCE(sectors || raid_disks,
 		  "%s does not support generic reshape\n", __func__);
@@ -335,9 +332,9 @@ static sector_t raid0_size(struct mddev *mddev, sector_t sectors, int raid_disks
 	return array_sectors;
 }
 
-static int raid0_run(struct mddev *mddev)
+static int raid0_run(mddev_t *mddev)
 {
-	struct r0conf *conf;
+	raid0_conf_t *conf;
 	int ret;
 
 	if (mddev->chunk_sectors == 0) {
@@ -385,9 +382,9 @@ static int raid0_run(struct mddev *mddev)
 	return md_integrity_register(mddev);
 }
 
-static int raid0_stop(struct mddev *mddev)
+static int raid0_stop(mddev_t *mddev)
 {
-	struct r0conf *conf = mddev->private;
+	raid0_conf_t *conf = mddev->private;
 
 	blk_sync_queue(mddev->queue); /* the unplug fn references 'conf'*/
 	kfree(conf->strip_zone);
@@ -400,7 +397,7 @@ static int raid0_stop(struct mddev *mddev)
 /* Find the zone which holds a particular offset
  * Update *sectorp to be an offset in that zone
  */
-static struct strip_zone *find_zone(struct r0conf *conf,
+static struct strip_zone *find_zone(struct raid0_private_data *conf,
 				    sector_t *sectorp)
 {
 	int i;
@@ -420,12 +417,12 @@ static struct strip_zone *find_zone(struct r0conf *conf,
  * remaps the bio to the target device. we separate two flows.
  * power 2 flow and a general flow for the sake of perfromance
 */
-static struct md_rdev *map_sector(struct mddev *mddev, struct strip_zone *zone,
+static mdk_rdev_t *map_sector(mddev_t *mddev, struct strip_zone *zone,
 				sector_t sector, sector_t *sector_offset)
 {
 	unsigned int sect_in_chunk;
 	sector_t chunk;
-	struct r0conf *conf = mddev->private;
+	raid0_conf_t *conf = mddev->private;
 	int raid_disks = conf->strip_zone[0].nb_dev;
 	unsigned int chunk_sects = mddev->chunk_sectors;
 
@@ -456,7 +453,7 @@ static struct md_rdev *map_sector(struct mddev *mddev, struct strip_zone *zone,
 /*
  * Is io distribute over 1 or more chunks ?
 */
-static inline int is_io_in_chunk_boundary(struct mddev *mddev,
+static inline int is_io_in_chunk_boundary(mddev_t *mddev,
 			unsigned int chunk_sects, struct bio *bio)
 {
 	if (likely(is_power_of_2(chunk_sects))) {
@@ -469,16 +466,16 @@ static inline int is_io_in_chunk_boundary(struct mddev *mddev,
 	}
 }
 
-static void raid0_make_request(struct mddev *mddev, struct bio *bio)
+static int raid0_make_request(mddev_t *mddev, struct bio *bio)
 {
 	unsigned int chunk_sects;
 	sector_t sector_offset;
 	struct strip_zone *zone;
-	struct md_rdev *tmp_dev;
+	mdk_rdev_t *tmp_dev;
 
 	if (unlikely(bio->bi_rw & REQ_FLUSH)) {
 		md_flush_request(mddev, bio);
-		return;
+		return 0;
 	}
 
 	chunk_sects = mddev->chunk_sectors;
@@ -498,10 +495,13 @@ static void raid0_make_request(struct mddev *mddev, struct bio *bio)
 		else
 			bp = bio_split(bio, chunk_sects -
 				       sector_div(sector, chunk_sects));
-		raid0_make_request(mddev, &bp->bio1);
-		raid0_make_request(mddev, &bp->bio2);
+		if (raid0_make_request(mddev, &bp->bio1))
+			generic_make_request(&bp->bio1);
+		if (raid0_make_request(mddev, &bp->bio2))
+			generic_make_request(&bp->bio2);
+
 		bio_pair_release(bp);
-		return;
+		return 0;
 	}
 
 	sector_offset = bio->bi_sector;
@@ -511,9 +511,10 @@ static void raid0_make_request(struct mddev *mddev, struct bio *bio)
 	bio->bi_bdev = tmp_dev->bdev;
 	bio->bi_sector = sector_offset + zone->dev_start +
 		tmp_dev->data_offset;
-
-	generic_make_request(bio);
-	return;
+	/*
+	 * Let the main block layer submit the IO and resolve recursion:
+	 */
+	return 1;
 
 bad_map:
 	printk("md/raid0:%s: make_request bug: can't convert block across chunks"
@@ -522,19 +523,46 @@ bad_map:
 	       (unsigned long long)bio->bi_sector, bio->bi_size >> 10);
 
 	bio_io_error(bio);
-	return;
+	return 0;
 }
 
-static void raid0_status(struct seq_file *seq, struct mddev *mddev)
+static void raid0_status(struct seq_file *seq, mddev_t *mddev)
 {
+#undef MD_DEBUG
+#ifdef MD_DEBUG
+	int j, k, h;
+	char b[BDEVNAME_SIZE];
+	raid0_conf_t *conf = mddev->private;
+	int raid_disks = conf->strip_zone[0].nb_dev;
+
+	sector_t zone_size;
+	sector_t zone_start = 0;
+	h = 0;
+
+	for (j = 0; j < conf->nr_strip_zones; j++) {
+		seq_printf(seq, "      z%d", j);
+		seq_printf(seq, "=[");
+		for (k = 0; k < conf->strip_zone[j].nb_dev; k++)
+			seq_printf(seq, "%s/", bdevname(
+				conf->devlist[j*raid_disks + k]
+						->bdev, b));
+
+		zone_size  = conf->strip_zone[j].zone_end - zone_start;
+		seq_printf(seq, "] ze=%lld ds=%lld s=%lld\n",
+			(unsigned long long)zone_start>>1,
+			(unsigned long long)conf->strip_zone[j].dev_start>>1,
+			(unsigned long long)zone_size>>1);
+		zone_start = conf->strip_zone[j].zone_end;
+	}
+#endif
 	seq_printf(seq, " %dk chunks", mddev->chunk_sectors / 2);
 	return;
 }
 
-static void *raid0_takeover_raid45(struct mddev *mddev)
+static void *raid0_takeover_raid45(mddev_t *mddev)
 {
-	struct md_rdev *rdev;
-	struct r0conf *priv_conf;
+	mdk_rdev_t *rdev;
+	raid0_conf_t *priv_conf;
 
 	if (mddev->degraded != 1) {
 		printk(KERN_ERR "md/raid0:%s: raid5 must be degraded! Degraded disks: %d\n",
@@ -565,9 +593,9 @@ static void *raid0_takeover_raid45(struct mddev *mddev)
 	return priv_conf;
 }
 
-static void *raid0_takeover_raid10(struct mddev *mddev)
+static void *raid0_takeover_raid10(mddev_t *mddev)
 {
-	struct r0conf *priv_conf;
+	raid0_conf_t *priv_conf;
 
 	/* Check layout:
 	 *  - far_copies must be 1
@@ -606,9 +634,9 @@ static void *raid0_takeover_raid10(struct mddev *mddev)
 	return priv_conf;
 }
 
-static void *raid0_takeover_raid1(struct mddev *mddev)
+static void *raid0_takeover_raid1(mddev_t *mddev)
 {
-	struct r0conf *priv_conf;
+	raid0_conf_t *priv_conf;
 
 	/* Check layout:
 	 *  - (N - 1) mirror drives must be already faulty
@@ -632,7 +660,7 @@ static void *raid0_takeover_raid1(struct mddev *mddev)
 	return priv_conf;
 }
 
-static void *raid0_takeover(struct mddev *mddev)
+static void *raid0_takeover(mddev_t *mddev)
 {
 	/* raid0 can take over:
 	 *  raid4 - if all data disks are active.
@@ -663,11 +691,11 @@ static void *raid0_takeover(struct mddev *mddev)
 	return ERR_PTR(-EINVAL);
 }
 
-static void raid0_quiesce(struct mddev *mddev, int state)
+static void raid0_quiesce(mddev_t *mddev, int state)
 {
 }
 
-static struct md_personality raid0_personality=
+static struct mdk_personality raid0_personality=
 {
 	.name		= "raid0",
 	.level		= 0,

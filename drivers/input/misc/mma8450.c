@@ -88,19 +88,23 @@ static int mma8450_write(struct mma8450 *m, unsigned off, u8 v)
 	return 0;
 }
 
-static int mma8450_read_block(struct mma8450 *m, unsigned off,
-			      u8 *buf, size_t size)
+static int mma8450_read_xyz(struct mma8450 *m, int *x, int *y, int *z)
 {
 	struct i2c_client *c = m->client;
+	u8 buff[6];
 	int err;
 
-	err = i2c_smbus_read_i2c_block_data(c, off, size, buf);
+	err = i2c_smbus_read_i2c_block_data(c, MMA8450_OUT_X_LSB, 6, buff);
 	if (err < 0) {
 		dev_err(&c->dev,
 			"failed to read block data at 0x%02x, error %d\n",
 			MMA8450_OUT_X_LSB, err);
 		return err;
 	}
+
+	*x = ((buff[1] << 4) & 0xff0) | (buff[0] & 0xf);
+	*y = ((buff[3] << 4) & 0xff0) | (buff[2] & 0xf);
+	*z = ((buff[5] << 4) & 0xff0) | (buff[4] & 0xf);
 
 	return 0;
 }
@@ -110,7 +114,7 @@ static void mma8450_poll(struct input_polled_dev *dev)
 	struct mma8450 *m = dev->private;
 	int x, y, z;
 	int ret;
-	u8 buf[6];
+	int err;
 
 	ret = mma8450_read(m, MMA8450_STATUS);
 	if (ret < 0)
@@ -119,13 +123,9 @@ static void mma8450_poll(struct input_polled_dev *dev)
 	if (!(ret & MMA8450_STATUS_ZXYDR))
 		return;
 
-	ret = mma8450_read_block(m, MMA8450_OUT_X_LSB, buf, sizeof(buf));
-	if (ret < 0)
+	err = mma8450_read_xyz(m, &x, &y, &z);
+	if (err)
 		return;
-
-	x = ((buf[1] << 4) & 0xff0) | (buf[0] & 0xf);
-	y = ((buf[3] << 4) & 0xff0) | (buf[2] & 0xf);
-	z = ((buf[5] << 4) & 0xff0) | (buf[4] & 0xf);
 
 	input_report_abs(dev->input, ABS_X, x);
 	input_report_abs(dev->input, ABS_Y, y);

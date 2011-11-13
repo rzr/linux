@@ -11,7 +11,7 @@
  * ----------------------------------------------------------------------- */
 
 /*
- * int$#.c
+ * raid6int$#.c
  *
  * $#-way unrolled portable integer math RAID-6 instruction set
  *

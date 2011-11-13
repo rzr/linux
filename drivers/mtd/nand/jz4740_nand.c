@@ -251,6 +251,10 @@ static int jz_nand_correct_ecc_rs(struct mtd_info *mtd, uint8_t *dat,
 	return 0;
 }
 
+#ifdef CONFIG_MTD_CMDLINE_PARTS
+static const char *part_probes[] = {"cmdline", NULL};
+#endif
+
 static int jz_nand_ioremap_resource(struct platform_device *pdev,
 	const char *name, struct resource **res, void __iomem **base)
 {
@@ -295,6 +299,8 @@ static int __devinit jz_nand_probe(struct platform_device *pdev)
 	struct nand_chip *chip;
 	struct mtd_info *mtd;
 	struct jz_nand_platform_data *pdata = pdev->dev.platform_data;
+	struct mtd_partition *partition_info;
+	int num_partitions = 0;
 
 	nand = kzalloc(sizeof(*nand), GFP_KERNEL);
 	if (!nand) {
@@ -367,9 +373,15 @@ static int __devinit jz_nand_probe(struct platform_device *pdev)
 		goto err_gpio_free;
 	}
 
-	ret = mtd_device_parse_register(mtd, NULL, 0,
-			pdata ? pdata->partitions : NULL,
-			pdata ? pdata->num_partitions : 0);
+#ifdef CONFIG_MTD_CMDLINE_PARTS
+	num_partitions = parse_mtd_partitions(mtd, part_probes,
+						&partition_info, 0);
+#endif
+	if (num_partitions <= 0 && pdata) {
+		num_partitions = pdata->num_partitions;
+		partition_info = pdata->partitions;
+	}
+	ret = mtd_device_register(mtd, partition_info, num_partitions);
 
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to add mtd device\n");

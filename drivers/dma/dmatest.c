@@ -10,7 +10,6 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmaengine.h>
-#include <linux/freezer.h>
 #include <linux/init.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
@@ -252,7 +251,6 @@ static int dmatest_func(void *data)
 	int			i;
 
 	thread_name = current->comm;
-	set_freezable_with_signal();
 
 	ret = -ENOMEM;
 
@@ -307,8 +305,7 @@ static int dmatest_func(void *data)
 		dma_addr_t dma_srcs[src_cnt];
 		dma_addr_t dma_dsts[dst_cnt];
 		struct completion cmp;
-		unsigned long start, tmo, end = 0 /* compiler... */;
-		bool reload = true;
+		unsigned long tmo = msecs_to_jiffies(timeout);
 		u8 align = 0;
 
 		total_tests++;
@@ -407,17 +404,7 @@ static int dmatest_func(void *data)
 		}
 		dma_async_issue_pending(chan);
 
-		do {
-			start = jiffies;
-			if (reload)
-				end = start + msecs_to_jiffies(timeout);
-			else if (end <= start)
-				end = start + 1;
-			tmo = wait_for_completion_interruptible_timeout(&cmp,
-								end - start);
-			reload = try_to_freeze();
-		} while (tmo == -ERESTARTSYS);
-
+		tmo = wait_for_completion_timeout(&cmp, tmo);
 		status = dma_async_is_tx_complete(chan, cookie, NULL, NULL);
 
 		if (tmo == 0) {
@@ -490,8 +477,6 @@ err_srcs:
 	pr_notice("%s: terminating after %u tests, %u failures (status %d)\n",
 			thread_name, total_tests, failed_tests, ret);
 
-	/* terminate all transfers on specified channels */
-	chan->device->device_control(chan, DMA_TERMINATE_ALL, 0);
 	if (iterations > 0)
 		while (!kthread_should_stop()) {
 			DECLARE_WAIT_QUEUE_HEAD_ONSTACK(wait_dmatest_exit);
@@ -514,10 +499,6 @@ static void dmatest_cleanup_channel(struct dmatest_chan *dtc)
 		list_del(&thread->node);
 		kfree(thread);
 	}
-
-	/* terminate all transfers on specified channels */
-	dtc->chan->device->device_control(dtc->chan, DMA_TERMINATE_ALL, 0);
-
 	kfree(dtc);
 }
 

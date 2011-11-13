@@ -511,37 +511,28 @@ single_step_cont(struct pt_regs *regs, struct die_args *args)
 
 static int was_in_debug_nmi[NR_CPUS];
 
-static int kgdb_nmi_handler(unsigned int cmd, struct pt_regs *regs)
-{
-	switch (cmd) {
-	case NMI_LOCAL:
-		if (atomic_read(&kgdb_active) != -1) {
-			/* KGDB CPU roundup */
-			kgdb_nmicallback(raw_smp_processor_id(), regs);
-			was_in_debug_nmi[raw_smp_processor_id()] = 1;
-			touch_nmi_watchdog();
-			return NMI_HANDLED;
-		}
-		break;
-
-	case NMI_UNKNOWN:
-		if (was_in_debug_nmi[raw_smp_processor_id()]) {
-			was_in_debug_nmi[raw_smp_processor_id()] = 0;
-			return NMI_HANDLED;
-		}
-		break;
-	default:
-		/* do nothing */
-		break;
-	}
-	return NMI_DONE;
-}
-
 static int __kgdb_notify(struct die_args *args, unsigned long cmd)
 {
 	struct pt_regs *regs = args->regs;
 
 	switch (cmd) {
+	case DIE_NMI:
+		if (atomic_read(&kgdb_active) != -1) {
+			/* KGDB CPU roundup */
+			kgdb_nmicallback(raw_smp_processor_id(), regs);
+			was_in_debug_nmi[raw_smp_processor_id()] = 1;
+			touch_nmi_watchdog();
+			return NOTIFY_STOP;
+		}
+		return NOTIFY_DONE;
+
+	case DIE_NMIUNKNOWN:
+		if (was_in_debug_nmi[raw_smp_processor_id()]) {
+			was_in_debug_nmi[raw_smp_processor_id()] = 0;
+			return NOTIFY_STOP;
+		}
+		return NOTIFY_DONE;
+
 	case DIE_DEBUG:
 		if (atomic_read(&kgdb_cpu_doing_single_step) != -1) {
 			if (user_mode(regs))
@@ -599,6 +590,11 @@ kgdb_notify(struct notifier_block *self, unsigned long cmd, void *ptr)
 
 static struct notifier_block kgdb_notifier = {
 	.notifier_call	= kgdb_notify,
+
+	/*
+	 * Lowest-prio notifier priority, we want to be notified last:
+	 */
+	.priority	= NMI_LOCAL_LOW_PRIOR,
 };
 
 /**
@@ -609,31 +605,7 @@ static struct notifier_block kgdb_notifier = {
  */
 int kgdb_arch_init(void)
 {
-	int retval;
-
-	retval = register_die_notifier(&kgdb_notifier);
-	if (retval)
-		goto out;
-
-	retval = register_nmi_handler(NMI_LOCAL, kgdb_nmi_handler,
-					0, "kgdb");
-	if (retval)
-		goto out1;
-
-	retval = register_nmi_handler(NMI_UNKNOWN, kgdb_nmi_handler,
-					0, "kgdb");
-
-	if (retval)
-		goto out2;
-
-	return retval;
-
-out2:
-	unregister_nmi_handler(NMI_LOCAL, "kgdb");
-out1:
-	unregister_die_notifier(&kgdb_notifier);
-out:
-	return retval;
+	return register_die_notifier(&kgdb_notifier);
 }
 
 static void kgdb_hw_overflow_handler(struct perf_event *event,
@@ -701,8 +673,6 @@ void kgdb_arch_exit(void)
 			breakinfo[i].pev = NULL;
 		}
 	}
-	unregister_nmi_handler(NMI_UNKNOWN, "kgdb");
-	unregister_nmi_handler(NMI_LOCAL, "kgdb");
 	unregister_die_notifier(&kgdb_notifier);
 }
 

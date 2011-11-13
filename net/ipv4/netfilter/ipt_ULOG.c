@@ -135,8 +135,10 @@ static struct sk_buff *ulog_alloc_skb(unsigned int size)
 	 * due to slab allocator restrictions */
 
 	n = max(size, nlbufsiz);
-	skb = alloc_skb(n, GFP_ATOMIC | __GFP_NOWARN);
+	skb = alloc_skb(n, GFP_ATOMIC);
 	if (!skb) {
+		pr_debug("cannot alloc whole buffer %ub!\n", n);
+
 		if (n > size) {
 			/* try to allocate only as much as we need for
 			 * current packet */

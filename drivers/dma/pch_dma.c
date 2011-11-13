@@ -60,7 +60,7 @@
 #define DMA_DESC_FOLLOW_WITHOUT_IRQ	0x2
 #define DMA_DESC_FOLLOW_WITH_IRQ	0x3
 
-#define MAX_CHAN_NR			12
+#define MAX_CHAN_NR			8
 
 #define DMA_MASK_CTL0_MODE	0x33333333
 #define DMA_MASK_CTL2_MODE	0x00003333
@@ -872,7 +872,8 @@ static int __devinit pch_dma_probe(struct pci_dev *pdev,
 	int i;
 
 	nr_channels = id->driver_data;
-	pd = kzalloc(sizeof(*pd), GFP_KERNEL);
+	pd = kzalloc(sizeof(struct pch_dma)+
+		sizeof(struct pch_dma_chan) * nr_channels, GFP_KERNEL);
 	if (!pd)
 		return -ENOMEM;
 
@@ -925,6 +926,7 @@ static int __devinit pch_dma_probe(struct pci_dev *pdev,
 	}
 
 	pd->dma.dev = &pdev->dev;
+	pd->dma.chancnt = nr_channels;
 
 	INIT_LIST_HEAD(&pd->dma.channels);
 
@@ -933,6 +935,7 @@ static int __devinit pch_dma_probe(struct pci_dev *pdev,
 
 		pd_chan->chan.device = &pd->dma;
 		pd_chan->chan.cookie = 1;
+		pd_chan->chan.chan_id = i;
 
 		pd_chan->membase = &regs->desc[i];
 

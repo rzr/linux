@@ -688,7 +688,7 @@ static void ni_pcidio_print_status(unsigned int flags)
 static void debug_int(struct comedi_device *dev)
 {
 	int a, b;
-	static int n_int;
+	static int n_int = 0;
 	struct timeval tv;
 
 	do_gettimeofday(&tv);

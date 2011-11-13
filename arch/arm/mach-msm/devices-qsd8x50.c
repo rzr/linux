@@ -140,6 +140,12 @@ static struct resource resources_sdc1[] = {
 		.name	= "cmd_irq",
 	},
 	{
+		.start	= INT_SDC1_1,
+		.end	= INT_SDC1_1,
+		.flags	= IORESOURCE_IRQ,
+		.name	= "pio_irq",
+	},
+	{
 		.flags	= IORESOURCE_IRQ | IORESOURCE_DISABLED,
 		.name	= "status_irq"
 	},
@@ -161,6 +167,12 @@ static struct resource resources_sdc2[] = {
 		.end	= INT_SDC2_0,
 		.flags	= IORESOURCE_IRQ,
 		.name	= "cmd_irq",
+	},
+		{
+		.start	= INT_SDC2_1,
+		.end	= INT_SDC2_1,
+		.flags	= IORESOURCE_IRQ,
+		.name	= "pio_irq",
 	},
 	{
 		.flags	= IORESOURCE_IRQ | IORESOURCE_DISABLED,
@@ -185,6 +197,12 @@ static struct resource resources_sdc3[] = {
 		.flags	= IORESOURCE_IRQ,
 		.name	= "cmd_irq",
 	},
+		{
+		.start	= INT_SDC3_1,
+		.end	= INT_SDC3_1,
+		.flags	= IORESOURCE_IRQ,
+		.name	= "pio_irq",
+	},
 	{
 		.flags	= IORESOURCE_IRQ | IORESOURCE_DISABLED,
 		.name	= "status_irq"
@@ -207,6 +225,12 @@ static struct resource resources_sdc4[] = {
 		.end	= INT_SDC4_0,
 		.flags	= IORESOURCE_IRQ,
 		.name	= "cmd_irq",
+	},
+		{
+		.start	= INT_SDC4_1,
+		.end	= INT_SDC4_1,
+		.flags	= IORESOURCE_IRQ,
+		.name	= "pio_irq",
 	},
 	{
 		.flags	= IORESOURCE_IRQ | IORESOURCE_DISABLED,

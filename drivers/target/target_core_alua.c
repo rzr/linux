@@ -24,10 +24,10 @@
  *
  ******************************************************************************/
 
+#include <linux/version.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/configfs.h>
-#include <linux/export.h>
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
 
@@ -59,9 +59,8 @@ struct t10_alua_lu_gp *default_lu_gp;
  *
  * See spc4r17 section 6.27
  */
-int target_emulate_report_target_port_groups(struct se_task *task)
+int core_emulate_report_target_port_groups(struct se_cmd *cmd)
 {
-	struct se_cmd *cmd = task->task_se_cmd;
 	struct se_subsystem_dev *su_dev = cmd->se_dev->se_sub_dev;
 	struct se_port *port;
 	struct t10_alua_tg_pt_gp *tg_pt_gp;
@@ -166,8 +165,6 @@ int target_emulate_report_target_port_groups(struct se_task *task)
 
 	transport_kunmap_first_data_page(cmd);
 
-	task->task_scsi_status = GOOD;
-	transport_complete_task(task, 1);
 	return 0;
 }
 
@@ -176,9 +173,8 @@ int target_emulate_report_target_port_groups(struct se_task *task)
  *
  * See spc4r17 section 6.35
  */
-int target_emulate_set_target_port_groups(struct se_task *task)
+int core_emulate_set_target_port_groups(struct se_cmd *cmd)
 {
-	struct se_cmd *cmd = task->task_se_cmd;
 	struct se_device *dev = cmd->se_dev;
 	struct se_subsystem_dev *su_dev = dev->se_sub_dev;
 	struct se_port *port, *l_port = cmd->se_lun->lun_sep;
@@ -346,8 +342,7 @@ int target_emulate_set_target_port_groups(struct se_task *task)
 
 out:
 	transport_kunmap_first_data_page(cmd);
-	task->task_scsi_status = GOOD;
-	transport_complete_task(task, 1);
+
 	return 0;
 }
 

@@ -9,7 +9,6 @@
  */
 
 #include "bcma_private.h"
-#include <linux/export.h>
 #include <linux/bcma/bcma.h>
 
 /**************************************************
@@ -174,7 +173,7 @@ static bool bcma_core_pci_is_in_hostmode(struct bcma_drv_pci *pc)
 		return false;
 
 #ifdef CONFIG_SSB_DRIVER_PCICORE
-	if (bus->sprom.boardflags_lo & SSB_BFL_NOPCI)
+	if (bus->sprom.boardflags_lo & SSB_PCICORE_BFL_NOPCI)
 		return false;
 #endif /* CONFIG_SSB_DRIVER_PCICORE */
 
@@ -190,9 +189,6 @@ static bool bcma_core_pci_is_in_hostmode(struct bcma_drv_pci *pc)
 
 void bcma_core_pci_init(struct bcma_drv_pci *pc)
 {
-	if (pc->setup_done)
-		return;
-
 	if (bcma_core_pci_is_in_hostmode(pc)) {
 #ifdef CONFIG_BCMA_DRIVER_PCI_HOSTMODE
 		bcma_core_pci_hostmode_init(pc);
@@ -202,8 +198,6 @@ void bcma_core_pci_init(struct bcma_drv_pci *pc)
 	} else {
 		bcma_core_pci_clientmode_init(pc);
 	}
-
-	pc->setup_done = true;
 }
 
 int bcma_core_pci_irq_ctl(struct bcma_drv_pci *pc, struct bcma_device *core,
@@ -211,14 +205,7 @@ int bcma_core_pci_irq_ctl(struct bcma_drv_pci *pc, struct bcma_device *core,
 {
 	struct pci_dev *pdev = pc->core->bus->host_pci;
 	u32 coremask, tmp;
-	int err = 0;
-
-	if (core->bus->hosttype != BCMA_HOSTTYPE_PCI) {
-		/* This bcma device is not on a PCI host-bus. So the IRQs are
-		 * not routed through the PCI core.
-		 * So we must not enable routing through the PCI core. */
-		goto out;
-	}
+	int err;
 
 	err = pci_read_config_dword(pdev, BCMA_PCI_IRQMASK, &tmp);
 	if (err)

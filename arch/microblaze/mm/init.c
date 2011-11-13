@@ -17,7 +17,6 @@
 #include <linux/pfn.h>
 #include <linux/slab.h>
 #include <linux/swap.h>
-#include <linux/export.h>
 
 #include <asm/page.h>
 #include <asm/mmu_context.h>
@@ -305,11 +304,11 @@ asmlinkage void __init mmu_init(void)
 	/* Map in all of RAM starting at CONFIG_KERNEL_START */
 	mapin_ram();
 
-#ifdef CONFIG_HIGHMEM_START_BOOL
-	ioremap_base = CONFIG_HIGHMEM_START;
+#ifdef HIGHMEM_START_BOOL
+	ioremap_base = HIGHMEM_START;
 #else
 	ioremap_base = 0xfe000000UL;	/* for now, could be 0xfffff000 */
-#endif /* CONFIG_HIGHMEM_START_BOOL */
+#endif /* CONFIG_HIGHMEM */
 	ioremap_bot = ioremap_base;
 
 	/* Initialize the context management stuff */

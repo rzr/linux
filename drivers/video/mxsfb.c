@@ -39,7 +39,6 @@
  * the required value in the imx_fb_videomode structure.
  */
 
-#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>

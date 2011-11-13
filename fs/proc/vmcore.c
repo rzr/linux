@@ -12,7 +12,6 @@
 #include <linux/user.h>
 #include <linux/elf.h>
 #include <linux/elfcore.h>
-#include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/highmem.h>
 #include <linux/bootmem.h>

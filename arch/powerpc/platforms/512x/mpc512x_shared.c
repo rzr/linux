@@ -66,8 +66,8 @@ struct fsl_diu_shared_fb {
 	bool		in_use;
 };
 
-u32 mpc512x_get_pixel_format(enum fsl_diu_monitor_port port,
-			     unsigned int bits_per_pixel)
+unsigned int mpc512x_get_pixel_format(unsigned int bits_per_pixel,
+				      int monitor_port)
 {
 	switch (bits_per_pixel) {
 	case 32:
@@ -80,12 +80,11 @@ u32 mpc512x_get_pixel_format(enum fsl_diu_monitor_port port,
 	return 0x00000400;
 }
 
-void mpc512x_set_gamma_table(enum fsl_diu_monitor_port port,
-			     char *gamma_table_base)
+void mpc512x_set_gamma_table(int monitor_port, char *gamma_table_base)
 {
 }
 
-void mpc512x_set_monitor_port(enum fsl_diu_monitor_port port)
+void mpc512x_set_monitor_port(int monitor_port)
 {
 }
 
@@ -183,10 +182,14 @@ void mpc512x_set_pixel_clock(unsigned int pixclock)
 	iounmap(ccm);
 }
 
-enum fsl_diu_monitor_port
-mpc512x_valid_monitor_port(enum fsl_diu_monitor_port port)
+ssize_t mpc512x_show_monitor_port(int monitor_port, char *buf)
 {
-	return FSL_DIU_PORT_DVI;
+	return sprintf(buf, "0 - 5121 LCD\n");
+}
+
+int mpc512x_set_sysfs_monitor_port(int val)
+{
+	return 0;
 }
 
 static struct fsl_diu_shared_fb __attribute__ ((__aligned__(8))) diu_shared_fb;
@@ -253,7 +256,7 @@ void __init mpc512x_init_diu(void)
 	}
 
 	mode = in_be32(&diu_reg->diu_mode);
-	if (mode == MFB_MODE0) {
+	if (mode != MFB_MODE1) {
 		pr_info("%s: DIU OFF\n", __func__);
 		goto out;
 	}
@@ -329,7 +332,8 @@ void __init mpc512x_setup_diu(void)
 	diu_ops.set_gamma_table		= mpc512x_set_gamma_table;
 	diu_ops.set_monitor_port	= mpc512x_set_monitor_port;
 	diu_ops.set_pixel_clock		= mpc512x_set_pixel_clock;
-	diu_ops.valid_monitor_port	= mpc512x_valid_monitor_port;
+	diu_ops.show_monitor_port	= mpc512x_show_monitor_port;
+	diu_ops.set_sysfs_monitor_port	= mpc512x_set_sysfs_monitor_port;
 	diu_ops.release_bootmem		= mpc512x_release_bootmem;
 #endif
 }

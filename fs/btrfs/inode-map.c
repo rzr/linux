@@ -398,8 +398,6 @@ int btrfs_save_ino_cache(struct btrfs_root *root,
 	struct btrfs_free_space_ctl *ctl = root->free_ino_ctl;
 	struct btrfs_path *path;
 	struct inode *inode;
-	struct btrfs_block_rsv *rsv;
-	u64 num_bytes;
 	u64 alloc_hint = 0;
 	int ret;
 	int prealloc;
@@ -423,26 +421,11 @@ int btrfs_save_ino_cache(struct btrfs_root *root,
 	if (!path)
 		return -ENOMEM;
 
-	rsv = trans->block_rsv;
-	trans->block_rsv = &root->fs_info->trans_block_rsv;
-
-	num_bytes = trans->bytes_reserved;
-	/*
-	 * 1 item for inode item insertion if need
-	 * 3 items for inode item update (in the worst case)
-	 * 1 item for free space object
-	 * 3 items for pre-allocation
-	 */
-	trans->bytes_reserved = btrfs_calc_trans_metadata_size(root, 8);
-	ret = btrfs_block_rsv_add_noflush(root, trans->block_rsv,
-					  trans->bytes_reserved);
-	if (ret)
-		goto out;
 again:
 	inode = lookup_free_ino_inode(root, path);
 	if (IS_ERR(inode) && PTR_ERR(inode) != -ENOENT) {
 		ret = PTR_ERR(inode);
-		goto out_release;
+		goto out;
 	}
 
 	if (IS_ERR(inode)) {
@@ -451,7 +434,7 @@ again:
 
 		ret = create_free_ino_inode(root, trans, path);
 		if (ret)
-			goto out_release;
+			goto out;
 		goto again;
 	}
 
@@ -482,26 +465,21 @@ again:
 	/* Just to make sure we have enough space */
 	prealloc += 8 * PAGE_CACHE_SIZE;
 
-	ret = btrfs_delalloc_reserve_space(inode, prealloc);
+	ret = btrfs_check_data_free_space(inode, prealloc);
 	if (ret)
 		goto out_put;
 
 	ret = btrfs_prealloc_file_range_trans(inode, trans, 0, 0, prealloc,
 					      prealloc, prealloc, &alloc_hint);
-	if (ret) {
-		btrfs_delalloc_release_space(inode, prealloc);
+	if (ret)
 		goto out_put;
-	}
 	btrfs_free_reserved_data_space(inode, prealloc);
 
-	ret = btrfs_write_out_ino_cache(root, trans, path);
 out_put:
 	iput(inode);
-out_release:
-	btrfs_block_rsv_release(root, trans->block_rsv, trans->bytes_reserved);
 out:
-	trans->block_rsv = rsv;
-	trans->bytes_reserved = num_bytes;
+	if (ret == 0)
+		ret = btrfs_write_out_ino_cache(root, trans, path);
 
 	btrfs_free_path(path);
 	return ret;

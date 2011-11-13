@@ -77,7 +77,6 @@
 #include <linux/netdevice.h>
 #include <linux/wimax.h>
 #include <linux/security.h>
-#include <linux/export.h>
 #include "wimax-internal.h"
 
 

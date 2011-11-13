@@ -273,7 +273,18 @@ static struct platform_driver ath79_spi_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-module_platform_driver(ath79_spi_driver);
+
+static __init int ath79_spi_init(void)
+{
+	return platform_driver_register(&ath79_spi_driver);
+}
+module_init(ath79_spi_init);
+
+static __exit void ath79_spi_exit(void)
+{
+	platform_driver_unregister(&ath79_spi_driver);
+}
+module_exit(ath79_spi_exit);
 
 MODULE_DESCRIPTION("SPI controller driver for Atheros AR71XX/AR724X/AR913X");
 MODULE_AUTHOR("Gabor Juhos <juhosg@openwrt.org>");

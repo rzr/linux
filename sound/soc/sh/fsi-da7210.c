@@ -11,7 +11,6 @@
  */
 
 #include <linux/platform_device.h>
-#include <linux/module.h>
 #include <sound/sh_fsi.h>
 
 static int fsi_da7210_init(struct snd_soc_pcm_runtime *rtd)

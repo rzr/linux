@@ -454,17 +454,18 @@ static const char * udp_state_name(int state)
 	return udp_state_name_table[state] ? udp_state_name_table[state] : "?";
 }
 
-static void
+static int
 udp_state_transition(struct ip_vs_conn *cp, int direction,
 		     const struct sk_buff *skb,
 		     struct ip_vs_proto_data *pd)
 {
 	if (unlikely(!pd)) {
 		pr_err("UDP no ns data\n");
-		return;
+		return 0;
 	}
 
 	cp->timeout = pd->timeout_table[IP_VS_UDP_S_NORMAL];
+	return 1;
 }
 
 static void __udp_init(struct net *net, struct ip_vs_proto_data *pd)

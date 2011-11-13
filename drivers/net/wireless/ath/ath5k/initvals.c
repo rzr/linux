@@ -22,6 +22,7 @@
 #include "ath5k.h"
 #include "reg.h"
 #include "debug.h"
+#include "base.h"
 
 /*
  * Mode-independent initial register writes

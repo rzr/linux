@@ -911,7 +911,10 @@ void __init acpi_early_init(void)
 	}
 #endif
 
-	status = acpi_enable_subsystem(~ACPI_NO_ACPI_ENABLE);
+	status =
+	    acpi_enable_subsystem(~
+				  (ACPI_NO_HARDWARE_INIT |
+				   ACPI_NO_ACPI_ENABLE));
 	if (ACPI_FAILURE(status)) {
 		printk(KERN_ERR PREFIX "Unable to enable ACPI\n");
 		goto error0;
@@ -932,7 +935,8 @@ static int __init acpi_bus_init(void)
 
 	acpi_os_initialize1();
 
-	status = acpi_enable_subsystem(ACPI_NO_ACPI_ENABLE);
+	status =
+	    acpi_enable_subsystem(ACPI_NO_HARDWARE_INIT | ACPI_NO_ACPI_ENABLE);
 	if (ACPI_FAILURE(status)) {
 		printk(KERN_ERR PREFIX
 		       "Unable to start the ACPI Interpreter\n");

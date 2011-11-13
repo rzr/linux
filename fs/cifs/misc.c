@@ -420,22 +420,19 @@ check_smb_hdr(struct smb_hdr *smb, __u16 mid)
 }
 
 int
-checkSMB(struct smb_hdr *smb, __u16 mid, unsigned int total_read)
+checkSMB(struct smb_hdr *smb, __u16 mid, unsigned int length)
 {
-	__u32 rfclen = be32_to_cpu(smb->smb_buf_length);
+	__u32 len = be32_to_cpu(smb->smb_buf_length);
 	__u32 clc_len;  /* calculated length */
-	cFYI(0, "checkSMB Length: 0x%x, smb_buf_length: 0x%x",
-		total_read, rfclen);
+	cFYI(0, "checkSMB Length: 0x%x, smb_buf_length: 0x%x", length, len);
 
-	/* is this frame too small to even get to a BCC? */
-	if (total_read < 2 + sizeof(struct smb_hdr)) {
-		if ((total_read >= sizeof(struct smb_hdr) - 1)
+	if (length < 2 + sizeof(struct smb_hdr)) {
+		if ((length >= sizeof(struct smb_hdr) - 1)
 			    && (smb->Status.CifsError != 0)) {
-			/* it's an error return */
 			smb->WordCount = 0;
 			/* some error cases do not return wct and bcc */
 			return 0;
-		} else if ((total_read == sizeof(struct smb_hdr) + 1) &&
+		} else if ((length == sizeof(struct smb_hdr) + 1) &&
 				(smb->WordCount == 0)) {
 			char *tmp = (char *)smb;
 			/* Need to work around a bug in two servers here */
@@ -455,35 +452,39 @@ checkSMB(struct smb_hdr *smb, __u16 mid, unsigned int total_read)
 		} else {
 			cERROR(1, "Length less than smb header size");
 		}
-		return -EIO;
+		return 1;
+	}
+	if (len > CIFSMaxBufSize + MAX_CIFS_HDR_SIZE - 4) {
+		cERROR(1, "smb length greater than MaxBufSize, mid=%d",
+				   smb->Mid);
+		return 1;
 	}
 
-	/* otherwise, there is enough to get to the BCC */
 	if (check_smb_hdr(smb, mid))
-		return -EIO;
+		return 1;
 	clc_len = smbCalcSize(smb);
 
-	if (4 + rfclen != total_read) {
+	if (4 + len != length) {
 		cERROR(1, "Length read does not match RFC1001 length %d",
-				rfclen);
-		return -EIO;
+			   len);
+		return 1;
 	}
 
-	if (4 + rfclen != clc_len) {
+	if (4 + len != clc_len) {
 		/* check if bcc wrapped around for large read responses */
-		if ((rfclen > 64 * 1024) && (rfclen > clc_len)) {
+		if ((len > 64 * 1024) && (len > clc_len)) {
 			/* check if lengths match mod 64K */
-			if (((4 + rfclen) & 0xFFFF) == (clc_len & 0xFFFF))
+			if (((4 + len) & 0xFFFF) == (clc_len & 0xFFFF))
 				return 0; /* bcc wrapped */
 		}
 		cFYI(1, "Calculated size %u vs length %u mismatch for mid=%u",
-				clc_len, 4 + rfclen, smb->Mid);
+				clc_len, 4 + len, smb->Mid);
 
-		if (4 + rfclen < clc_len) {
+		if (4 + len < clc_len) {
 			cERROR(1, "RFC1001 size %u smaller than SMB for mid=%u",
-					rfclen, smb->Mid);
-			return -EIO;
-		} else if (rfclen > clc_len + 512) {
+					len, smb->Mid);
+			return 1;
+		} else if (len > clc_len + 512) {
 			/*
 			 * Some servers (Windows XP in particular) send more
 			 * data than the lengths in the SMB packet would
@@ -494,8 +495,8 @@ checkSMB(struct smb_hdr *smb, __u16 mid, unsigned int total_read)
 			 * data to 512 bytes.
 			 */
 			cERROR(1, "RFC1001 size %u more than 512 bytes larger "
-				  "than SMB for mid=%u", rfclen, smb->Mid);
-			return -EIO;
+				  "than SMB for mid=%u", len, smb->Mid);
+			return 1;
 		}
 	}
 	return 0;
@@ -674,19 +675,4 @@ void cifs_set_oplock_level(struct cifsInodeInfo *cinode, __u32 oplock)
 		cinode->clientCanCacheAll = false;
 		cinode->clientCanCacheRead = false;
 	}
-}
-
-bool
-backup_cred(struct cifs_sb_info *cifs_sb)
-{
-	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_CIFS_BACKUPUID) {
-		if (cifs_sb->mnt_backupuid == current_fsuid())
-			return true;
-	}
-	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_CIFS_BACKUPGID) {
-		if (in_group_p(cifs_sb->mnt_backupgid))
-			return true;
-	}
-
-	return false;
 }

@@ -1,6 +1,7 @@
 #include <linux/device.h>
 #include <linux/pci.h>
 
+#include "base.h"
 #include "ath5k.h"
 #include "reg.h"
 

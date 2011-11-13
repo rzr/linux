@@ -25,7 +25,6 @@
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 
 #include "u_serial.h"
 
@@ -553,8 +552,9 @@ recycle:
 	/* Push from tty to ldisc; without low_latency set this is handled by
 	 * a workqueue, so we won't get callbacks and can hold port_lock
 	 */
-	if (tty && do_push)
+	if (tty && do_push) {
 		tty_flip_buffer_push(tty);
+	}
 
 
 	/* We want our data queue to become empty ASAP, keeping data

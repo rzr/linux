@@ -19,7 +19,6 @@
 extern void mfp_set_groupf(struct device *dev);
 extern void mfp_set_groupc(struct device *dev);
 extern void mfp_set_groupi(struct device *dev);
-extern void mfp_set_groupg(struct device *dev, const char *subname);
-extern void mfp_set_groupd(struct device *dev, const char *subname);
+extern void mfp_set_groupg(struct device *dev);
 
 #endif /* __ASM_ARCH_MFP_H */

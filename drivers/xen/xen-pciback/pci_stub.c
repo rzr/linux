@@ -21,6 +21,8 @@
 #include "conf_space.h"
 #include "conf_space_quirks.h"
 
+#define DRV_NAME	"xen-pciback"
+
 static char *pci_devs_to_hide;
 wait_queue_head_t xen_pcibk_aer_wait_queue;
 /*Add sem for sync AER handling and xen_pcibk remove/reconfigue ops,
@@ -220,8 +222,6 @@ void pcistub_put_pci_dev(struct pci_dev *dev)
 	}
 
 	spin_unlock_irqrestore(&pcistub_devices_lock, flags);
-	if (WARN_ON(!found_psdev))
-		return;
 
 	/*hold this lock for avoiding breaking link between
 	* pcistub and xen_pcibk when AER is in processing
@@ -514,9 +514,12 @@ static void kill_domain_by_device(struct pcistub_device *psdev)
 	int err;
 	char nodename[PCI_NODENAME_MAX];
 
-	BUG_ON(!psdev);
+	if (!psdev)
+		dev_err(&psdev->dev->dev,
+			"device is NULL when do AER recovery/kill_domain\n");
 	snprintf(nodename, PCI_NODENAME_MAX, "/local/domain/0/backend/pci/%d/0",
 		psdev->pdev->xdev->otherend_id);
+	nodename[strlen(nodename)] = '\0';
 
 again:
 	err = xenbus_transaction_start(&xbt);
@@ -602,7 +605,7 @@ static pci_ers_result_t common_process(struct pcistub_device *psdev,
 	if (test_bit(_XEN_PCIF_active,
 		(unsigned long *)&psdev->pdev->sh_info->flags)) {
 		dev_dbg(&psdev->dev->dev,
-			"schedule pci_conf service in " DRV_NAME "\n");
+			"schedule pci_conf service in xen_pcibk\n");
 		xen_pcibk_test_and_schedule_op(psdev->pdev);
 	}
 
@@ -992,7 +995,8 @@ out:
 		err = count;
 	return err;
 }
-static DRIVER_ATTR(new_slot, S_IWUSR, NULL, pcistub_slot_add);
+
+DRIVER_ATTR(new_slot, S_IWUSR, NULL, pcistub_slot_add);
 
 static ssize_t pcistub_slot_remove(struct device_driver *drv, const char *buf,
 				   size_t count)
@@ -1011,7 +1015,8 @@ out:
 		err = count;
 	return err;
 }
-static DRIVER_ATTR(remove_slot, S_IWUSR, NULL, pcistub_slot_remove);
+
+DRIVER_ATTR(remove_slot, S_IWUSR, NULL, pcistub_slot_remove);
 
 static ssize_t pcistub_slot_show(struct device_driver *drv, char *buf)
 {
@@ -1034,7 +1039,8 @@ static ssize_t pcistub_slot_show(struct device_driver *drv, char *buf)
 
 	return count;
 }
-static DRIVER_ATTR(slots, S_IRUSR, pcistub_slot_show, NULL);
+
+DRIVER_ATTR(slots, S_IRUSR, pcistub_slot_show, NULL);
 
 static ssize_t pcistub_irq_handler_show(struct device_driver *drv, char *buf)
 {
@@ -1063,7 +1069,8 @@ static ssize_t pcistub_irq_handler_show(struct device_driver *drv, char *buf)
 	spin_unlock_irqrestore(&pcistub_devices_lock, flags);
 	return count;
 }
-static DRIVER_ATTR(irq_handlers, S_IRUSR, pcistub_irq_handler_show, NULL);
+
+DRIVER_ATTR(irq_handlers, S_IRUSR, pcistub_irq_handler_show, NULL);
 
 static ssize_t pcistub_irq_handler_switch(struct device_driver *drv,
 					  const char *buf,
@@ -1099,8 +1106,7 @@ out:
 		err = count;
 	return err;
 }
-static DRIVER_ATTR(irq_handler_state, S_IWUSR, NULL,
-		   pcistub_irq_handler_switch);
+DRIVER_ATTR(irq_handler_state, S_IWUSR, NULL, pcistub_irq_handler_switch);
 
 static ssize_t pcistub_quirk_add(struct device_driver *drv, const char *buf,
 				 size_t count)
@@ -1164,8 +1170,8 @@ out:
 
 	return count;
 }
-static DRIVER_ATTR(quirks, S_IRUSR | S_IWUSR, pcistub_quirk_show,
-		   pcistub_quirk_add);
+
+DRIVER_ATTR(quirks, S_IRUSR | S_IWUSR, pcistub_quirk_show, pcistub_quirk_add);
 
 static ssize_t permissive_add(struct device_driver *drv, const char *buf,
 			      size_t count)
@@ -1230,8 +1236,8 @@ static ssize_t permissive_show(struct device_driver *drv, char *buf)
 	spin_unlock_irqrestore(&pcistub_devices_lock, flags);
 	return count;
 }
-static DRIVER_ATTR(permissive, S_IRUSR | S_IWUSR, permissive_show,
-		   permissive_add);
+
+DRIVER_ATTR(permissive, S_IRUSR | S_IWUSR, permissive_show, permissive_add);
 
 static void pcistub_exit(void)
 {
@@ -1368,4 +1374,3 @@ module_init(xen_pcibk_init);
 module_exit(xen_pcibk_cleanup);
 
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_ALIAS("xen-backend:pci");

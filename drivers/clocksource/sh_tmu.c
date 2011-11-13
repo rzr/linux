@@ -31,7 +31,6 @@
 #include <linux/clockchips.h>
 #include <linux/sh_timer.h>
 #include <linux/slab.h>
-#include <linux/module.h>
 
 struct sh_tmu_priv {
 	void __iomem *mapbase;

@@ -54,35 +54,12 @@ static atomic_t ticks;
 static inline void bcm47xx_wdt_hw_start(void)
 {
 	/* this is 2,5s on 100Mhz clock  and 2s on 133 Mhz */
-	switch (bcm47xx_bus_type) {
-#ifdef CONFIG_BCM47XX_SSB
-	case BCM47XX_BUS_TYPE_SSB:
-		ssb_watchdog_timer_set(&bcm47xx_bus.ssb, 0xfffffff);
-		break;
-#endif
-#ifdef CONFIG_BCM47XX_BCMA
-	case BCM47XX_BUS_TYPE_BCMA:
-		bcma_chipco_watchdog_timer_set(&bcm47xx_bus.bcma.bus.drv_cc,
-					       0xfffffff);
-		break;
-#endif
-	}
+	ssb_watchdog_timer_set(&ssb_bcm47xx, 0xfffffff);
 }
 
 static inline int bcm47xx_wdt_hw_stop(void)
 {
-	switch (bcm47xx_bus_type) {
-#ifdef CONFIG_BCM47XX_SSB
-	case BCM47XX_BUS_TYPE_SSB:
-		return ssb_watchdog_timer_set(&bcm47xx_bus.ssb, 0);
-#endif
-#ifdef CONFIG_BCM47XX_BCMA
-	case BCM47XX_BUS_TYPE_BCMA:
-		bcma_chipco_watchdog_timer_set(&bcm47xx_bus.bcma.bus.drv_cc, 0);
-		return 0;
-#endif
-	}
-	return -EINVAL;
+	return ssb_watchdog_timer_set(&ssb_bcm47xx, 0);
 }
 
 static void bcm47xx_timer_tick(unsigned long unused)

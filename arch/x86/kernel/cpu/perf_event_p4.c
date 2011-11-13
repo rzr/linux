@@ -7,13 +7,9 @@
  *  For licencing details see kernel-base/COPYING
  */
 
-#include <linux/perf_event.h>
+#ifdef CONFIG_CPU_SUP_INTEL
 
 #include <asm/perf_event_p4.h>
-#include <asm/hardirq.h>
-#include <asm/apic.h>
-
-#include "perf_event.h"
 
 #define P4_CNTR_LIMIT 3
 /*
@@ -1307,7 +1303,7 @@ static __initconst const struct x86_pmu p4_pmu = {
 	.perfctr_second_write	= 1,
 };
 
-__init int p4_pmu_init(void)
+static __init int p4_pmu_init(void)
 {
 	unsigned int low, high;
 
@@ -1330,3 +1326,5 @@ __init int p4_pmu_init(void)
 
 	return 0;
 }
+
+#endif /* CONFIG_CPU_SUP_INTEL */

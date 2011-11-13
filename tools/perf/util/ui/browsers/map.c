@@ -1,6 +1,5 @@
 #include "../libslang.h"
 #include <elf.h>
-#include <newt.h>
 #include <inttypes.h>
 #include <sys/ttydefaults.h>
 #include <ctype.h>
@@ -109,8 +108,11 @@ static int map_browser__run(struct map_browser *self)
 			     verbose ? "" : "restart with -v to use") < 0)
 		return -1;
 
+	if (verbose)
+		ui_browser__add_exit_key(&self->b, '/');
+
 	while (1) {
-		key = ui_browser__run(&self->b, 0);
+		key = ui_browser__run(&self->b);
 
 		if (verbose && key == '/')
 			map_browser__search(self);

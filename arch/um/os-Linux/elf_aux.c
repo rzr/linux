@@ -12,6 +12,7 @@
 #include "init.h"
 #include "elf_user.h"
 #include "mem_user.h"
+#include <kern_constants.h>
 
 typedef Elf32_auxv_t elf_auxv_t;
 

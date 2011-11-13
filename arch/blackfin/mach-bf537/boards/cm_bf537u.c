@@ -9,7 +9,6 @@
 
 #include <linux/device.h>
 #include <linux/etherdevice.h>
-#include <linux/export.h>
 #include <linux/platform_device.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
@@ -307,13 +306,8 @@ static struct resource bfin_uart0_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start = IRQ_UART0_TX,
-		.end = IRQ_UART0_TX,
-		.flags = IORESOURCE_IRQ,
-	},
-	{
 		.start = IRQ_UART0_RX,
-		.end = IRQ_UART0_RX,
+		.end = IRQ_UART0_RX+1,
 		.flags = IORESOURCE_IRQ,
 	},
 	{
@@ -355,13 +349,8 @@ static struct resource bfin_uart1_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start = IRQ_UART1_TX,
-		.end = IRQ_UART1_TX,
-		.flags = IORESOURCE_IRQ,
-	},
-	{
 		.start = IRQ_UART1_RX,
-		.end = IRQ_UART1_RX,
+		.end = IRQ_UART1_RX+1,
 		.flags = IORESOURCE_IRQ,
 	},
 	{
@@ -581,7 +570,7 @@ static struct platform_device bfin_mac_device = {
 
 static struct pata_platform_info bfin_pata_platform_data = {
 	.ioport_shift = 2,
-	.irq_type = IRQF_TRIGGER_HIGH,
+	.irq_type = IRQF_TRIGGER_HIGH | IRQF_DISABLED,
 };
 
 static struct resource bfin_pata_resources[] = {

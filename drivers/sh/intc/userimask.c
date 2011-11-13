@@ -13,7 +13,6 @@
 #include <linux/sysdev.h>
 #include <linux/init.h>
 #include <linux/io.h>
-#include <linux/stat.h>
 #include <asm/sizes.h>
 #include "internals.h"
 

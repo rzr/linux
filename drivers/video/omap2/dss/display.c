@@ -45,12 +45,13 @@ static ssize_t display_enabled_store(struct device *dev,
 		const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int r;
-	bool enabled;
+	int r, enabled;
 
-	r = strtobool(buf, &enabled);
+	r = kstrtoint(buf, 0, &enabled);
 	if (r)
 		return r;
+
+	enabled = !!enabled;
 
 	if (enabled != (dssdev->state != OMAP_DSS_DISPLAY_DISABLED)) {
 		if (enabled) {
@@ -78,15 +79,16 @@ static ssize_t display_tear_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int r;
-	bool te;
+	int te, r;
 
 	if (!dssdev->driver->enable_te || !dssdev->driver->get_te)
 		return -ENOENT;
 
-	r = strtobool(buf, &te);
+	r = kstrtoint(buf, 0, &te);
 	if (r)
 		return r;
+
+	te = !!te;
 
 	r = dssdev->driver->enable_te(dssdev, te);
 	if (r)
@@ -193,15 +195,16 @@ static ssize_t display_mirror_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int r;
-	bool mirror;
+	int mirror, r;
 
 	if (!dssdev->driver->set_mirror || !dssdev->driver->get_mirror)
 		return -ENOENT;
 
-	r = strtobool(buf, &mirror);
+	r = kstrtoint(buf, 0, &mirror);
 	if (r)
 		return r;
+
+	mirror = !!mirror;
 
 	r = dssdev->driver->set_mirror(dssdev, mirror);
 	if (r)
@@ -299,12 +302,8 @@ int omapdss_default_get_recommended_bpp(struct omap_dss_device *dssdev)
 			return 16;
 
 	case OMAP_DISPLAY_TYPE_DBI:
-		if (dssdev->ctrl.pixel_size == 24)
-			return 24;
-		else
-			return 16;
 	case OMAP_DISPLAY_TYPE_DSI:
-		if (dsi_get_pixel_size(dssdev->panel.dsi_pix_fmt) > 16)
+		if (dssdev->ctrl.pixel_size == 24)
 			return 24;
 		else
 			return 16;
@@ -343,10 +342,8 @@ bool dss_use_replication(struct omap_dss_device *dssdev,
 		bpp = 24;
 		break;
 	case OMAP_DISPLAY_TYPE_DBI:
-		bpp = dssdev->ctrl.pixel_size;
-		break;
 	case OMAP_DISPLAY_TYPE_DSI:
-		bpp = dsi_get_pixel_size(dssdev->panel.dsi_pix_fmt);
+		bpp = dssdev->ctrl.pixel_size;
 		break;
 	default:
 		BUG();

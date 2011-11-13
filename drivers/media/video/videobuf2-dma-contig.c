@@ -24,7 +24,7 @@ struct vb2_dc_conf {
 struct vb2_dc_buf {
 	struct vb2_dc_conf		*conf;
 	void				*vaddr;
-	dma_addr_t			dma_addr;
+	dma_addr_t			paddr;
 	unsigned long			size;
 	struct vm_area_struct		*vma;
 	atomic_t			refcount;
@@ -42,7 +42,7 @@ static void *vb2_dma_contig_alloc(void *alloc_ctx, unsigned long size)
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
 
-	buf->vaddr = dma_alloc_coherent(conf->dev, size, &buf->dma_addr,
+	buf->vaddr = dma_alloc_coherent(conf->dev, size, &buf->paddr,
 					GFP_KERNEL);
 	if (!buf->vaddr) {
 		dev_err(conf->dev, "dma_alloc_coherent of size %ld failed\n",
@@ -69,7 +69,7 @@ static void vb2_dma_contig_put(void *buf_priv)
 
 	if (atomic_dec_and_test(&buf->refcount)) {
 		dma_free_coherent(buf->conf->dev, buf->size, buf->vaddr,
-				  buf->dma_addr);
+				  buf->paddr);
 		kfree(buf);
 	}
 }
@@ -78,7 +78,7 @@ static void *vb2_dma_contig_cookie(void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 
-	return &buf->dma_addr;
+	return &buf->paddr;
 }
 
 static void *vb2_dma_contig_vaddr(void *buf_priv)
@@ -106,7 +106,7 @@ static int vb2_dma_contig_mmap(void *buf_priv, struct vm_area_struct *vma)
 		return -EINVAL;
 	}
 
-	return vb2_mmap_pfn_range(vma, buf->dma_addr, buf->size,
+	return vb2_mmap_pfn_range(vma, buf->paddr, buf->size,
 				  &vb2_common_vm_ops, &buf->handler);
 }
 
@@ -115,14 +115,14 @@ static void *vb2_dma_contig_get_userptr(void *alloc_ctx, unsigned long vaddr,
 {
 	struct vb2_dc_buf *buf;
 	struct vm_area_struct *vma;
-	dma_addr_t dma_addr = 0;
+	dma_addr_t paddr = 0;
 	int ret;
 
 	buf = kzalloc(sizeof *buf, GFP_KERNEL);
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
 
-	ret = vb2_get_contig_userptr(vaddr, size, &vma, &dma_addr);
+	ret = vb2_get_contig_userptr(vaddr, size, &vma, &paddr);
 	if (ret) {
 		printk(KERN_ERR "Failed acquiring VMA for vaddr 0x%08lx\n",
 				vaddr);
@@ -131,7 +131,7 @@ static void *vb2_dma_contig_get_userptr(void *alloc_ctx, unsigned long vaddr,
 	}
 
 	buf->size = size;
-	buf->dma_addr = dma_addr;
+	buf->paddr = paddr;
 	buf->vma = vma;
 
 	return buf;

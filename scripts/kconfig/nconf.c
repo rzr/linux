@@ -182,6 +182,8 @@ setmod_text[] = N_(
 "This feature depends on another which\n"
 "has been configured as a module.\n"
 "As a result, this feature will be built as a module."),
+nohelp_text[] = N_(
+"There is no help available for this option.\n"),
 load_config_text[] = N_(
 "Enter the name of the configuration file you wish to load.\n"
 "Accept the name shown to restore the configuration you\n"
@@ -277,9 +279,6 @@ static int items_num;
 static int global_exit;
 /* the currently selected button */
 const char *current_instructions = menu_instructions;
-
-static char *dialog_input_result;
-static int dialog_input_result_len;
 
 static void conf(struct menu *menu);
 static void conf_choice(struct menu *menu);
@@ -696,6 +695,7 @@ static void search_conf(void)
 {
 	struct symbol **sym_arr;
 	struct gstr res;
+	char dialog_input_result[100];
 	char *dialog_input;
 	int dres;
 again:
@@ -703,7 +703,7 @@ again:
 			_("Search Configuration Parameter"),
 			_("Enter " CONFIG_ " (sub)string to search for "
 				"(with or without \"" CONFIG_ "\")"),
-			"", &dialog_input_result, &dialog_input_result_len);
+			"", dialog_input_result, 99);
 	switch (dres) {
 	case 0:
 		break;
@@ -1348,6 +1348,7 @@ static void conf_choice(struct menu *menu)
 static void conf_string(struct menu *menu)
 {
 	const char *prompt = menu_get_prompt(menu);
+	char dialog_input_result[256];
 
 	while (1) {
 		int res;
@@ -1370,8 +1371,8 @@ static void conf_string(struct menu *menu)
 				prompt ? _(prompt) : _("Main Menu"),
 				heading,
 				sym_get_string_value(menu->sym),
-				&dialog_input_result,
-				&dialog_input_result_len);
+				dialog_input_result,
+				sizeof(dialog_input_result));
 		switch (res) {
 		case 0:
 			if (sym_set_string_value(menu->sym,
@@ -1391,13 +1392,14 @@ static void conf_string(struct menu *menu)
 
 static void conf_load(void)
 {
+	char dialog_input_result[256];
 	while (1) {
 		int res;
 		res = dialog_inputbox(main_window,
 				NULL, load_config_text,
 				filename,
-				&dialog_input_result,
-				&dialog_input_result_len);
+				dialog_input_result,
+				sizeof(dialog_input_result));
 		switch (res) {
 		case 0:
 			if (!dialog_input_result[0])
@@ -1422,13 +1424,14 @@ static void conf_load(void)
 
 static void conf_save(void)
 {
+	char dialog_input_result[256];
 	while (1) {
 		int res;
 		res = dialog_inputbox(main_window,
 				NULL, save_config_text,
 				filename,
-				&dialog_input_result,
-				&dialog_input_result_len);
+				dialog_input_result,
+				sizeof(dialog_input_result));
 		switch (res) {
 		case 0:
 			if (!dialog_input_result[0])

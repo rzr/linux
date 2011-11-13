@@ -34,7 +34,6 @@
 #include <linux/types.h>
 #include <linux/rbtree.h>
 #include <linux/bitops.h>
-#include <linux/export.h>
 
 #include "rds.h"
 

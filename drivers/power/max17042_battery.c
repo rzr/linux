@@ -23,7 +23,6 @@
  */
 
 #include <linux/init.h>
-#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/mod_devicetable.h>

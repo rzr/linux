@@ -10,7 +10,8 @@
 
 #include "lkc.h"
 
-static const char nohelp_text[] = "There is no help available for this option.";
+static const char nohelp_text[] = N_(
+	"There is no help available for this option.\n");
 
 struct menu rootmenu;
 static struct menu **last_entry_ptr;
@@ -594,14 +595,15 @@ struct gstr get_relations_str(struct symbol **sym_arr)
 void menu_get_ext_help(struct menu *menu, struct gstr *help)
 {
 	struct symbol *sym = menu->sym;
-	const char *help_text = nohelp_text;
 
 	if (menu_has_help(menu)) {
 		if (sym->name)
 			str_printf(help, "%s%s:\n\n", CONFIG_, sym->name);
-		help_text = menu_get_help(menu);
+		str_append(help, _(menu_get_help(menu)));
+		str_append(help, "\n");
+	} else {
+		str_append(help, nohelp_text);
 	}
-	str_printf(help, "%s\n", _(help_text));
 	if (sym)
 		get_symbol_str(help, sym);
 }

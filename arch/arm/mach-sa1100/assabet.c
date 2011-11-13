@@ -301,7 +301,8 @@ static void __init get_assabet_scr(void)
 }
 
 static void __init
-fixup_assabet(struct tag *tags, char **cmdline, struct meminfo *mi)
+fixup_assabet(struct machine_desc *desc, struct tag *tags,
+	      char **cmdline, struct meminfo *mi)
 {
 	/* This must be done before any call to machine_has_neponset() */
 	map_sa1100_gpio_regs();
@@ -446,7 +447,7 @@ static void __init assabet_map_io(void)
 
 
 MACHINE_START(ASSABET, "Intel-Assabet")
-	.atag_offset	= 0x100,
+	.boot_params	= 0xc0000100,
 	.fixup		= fixup_assabet,
 	.map_io		= assabet_map_io,
 	.init_irq	= sa1100_init_irq,

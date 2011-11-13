@@ -59,7 +59,6 @@
 #include <linux/idr.h>
 #include <linux/kref.h>
 #include <linux/net.h>
-#include <linux/export.h>
 #include <net/tcp.h>
 
 #include <asm/uaccess.h>

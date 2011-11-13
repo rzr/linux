@@ -31,7 +31,6 @@
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
 #include <asm/irq.h>
-#include <asm/page.h>
 #include <asm/setup.h>
 #include <mach/collie.h>
 

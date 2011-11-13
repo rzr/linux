@@ -24,7 +24,6 @@
 
 #include <linux/kernel.h>
 #include <linux/dma-mapping.h>
-#include <linux/export.h>
 #include <linux/vmalloc.h>
 #include <linux/clk.h>
 #include <linux/io.h>
@@ -310,9 +309,9 @@ static void rfbi_transfer_area(struct omap_dss_device *dssdev, u16 width,
 
 	DSSDBG("rfbi_transfer_area %dx%d\n", width, height);
 
-	dispc_mgr_set_lcd_size(dssdev->manager->id, width, height);
+	dispc_set_lcd_size(dssdev->manager->id, width, height);
 
-	dispc_mgr_enable(dssdev->manager->id, true);
+	dispc_enable_channel(dssdev->manager->id, true);
 
 	rfbi.framedone_callback = callback;
 	rfbi.framedone_callback_data = data;
@@ -784,8 +783,10 @@ int omap_rfbi_prepare_update(struct omap_dss_device *dssdev,
 	if (*w == 0 || *h == 0)
 		return -EINVAL;
 
-	dss_setup_partial_planes(dssdev, x, y, w, h, true);
-	dispc_mgr_set_lcd_size(dssdev->manager->id, *w, *h);
+	if (dssdev->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
+		dss_setup_partial_planes(dssdev, x, y, w, h, true);
+		dispc_set_lcd_size(dssdev->manager->id, *w, *h);
+	}
 
 	return 0;
 }
@@ -795,7 +796,22 @@ int omap_rfbi_update(struct omap_dss_device *dssdev,
 		u16 x, u16 y, u16 w, u16 h,
 		void (*callback)(void *), void *data)
 {
-	rfbi_transfer_area(dssdev, w, h, callback, data);
+	if (dssdev->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
+		rfbi_transfer_area(dssdev, w, h, callback, data);
+	} else {
+		struct omap_overlay *ovl;
+		void __iomem *addr;
+		int scr_width;
+
+		ovl = dssdev->manager->overlays[0];
+		scr_width = ovl->info.screen_width;
+		addr = ovl->info.vaddr;
+
+		omap_rfbi_write_pixels(addr, scr_width, x, y, w, h);
+
+		callback(data);
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL(omap_rfbi_update);
@@ -844,11 +860,6 @@ int omapdss_rfbi_display_enable(struct omap_dss_device *dssdev)
 {
 	int r;
 
-	if (dssdev->manager == NULL) {
-		DSSERR("failed to enable display: no manager\n");
-		return -ENODEV;
-	}
-
 	r = rfbi_runtime_get();
 	if (r)
 		return r;
@@ -866,13 +877,13 @@ int omapdss_rfbi_display_enable(struct omap_dss_device *dssdev)
 		goto err1;
 	}
 
-	dispc_mgr_set_lcd_display_type(dssdev->manager->id,
+	dispc_set_lcd_display_type(dssdev->manager->id,
 			OMAP_DSS_LCD_DISPLAY_TFT);
 
-	dispc_mgr_set_io_pad_mode(DSS_IO_PAD_MODE_RFBI);
-	dispc_mgr_enable_stallmode(dssdev->manager->id, true);
+	dispc_set_parallel_interface_mode(dssdev->manager->id,
+			OMAP_DSS_PARALLELMODE_RFBI);
 
-	dispc_mgr_set_tft_data_lines(dssdev->manager->id, dssdev->ctrl.pixel_size);
+	dispc_set_tft_data_lines(dssdev->manager->id, dssdev->ctrl.pixel_size);
 
 	rfbi_configure(dssdev->phy.rfbi.channel,
 			       dssdev->ctrl.pixel_size,
@@ -941,7 +952,10 @@ static int omap_rfbihw_probe(struct platform_device *pdev)
 
 	msleep(10);
 
-	clk = clk_get(&pdev->dev, "ick");
+	if (cpu_is_omap24xx() || cpu_is_omap34xx() || cpu_is_omap3630())
+		clk = dss_get_ick();
+	else
+		clk = clk_get(&pdev->dev, "ick");
 	if (IS_ERR(clk)) {
 		DSSERR("can't get ick\n");
 		r = PTR_ERR(clk);

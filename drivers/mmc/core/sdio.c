@@ -111,8 +111,8 @@ static int sdio_read_cccr(struct mmc_card *card)
 
 	cccr_vsn = data & 0x0f;
 
-	if (cccr_vsn > SDIO_CCCR_REV_3_00) {
-		pr_err("%s: unrecognised CCCR structure version %d\n",
+	if (cccr_vsn > SDIO_CCCR_REV_1_20) {
+		printk(KERN_ERR "%s: unrecognised CCCR structure version %d\n",
 			mmc_hostname(card->host), cccr_vsn);
 		return -EINVAL;
 	}
@@ -408,6 +408,8 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 		 */
 		if (oldcard)
 			oldcard->rca = card->rca;
+
+		mmc_set_bus_mode(host, MMC_BUSMODE_PUSHPULL);
 	}
 
 	/*
@@ -777,7 +779,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 	 * support.
 	 */
 	if (ocr & 0x7F) {
-		pr_warning("%s: card claims to support voltages "
+		printk(KERN_WARNING "%s: card claims to support voltages "
 		       "below the defined range. These will be ignored.\n",
 		       mmc_hostname(host));
 		ocr &= ~0x7F;
@@ -874,7 +876,7 @@ remove:
 err:
 	mmc_detach_bus(host);
 
-	pr_err("%s: error %d whilst initialising SDIO card\n",
+	printk(KERN_ERR "%s: error %d whilst initialising SDIO card\n",
 		mmc_hostname(host), err);
 
 	return err;

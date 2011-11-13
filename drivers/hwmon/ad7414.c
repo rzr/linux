@@ -58,9 +58,10 @@ static inline int ad7414_temp_from_reg(s16 reg)
 
 static inline int ad7414_read(struct i2c_client *client, u8 reg)
 {
-	if (reg == AD7414_REG_TEMP)
-		return i2c_smbus_read_word_swapped(client, reg);
-	else
+	if (reg == AD7414_REG_TEMP) {
+		int value = i2c_smbus_read_word_data(client, reg);
+		return (value < 0) ? value : swab16(value);
+	} else
 		return i2c_smbus_read_byte_data(client, reg);
 }
 

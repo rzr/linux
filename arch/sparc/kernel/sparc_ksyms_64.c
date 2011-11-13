@@ -5,7 +5,7 @@
  * Copyright (C) 1999 Jakub Jelinek (jj@ultra.linux.cz)
  */
 
-#include <linux/export.h>
+#include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/init.h>
 #include <linux/bitops.h>

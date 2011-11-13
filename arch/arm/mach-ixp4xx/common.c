@@ -28,7 +28,6 @@
 #include <linux/clocksource.h>
 #include <linux/clockchips.h>
 #include <linux/io.h>
-#include <linux/export.h>
 
 #include <mach/udc.h>
 #include <mach/hardware.h>

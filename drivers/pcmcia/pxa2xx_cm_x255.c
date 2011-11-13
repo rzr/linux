@@ -14,7 +14,6 @@
 #include <linux/irq.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <linux/export.h>
 
 #include <asm/mach-types.h>
 

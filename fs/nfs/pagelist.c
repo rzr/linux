@@ -18,7 +18,6 @@
 #include <linux/nfs_page.h>
 #include <linux/nfs_fs.h>
 #include <linux/nfs_mount.h>
-#include <linux/export.h>
 
 #include "internal.h"
 #include "pnfs.h"
@@ -42,7 +41,7 @@ nfs_page_free(struct nfs_page *p)
 
 /**
  * nfs_create_request - Create an NFS read/write request.
- * @ctx: open context to use
+ * @file: file descriptor to use
  * @inode: inode to which the request is attached
  * @page: page to write
  * @offset: starting offset within the page for the write

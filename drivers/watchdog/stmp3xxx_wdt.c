@@ -14,7 +14,6 @@
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
-#include <linux/module.h>
 
 #include <mach/platform.h>
 #include <mach/regs-rtc.h>

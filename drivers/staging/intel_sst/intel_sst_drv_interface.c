@@ -33,7 +33,6 @@
 #include <linux/fs.h>
 #include <linux/firmware.h>
 #include <linux/pm_runtime.h>
-#include <linux/export.h>
 #include "intel_sst.h"
 #include "intel_sst_ioctl.h"
 #include "intel_sst_fw_ipc.h"

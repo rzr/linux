@@ -61,7 +61,14 @@ _ENTRY(_start);
 	 * of abatron_pteptrs
 	 */
 	nop
-	mr	r31,r3		/* save device tree ptr */
+/*
+ * Save parameters we are passed
+ */
+	mr	r31,r3
+	mr	r30,r4
+	mr	r29,r5
+	mr	r28,r6
+	mr	r27,r7
 	li	r24,0		/* CPU number */
 
 	bl	init_cpu_state
@@ -113,8 +120,11 @@ _ENTRY(_start);
 /*
  * Decide what sort of machine this is and initialize the MMU.
  */
-	li	r3,0
-	mr	r4,r31
+	mr	r3,r31
+	mr	r4,r30
+	mr	r5,r29
+	mr	r6,r28
+	mr	r7,r27
 	bl	machine_init
 	bl	MMU_init
 

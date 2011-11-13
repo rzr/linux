@@ -9,7 +9,6 @@
  */
 
 #include <linux/suspend.h>
-#include <linux/export.h>
 #include <linux/smp.h>
 
 #include <asm/pgtable.h>

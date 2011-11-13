@@ -20,7 +20,6 @@
 #include <linux/sysdev.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>
-#include <linux/dma-mapping.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -42,7 +41,6 @@
 #include <plat/keypad-core.h>
 #include <plat/sdhci.h>
 #include <plat/reset.h>
-#include <plat/tv-core.h>
 
 /* Initial IO mappings */
 
@@ -121,7 +119,6 @@ static void s5pv210_sw_reset(void)
 void __init s5pv210_map_io(void)
 {
 	iotable_init(s5pv210_iodesc, ARRAY_SIZE(s5pv210_iodesc));
-	init_consistent_dma_size(14 << 20);
 
 	/* initialise device information early */
 	s5pv210_default_sdhci0();
@@ -146,9 +143,6 @@ void __init s5pv210_map_io(void)
 
 	/* Use s5pv210-keypad instead of samsung-keypad */
 	samsung_keypad_setname("s5pv210-keypad");
-
-	/* setup TV devices */
-	s5p_hdmi_setname("s5pv210-hdmi");
 }
 
 void __init s5pv210_init_clocks(int xtal)

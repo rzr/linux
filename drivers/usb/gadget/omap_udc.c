@@ -10,6 +10,15 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #undef	DEBUG
@@ -157,14 +166,15 @@ static int omap_ep_enable(struct usb_ep *_ep,
 	if (!_ep || !desc || ep->desc
 			|| desc->bDescriptorType != USB_DT_ENDPOINT
 			|| ep->bEndpointAddress != desc->bEndpointAddress
-			|| ep->maxpacket < usb_endpoint_maxp(desc)) {
+			|| ep->maxpacket < le16_to_cpu
+						(desc->wMaxPacketSize)) {
 		DBG("%s, bad ep or descriptor\n", __func__);
 		return -EINVAL;
 	}
-	maxp = usb_endpoint_maxp(desc);
+	maxp = le16_to_cpu (desc->wMaxPacketSize);
 	if ((desc->bmAttributes == USB_ENDPOINT_XFER_BULK
 				&& maxp != ep->maxpacket)
-			|| usb_endpoint_maxp(desc) > ep->maxpacket
+			|| le16_to_cpu(desc->wMaxPacketSize) > ep->maxpacket
 			|| !desc->wMaxPacketSize) {
 		DBG("%s, bad %s maxpacket\n", __func__, _ep->name);
 		return -ERANGE;
@@ -2958,7 +2968,7 @@ known:
 	}
 #ifdef	USE_ISO
 	status = request_irq(pdev->resource[3].start, omap_udc_iso_irq,
-			0, "omap_udc iso", udc);
+			IRQF_DISABLED, "omap_udc iso", udc);
 	if (status != 0) {
 		ERR("can't get irq %d, err %d\n",
 			(int) pdev->resource[3].start, status);

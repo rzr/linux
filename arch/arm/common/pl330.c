@@ -1546,7 +1546,7 @@ int pl330_chan_ctrl(void *ch_id, enum pl330_chan_op op)
 
 		/* Start the next */
 	case PL330_OP_START:
-		if (!_thrd_active(thrd) && !_start(thrd))
+		if (!_start(thrd))
 			ret = -EIO;
 		break;
 

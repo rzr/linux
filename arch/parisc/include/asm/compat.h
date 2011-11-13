@@ -105,8 +105,7 @@ struct compat_statfs {
 	__kernel_fsid_t	f_fsid;
 	s32		f_namelen;
 	s32		f_frsize;
-	s32		f_flags;
-	s32		f_spare[4];
+	s32		f_spare[5];
 };
 
 struct compat_sigcontext {

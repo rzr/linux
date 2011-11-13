@@ -25,9 +25,7 @@
 
 #include <linux/list.h>
 #include <linux/kvm_host.h>
-#include <linux/module.h>
 #include <linux/pci.h>
-#include <linux/stat.h>
 #include <linux/dmar.h>
 #include <linux/iommu.h>
 #include <linux/intel-iommu.h>
@@ -189,8 +187,6 @@ int kvm_assign_device(struct kvm *kvm,
 			goto out_unmap;
 	}
 
-	pdev->dev_flags |= PCI_DEV_FLAGS_ASSIGNED;
-
 	printk(KERN_DEBUG "assign device %x:%x:%x.%x\n",
 		assigned_dev->host_segnr,
 		assigned_dev->host_busnr,
@@ -219,8 +215,6 @@ int kvm_deassign_device(struct kvm *kvm,
 
 	iommu_detach_device(domain, &pdev->dev);
 
-	pdev->dev_flags &= ~PCI_DEV_FLAGS_ASSIGNED;
-
 	printk(KERN_DEBUG "deassign device %x:%x:%x.%x\n",
 		assigned_dev->host_segnr,
 		assigned_dev->host_busnr,
@@ -234,12 +228,12 @@ int kvm_iommu_map_guest(struct kvm *kvm)
 {
 	int r;
 
-	if (!iommu_present(&pci_bus_type)) {
+	if (!iommu_found()) {
 		printk(KERN_ERR "%s: iommu not found\n", __func__);
 		return -ENODEV;
 	}
 
-	kvm->arch.iommu_domain = iommu_domain_alloc(&pci_bus_type);
+	kvm->arch.iommu_domain = iommu_domain_alloc();
 	if (!kvm->arch.iommu_domain)
 		return -ENOMEM;
 

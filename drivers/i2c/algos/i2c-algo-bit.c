@@ -47,8 +47,8 @@
 /* ----- global variables ---------------------------------------------	*/
 
 static int bit_test;	/* see if the line-setting functions work	*/
-module_param(bit_test, int, S_IRUGO);
-MODULE_PARM_DESC(bit_test, "lines testing - 0 off; 1 report; 2 fail if stuck");
+module_param(bit_test, bool, 0);
+MODULE_PARM_DESC(bit_test, "Test the lines of the bus to see if it is stuck");
 
 #ifdef DEBUG
 static int i2c_debug = 1;
@@ -250,9 +250,7 @@ static int test_bus(struct i2c_adapter *i2c_adap)
 	sda = getsda(adap);
 	scl = (adap->getscl == NULL) ? 1 : getscl(adap);
 	if (!scl || !sda) {
-		printk(KERN_WARNING
-		       "%s: bus seems to be busy (scl=%d, sda=%d)\n",
-		       name, scl, sda);
+		printk(KERN_WARNING "%s: bus seems to be busy\n", name);
 		goto bailout;
 	}
 
@@ -443,7 +441,7 @@ static int readbytes(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 					acknak(i2c_adap, 0);
 				dev_err(&i2c_adap->dev, "readbytes: invalid "
 					"block length (%d)\n", inval);
-				return -EPROTO;
+				return -EREMOTEIO;
 			}
 			/* The original count value accounts for the extra
 			   bytes, that is, either 1 for a regular transaction,
@@ -472,7 +470,7 @@ static int readbytes(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
  * reads, writes as well as 10bit-addresses.
  * returns:
  *  0 everything went okay, the chip ack'ed, or IGNORE_NAK flag was set
- * -x an error occurred (like: -ENXIO if the device did not answer, or
+ * -x an error occurred (like: -EREMOTEIO if the device did not answer, or
  *	-ETIMEDOUT, for example if the lines are stuck...)
  */
 static int bit_doAddress(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
@@ -495,14 +493,14 @@ static int bit_doAddress(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 		if ((ret != 1) && !nak_ok)  {
 			dev_err(&i2c_adap->dev,
 				"died at extended address code\n");
-			return -ENXIO;
+			return -EREMOTEIO;
 		}
 		/* the remaining 8 bit address */
 		ret = i2c_outb(i2c_adap, msg->addr & 0x7f);
 		if ((ret != 1) && !nak_ok) {
 			/* the chip did not ack / xmission error occurred */
 			dev_err(&i2c_adap->dev, "died at 2nd address code\n");
-			return -ENXIO;
+			return -EREMOTEIO;
 		}
 		if (flags & I2C_M_RD) {
 			bit_dbg(3, &i2c_adap->dev, "emitting repeated "
@@ -514,7 +512,7 @@ static int bit_doAddress(struct i2c_adapter *i2c_adap, struct i2c_msg *msg)
 			if ((ret != 1) && !nak_ok) {
 				dev_err(&i2c_adap->dev,
 					"died at repeated address code\n");
-				return -EIO;
+				return -EREMOTEIO;
 			}
 		}
 	} else {		/* normal 7bit address	*/
@@ -572,7 +570,7 @@ static int bit_xfer(struct i2c_adapter *i2c_adap,
 					ret, ret == 1 ? "" : "s");
 			if (ret < pmsg->len) {
 				if (ret >= 0)
-					ret = -EIO;
+					ret = -EREMOTEIO;
 				goto bailout;
 			}
 		} else {
@@ -583,7 +581,7 @@ static int bit_xfer(struct i2c_adapter *i2c_adap,
 					ret, ret == 1 ? "" : "s");
 			if (ret < pmsg->len) {
 				if (ret >= 0)
-					ret = -EIO;
+					ret = -EREMOTEIO;
 				goto bailout;
 			}
 		}
@@ -626,7 +624,7 @@ static int __i2c_bit_add_bus(struct i2c_adapter *adap,
 
 	if (bit_test) {
 		ret = test_bus(adap);
-		if (bit_test >= 2 && ret < 0)
+		if (ret < 0)
 			return -ENODEV;
 	}
 

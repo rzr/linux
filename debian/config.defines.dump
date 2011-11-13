@@ -1,0 +1,611 @@
+[('abi',)]
+abiname: '1'
+
+[('abi', None, 'rt')]
+ignore-changes: ['*']
+
+[('base',)]
+arches: ['alpha', 'amd64', 'armel', 'armhf', 'hppa', 'i386', 'ia64', 'm68k', 'mips', 'mipsel', 'powerpc', 'ppc64', 's390', 's390x', 'sh4', 'sparc', 'sparc64']
+featuresets: ['none', 'rt']
+compiler: 'gcc-4.6'
+
+[('base', 'alpha')]
+kernel-arch: 'alpha'
+featuresets: ['none']
+compiler: 'gcc-4.4'
+
+[('base', 'alpha', 'none')]
+implicit-flavour: True
+flavours: ['alpha-generic', 'alpha-smp', 'alpha-legacy']
+
+[('base', 'amd64')]
+kernel-arch: 'x86'
+featuresets: ['none']
+
+[('base', 'amd64', 'none')]
+implicit-flavour: True
+flavours: ['amd64']
+
+[('base', 'armel')]
+kernel-arch: 'arm'
+featuresets: ['none']
+
+[('base', 'armel', 'none')]
+implicit-flavour: True
+flavours: ['iop32x', 'ixp4xx', 'kirkwood', 'orion5x', 'versatile']
+
+[('base', 'armhf')]
+kernel-arch: 'arm'
+featuresets: ['none']
+
+[('base', 'armhf', 'none')]
+implicit-flavour: True
+flavours: ['mx5', 'omap']
+
+[('base', 'hppa')]
+kernel-arch: 'parisc'
+featuresets: ['none']
+compiler: 'gcc-4.4'
+
+[('base', 'hppa', None, 'parisc64')]
+override-host-type: 'hppa64-linux-gnu'
+cflags: '-fno-cse-follow-jumps'
+
+[('base', 'hppa', None, 'parisc64-smp')]
+override-host-type: 'hppa64-linux-gnu'
+cflags: '-fno-cse-follow-jumps'
+
+[('base', 'hppa', 'none')]
+implicit-flavour: True
+flavours: ['parisc', 'parisc-smp', 'parisc64', 'parisc64-smp']
+
+[('base', 'i386')]
+kernel-arch: 'x86'
+featuresets: ['none']
+
+[('base', 'i386', 'none')]
+implicit-flavour: True
+flavours: ['486', '686-pae', 'amd64']
+
+[('base', 'ia64')]
+kernel-arch: 'ia64'
+featuresets: ['none']
+
+[('base', 'ia64', 'none')]
+implicit-flavour: True
+flavours: ['itanium', 'mckinley']
+
+[('base', 'm68k')]
+kernel-arch: 'm68k'
+featuresets: ['none']
+compiler: 'gcc-4.4'
+
+[('base', 'm68k', 'none')]
+implicit-flavour: True
+flavours: ['amiga', 'atari', 'bvme6000', 'mac', 'mvme147', 'mvme16x']
+
+[('base', 'mips')]
+kernel-arch: 'mips'
+featuresets: ['none']
+
+[('base', 'mips', 'none')]
+implicit-flavour: True
+flavours: ['r4k-ip22', 'r5k-ip32', 'sb1-bcm91250a', 'sb1a-bcm91480b', '4kc-malta', '5kc-malta', 'octeon']
+
+[('base', 'mipsel')]
+kernel-arch: 'mips'
+featuresets: ['none']
+
+[('base', 'mipsel', 'none')]
+implicit-flavour: True
+flavours: ['r5k-cobalt', 'sb1-bcm91250a', 'sb1a-bcm91480b', '4kc-malta', '5kc-malta', 'loongson-2f']
+
+[('base', 'powerpc')]
+kernel-arch: 'powerpc'
+featuresets: ['none']
+
+[('base', 'powerpc', 'none')]
+implicit-flavour: True
+flavours: ['powerpc', 'powerpc-smp', 'powerpc64']
+
+[('base', 'ppc64')]
+kernel-arch: 'powerpc'
+featuresets: ['none']
+
+[('base', 'ppc64', 'none')]
+implicit-flavour: True
+flavours: ['powerpc64']
+
+[('base', 's390')]
+kernel-arch: 's390'
+featuresets: ['none']
+
+[('base', 's390', None, 's390-tape')]
+modules: False
+
+[('base', 's390', None, 's390x-tape')]
+modules: False
+
+[('base', 's390', 'none')]
+implicit-flavour: True
+flavours: ['s390x', 's390x-tape']
+
+[('base', 's390x')]
+kernel-arch: 's390'
+featuresets: ['none']
+
+[('base', 's390x', None, 's390x-tape')]
+modules: False
+
+[('base', 's390x', 'none')]
+implicit-flavour: True
+flavours: ['s390x', 's390x-tape']
+
+[('base', 'sh4')]
+kernel-arch: 'sh'
+featuresets: ['none']
+
+[('base', 'sh4', 'none')]
+implicit-flavour: True
+flavours: ['sh7751r', 'sh7785lcr']
+
+[('base', 'sparc')]
+kernel-arch: 'sparc'
+featuresets: ['none']
+
+[('base', 'sparc', 'none')]
+implicit-flavour: True
+flavours: ['sparc64', 'sparc64-smp']
+
+[('base', 'sparc64')]
+kernel-arch: 'sparc'
+featuresets: ['none']
+
+[('base', 'sparc64', 'none')]
+implicit-flavour: True
+flavours: ['sparc64', 'sparc64-smp']
+
+[('build', 'armel', None, 'iop32x')]
+image-file: 'arch/arm/boot/zImage'
+
+[('build', 'armel', None, 'ixp4xx')]
+image-file: 'arch/arm/boot/zImage'
+
+[('build', 'armel', None, 'kirkwood')]
+image-file: 'arch/arm/boot/zImage'
+
+[('build', 'armel', None, 'orion5x')]
+image-file: 'arch/arm/boot/zImage'
+
+[('build', 'armhf', None, 'mx5')]
+image-file: 'arch/arm/boot/zImage'
+
+[('build', 'armhf', None, 'omap')]
+image-file: 'arch/arm/boot/zImage'
+
+[('build', 'sh4', None, 'sh7751r')]
+image-file: 'arch/sh/boot/zImage'
+
+[('build', 'sh4', None, 'sh7785lcr')]
+image-file: 'arch/sh/boot/zImage'
+
+[('description',)]
+part-long-up: 'This kernel is not suitable for SMP (multi-processor,\nmulti-core or hyper-threaded) systems.'
+part-long-xen: 'This kernel also runs on a Xen hypervisor.\nIt supports both privileged (dom0) and unprivileged (domU) operation.'
+
+[('description', None, 'rt')]
+part-long-rt: 'This kernel includes the PREEMPT_RT realtime patch set.'
+parts: ['rt']
+part-short-rt: 'PREEMPT_RT'
+
+[('description', 'alpha', None, 'alpha-generic')]
+hardware: 'Alpha'
+hardware-long: 'DEC Alpha systems with extended kernel start address (Wildfire, Titan, Marvel)'
+
+[('description', 'alpha', None, 'alpha-legacy')]
+hardware: 'Alpha Legacy'
+hardware-long: 'DEC Alpha systems with legacy kernel start address'
+
+[('description', 'alpha', None, 'alpha-smp')]
+hardware: 'Alpha SMP'
+hardware-long: 'DEC Alpha SMP systems with extended kernel start address (Wildfire, Titan, Marvel)'
+
+[('description', 'amd64', None, 'amd64')]
+hardware: '64-bit PCs'
+parts: ['xen']
+hardware-long: 'PCs with AMD64 or Intel 64 processors'
+
+[('description', 'armel', None, 'iop32x')]
+hardware: 'IOP32x'
+hardware-long: 'IOP32x based systems (Thecus N2100, etc)'
+
+[('description', 'armel', None, 'ixp4xx')]
+hardware: 'IXP4xx'
+hardware-long: 'IXP4xx based systems (Linksys NSLU2, etc)'
+
+[('description', 'armel', None, 'kirkwood')]
+hardware: 'Marvell Kirkwood'
+hardware-long: 'Marvell Kirkwood based systems (SheevaPlug, QNAP TS-119/TS-219, etc)'
+
+[('description', 'armel', None, 'orion5x')]
+hardware: 'Marvell Orion'
+hardware-long: 'Marvell Orion 5181, 5182 and 5281 based systems (QNAP TS-109/TS-209, etc)'
+
+[('description', 'armel', None, 'versatile')]
+hardware: 'Versatile'
+hardware-long: 'Versatile systems (PB, AB, Qemu)'
+
+[('description', 'armhf', None, 'mx5')]
+hardware: 'Freescale i.MX51'
+hardware-long: 'Support for Freescale i.MX51 family of processors'
+
+[('description', 'armhf', None, 'omap')]
+hardware: 'TI OMAP3+'
+hardware-long: 'Texas Instruments OMAP3 or OMAP4 based systems'
+
+[('description', 'hppa', None, 'parisc')]
+hardware: '32-bit PA-RISC'
+
+[('description', 'hppa', None, 'parisc-smp')]
+hardware: 'multiprocessor 32-bit PA-RISC'
+
+[('description', 'hppa', None, 'parisc64')]
+hardware: '64-bit PA-RISC'
+
+[('description', 'hppa', None, 'parisc64-smp')]
+hardware: 'multiprocessor 64-bit PA-RISC'
+
+[('description', 'i386')]
+part-long-pae: 'This kernel requires PAE (Physical Address Extension).\nThis feature is supported by the Intel Pentium Pro/II/III/4/4M/D, Xeon,\nCore and Atom; AMD Geode NX, Athlon (K7), Duron, Opteron, Sempron,\nTurion or Phenom; Transmeta Efficeon; VIA C7; and some other processors.'
+
+[('description', 'i386', None, '486')]
+hardware: 'older PCs'
+parts: ['up']
+hardware-long: 'PCs with a single processor not supporting PAE'
+
+[('description', 'i386', None, '686-pae')]
+hardware: 'modern PCs'
+parts: ['pae', 'xen']
+hardware-long: 'PCs with one or more processors supporting PAE'
+
+[('description', 'i386', None, 'amd64')]
+hardware: '64-bit PCs'
+parts: ['xen']
+hardware-long: 'PCs with AMD64 or Intel 64 processors'
+
+[('description', 'ia64', None, 'itanium')]
+hardware: 'Itanium'
+
+[('description', 'ia64', None, 'mckinley')]
+hardware: 'Itanium II'
+
+[('description', 'm68k', None, 'amiga')]
+hardware: 'Amiga'
+
+[('description', 'm68k', None, 'atari')]
+hardware: 'Atari'
+
+[('description', 'm68k', None, 'bvme6000')]
+hardware: 'BVM BVME4000 and BVME6000'
+
+[('description', 'm68k', None, 'hp')]
+hardware: 'HP'
+
+[('description', 'm68k', None, 'mac')]
+hardware: 'Macintosh'
+
+[('description', 'm68k', None, 'mvme147')]
+hardware: 'Motorola MVME147'
+
+[('description', 'm68k', None, 'mvme16x')]
+hardware: 'Motorola MVME162/6/7, MVME172/7'
+
+[('description', 'm68k', None, 'q40')]
+hardware: 'Q40 and Q60'
+
+[('description', 'm68k', None, 'sun3')]
+hardware: 'sun3'
+
+[('description', 'mips', None, '4kc-malta')]
+hardware: 'MIPS Malta'
+hardware-long: 'MIPS Malta boards'
+
+[('description', 'mips', None, '5kc-malta')]
+hardware: 'MIPS Malta (64-bit)'
+hardware-long: 'MIPS Malta boards (64-bit)'
+
+[('description', 'mips', None, 'octeon')]
+hardware: 'Octeon'
+hardware-long: 'Cavium Networks Octeon'
+
+[('description', 'mips', None, 'r4k-ip22')]
+hardware: 'SGI IP22'
+hardware-long: 'SGI IP22 systems (Indy, Indigo2)'
+
+[('description', 'mips', None, 'r5k-ip32')]
+hardware: 'SGI IP32'
+hardware-long: 'SGI IP32 systems (O2)'
+
+[('description', 'mips', None, 'sb1-bcm91250a')]
+hardware: 'BCM91250A'
+hardware-long: 'Broadcom BCM91250A systems (aka SWARM)'
+
+[('description', 'mips', None, 'sb1a-bcm91480b')]
+hardware: 'BCM91480B'
+hardware-long: 'Broadcom BCM91480B systems (aka BigSur)'
+
+[('description', 'mipsel', None, '4kc-malta')]
+hardware: 'MIPS Malta'
+hardware-long: 'MIPS Malta boards'
+
+[('description', 'mipsel', None, '5kc-malta')]
+hardware: 'MIPS Malta (64-bit)'
+hardware-long: 'MIPS Malta boards (64-bit)'
+
+[('description', 'mipsel', None, 'loongson-2f')]
+hardware: 'Loongson 2F'
+hardware-long: 'Lemote Loongson 2F systems'
+
+[('description', 'mipsel', None, 'r5k-cobalt')]
+hardware: 'Cobalt'
+hardware-long: 'Cobalt systems (Qube, RaQ, Qube2, RaQ2)'
+
+[('description', 'mipsel', None, 'sb1-bcm91250a')]
+hardware: 'BCM91250A'
+hardware-long: 'Broadcom BCM91250A systems (aka SWARM)'
+
+[('description', 'mipsel', None, 'sb1a-bcm91480b')]
+hardware: 'BCM91480B'
+hardware-long: 'Broadcom BCM91480B systems (aka BigSur)'
+
+[('description', 'powerpc', None, 'powerpc')]
+hardware: 'uniprocessor 32-bit PowerPC'
+
+[('description', 'powerpc', None, 'powerpc-smp')]
+hardware: 'multiprocessor 32-bit PowerPC'
+
+[('description', 'powerpc', None, 'powerpc64')]
+hardware: '64-bit PowerPC'
+
+[('description', 'ppc64', None, 'powerpc64')]
+hardware: '64-bit PowerPC'
+
+[('description', 's390')]
+part-short-tape: 'IPL from tape'
+part-long-tape: 'This kernel has support to IPL (boot) from a tape.'
+part-long-reader: 'This kernel has support to IPL (boot) from a VM reader or DASD device.'
+
+[('description', 's390', None, 's390')]
+hardware: 'IBM S/390'
+parts: ['reader']
+
+[('description', 's390', None, 's390-tape')]
+hardware: 'IBM S/390'
+parts: ['tape']
+
+[('description', 's390', None, 's390x')]
+hardware: 'IBM zSeries'
+parts: ['reader']
+
+[('description', 's390', None, 's390x-tape')]
+hardware: 'IBM zSeries'
+parts: ['tape']
+
+[('description', 's390x')]
+part-short-tape: 'IPL from tape'
+part-long-tape: 'This kernel has support to IPL (boot) from a tape.'
+part-long-reader: 'This kernel has support to IPL (boot) from a VM reader or DASD device.'
+
+[('description', 's390x', None, 's390x')]
+hardware: 'IBM zSeries'
+parts: ['reader']
+
+[('description', 's390x', None, 's390x-tape')]
+hardware: 'IBM zSeries'
+parts: ['tape']
+
+[('description', 'sh4', None, 'sh7751r')]
+hardware: 'sh7751r'
+hardware-long: 'Renesas SH7751R R2D plus board'
+
+[('description', 'sh4', None, 'sh7785lcr')]
+hardware: 'sh7785lcr'
+hardware-long: 'Renesas SH7785 reference board'
+
+[('description', 'sparc', None, 'sparc32')]
+hardware: 'uniprocessor sparc32 (sun4m)'
+
+[('description', 'sparc', None, 'sparc64')]
+hardware: 'uniprocessor 64-bit UltraSPARC'
+
+[('description', 'sparc', None, 'sparc64-smp')]
+hardware: 'multiprocessor 64-bit UltraSPARC'
+
+[('description', 'sparc64', None, 'sparc64')]
+hardware: 'uniprocessor 64-bit UltraSPARC'
+
+[('description', 'sparc64', None, 'sparc64-smp')]
+hardware: 'multiprocessor 64-bit UltraSPARC'
+
+[('featureset-rt', None, '')]
+enabled: 'false'
+
+[('image',)]
+initramfs-generators: ['initramfs-tools', 'initramfs-fallback']
+type: 'plain'
+
+[('image', 'alpha')]
+suggests: 'aboot, fdutils'
+
+[('image', 'amd64')]
+configs: ['kernelarch-x86/config']
+bootloaders: ['grub-pc', 'extlinux', 'lilo']
+
+[('image', 'amd64', None, 'amd64')]
+configs: ['kernelarch-x86/config-arch-64']
+
+[('image', 'armel')]
+suggests: 'fdutils'
+
+[('image', 'armel', None, 'iop32x')]
+check-size: '1441784'
+
+[('image', 'armel', None, 'ixp4xx')]
+check-size: '1441760'
+
+[('image', 'armel', None, 'kirkwood')]
+check-size: '2097080'
+recommends: 'uboot-mkimage'
+
+[('image', 'armel', None, 'orion5x')]
+check-size: '1572792'
+recommends: 'uboot-mkimage'
+
+[('image', 'armhf')]
+suggests: 'fdutils'
+configs: ['armel/config', 'armhf/config']
+
+[('image', 'armhf', None, 'omap')]
+recommends: 'uboot-mkimage'
+
+[('image', 'hppa')]
+suggests: 'palo'
+
+[('image', 'i386')]
+configs: ['kernelarch-x86/config']
+bootloaders: ['grub-pc', 'extlinux', 'lilo']
+
+[('image', 'i386', None, '486')]
+configs: ['kernelarch-x86/config-arch-32']
+
+[('image', 'i386', None, '686-pae')]
+configs: ['kernelarch-x86/config-arch-32']
+recommends: 'libc6-i686'
+
+[('image', 'i386', None, 'amd64')]
+configs: ['kernelarch-x86/config-arch-64']
+recommends: 'libc6-i686'
+
+[('image', 'ia64')]
+suggests: 'fdutils'
+bootloaders: ['elilo']
+
+[('image', 'm68k')]
+suggests: 'vmelilo, fdutils'
+initramfs: False
+
+[('image', 'mips')]
+initramfs: False
+
+[('image', 'mipsel')]
+initramfs: False
+
+[('image', 'mipsel', None, '4kc-malta')]
+configs: ['mips/config.4kc-malta']
+
+[('image', 'mipsel', None, '5kc-malta')]
+configs: ['mips/config.5kc-malta']
+
+[('image', 'mipsel', None, 'sb1-bcm91250a')]
+configs: ['mips/config.sb1-bcm91250a']
+
+[('image', 'mipsel', None, 'sb1a-bcm91480b')]
+configs: ['mips/config.sb1a-bcm91480b']
+
+[('image', 'powerpc')]
+suggests: 'mkvmlinuz'
+
+[('image', 'powerpc', None, 'powerpc-smp')]
+configs: ['powerpc/config.powerpc', 'powerpc/config.powerpc-smp']
+
+[('image', 'ppc64')]
+suggests: 'mkvmlinuz'
+configs: ['powerpc/config']
+
+[('image', 'ppc64', None, 'powerpc64')]
+configs: ['powerpc/config.powerpc64']
+
+[('image', 's390')]
+bootloaders: ['s390-tools']
+
+[('image', 's390', None, 's390-tape')]
+override-localversion: 's390'
+type: 'plain-s390-tape'
+initramfs: False
+
+[('image', 's390', None, 's390x-tape')]
+override-localversion: 's390x'
+type: 'plain-s390-tape'
+initramfs: False
+
+[('image', 's390x')]
+configs: ['s390/config']
+bootloaders: ['s390-tools']
+
+[('image', 's390x', None, 's390x')]
+configs: ['s390/config.s390x']
+
+[('image', 's390x', None, 's390x-tape')]
+configs: ['s390/config.s390x-tape']
+override-localversion: 's390x'
+type: 'plain-s390-tape'
+initramfs: False
+
+[('image', 'sh4')]
+suggests: 'fdutils'
+
+[('image', 'sh4', None, 'sh7785lcr')]
+check-size: '4194304'
+recommends: 'uboot-mkimage'
+
+[('image', 'sparc')]
+suggests: 'silo, fdutils'
+
+[('image', 'sparc', None, 'sparc32')]
+image-postproc: 'sparc32-image-postproc'
+
+[('image', 'sparc64')]
+suggests: 'silo, fdutils'
+configs: ['sparc/config']
+
+[('image', 'sparc64', None, 'sparc64')]
+configs: ['sparc/config.sparc64']
+
+[('image', 'sparc64', None, 'sparc64-smp')]
+configs: ['sparc/config.sparc64-smp']
+
+[('image-dbg', 'amd64')]
+enabled: True
+
+[('image-dbg', 'i386', None, '686-pae')]
+enabled: True
+
+[('relations',)]
+initramfs-fallback: 'linux-initramfs-tool'
+lilo: 'lilo (>= 22.8-8.2~)'
+gcc-4.6: 'gcc-4.6'
+elilo: 'elilo (>= 3.12-3.1~)'
+gcc-4.4: 'gcc-4.4'
+gcc-4.5: 'gcc-4.5'
+s390-tools: 's390-tools (>= 1.8.3-2~)'
+initramfs-tools: 'initramfs-tools (>= 0.99~)'
+
+[('relations', 'hppa')]
+gcc-4.4: 'gcc-4.4, binutils-hppa64, gcc-4.4-hppa64'
+
+[('version',)]
+abiname: '3.1.0-1'
+source: '3.1.1-1'
+
+[('xen', 'amd64', None, 'amd64')]
+flavours: ['amd64']
+dom0-support: True
+
+[('xen', 'i386', None, '686-pae')]
+flavours: ['i386', 'amd64']
+dom0-support: True
+
+[('xen', 'i386', None, 'amd64')]
+flavours: ['amd64']
+dom0-support: True
+

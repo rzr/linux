@@ -51,9 +51,7 @@ static int record_connection(char *host, char *port, char *busid, int rhport)
 	char buff[MAX_BUFF+1];
 	int ret;
 
-	ret = mkdir(VHCI_STATE_PATH, 0700);
-	if (ret < 0)
-		return -1;
+	mkdir(VHCI_STATE_PATH, 0700);
 
 	snprintf(path, PATH_MAX, VHCI_STATE_PATH"/port%d", rhport);
 

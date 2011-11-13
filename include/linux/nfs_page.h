@@ -34,7 +34,6 @@ enum {
 	PG_NEED_COMMIT,
 	PG_NEED_RESCHED,
 	PG_PNFS_COMMIT,
-	PG_PARTIAL_READ_FAILED,
 };
 
 struct nfs_inode;

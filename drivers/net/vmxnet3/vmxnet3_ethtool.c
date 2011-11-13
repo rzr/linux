@@ -558,7 +558,7 @@ out:
 
 static int
 vmxnet3_get_rxnfc(struct net_device *netdev, struct ethtool_rxnfc *info,
-		  u32 *rules)
+		  void *rules)
 {
 	struct vmxnet3_adapter *adapter = netdev_priv(netdev);
 	switch (info->cmd) {

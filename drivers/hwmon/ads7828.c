@@ -74,6 +74,13 @@ static int ads7828_detect(struct i2c_client *client,
 static int ads7828_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id);
 
+/* The ADS7828 returns the 12-bit sample in two bytes,
+	these are read as a word then byte-swapped */
+static u16 ads7828_read_value(struct i2c_client *client, u8 reg)
+{
+	return swab16(i2c_smbus_read_word_data(client, reg));
+}
+
 static inline u8 channel_cmd_byte(int ch)
 {
 	/* cmd byte C2,C1,C0 - see datasheet */
@@ -97,8 +104,7 @@ static struct ads7828_data *ads7828_update_device(struct device *dev)
 
 		for (ch = 0; ch < ADS7828_NCH; ch++) {
 			u8 cmd = channel_cmd_byte(ch);
-			data->adc_input[ch] =
-				i2c_smbus_read_word_swapped(client, cmd);
+			data->adc_input[ch] = ads7828_read_value(client, cmd);
 		}
 		data->last_updated = jiffies;
 		data->valid = 1;
@@ -197,7 +203,7 @@ static int ads7828_detect(struct i2c_client *client,
 	for (ch = 0; ch < ADS7828_NCH; ch++) {
 		u16 in_data;
 		u8 cmd = channel_cmd_byte(ch);
-		in_data = i2c_smbus_read_word_swapped(client, cmd);
+		in_data = ads7828_read_value(client, cmd);
 		if (in_data & 0xF000) {
 			pr_debug("%s : Doesn't look like an ads7828 device\n",
 				 __func__);

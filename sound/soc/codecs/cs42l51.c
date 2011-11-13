@@ -42,6 +42,7 @@ enum master_slave_mode {
 
 struct cs42l51_private {
 	enum snd_soc_control_type control_type;
+	void *control_data;
 	unsigned int mclk;
 	unsigned int audio_mode;	/* The mode (I2S or left-justified) */
 	enum master_slave_mode func;
@@ -56,7 +57,7 @@ struct cs42l51_private {
 static int cs42l51_fill_cache(struct snd_soc_codec *codec)
 {
 	u8 *cache = codec->reg_cache + 1;
-	struct i2c_client *i2c_client = to_i2c_client(codec->dev);
+	struct i2c_client *i2c_client = codec->control_data;
 	s32 length;
 
 	length = i2c_smbus_read_i2c_block_data(i2c_client,
@@ -288,6 +289,7 @@ static int cs42l51_set_dai_fmt(struct snd_soc_dai *codec_dai,
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct cs42l51_private *cs42l51 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
 
 	switch (format & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
@@ -297,7 +299,7 @@ static int cs42l51_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		break;
 	default:
 		dev_err(codec->dev, "invalid DAI format\n");
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
 	switch (format & SND_SOC_DAIFMT_MASTER_MASK) {
@@ -308,11 +310,11 @@ static int cs42l51_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		cs42l51->func = MODE_SLAVE_AUTO;
 		break;
 	default:
-		dev_err(codec->dev, "Unknown master/slave configuration\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 struct cs42l51_ratios {
@@ -518,6 +520,8 @@ static int cs42l51_probe(struct snd_soc_codec *codec)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	int ret, reg;
 
+	codec->control_data = cs42l51->control_data;
+
 	ret = cs42l51_fill_cache(codec);
 	if (ret < 0) {
 		dev_err(codec->dev, "failed to fill register cache\n");
@@ -589,6 +593,7 @@ static int cs42l51_i2c_probe(struct i2c_client *i2c_client,
 	}
 
 	i2c_set_clientdata(i2c_client, cs42l51);
+	cs42l51->control_data = i2c_client;
 	cs42l51->control_type = SND_SOC_I2C;
 
 	ret =  snd_soc_register_codec(&i2c_client->dev,

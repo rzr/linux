@@ -860,25 +860,25 @@ static void __init zeus_init(void)
 
 static struct map_desc zeus_io_desc[] __initdata = {
 	{
-		.virtual = (unsigned long)ZEUS_CPLD_VERSION,
+		.virtual = ZEUS_CPLD_VERSION,
 		.pfn     = __phys_to_pfn(ZEUS_CPLD_VERSION_PHYS),
 		.length  = 0x1000,
 		.type    = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)ZEUS_CPLD_ISA_IRQ,
+		.virtual = ZEUS_CPLD_ISA_IRQ,
 		.pfn     = __phys_to_pfn(ZEUS_CPLD_ISA_IRQ_PHYS),
 		.length  = 0x1000,
 		.type    = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)ZEUS_CPLD_CONTROL,
+		.virtual = ZEUS_CPLD_CONTROL,
 		.pfn     = __phys_to_pfn(ZEUS_CPLD_CONTROL_PHYS),
 		.length  = 0x1000,
 		.type    = MT_DEVICE,
 	},
 	{
-		.virtual = (unsigned long)ZEUS_PC104IO,
+		.virtual = ZEUS_PC104IO,
 		.pfn     = __phys_to_pfn(ZEUS_PC104IO_PHYS),
 		.length  = 0x00800000,
 		.type    = MT_DEVICE,
@@ -904,7 +904,7 @@ static void __init zeus_map_io(void)
 
 MACHINE_START(ARCOM_ZEUS, "Arcom/Eurotech ZEUS")
 	/* Maintainer: Marc Zyngier <maz@misterjones.org> */
-	.atag_offset	= 0x100,
+	.boot_params	= 0xa0000100,
 	.map_io		= zeus_map_io,
 	.nr_irqs	= ZEUS_NR_IRQS,
 	.init_irq	= zeus_init_irq,

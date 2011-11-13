@@ -37,7 +37,6 @@
 
 #include <mach/hardware.h>
 #include <mach/platform.h>
-#include <mach/gpio-lpc32xx.h>
 #include "common.h"
 
 /*
@@ -383,7 +382,7 @@ arch_initcall(lpc32xx_display_uid);
 
 MACHINE_START(PHY3250, "Phytec 3250 board with the LPC3250 Microcontroller")
 	/* Maintainer: Kevin Wells, NXP Semiconductors */
-	.atag_offset	= 0x100,
+	.boot_params	= 0x80000100,
 	.map_io		= lpc32xx_map_io,
 	.init_irq	= lpc32xx_init_irq,
 	.timer		= &lpc32xx_timer,

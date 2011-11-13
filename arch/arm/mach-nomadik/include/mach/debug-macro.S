@@ -10,7 +10,7 @@
  *
 */
 
-		.macro	addruart, rp, rv, tmp
+		.macro	addruart, rp, rv
 		mov	\rp, #0x00100000
 		add	\rp, \rp, #0x000fb000
 		add	\rv, \rp, #0xf0000000	@ virtual base

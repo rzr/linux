@@ -1249,7 +1249,8 @@ static bool dma_filter(struct dma_chan *chan, void *data)
 	return true;
 }
 
-static int data_of_probe(struct platform_device *op)
+static int data_of_probe(struct platform_device *op,
+			 const struct of_device_id *match)
 {
 	struct device_node *of_node = op->dev.of_node;
 	struct device *this_device;
@@ -1400,7 +1401,7 @@ static struct of_device_id data_of_match[] = {
 	{},
 };
 
-static struct platform_driver data_of_driver = {
+static struct of_platform_driver data_of_driver = {
 	.probe		= data_of_probe,
 	.remove		= data_of_remove,
 	.driver		= {
@@ -1416,12 +1417,12 @@ static struct platform_driver data_of_driver = {
 
 static int __init data_init(void)
 {
-	return platform_driver_register(&data_of_driver);
+	return of_register_platform_driver(&data_of_driver);
 }
 
 static void __exit data_exit(void)
 {
-	platform_driver_unregister(&data_of_driver);
+	of_unregister_platform_driver(&data_of_driver);
 }
 
 MODULE_AUTHOR("Ira W. Snyder <iws@ovro.caltech.edu>");

@@ -12,7 +12,6 @@
 #include <linux/notifier.h>
 #include <linux/slab.h>
 #include <linux/err.h>
-#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
@@ -810,7 +809,7 @@ struct ab_family_id {
 	char	*name;
 };
 
-static const struct ab_family_id ids[] __devinitconst = {
+static const struct ab_family_id ids[] __devinitdata = {
 	/* AB3100 */
 	{
 		.id = 0xc0,

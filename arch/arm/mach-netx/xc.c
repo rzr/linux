@@ -23,7 +23,6 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/io.h>
-#include <linux/export.h>
 
 #include <mach/hardware.h>
 #include <mach/irqs.h>

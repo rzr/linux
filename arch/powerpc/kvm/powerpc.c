@@ -21,6 +21,7 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/kvm_host.h>
+#include <linux/module.h>
 #include <linux/vmalloc.h>
 #include <linux/hrtimer.h>
 #include <linux/fs.h>
@@ -38,8 +39,12 @@
 
 int kvm_arch_vcpu_runnable(struct kvm_vcpu *v)
 {
+#ifndef CONFIG_KVM_BOOK3S_64_HV
 	return !(v->arch.shared->msr & MSR_WE) ||
 	       !!(v->arch.pending_exceptions);
+#else
+	return !(v->arch.ceded) || !!(v->arch.pending_exceptions);
+#endif
 }
 
 int kvmppc_kvm_pv(struct kvm_vcpu *vcpu)
@@ -88,31 +93,6 @@ int kvmppc_kvm_pv(struct kvm_vcpu *vcpu)
 	kvmppc_set_gpr(vcpu, 4, r2);
 
 	return r;
-}
-
-int kvmppc_sanity_check(struct kvm_vcpu *vcpu)
-{
-	int r = false;
-
-	/* We have to know what CPU to virtualize */
-	if (!vcpu->arch.pvr)
-		goto out;
-
-	/* PAPR only works with book3s_64 */
-	if ((vcpu->arch.cpu_type != KVM_CPU_3S_64) && vcpu->arch.papr_enabled)
-		goto out;
-
-#ifdef CONFIG_KVM_BOOK3S_64_HV
-	/* HV KVM can only do PAPR mode for now */
-	if (!vcpu->arch.papr_enabled)
-		goto out;
-#endif
-
-	r = true;
-
-out:
-	vcpu->arch.sane = r;
-	return r ? 0 : -EINVAL;
 }
 
 int kvmppc_emulate_mmio(struct kvm_run *run, struct kvm_vcpu *vcpu)
@@ -208,7 +188,6 @@ int kvm_dev_ioctl_check_extension(long ext)
 	case KVM_CAP_PPC_BOOKE_SREGS:
 #else
 	case KVM_CAP_PPC_SEGSTATE:
-	case KVM_CAP_PPC_PAPR:
 #endif
 	case KVM_CAP_PPC_UNSET_IRQ:
 	case KVM_CAP_PPC_IRQ_LEVEL:
@@ -279,7 +258,6 @@ struct kvm_vcpu *kvm_arch_vcpu_create(struct kvm *kvm, unsigned int id)
 {
 	struct kvm_vcpu *vcpu;
 	vcpu = kvmppc_core_vcpu_create(kvm, id);
-	vcpu->arch.wqp = &vcpu->wq;
 	if (!IS_ERR(vcpu))
 		kvmppc_create_vcpu_debugfs(vcpu, id);
 	return vcpu;
@@ -311,8 +289,8 @@ static void kvmppc_decrementer_func(unsigned long data)
 
 	kvmppc_core_queue_dec(vcpu);
 
-	if (waitqueue_active(vcpu->arch.wqp)) {
-		wake_up_interruptible(vcpu->arch.wqp);
+	if (waitqueue_active(&vcpu->wq)) {
+		wake_up_interruptible(&vcpu->wq);
 		vcpu->stat.halt_wakeup++;
 	}
 }
@@ -565,15 +543,13 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 
 int kvm_vcpu_ioctl_interrupt(struct kvm_vcpu *vcpu, struct kvm_interrupt *irq)
 {
-	if (irq->irq == KVM_INTERRUPT_UNSET) {
+	if (irq->irq == KVM_INTERRUPT_UNSET)
 		kvmppc_core_dequeue_external(vcpu, irq);
-		return 0;
-	}
+	else
+		kvmppc_core_queue_external(vcpu, irq);
 
-	kvmppc_core_queue_external(vcpu, irq);
-
-	if (waitqueue_active(vcpu->arch.wqp)) {
-		wake_up_interruptible(vcpu->arch.wqp);
+	if (waitqueue_active(&vcpu->wq)) {
+		wake_up_interruptible(&vcpu->wq);
 		vcpu->stat.halt_wakeup++;
 	} else if (vcpu->cpu != -1) {
 		smp_send_reschedule(vcpu->cpu);
@@ -595,17 +571,10 @@ static int kvm_vcpu_ioctl_enable_cap(struct kvm_vcpu *vcpu,
 		r = 0;
 		vcpu->arch.osi_enabled = true;
 		break;
-	case KVM_CAP_PPC_PAPR:
-		r = 0;
-		vcpu->arch.papr_enabled = true;
-		break;
 	default:
 		r = -EINVAL;
 		break;
 	}
-
-	if (!r)
-		r = kvmppc_sanity_check(vcpu);
 
 	return r;
 }

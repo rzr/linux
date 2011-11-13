@@ -759,6 +759,7 @@ static void fc_fcp_recv(struct fc_seq *seq, struct fc_frame *fp, void *arg)
 		goto out;
 	if (fc_fcp_lock_pkt(fsp))
 		goto out;
+	fsp->last_pkt_time = jiffies;
 
 	if (fh->fh_type == FC_TYPE_BLS) {
 		fc_fcp_abts_resp(fsp, fp);
@@ -1147,6 +1148,7 @@ static int fc_fcp_cmd_send(struct fc_lport *lport, struct fc_fcp_pkt *fsp,
 		rc = -1;
 		goto unlock;
 	}
+	fsp->last_pkt_time = jiffies;
 	fsp->seq_ptr = seq;
 	fc_fcp_pkt_hold(fsp);	/* hold for fc_fcp_pkt_destroy */
 

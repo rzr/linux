@@ -12,7 +12,6 @@
 #include <linux/spinlock.h>
 #include <linux/dma-mapping.h>
 #include <linux/scatterlist.h>
-#include <linux/export.h>
 
 static spinlock_t dma_page_lock;
 static unsigned long *dma_page;

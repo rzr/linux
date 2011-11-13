@@ -19,8 +19,9 @@
 #ifndef __PLAT_MXC_IRQ_COMMON_H__
 #define __PLAT_MXC_IRQ_COMMON_H__
 
-struct mxc_extra_irq
+struct mxc_irq_chip
 {
+	struct irq_chip	base;
 	int (*set_priority)(unsigned char irq, unsigned char prio);
 	int (*set_irq_fiq)(unsigned int irq, unsigned int type);
 };

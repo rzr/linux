@@ -20,7 +20,6 @@
  */
 
 #include <linux/types.h>
-#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/module.h>
@@ -36,6 +35,7 @@
 #include <asm/mach/irq.h>
 
 #include <mach/board.h>
+#include <mach/gpio.h>
 
 #include "generic.h"
 

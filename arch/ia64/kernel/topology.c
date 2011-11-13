@@ -22,7 +22,6 @@
 #include <linux/bootmem.h>
 #include <linux/nodemask.h>
 #include <linux/notifier.h>
-#include <linux/export.h>
 #include <asm/mmzone.h>
 #include <asm/numa.h>
 #include <asm/cpu.h>

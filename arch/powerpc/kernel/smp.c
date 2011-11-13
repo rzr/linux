@@ -18,7 +18,7 @@
 #undef DEBUG
 
 #include <linux/kernel.h>
-#include <linux/export.h>
+#include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/smp.h>
 #include <linux/interrupt.h>
@@ -70,10 +70,6 @@
 static DEFINE_PER_CPU(struct task_struct *, idle_thread_array);
 #define get_idle_for_cpu(x)      (per_cpu(idle_thread_array, x))
 #define set_idle_for_cpu(x, p)   (per_cpu(idle_thread_array, x) = (p))
-
-/* State of each CPU during hotplug phases */
-static DEFINE_PER_CPU(int, cpu_state) = { 0 };
-
 #else
 static struct task_struct *idle_thread_array[NR_CPUS] __cpuinitdata ;
 #define get_idle_for_cpu(x)      (idle_thread_array[(x)])
@@ -108,25 +104,12 @@ int __devinit smp_generic_kick_cpu(int nr)
 	 * cpu_start field to become non-zero After we set cpu_start,
 	 * the processor will continue on to secondary_start
 	 */
-	if (!paca[nr].cpu_start) {
-		paca[nr].cpu_start = 1;
-		smp_mb();
-		return 0;
-	}
-
-#ifdef CONFIG_HOTPLUG_CPU
-	/*
-	 * Ok it's not there, so it might be soft-unplugged, let's
-	 * try to bring it back
-	 */
-	per_cpu(cpu_state, nr) = CPU_UP_PREPARE;
-	smp_wmb();
-	smp_send_reschedule(nr);
-#endif /* CONFIG_HOTPLUG_CPU */
+	paca[nr].cpu_start = 1;
+	smp_mb();
 
 	return 0;
 }
-#endif /* CONFIG_PPC64 */
+#endif
 
 static irqreturn_t call_function_action(int irq, void *data)
 {
@@ -187,7 +170,7 @@ int smp_request_message_ipi(int virq, int msg)
 		return 1;
 	}
 #endif
-	err = request_irq(virq, smp_ipi_action[msg], IRQF_PERCPU,
+	err = request_irq(virq, smp_ipi_action[msg], IRQF_DISABLED|IRQF_PERCPU,
 			  smp_ipi_name[msg], 0);
 	WARN(err < 0, "unable to request_irq %d for %s (rc %d)\n",
 		virq, smp_ipi_name[msg], err);
@@ -374,6 +357,8 @@ void __devinit smp_prepare_boot_cpu(void)
 }
 
 #ifdef CONFIG_HOTPLUG_CPU
+/* State of each CPU during hotplug phases */
+static DEFINE_PER_CPU(int, cpu_state) = { 0 };
 
 int generic_cpu_disable(void)
 {
@@ -420,11 +405,6 @@ void generic_mach_cpu_die(void)
 void generic_set_cpu_dead(unsigned int cpu)
 {
 	per_cpu(cpu_state, cpu) = CPU_DEAD;
-}
-
-int generic_check_cpu_restart(unsigned int cpu)
-{
-	return per_cpu(cpu_state, cpu) == CPU_UP_PREPARE;
 }
 #endif
 

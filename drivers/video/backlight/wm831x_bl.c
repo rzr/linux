@@ -11,7 +11,6 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/module.h>
 #include <linux/fb.h>
 #include <linux/backlight.h>
 #include <linux/slab.h>

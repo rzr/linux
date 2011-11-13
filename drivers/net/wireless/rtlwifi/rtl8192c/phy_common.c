@@ -27,7 +27,6 @@
  *
  *****************************************************************************/
 
-#include <linux/export.h>
 #include "../wifi.h"
 #include "../rtl8192ce/reg.h"
 #include "../rtl8192ce/def.h"

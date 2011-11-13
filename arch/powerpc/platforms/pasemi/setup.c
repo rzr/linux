@@ -26,7 +26,6 @@
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/console.h>
-#include <linux/export.h>
 #include <linux/pci.h>
 #include <linux/of_platform.h>
 #include <linux/gfp.h>

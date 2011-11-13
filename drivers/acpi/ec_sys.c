@@ -11,7 +11,6 @@
 #include <linux/kernel.h>
 #include <linux/acpi.h>
 #include <linux/debugfs.h>
-#include <linux/module.h>
 #include "internal.h"
 
 MODULE_AUTHOR("Thomas Renninger <trenn@suse.de>");

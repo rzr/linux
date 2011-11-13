@@ -51,6 +51,8 @@
 #define F_EXLCK		16	/* or 3 */
 #define F_SHLCK		32	/* or 4 */
 
+#define F_INPROGRESS	64
+
 #include <asm-generic/fcntl.h>
 
 #endif

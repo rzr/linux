@@ -14,7 +14,6 @@
 #include <linux/pagemap.h>
 #include <linux/udp.h>
 #include <linux/sunrpc/xdr.h>
-#include <linux/export.h>
 
 
 /**

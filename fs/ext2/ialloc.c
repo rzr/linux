@@ -601,7 +601,7 @@ fail_free_drop:
 fail_drop:
 	dquot_drop(inode);
 	inode->i_flags |= S_NOQUOTA;
-	clear_nlink(inode);
+	inode->i_nlink = 0;
 	unlock_new_inode(inode);
 	iput(inode);
 	return ERR_PTR(err);

@@ -32,7 +32,6 @@
 #include <net/genetlink.h>
 #include <linux/wimax.h>
 #include <linux/security.h>
-#include <linux/export.h>
 #include "wimax-internal.h"
 
 #define D_SUBMODULE op_reset

@@ -19,8 +19,6 @@
  *
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #define MODULE_NAME "spca501"
 
 #include "gspca.h"
@@ -1854,7 +1852,7 @@ static int reg_write(struct usb_device *dev,
 	PDEBUG(D_USBO, "reg write: 0x%02x 0x%02x 0x%02x",
 		req, index, value);
 	if (ret < 0)
-		pr_err("reg write: error %d\n", ret);
+		err("reg write: error %d", ret);
 	return ret;
 }
 

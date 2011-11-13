@@ -21,11 +21,9 @@
 #include <asm/mach-types.h>
 #include <mach/common.h>
 
-#define is_sh73a0() (machine_is_ag5evm() || machine_is_kota2())
-
 static unsigned int __init shmobile_smp_get_core_count(void)
 {
-	if (is_sh73a0())
+	if (machine_is_ag5evm())
 		return sh73a0_get_core_count();
 
 	return 1;
@@ -33,7 +31,7 @@ static unsigned int __init shmobile_smp_get_core_count(void)
 
 static void __init shmobile_smp_prepare_cpus(void)
 {
-	if (is_sh73a0())
+	if (machine_is_ag5evm())
 		sh73a0_smp_prepare_cpus();
 }
 
@@ -41,13 +39,13 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 {
 	trace_hardirqs_off();
 
-	if (is_sh73a0())
+	if (machine_is_ag5evm())
 		sh73a0_secondary_init(cpu);
 }
 
 int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
-	if (is_sh73a0())
+	if (machine_is_ag5evm())
 		return sh73a0_boot_secondary(cpu);
 
 	return -ENOSYS;

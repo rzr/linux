@@ -38,7 +38,6 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/pci.h>
-#include <linux/pci-aspm.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
@@ -895,17 +894,16 @@ static ssize_t aac_show_serial_number(struct device *device,
 	int len = 0;
 
 	if (le32_to_cpu(dev->adapter_info.serial[0]) != 0xBAD0)
-		len = snprintf(buf, 16, "%06X\n",
+		len = snprintf(buf, PAGE_SIZE, "%06X\n",
 		  le32_to_cpu(dev->adapter_info.serial[0]));
 	if (len &&
 	  !memcmp(&dev->supplement_adapter_info.MfgPcbaSerialNo[
 	    sizeof(dev->supplement_adapter_info.MfgPcbaSerialNo)-len],
 	  buf, len-1))
-		len = snprintf(buf, 16, "%.*s\n",
+		len = snprintf(buf, PAGE_SIZE, "%.*s\n",
 		  (int)sizeof(dev->supplement_adapter_info.MfgPcbaSerialNo),
 		  dev->supplement_adapter_info.MfgPcbaSerialNo);
-
-	return min(len, 16);
+	return len;
 }
 
 static ssize_t aac_show_max_channel(struct device *device,
@@ -1109,9 +1107,6 @@ static int __devinit aac_probe_one(struct pci_dev *pdev,
 		insert = &aac->entry;
 		unique_id++;
 	}
-
-	pci_disable_link_state(pdev, PCIE_LINK_STATE_L0S | PCIE_LINK_STATE_L1 |
-			       PCIE_LINK_STATE_CLKPM);
 
 	error = pci_enable_device(pdev);
 	if (error)

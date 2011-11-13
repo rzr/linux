@@ -12,7 +12,6 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/list.h>
-#include <linux/module.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
 #include <net/fib_rules.h>
@@ -491,7 +490,7 @@ static int fib_nl_delrule(struct sk_buff *skb, struct nlmsghdr* nlh, void *arg)
 		if (ops->nr_goto_rules > 0) {
 			list_for_each_entry(tmp, &ops->rules_list, list) {
 				if (rtnl_dereference(tmp->ctarget) == rule) {
-					RCU_INIT_POINTER(tmp->ctarget, NULL);
+					rcu_assign_pointer(tmp->ctarget, NULL);
 					ops->unresolved_rules++;
 				}
 			}
@@ -549,7 +548,7 @@ static int fib_nl_fill_rule(struct sk_buff *skb, struct fib_rule *rule,
 	frh->flags = rule->flags;
 
 	if (rule->action == FR_ACT_GOTO &&
-	    rcu_access_pointer(rule->ctarget) == NULL)
+	    rcu_dereference_raw(rule->ctarget) == NULL)
 		frh->flags |= FIB_RULE_UNRESOLVED;
 
 	if (rule->iifname[0]) {

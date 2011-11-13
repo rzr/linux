@@ -280,7 +280,7 @@ arch_initcall(ebsa110_init);
 
 MACHINE_START(EBSA110, "EBSA110")
 	/* Maintainer: Russell King */
-	.atag_offset	= 0x400,
+	.boot_params	= 0x00000400,
 	.reserve_lp0	= 1,
 	.reserve_lp2	= 1,
 	.soft_reboot	= 1,

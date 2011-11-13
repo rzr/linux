@@ -43,7 +43,6 @@
 
 #define DEFINE_ACPI_GLOBALS
 
-#include <linux/export.h>
 #include <acpi/acpi.h>
 #include "accommon.h"
 

@@ -27,8 +27,6 @@
  * P/N 861040-0000: Sensor ST VV6410       ASIC STV0610   - QuickCam Web
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/input.h>
 #include "stv06xx_sensor.h"
 
@@ -191,7 +189,7 @@ int stv06xx_read_sensor(struct sd *sd, const u8 address, u16 *value)
 			      0x04, 0x40, 0x1400, 0, buf, I2C_BUFFER_LENGTH,
 			      STV06XX_URB_MSG_TIMEOUT);
 	if (err < 0) {
-		pr_err("I2C: Read error writing address: %d\n", err);
+		err("I2C: Read error writing address: %d", err);
 		return err;
 	}
 
@@ -215,14 +213,14 @@ static void stv06xx_dump_bridge(struct sd *sd)
 	int i;
 	u8 data, buf;
 
-	pr_info("Dumping all stv06xx bridge registers\n");
+	info("Dumping all stv06xx bridge registers");
 	for (i = 0x1400; i < 0x160f; i++) {
 		stv06xx_read_bridge(sd, i, &data);
 
-		pr_info("Read 0x%x from address 0x%x\n", data, i);
+		info("Read 0x%x from address 0x%x", data, i);
 	}
 
-	pr_info("Testing stv06xx bridge registers for writability\n");
+	info("Testing stv06xx bridge registers for writability");
 	for (i = 0x1400; i < 0x160f; i++) {
 		stv06xx_read_bridge(sd, i, &data);
 		buf = data;
@@ -230,12 +228,12 @@ static void stv06xx_dump_bridge(struct sd *sd)
 		stv06xx_write_bridge(sd, i, 0xff);
 		stv06xx_read_bridge(sd, i, &data);
 		if (data == 0xff)
-			pr_info("Register 0x%x is read/write\n", i);
+			info("Register 0x%x is read/write", i);
 		else if (data != buf)
-			pr_info("Register 0x%x is read/write, but only partially\n",
-				i);
+			info("Register 0x%x is read/write,"
+			     " but only partially", i);
 		else
-			pr_info("Register 0x%x is read-only\n", i);
+			info("Register 0x%x is read-only", i);
 
 		stv06xx_write_bridge(sd, i, buf);
 	}

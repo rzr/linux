@@ -13,7 +13,6 @@
 
 #include <linux/device.h>
 #include <linux/err.h>
-#include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
 
@@ -174,7 +173,7 @@ static int sdio_bus_remove(struct device *dev)
 	drv->remove(func);
 
 	if (func->irq_handler) {
-		pr_warning("WARNING: driver %s did not remove "
+		printk(KERN_WARNING "WARNING: driver %s did not remove "
 			"its interrupt handler!\n", drv->name);
 		sdio_claim_host(func);
 		sdio_release_irq(func);

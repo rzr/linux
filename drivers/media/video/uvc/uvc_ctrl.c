@@ -1016,8 +1016,7 @@ int uvc_query_v4l2_menu(struct uvc_video_chain *chain,
 
 	menu_info = &mapping->menu_info[query_menu->index];
 
-	if (mapping->data_type == UVC_CTRL_DATA_TYPE_BITMASK &&
-	    (ctrl->info.flags & UVC_CTRL_FLAG_GET_RES)) {
+	if (ctrl->info.flags & UVC_CTRL_FLAG_GET_RES) {
 		s32 bitmap;
 
 		if (!ctrl->cached) {
@@ -1226,8 +1225,7 @@ int uvc_ctrl_set(struct uvc_video_chain *chain,
 		/* Valid menu indices are reported by the GET_RES request for
 		 * UVC controls that support it.
 		 */
-		if (mapping->data_type == UVC_CTRL_DATA_TYPE_BITMASK &&
-		    (ctrl->info.flags & UVC_CTRL_FLAG_GET_RES)) {
+		if (ctrl->info.flags & UVC_CTRL_FLAG_GET_RES) {
 			if (!ctrl->cached) {
 				ret = uvc_ctrl_populate_cache(chain, ctrl);
 				if (ret < 0)

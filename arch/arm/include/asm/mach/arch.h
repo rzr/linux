@@ -13,12 +13,11 @@
 struct tag;
 struct meminfo;
 struct sys_timer;
-struct pt_regs;
 
 struct machine_desc {
 	unsigned int		nr;		/* architecture number	*/
 	const char		*name;		/* architecture name	*/
-	unsigned long		atag_offset;	/* tagged list (relative) */
+	unsigned long		boot_params;	/* tagged list		*/
 	const char		**dt_compat;	/* array of device tree
 						 * 'compatible' strings	*/
 
@@ -35,7 +34,8 @@ struct machine_desc {
 	unsigned int		reserve_lp1 :1;	/* never has lp1	*/
 	unsigned int		reserve_lp2 :1;	/* never has lp2	*/
 	unsigned int		soft_reboot :1;	/* soft reboot		*/
-	void			(*fixup)(struct tag *, char **,
+	void			(*fixup)(struct machine_desc *,
+					 struct tag *, char **,
 					 struct meminfo *);
 	void			(*reserve)(void);/* reserve mem blocks	*/
 	void			(*map_io)(void);/* IO mapping function	*/

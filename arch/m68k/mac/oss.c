@@ -19,7 +19,6 @@
 #include <linux/mm.h>
 #include <linux/delay.h>
 #include <linux/init.h>
-#include <linux/irq.h>
 
 #include <asm/bootinfo.h>
 #include <asm/macintosh.h>
@@ -30,7 +29,10 @@
 int oss_present;
 volatile struct mac_oss *oss;
 
-extern void via1_irq(unsigned int irq, struct irq_desc *desc);
+static irqreturn_t oss_irq(int, void *);
+static irqreturn_t oss_nubus_irq(int, void *);
+
+extern irqreturn_t via1_irq(int, void *);
 
 /*
  * Initialize the OSS
@@ -58,6 +60,26 @@ void __init oss_init(void)
 }
 
 /*
+ * Register the OSS and NuBus interrupt dispatchers.
+ */
+
+void __init oss_register_interrupts(void)
+{
+	if (request_irq(OSS_IRQLEV_SCSI, oss_irq, IRQ_FLG_LOCK,
+			"scsi", (void *) oss))
+		pr_err("Couldn't register %s interrupt\n", "scsi");
+	if (request_irq(OSS_IRQLEV_NUBUS, oss_nubus_irq, IRQ_FLG_LOCK,
+			"nubus", (void *) oss))
+		pr_err("Couldn't register %s interrupt\n", "nubus");
+	if (request_irq(OSS_IRQLEV_SOUND, oss_irq, IRQ_FLG_LOCK,
+			"sound", (void *) oss))
+		pr_err("Couldn't register %s interrupt\n", "sound");
+	if (request_irq(OSS_IRQLEV_VIA1, via1_irq, IRQ_FLG_LOCK,
+			"via1", (void *) via1))
+		pr_err("Couldn't register %s interrupt\n", "via1");
+}
+
+/*
  * Initialize OSS for Nubus access
  */
 
@@ -70,17 +92,17 @@ void __init oss_nubus_init(void)
  * and SCSI; everything else is routed to its own autovector IRQ.
  */
 
-static void oss_irq(unsigned int irq, struct irq_desc *desc)
+static irqreturn_t oss_irq(int irq, void *dev_id)
 {
 	int events;
 
 	events = oss->irq_pending & (OSS_IP_SOUND|OSS_IP_SCSI);
 	if (!events)
-		return;
+		return IRQ_NONE;
 
 #ifdef DEBUG_IRQS
 	if ((console_loglevel == 10) && !(events & OSS_IP_SCSI)) {
-		printk("oss_irq: irq %u events = 0x%04X\n", irq,
+		printk("oss_irq: irq %d events = 0x%04X\n", irq,
 			(int) oss->irq_pending);
 	}
 #endif
@@ -91,10 +113,11 @@ static void oss_irq(unsigned int irq, struct irq_desc *desc)
 		/* FIXME: call sound handler */
 	} else if (events & OSS_IP_SCSI) {
 		oss->irq_pending &= ~OSS_IP_SCSI;
-		generic_handle_irq(IRQ_MAC_SCSI);
+		m68k_handle_int(IRQ_MAC_SCSI);
 	} else {
 		/* FIXME: error check here? */
 	}
+	return IRQ_HANDLED;
 }
 
 /*
@@ -103,13 +126,13 @@ static void oss_irq(unsigned int irq, struct irq_desc *desc)
  * Unlike the VIA/RBV this is on its own autovector interrupt level.
  */
 
-static void oss_nubus_irq(unsigned int irq, struct irq_desc *desc)
+static irqreturn_t oss_nubus_irq(int irq, void *dev_id)
 {
 	int events, irq_bit, i;
 
 	events = oss->irq_pending & OSS_IP_NUBUS;
 	if (!events)
-		return;
+		return IRQ_NONE;
 
 #ifdef DEBUG_NUBUS_INT
 	if (console_loglevel > 7) {
@@ -125,21 +148,10 @@ static void oss_nubus_irq(unsigned int irq, struct irq_desc *desc)
 		irq_bit >>= 1;
 		if (events & irq_bit) {
 			oss->irq_pending &= ~irq_bit;
-			generic_handle_irq(NUBUS_SOURCE_BASE + i);
+			m68k_handle_int(NUBUS_SOURCE_BASE + i);
 		}
 	} while(events & (irq_bit - 1));
-}
-
-/*
- * Register the OSS and NuBus interrupt dispatchers.
- */
-
-void __init oss_register_interrupts(void)
-{
-	irq_set_chained_handler(OSS_IRQLEV_SCSI, oss_irq);
-	irq_set_chained_handler(OSS_IRQLEV_NUBUS, oss_nubus_irq);
-	irq_set_chained_handler(OSS_IRQLEV_SOUND, oss_irq);
-	irq_set_chained_handler(OSS_IRQLEV_VIA1, via1_irq);
+	return IRQ_HANDLED;
 }
 
 /*

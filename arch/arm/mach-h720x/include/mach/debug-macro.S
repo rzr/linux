@@ -16,7 +16,7 @@
 		.equ    io_virt, IO_VIRT
 		.equ    io_phys, IO_PHYS
 
-		.macro  addruart, rp, rv, tmp
+		.macro  addruart, rp, rv
 		mov     \rp, #0x00020000	@ UART1
 		add     \rv, \rp, #io_virt	@ virtual address
 		add     \rp, \rp, #io_phys	@ physical base address

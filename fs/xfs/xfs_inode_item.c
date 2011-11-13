@@ -658,8 +658,10 @@ xfs_inode_item_unlock(
 
 	lock_flags = iip->ili_lock_flags;
 	iip->ili_lock_flags = 0;
-	if (lock_flags)
+	if (lock_flags) {
 		xfs_iunlock(ip, lock_flags);
+		IRELE(ip);
+	}
 }
 
 /*
@@ -795,7 +797,7 @@ xfs_inode_item_committing(
 /*
  * This is the ops vector shared by all buf log items.
  */
-static const struct xfs_item_ops xfs_inode_item_ops = {
+static struct xfs_item_ops xfs_inode_item_ops = {
 	.iop_size	= xfs_inode_item_size,
 	.iop_format	= xfs_inode_item_format,
 	.iop_pin	= xfs_inode_item_pin,

@@ -34,8 +34,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <linux/module.h>
-
 #include "core.h"
 #include "ref.h"
 #include "name_table.h"

@@ -27,7 +27,6 @@
 #include <linux/platform_data/pxa_sdhci.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
-#include <linux/module.h>
 #include "sdhci.h"
 #include "sdhci-pltfm.h"
 

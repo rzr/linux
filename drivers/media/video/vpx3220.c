@@ -331,7 +331,7 @@ static int vpx3220_status(struct v4l2_subdev *sd, u32 *pstatus, v4l2_std_id *pst
 	if (pstd)
 		*pstd = std;
 	if (pstatus)
-		*pstatus = res;
+		*pstatus = status;
 	return 0;
 }
 

@@ -16,7 +16,6 @@
 #define __LINUX_REGULATOR_DRIVER_H_
 
 #include <linux/device.h>
-#include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
 
 struct regulator_dev;
@@ -199,9 +198,6 @@ struct regulator_dev {
 	struct device dev;
 	struct regulation_constraints *constraints;
 	struct regulator *supply;	/* for tree */
-
-	struct delayed_work disable_work;
-	int deferred_disables;
 
 	void *reg_data;		/* regulator_dev data */
 

@@ -8,7 +8,6 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/export.h>
 #include <linux/libata.h>
 #include <linux/slab.h>
 #include "libata.h"
@@ -389,9 +388,12 @@ static void sata_pmp_quirks(struct ata_port *ap)
 			/* link reports offline after LPM */
 			link->flags |= ATA_LFLAG_NO_LPM;
 
-			/* Class code report is unreliable. */
+			/* Class code report is unreliable and SRST
+			 * times out under certain configurations.
+			 */
 			if (link->pmp < 5)
-				link->flags |= ATA_LFLAG_ASSUME_ATA;
+				link->flags |= ATA_LFLAG_NO_SRST |
+					       ATA_LFLAG_ASSUME_ATA;
 
 			/* port 5 is for SEMB device and it doesn't like SRST */
 			if (link->pmp == 5)

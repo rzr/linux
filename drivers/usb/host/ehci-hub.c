@@ -236,8 +236,10 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	}
 
 	/* stop schedules, clean any completed work */
-	if (ehci->rh_state == EHCI_RH_RUNNING)
+	if (HC_IS_RUNNING(hcd->state)) {
 		ehci_quiesce (ehci);
+		hcd->state = HC_STATE_QUIESCING;
+	}
 	ehci->command = ehci_readl(ehci, &ehci->regs->command);
 	ehci_work(ehci);
 
@@ -311,7 +313,7 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 
 	/* turn off now-idle HC */
 	ehci_halt (ehci);
-	ehci->rh_state = EHCI_RH_SUSPENDED;
+	hcd->state = HC_STATE_SUSPENDED;
 
 	if (ehci->reclaim)
 		end_unlink_async(ehci);
@@ -380,7 +382,6 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 
 	/* restore CMD_RUN, framelist size, and irq threshold */
 	ehci_writel(ehci, ehci->command, &ehci->regs->command);
-	ehci->rh_state = EHCI_RH_RUNNING;
 
 	/* Some controller/firmware combinations need a delay during which
 	 * they set up the port statuses.  See Bugzilla #8190. */
@@ -450,6 +451,7 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	}
 
 	ehci->next_statechange = jiffies + msecs_to_jiffies(5);
+	hcd->state = HC_STATE_RUNNING;
 
 	/* Now we can safely re-enable irqs */
 	ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
@@ -561,7 +563,7 @@ ehci_hub_status_data (struct usb_hcd *hcd, char *buf)
 	u32		ppcd = 0;
 
 	/* if !USB_SUSPEND, root hub timers won't get shut down ... */
-	if (ehci->rh_state != EHCI_RH_RUNNING)
+	if (!HC_IS_RUNNING(hcd->state))
 		return 0;
 
 	/* init status to no-changes */

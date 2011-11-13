@@ -860,7 +860,8 @@ void __key_link(struct key *keyring, struct key *key,
 
 	kenter("%d,%d,%p", keyring->serial, key->serial, nklist);
 
-	klist = rcu_dereference_locked_keyring(keyring);
+	klist = rcu_dereference_protected(keyring->payload.subscriptions,
+					  rwsem_is_locked(&keyring->sem));
 
 	atomic_inc(&key->usage);
 

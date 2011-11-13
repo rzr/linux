@@ -157,7 +157,7 @@ fail_drop:
 	dquot_drop(inode);
 	inode->i_flags |= S_NOQUOTA;
 fail_unlock:
-	clear_nlink(inode);
+	inode->i_nlink = 0;
 	unlock_new_inode(inode);
 fail_put:
 	iput(inode);

@@ -36,7 +36,6 @@
 
 #include <linux/completion.h>
 #include <linux/uaccess.h>
-#include <linux/module.h>
 
 #define PICOLCD_NAME "PicoLCD (graphic)"
 
@@ -2410,7 +2409,7 @@ static int picolcd_raw_event(struct hid_device *hdev,
 #ifdef CONFIG_PM
 static int picolcd_suspend(struct hid_device *hdev, pm_message_t message)
 {
-	if (PMSG_IS_AUTO(message))
+	if (message.event & PM_EVENT_AUTO)
 		return 0;
 
 	picolcd_suspend_backlight(hid_get_drvdata(hdev));

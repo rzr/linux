@@ -19,7 +19,6 @@
 #include <linux/sched.h>
 #include <linux/pci.h>
 #include <linux/stat.h>
-#include <linux/export.h>
 #include <linux/topology.h>
 #include <linux/mm.h>
 #include <linux/fs.h>

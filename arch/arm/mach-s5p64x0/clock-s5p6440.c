@@ -146,8 +146,7 @@ static struct clk init_clocks_off[] = {
 		.enable		= s5p64x0_hclk0_ctrl,
 		.ctrlbit	= (1 << 8),
 	}, {
-		.name		= "dma",
-		.devname	= "dma-pl330",
+		.name		= "pdma",
 		.parent		= &clk_hclk_low.clk,
 		.enable		= s5p64x0_hclk0_ctrl,
 		.ctrlbit	= (1 << 12),
@@ -500,11 +499,6 @@ static struct clksrc_clk *sysclks[] = {
 	&clk_pclk_low,
 };
 
-static struct clk dummy_apb_pclk = {
-	.name		= "apb_pclk",
-	.id		= -1,
-};
-
 void __init_or_cpufreq s5p6440_setup_clocks(void)
 {
 	struct clk *xtal_clk;
@@ -586,8 +580,6 @@ void __init s5p6440_register_clocks(void)
 
 	s3c_register_clocks(init_clocks_off, ARRAY_SIZE(init_clocks_off));
 	s3c_disable_clocks(init_clocks_off, ARRAY_SIZE(init_clocks_off));
-
-	s3c24xx_register_clock(&dummy_apb_pclk);
 
 	s3c_pwmclk_init();
 }

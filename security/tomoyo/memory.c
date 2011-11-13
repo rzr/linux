@@ -27,6 +27,8 @@ void tomoyo_warn_oom(const char *function)
 		panic("MAC Initialization failed.\n");
 }
 
+/* Lock for protecting tomoyo_memory_used. */
+static DEFINE_SPINLOCK(tomoyo_policy_memory_lock);
 /* Memoy currently used by policy/audit log/query. */
 unsigned int tomoyo_memory_used[TOMOYO_MAX_MEMORY_STAT];
 /* Memory quota for "policy"/"audit log"/"query". */
@@ -40,19 +42,22 @@ unsigned int tomoyo_memory_quota[TOMOYO_MAX_MEMORY_STAT];
  * Returns true on success, false otherwise.
  *
  * Returns true if @ptr is not NULL and quota not exceeded, false otherwise.
- *
- * Caller holds tomoyo_policy_lock mutex.
  */
 bool tomoyo_memory_ok(void *ptr)
 {
 	if (ptr) {
 		const size_t s = ksize(ptr);
+		bool result;
+		spin_lock(&tomoyo_policy_memory_lock);
 		tomoyo_memory_used[TOMOYO_MEMORY_POLICY] += s;
-		if (!tomoyo_memory_quota[TOMOYO_MEMORY_POLICY] ||
-		    tomoyo_memory_used[TOMOYO_MEMORY_POLICY] <=
-		    tomoyo_memory_quota[TOMOYO_MEMORY_POLICY])
+		result = !tomoyo_memory_quota[TOMOYO_MEMORY_POLICY] ||
+			tomoyo_memory_used[TOMOYO_MEMORY_POLICY] <=
+			tomoyo_memory_quota[TOMOYO_MEMORY_POLICY];
+		if (!result)
+			tomoyo_memory_used[TOMOYO_MEMORY_POLICY] -= s;
+		spin_unlock(&tomoyo_policy_memory_lock);
+		if (result)
 			return true;
-		tomoyo_memory_used[TOMOYO_MEMORY_POLICY] -= s;
 	}
 	tomoyo_warn_oom(__func__);
 	return false;
@@ -66,8 +71,6 @@ bool tomoyo_memory_ok(void *ptr)
  *
  * Returns pointer to allocated memory on success, NULL otherwise.
  * @data is zero-cleared on success.
- *
- * Caller holds tomoyo_policy_lock mutex.
  */
 void *tomoyo_commit_ok(void *data, const unsigned int size)
 {
@@ -79,6 +82,20 @@ void *tomoyo_commit_ok(void *data, const unsigned int size)
 	}
 	kfree(ptr);
 	return NULL;
+}
+
+/**
+ * tomoyo_memory_free - Free memory for elements.
+ *
+ * @ptr:  Pointer to allocated memory.
+ */
+void tomoyo_memory_free(void *ptr)
+{
+	size_t s = ksize(ptr);
+	spin_lock(&tomoyo_policy_memory_lock);
+	tomoyo_memory_used[TOMOYO_MEMORY_POLICY] -= s;
+	spin_unlock(&tomoyo_policy_memory_lock);
+	kfree(ptr);
 }
 
 /**
@@ -106,8 +123,7 @@ struct tomoyo_group *tomoyo_get_group(struct tomoyo_acl_param *param,
 		goto out;
 	list = &param->ns->group_list[idx];
 	list_for_each_entry(group, list, head.list) {
-		if (e.group_name != group->group_name ||
-		    atomic_read(&group->head.users) == TOMOYO_GC_IN_PROGRESS)
+		if (e.group_name != group->group_name)
 			continue;
 		atomic_inc(&group->head.users);
 		found = true;
@@ -159,8 +175,7 @@ const struct tomoyo_path_info *tomoyo_get_name(const char *name)
 	if (mutex_lock_interruptible(&tomoyo_policy_lock))
 		return NULL;
 	list_for_each_entry(ptr, head, head.list) {
-		if (hash != ptr->entry.hash || strcmp(name, ptr->entry.name) ||
-		    atomic_read(&ptr->head.users) == TOMOYO_GC_IN_PROGRESS)
+		if (hash != ptr->entry.hash || strcmp(name, ptr->entry.name))
 			continue;
 		atomic_inc(&ptr->head.users);
 		goto out;

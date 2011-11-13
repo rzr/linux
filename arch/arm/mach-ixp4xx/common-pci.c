@@ -26,7 +26,6 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/io.h>
-#include <linux/export.h>
 #include <asm/dma-mapping.h>
 
 #include <asm/cputype.h>
@@ -55,7 +54,7 @@ unsigned long ixp4xx_pci_reg_base = 0;
  * these transactions are atomic or we will end up
  * with corrupt data on the bus or in a driver.
  */
-static DEFINE_RAW_SPINLOCK(ixp4xx_pci_lock);
+static DEFINE_SPINLOCK(ixp4xx_pci_lock);
 
 /*
  * Read from PCI config space
@@ -63,10 +62,10 @@ static DEFINE_RAW_SPINLOCK(ixp4xx_pci_lock);
 static void crp_read(u32 ad_cbe, u32 *data)
 {
 	unsigned long flags;
-	raw_spin_lock_irqsave(&ixp4xx_pci_lock, flags);
+	spin_lock_irqsave(&ixp4xx_pci_lock, flags);
 	*PCI_CRP_AD_CBE = ad_cbe;
 	*data = *PCI_CRP_RDATA;
-	raw_spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
+	spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
 }
 
 /*
@@ -75,10 +74,10 @@ static void crp_read(u32 ad_cbe, u32 *data)
 static void crp_write(u32 ad_cbe, u32 data)
 { 
 	unsigned long flags;
-	raw_spin_lock_irqsave(&ixp4xx_pci_lock, flags);
+	spin_lock_irqsave(&ixp4xx_pci_lock, flags);
 	*PCI_CRP_AD_CBE = CRP_AD_CBE_WRITE | ad_cbe;
 	*PCI_CRP_WDATA = data;
-	raw_spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
+	spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
 }
 
 static inline int check_master_abort(void)
@@ -102,7 +101,7 @@ int ixp4xx_pci_read_errata(u32 addr, u32 cmd, u32* data)
 	int retval = 0;
 	int i;
 
-	raw_spin_lock_irqsave(&ixp4xx_pci_lock, flags);
+	spin_lock_irqsave(&ixp4xx_pci_lock, flags);
 
 	*PCI_NP_AD = addr;
 
@@ -119,7 +118,7 @@ int ixp4xx_pci_read_errata(u32 addr, u32 cmd, u32* data)
 	if(check_master_abort())
 		retval = 1;
 
-	raw_spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
+	spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
 	return retval;
 }
 
@@ -128,7 +127,7 @@ int ixp4xx_pci_read_no_errata(u32 addr, u32 cmd, u32* data)
 	unsigned long flags;
 	int retval = 0;
 
-	raw_spin_lock_irqsave(&ixp4xx_pci_lock, flags);
+	spin_lock_irqsave(&ixp4xx_pci_lock, flags);
 
 	*PCI_NP_AD = addr;
 
@@ -141,7 +140,7 @@ int ixp4xx_pci_read_no_errata(u32 addr, u32 cmd, u32* data)
 	if(check_master_abort())
 		retval = 1;
 
-	raw_spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
+	spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
 	return retval;
 }
 
@@ -150,7 +149,7 @@ int ixp4xx_pci_write(u32 addr, u32 cmd, u32 data)
 	unsigned long flags;
 	int retval = 0;
 
-	raw_spin_lock_irqsave(&ixp4xx_pci_lock, flags);
+	spin_lock_irqsave(&ixp4xx_pci_lock, flags);
 
 	*PCI_NP_AD = addr;
 
@@ -163,7 +162,7 @@ int ixp4xx_pci_write(u32 addr, u32 cmd, u32 data)
 	if(check_master_abort())
 		retval = 1;
 
-	raw_spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
+	spin_unlock_irqrestore(&ixp4xx_pci_lock, flags);
 	return retval;
 }
 
@@ -398,8 +397,7 @@ void __init ixp4xx_pci_preinit(void)
 		local_write_config(PCI_BASE_ADDRESS_0, 4, PHYS_OFFSET);
 		local_write_config(PCI_BASE_ADDRESS_1, 4, PHYS_OFFSET + SZ_16M);
 		local_write_config(PCI_BASE_ADDRESS_2, 4, PHYS_OFFSET + SZ_32M);
-		local_write_config(PCI_BASE_ADDRESS_3, 4,
-					PHYS_OFFSET + SZ_32M + SZ_16M);
+		local_write_config(PCI_BASE_ADDRESS_3, 4, PHYS_OFFSET + SZ_48M);
 
 		/*
 		 * Enable CSR window at 64 MiB to allow PCI masters

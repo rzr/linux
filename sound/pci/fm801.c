@@ -25,7 +25,7 @@
 #include <linux/interrupt.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/tlv.h>
@@ -729,14 +729,11 @@ static struct snd_fm801_tea575x_gpio snd_fm801_tea575x_gpios[] = {
 	{ .data = 2, .clk = 0, .wren = 1, .most = 3, .name = "SF64-PCR" },
 };
 
-#define get_tea575x_gpio(chip) \
-	(&snd_fm801_tea575x_gpios[((chip)->tea575x_tuner & TUNER_TYPE_MASK) - 1])
-
 static void snd_fm801_tea575x_set_pins(struct snd_tea575x *tea, u8 pins)
 {
 	struct fm801 *chip = tea->private_data;
 	unsigned short reg = inw(FM801_REG(chip, GPIO_CTRL));
-	struct snd_fm801_tea575x_gpio gpio = *get_tea575x_gpio(chip);
+	struct snd_fm801_tea575x_gpio gpio = snd_fm801_tea575x_gpios[(chip->tea575x_tuner & TUNER_TYPE_MASK) - 1];
 
 	reg &= ~(FM801_GPIO_GP(gpio.data) |
 		 FM801_GPIO_GP(gpio.clk) |
@@ -754,7 +751,7 @@ static u8 snd_fm801_tea575x_get_pins(struct snd_tea575x *tea)
 {
 	struct fm801 *chip = tea->private_data;
 	unsigned short reg = inw(FM801_REG(chip, GPIO_CTRL));
-	struct snd_fm801_tea575x_gpio gpio = *get_tea575x_gpio(chip);
+	struct snd_fm801_tea575x_gpio gpio = snd_fm801_tea575x_gpios[(chip->tea575x_tuner & TUNER_TYPE_MASK) - 1];
 
 	return  (reg & FM801_GPIO_GP(gpio.data)) ? TEA575X_DATA : 0 |
 		(reg & FM801_GPIO_GP(gpio.most)) ? TEA575X_MOST : 0;
@@ -764,7 +761,7 @@ static void snd_fm801_tea575x_set_direction(struct snd_tea575x *tea, bool output
 {
 	struct fm801 *chip = tea->private_data;
 	unsigned short reg = inw(FM801_REG(chip, GPIO_CTRL));
-	struct snd_fm801_tea575x_gpio gpio = *get_tea575x_gpio(chip);
+	struct snd_fm801_tea575x_gpio gpio = snd_fm801_tea575x_gpios[(chip->tea575x_tuner & TUNER_TYPE_MASK) - 1];
 
 	/* use GPIO lines and set write enable bit */
 	reg |= FM801_GPIO_GS(gpio.data) |
@@ -1249,7 +1246,7 @@ static int __devinit snd_fm801_create(struct snd_card *card,
 			chip->tea575x_tuner = tea575x_tuner;
 			if (!snd_tea575x_init(&chip->tea)) {
 				snd_printk(KERN_INFO "detected TEA575x radio type %s\n",
-					   get_tea575x_gpio(chip)->name);
+					snd_fm801_tea575x_gpios[tea575x_tuner - 1].name);
 				break;
 			}
 		}
@@ -1259,7 +1256,9 @@ static int __devinit snd_fm801_create(struct snd_card *card,
 		}
 	}
 	if (!(chip->tea575x_tuner & TUNER_DISABLED)) {
-		strlcpy(chip->tea.card, get_tea575x_gpio(chip)->name,
+		strlcpy(chip->tea.card,
+			snd_fm801_tea575x_gpios[(tea575x_tuner &
+						 TUNER_TYPE_MASK) - 1].name,
 			sizeof(chip->tea.card));
 	}
 #endif
@@ -1312,9 +1311,8 @@ static int __devinit snd_card_fm801_probe(struct pci_dev *pci,
 	}
 	if ((err = snd_mpu401_uart_new(card, 0, MPU401_HW_FM801,
 				       FM801_REG(chip, MPU401_DATA),
-				       MPU401_INFO_INTEGRATED |
-				       MPU401_INFO_IRQ_HOOK,
-				       -1, &chip->rmidi)) < 0) {
+				       MPU401_INFO_INTEGRATED,
+				       chip->irq, 0, &chip->rmidi)) < 0) {
 		snd_card_free(card);
 		return err;
 	}

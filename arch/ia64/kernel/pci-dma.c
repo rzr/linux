@@ -14,7 +14,7 @@
 
 #include <asm/system.h>
 
-#ifdef CONFIG_INTEL_IOMMU
+#ifdef CONFIG_DMAR
 
 #include <linux/kernel.h>
 

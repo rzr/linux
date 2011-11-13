@@ -23,6 +23,7 @@
  * 02110-1301, USA.
  *
  */
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -499,7 +500,7 @@ static void __init htcherald_lcd_init(void)
 
 static void __init htcherald_map_io(void)
 {
-	omap7xx_map_io();
+	omap1_map_common_io();
 
 	/*
 	 * The LCD panel must be disabled and DMA turned off here, as doing
@@ -600,14 +601,20 @@ static void __init htcherald_init(void)
 #endif
 }
 
+static void __init htcherald_init_irq(void)
+{
+	printk(KERN_INFO "htcherald_init_irq.\n");
+	omap1_init_common_hw();
+	omap1_init_irq();
+}
+
 MACHINE_START(HERALD, "HTC Herald")
 	/* Maintainer: Cory Maccarrone <darkstar6262@gmail.com> */
 	/* Maintainer: wing-linux.sourceforge.net */
-	.atag_offset    = 0x100,
+	.boot_params    = 0x10000100,
 	.map_io         = htcherald_map_io,
-	.init_early     = omap1_init_early,
 	.reserve	= omap_reserve,
-	.init_irq       = omap1_init_irq,
+	.init_irq       = htcherald_init_irq,
 	.init_machine   = htcherald_init,
 	.timer          = &omap1_timer,
 MACHINE_END

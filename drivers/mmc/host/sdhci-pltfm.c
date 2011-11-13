@@ -29,7 +29,6 @@
  */
 
 #include <linux/err.h>
-#include <linux/module.h>
 #include <linux/of.h>
 #ifdef CONFIG_PPC
 #include <asm/machdep.h>

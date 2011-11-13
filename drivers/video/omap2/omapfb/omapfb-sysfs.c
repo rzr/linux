@@ -104,13 +104,15 @@ static ssize_t store_mirror(struct device *dev,
 {
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct omapfb_info *ofbi = FB2OFB(fbi);
-	bool mirror;
+	int mirror;
 	int r;
 	struct fb_var_screeninfo new_var;
 
-	r = strtobool(buf, &mirror);
+	r = kstrtoint(buf, 0, &mirror);
 	if (r)
 		return r;
+
+	mirror = !!mirror;
 
 	if (!lock_fb_info(fbi))
 		return -ENODEV;

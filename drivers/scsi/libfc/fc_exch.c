@@ -26,7 +26,6 @@
 #include <linux/timer.h>
 #include <linux/slab.h>
 #include <linux/err.h>
-#include <linux/export.h>
 
 #include <scsi/fc/fc_fc2.h>
 
@@ -66,15 +65,16 @@ static struct workqueue_struct *fc_exch_workqueue;
  * assigned range of exchanges to per cpu pool.
  */
 struct fc_exch_pool {
-	spinlock_t	 lock;
-	struct list_head ex_list;
 	u16		 next_index;
 	u16		 total_exches;
 
 	/* two cache of free slot in exch array */
 	u16		 left;
 	u16		 right;
-} ____cacheline_aligned_in_smp;
+
+	spinlock_t	 lock;
+	struct list_head ex_list;
+};
 
 /**
  * struct fc_exch_mgr - The Exchange Manager (EM).
@@ -91,13 +91,13 @@ struct fc_exch_pool {
  * It manages the allocation of exchange IDs.
  */
 struct fc_exch_mgr {
-	struct fc_exch_pool *pool;
-	mempool_t	*ep_pool;
 	enum fc_class	class;
 	struct kref	kref;
 	u16		min_xid;
 	u16		max_xid;
+	mempool_t	*ep_pool;
 	u16		pool_max_index;
+	struct fc_exch_pool *pool;
 
 	/*
 	 * currently exchange mgr stats are updated but not used.
@@ -470,7 +470,6 @@ static int fc_seq_send(struct fc_lport *lport, struct fc_seq *sp,
 	struct fc_frame_header *fh = fc_frame_header_get(fp);
 	int error;
 	u32 f_ctl;
-	u8 fh_type = fh->fh_type;
 
 	ep = fc_seq_exch(sp);
 	WARN_ON((ep->esb_stat & ESB_ST_SEQ_INIT) != ESB_ST_SEQ_INIT);
@@ -495,7 +494,7 @@ static int fc_seq_send(struct fc_lport *lport, struct fc_seq *sp,
 	 */
 	error = lport->tt.frame_send(lport, fp);
 
-	if (fh_type == FC_TYPE_BLS)
+	if (fh->fh_type == FC_TYPE_BLS)
 		return error;
 
 	/*
@@ -1794,9 +1793,6 @@ restart:
 			goto restart;
 		}
 	}
-	pool->next_index = 0;
-	pool->left = FC_XID_UNKNOWN;
-	pool->right = FC_XID_UNKNOWN;
 	spin_unlock_bh(&pool->lock);
 }
 
@@ -2285,7 +2281,6 @@ struct fc_exch_mgr *fc_exch_mgr_alloc(struct fc_lport *lport,
 		goto free_mempool;
 	for_each_possible_cpu(cpu) {
 		pool = per_cpu_ptr(mp->pool, cpu);
-		pool->next_index = 0;
 		pool->left = FC_XID_UNKNOWN;
 		pool->right = FC_XID_UNKNOWN;
 		spin_lock_init(&pool->lock);

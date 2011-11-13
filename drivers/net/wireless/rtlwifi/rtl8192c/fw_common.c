@@ -30,7 +30,6 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/firmware.h>
-#include <linux/export.h>
 #include "../wifi.h"
 #include "../pci.h"
 #include "../base.h"

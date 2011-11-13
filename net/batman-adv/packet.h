@@ -25,14 +25,14 @@
 #define ETH_P_BATMAN  0x4305	/* unofficial/not registered Ethertype */
 
 enum bat_packettype {
-	BAT_OGM		 = 0x01,
-	BAT_ICMP	 = 0x02,
-	BAT_UNICAST	 = 0x03,
-	BAT_BCAST	 = 0x04,
-	BAT_VIS		 = 0x05,
+	BAT_PACKET       = 0x01,
+	BAT_ICMP         = 0x02,
+	BAT_UNICAST      = 0x03,
+	BAT_BCAST        = 0x04,
+	BAT_VIS          = 0x05,
 	BAT_UNICAST_FRAG = 0x06,
-	BAT_TT_QUERY	 = 0x07,
-	BAT_ROAM_ADV	 = 0x08
+	BAT_TT_QUERY     = 0x07,
+	BAT_ROAM_ADV     = 0x08
 };
 
 /* this file is included by batctl which needs these defines */
@@ -84,13 +84,12 @@ enum tt_query_flags {
 enum tt_client_flags {
 	TT_CLIENT_DEL     = 1 << 0,
 	TT_CLIENT_ROAM    = 1 << 1,
-	TT_CLIENT_WIFI    = 1 << 2,
 	TT_CLIENT_NOPURGE = 1 << 8,
 	TT_CLIENT_NEW     = 1 << 9,
 	TT_CLIENT_PENDING = 1 << 10
 };
 
-struct batman_ogm_packet {
+struct batman_packet {
 	uint8_t  packet_type;
 	uint8_t  version;  /* batman version field */
 	uint8_t  ttl;
@@ -105,7 +104,7 @@ struct batman_ogm_packet {
 	uint16_t tt_crc;
 } __packed;
 
-#define BATMAN_OGM_LEN sizeof(struct batman_ogm_packet)
+#define BAT_PACKET_LEN sizeof(struct batman_packet)
 
 struct icmp_packet {
 	uint8_t  packet_type;

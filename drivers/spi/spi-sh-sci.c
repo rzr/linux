@@ -22,7 +22,6 @@
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
-#include <linux/module.h>
 
 #include <asm/spi.h>
 #include <asm/io.h>
@@ -187,7 +186,18 @@ static struct platform_driver sh_sci_spi_drv = {
 		.owner	= THIS_MODULE,
 	},
 };
-module_platform_driver(sh_sci_spi_drv);
+
+static int __init sh_sci_spi_init(void)
+{
+	return platform_driver_register(&sh_sci_spi_drv);
+}
+module_init(sh_sci_spi_init);
+
+static void __exit sh_sci_spi_exit(void)
+{
+	platform_driver_unregister(&sh_sci_spi_drv);
+}
+module_exit(sh_sci_spi_exit);
 
 MODULE_DESCRIPTION("SH SCI SPI Driver");
 MODULE_AUTHOR("Magnus Damm <damm@opensource.se>");

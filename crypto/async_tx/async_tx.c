@@ -24,7 +24,6 @@
  *
  */
 #include <linux/rculist.h>
-#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/async_tx.h>
 

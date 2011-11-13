@@ -27,6 +27,7 @@
 #define __BFAD_DRV_H__
 
 #include <linux/types.h>
+#include <linux/version.h>
 #include <linux/pci.h>
 #include <linux/dma-mapping.h>
 #include <linux/idr.h>

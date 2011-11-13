@@ -541,7 +541,7 @@ static int read_name(struct inode *ino, char *name)
 
 	ino->i_ino = st.ino;
 	ino->i_mode = st.mode;
-	set_nlink(ino, st.nlink);
+	ino->i_nlink = st.nlink;
 	ino->i_uid = st.uid;
 	ino->i_gid = st.gid;
 	ino->i_atime = st.atime;

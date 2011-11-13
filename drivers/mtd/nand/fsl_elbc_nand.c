@@ -75,6 +75,7 @@ struct fsl_elbc_fcm_ctrl {
 	unsigned int use_mdr;    /* Non zero if the MDR is to be set      */
 	unsigned int oob;        /* Non zero if operating on OOB data     */
 	unsigned int counter;	 /* counter for the initializations	  */
+	char *oob_poi;           /* Place to write ECC after read back    */
 };
 
 /* These map to the positions used by the FCM hardware ECC generator */
@@ -241,25 +242,6 @@ static int fsl_elbc_run_command(struct mtd_info *mtd)
 		         in_be32(&lbc->fir), in_be32(&lbc->fcr),
 			 elbc_fcm_ctrl->status, elbc_fcm_ctrl->mdr);
 		return -EIO;
-	}
-
-	if (chip->ecc.mode != NAND_ECC_HW)
-		return 0;
-
-	if (elbc_fcm_ctrl->read_bytes == mtd->writesize + mtd->oobsize) {
-		uint32_t lteccr = in_be32(&lbc->lteccr);
-		/*
-		 * if command was a full page read and the ELBC
-		 * has the LTECCR register, then bits 12-15 (ppc order) of
-		 * LTECCR indicates which 512 byte sub-pages had fixed errors.
-		 * bits 28-31 are uncorrectable errors, marked elsewhere.
-		 * for small page nand only 1 bit is used.
-		 * if the ELBC doesn't have the lteccr register it reads 0
-		 */
-		if (lteccr & 0x000F000F)
-			out_be32(&lbc->lteccr, 0x000F000F); /* clear lteccr */
-		if (lteccr & 0x000F0000)
-			mtd->ecc_stats.corrected++;
 	}
 
 	return 0;
@@ -453,6 +435,7 @@ static void fsl_elbc_cmdfunc(struct mtd_info *mtd, unsigned int command,
 
 	/* PAGEPROG reuses all of the setup from SEQIN and adds the length */
 	case NAND_CMD_PAGEPROG: {
+		int full_page;
 		dev_vdbg(priv->dev,
 		         "fsl_elbc_cmdfunc: NAND_CMD_PAGEPROG "
 			 "writing %d bytes.\n", elbc_fcm_ctrl->index);
@@ -462,12 +445,34 @@ static void fsl_elbc_cmdfunc(struct mtd_info *mtd, unsigned int command,
 		 * write so the HW generates the ECC.
 		 */
 		if (elbc_fcm_ctrl->oob || elbc_fcm_ctrl->column != 0 ||
-		    elbc_fcm_ctrl->index != mtd->writesize + mtd->oobsize)
+		    elbc_fcm_ctrl->index != mtd->writesize + mtd->oobsize) {
 			out_be32(&lbc->fbcr, elbc_fcm_ctrl->index);
-		else
+			full_page = 0;
+		} else {
 			out_be32(&lbc->fbcr, 0);
+			full_page = 1;
+		}
 
 		fsl_elbc_run_command(mtd);
+
+		/* Read back the page in order to fill in the ECC for the
+		 * caller.  Is this really needed?
+		 */
+		if (full_page && elbc_fcm_ctrl->oob_poi) {
+			out_be32(&lbc->fbcr, 3);
+			set_addr(mtd, 6, page_addr, 1);
+
+			elbc_fcm_ctrl->read_bytes = mtd->writesize + 9;
+
+			fsl_elbc_do_read(chip, 1);
+			fsl_elbc_run_command(mtd);
+
+			memcpy_fromio(elbc_fcm_ctrl->oob_poi + 6,
+				&elbc_fcm_ctrl->addr[elbc_fcm_ctrl->index], 3);
+			elbc_fcm_ctrl->index += 3;
+		}
+
+		elbc_fcm_ctrl->oob_poi = NULL;
 		return;
 	}
 
@@ -747,8 +752,13 @@ static void fsl_elbc_write_page(struct mtd_info *mtd,
                                 struct nand_chip *chip,
                                 const uint8_t *buf)
 {
+	struct fsl_elbc_mtd *priv = chip->priv;
+	struct fsl_elbc_fcm_ctrl *elbc_fcm_ctrl = priv->ctrl->nand;
+
 	fsl_elbc_write_buf(mtd, buf, mtd->writesize);
 	fsl_elbc_write_buf(mtd, chip->oob_poi, mtd->oobsize);
+
+	elbc_fcm_ctrl->oob_poi = chip->oob_poi;
 }
 
 static int fsl_elbc_chip_init(struct fsl_elbc_mtd *priv)
@@ -781,8 +791,8 @@ static int fsl_elbc_chip_init(struct fsl_elbc_mtd *priv)
 	chip->bbt_md = &bbt_mirror_descr;
 
 	/* set up nand options */
-	chip->options = NAND_NO_READRDY | NAND_NO_AUTOINCR;
-	chip->bbt_options = NAND_BBT_USE_FLASH;
+	chip->options = NAND_NO_READRDY | NAND_NO_AUTOINCR |
+			NAND_USE_FLASH_BBT;
 
 	chip->controller = &elbc_fcm_ctrl->controller;
 	chip->priv = priv;
@@ -819,6 +829,7 @@ static int fsl_elbc_chip_remove(struct fsl_elbc_mtd *priv)
 
 	elbc_fcm_ctrl->chips[priv->bank] = NULL;
 	kfree(priv);
+	kfree(elbc_fcm_ctrl);
 	return 0;
 }
 
@@ -831,14 +842,13 @@ static int __devinit fsl_elbc_nand_probe(struct platform_device *pdev)
 	struct resource res;
 	struct fsl_elbc_fcm_ctrl *elbc_fcm_ctrl;
 	static const char *part_probe_types[]
-		= { "cmdlinepart", "RedBoot", "ofpart", NULL };
+		= { "cmdlinepart", "RedBoot", NULL };
+	struct mtd_partition *parts;
 	int ret;
 	int bank;
 	struct device *dev;
 	struct device_node *node = pdev->dev.of_node;
-	struct mtd_part_parser_data ppdata;
 
-	ppdata.of_node = pdev->dev.of_node;
 	if (!fsl_lbc_ctrl_dev || !fsl_lbc_ctrl_dev->regs)
 		return -ENODEV;
 	lbc = fsl_lbc_ctrl_dev->regs;
@@ -924,8 +934,17 @@ static int __devinit fsl_elbc_nand_probe(struct platform_device *pdev)
 
 	/* First look for RedBoot table or partitions on the command
 	 * line, these take precedence over device tree information */
-	mtd_device_parse_register(&priv->mtd, part_probe_types, &ppdata,
-				  NULL, 0);
+	ret = parse_mtd_partitions(&priv->mtd, part_probe_types, &parts, 0);
+	if (ret < 0)
+		goto err;
+
+	if (ret == 0) {
+		ret = of_mtd_parse_partitions(priv->dev, node, &parts);
+		if (ret < 0)
+			goto err;
+	}
+
+	mtd_device_register(&priv->mtd, parts, ret);
 
 	printk(KERN_INFO "eLBC NAND device at 0x%llx, bank %d\n",
 	       (unsigned long long)res.start, priv->bank);

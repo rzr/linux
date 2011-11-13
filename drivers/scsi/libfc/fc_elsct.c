@@ -21,7 +21,6 @@
  * Provide interface to send ELS/CT FC frames
  */
 
-#include <linux/export.h>
 #include <asm/unaligned.h>
 #include <scsi/fc/fc_gs.h>
 #include <scsi/fc/fc_ns.h>

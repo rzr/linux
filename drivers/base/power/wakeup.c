@@ -10,7 +10,6 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/capability.h>
-#include <linux/export.h>
 #include <linux/suspend.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
@@ -277,9 +276,7 @@ EXPORT_SYMBOL_GPL(device_set_wakeup_capable);
  *
  * By default, most devices should leave wakeup disabled.  The exceptions are
  * devices that everyone expects to be wakeup sources: keyboards, power buttons,
- * possibly network interfaces, etc.  Also, devices that don't generate their
- * own wakeup requests but merely forward requests from one bus to another
- * (like PCI bridges) should have wakeup enabled by default.
+ * possibly network interfaces, etc.
  */
 int device_init_wakeup(struct device *dev, bool enable)
 {

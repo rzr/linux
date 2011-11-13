@@ -26,7 +26,6 @@
 #include <mach/hardware.h>
 #include <asm/hardware/sa1111.h>
 #include <asm/irq.h>
-#include <asm/page.h>
 #include <asm/mach-types.h>
 #include <asm/setup.h>
 #include <asm/mach/arch.h>
@@ -365,7 +364,7 @@ static void __init jornada720_mach_init(void)
 
 MACHINE_START(JORNADA720, "HP Jornada 720")
 	/* Maintainer: Kristoffer Ericson <Kristoffer.Ericson@gmail.com> */
-	.atag_offset	= 0x100,
+	.boot_params	= 0xc0000100,
 	.map_io		= jornada720_map_io,
 	.init_irq	= sa1100_init_irq,
 	.timer		= &sa1100_timer,

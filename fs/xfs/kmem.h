@@ -61,7 +61,12 @@ extern void  kmem_free(const void *);
 
 static inline void *kmem_zalloc_large(size_t size)
 {
-	return vzalloc(size);
+	void *ptr;
+
+	ptr = vmalloc(size);
+	if (ptr)
+		memset(ptr, 0, size);
+	return ptr;
 }
 static inline void kmem_free_large(void *ptr)
 {

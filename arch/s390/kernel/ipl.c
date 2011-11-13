@@ -16,7 +16,6 @@
 #include <linux/ctype.h>
 #include <linux/fs.h>
 #include <linux/gfp.h>
-#include <linux/crash_dump.h>
 #include <asm/ipl.h>
 #include <asm/smp.h>
 #include <asm/setup.h>
@@ -27,7 +26,6 @@
 #include <asm/sclp.h>
 #include <asm/sigp.h>
 #include <asm/checksum.h>
-#include "entry.h"
 
 #define IPL_PARM_BLOCK_VERSION 0
 
@@ -277,8 +275,8 @@ static ssize_t ipl_type_show(struct kobject *kobj, struct kobj_attribute *attr,
 static struct kobj_attribute sys_ipl_type_attr = __ATTR_RO(ipl_type);
 
 /* VM IPL PARM routines */
-static size_t reipl_get_ascii_vmparm(char *dest, size_t size,
-				     const struct ipl_parameter_block *ipb)
+size_t reipl_get_ascii_vmparm(char *dest, size_t size,
+				   const struct ipl_parameter_block *ipb)
 {
 	int i;
 	size_t len;
@@ -340,8 +338,8 @@ static size_t scpdata_length(const char* buf, size_t count)
 	return count;
 }
 
-static size_t reipl_append_ascii_scpdata(char *dest, size_t size,
-					 const struct ipl_parameter_block *ipb)
+size_t reipl_append_ascii_scpdata(char *dest, size_t size,
+				  const struct ipl_parameter_block *ipb)
 {
 	size_t count;
 	size_t i;
@@ -1740,11 +1738,7 @@ static struct kobj_attribute on_restart_attr =
 
 void do_restart(void)
 {
-	smp_restart_with_online_cpu();
 	smp_send_stop();
-#ifdef CONFIG_CRASH_DUMP
-	crash_kexec(NULL);
-#endif
 	on_restart_trigger.action->fn(&on_restart_trigger);
 	stop_run(&on_restart_trigger);
 }
@@ -2015,7 +2009,7 @@ static void do_reset_calls(void)
 
 u32 dump_prefix_page;
 
-void s390_reset_system(void (*func)(void *), void *data)
+void s390_reset_system(void)
 {
 	struct _lowcore *lc;
 
@@ -2034,19 +2028,15 @@ void s390_reset_system(void (*func)(void *), void *data)
 	__ctl_clear_bit(0,28);
 
 	/* Set new machine check handler */
-	S390_lowcore.mcck_new_psw.mask = psw_kernel_bits | PSW_MASK_DAT;
+	S390_lowcore.mcck_new_psw.mask = psw_kernel_bits & ~PSW_MASK_MCHECK;
 	S390_lowcore.mcck_new_psw.addr =
 		PSW_ADDR_AMODE | (unsigned long) s390_base_mcck_handler;
 
 	/* Set new program check handler */
-	S390_lowcore.program_new_psw.mask = psw_kernel_bits | PSW_MASK_DAT;
+	S390_lowcore.program_new_psw.mask = psw_kernel_bits & ~PSW_MASK_MCHECK;
 	S390_lowcore.program_new_psw.addr =
 		PSW_ADDR_AMODE | (unsigned long) s390_base_pgm_handler;
 
-	/* Store status at absolute zero */
-	store_status();
-
 	do_reset_calls();
-	if (func)
-		func(data);
 }
+

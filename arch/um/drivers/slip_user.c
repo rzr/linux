@@ -11,10 +11,12 @@
 #include <string.h>
 #include <sys/termios.h>
 #include <sys/wait.h>
+#include "kern_constants.h"
 #include "net_user.h"
 #include "os.h"
 #include "slip.h"
 #include "um_malloc.h"
+#include "user.h"
 
 static int slip_user_init(void *data, void *dev)
 {

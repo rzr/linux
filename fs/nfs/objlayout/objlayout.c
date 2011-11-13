@@ -156,39 +156,77 @@ last_byte_offset(u64 start, u64 len)
 	return end > start ? end - 1 : NFS4_MAX_UINT64;
 }
 
-void _fix_verify_io_params(struct pnfs_layout_segment *lseg,
-			   struct page ***p_pages, unsigned *p_pgbase,
-			   u64 offset, unsigned long count)
+static struct objlayout_io_state *
+objlayout_alloc_io_state(struct pnfs_layout_hdr *pnfs_layout_type,
+			struct page **pages,
+			unsigned pgbase,
+			loff_t offset,
+			size_t count,
+			struct pnfs_layout_segment *lseg,
+			void *rpcdata,
+			gfp_t gfp_flags)
 {
+	struct objlayout_io_state *state;
 	u64 lseg_end_offset;
+
+	dprintk("%s: allocating io_state\n", __func__);
+	if (objio_alloc_io_state(lseg, &state, gfp_flags))
+		return NULL;
 
 	BUG_ON(offset < lseg->pls_range.offset);
 	lseg_end_offset = end_offset(lseg->pls_range.offset,
 				     lseg->pls_range.length);
 	BUG_ON(offset >= lseg_end_offset);
-	WARN_ON(offset + count > lseg_end_offset);
-
-	if (*p_pgbase > PAGE_SIZE) {
-		dprintk("%s: pgbase(0x%x) > PAGE_SIZE\n", __func__, *p_pgbase);
-		*p_pages += *p_pgbase >> PAGE_SHIFT;
-		*p_pgbase &= ~PAGE_MASK;
+	if (offset + count > lseg_end_offset) {
+		count = lseg->pls_range.length -
+				(offset - lseg->pls_range.offset);
+		dprintk("%s: truncated count %Zd\n", __func__, count);
 	}
+
+	if (pgbase > PAGE_SIZE) {
+		pages += pgbase >> PAGE_SHIFT;
+		pgbase &= ~PAGE_MASK;
+	}
+
+	INIT_LIST_HEAD(&state->err_list);
+	state->lseg = lseg;
+	state->rpcdata = rpcdata;
+	state->pages = pages;
+	state->pgbase = pgbase;
+	state->nr_pages = (pgbase + count + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	state->offset = offset;
+	state->count = count;
+	state->sync = 0;
+
+	return state;
+}
+
+static void
+objlayout_free_io_state(struct objlayout_io_state *state)
+{
+	dprintk("%s: freeing io_state\n", __func__);
+	if (unlikely(!state))
+		return;
+
+	objio_free_io_state(state);
 }
 
 /*
  * I/O done common code
  */
 static void
-objlayout_iodone(struct objlayout_io_res *oir)
+objlayout_iodone(struct objlayout_io_state *state)
 {
-	if (likely(oir->status >= 0)) {
-		objio_free_result(oir);
+	dprintk("%s: state %p status\n", __func__, state);
+
+	if (likely(state->status >= 0)) {
+		objlayout_free_io_state(state);
 	} else {
-		struct objlayout *objlay = oir->objlay;
+		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
 
 		spin_lock(&objlay->lock);
 		objlay->delta_space_valid = OBJ_DSU_INVALID;
-		list_add(&objlay->err_list, &oir->err_list);
+		list_add(&objlay->err_list, &state->err_list);
 		spin_unlock(&objlay->lock);
 	}
 }
@@ -200,13 +238,13 @@ objlayout_iodone(struct objlayout_io_res *oir)
  * the error for later reporting at layout-return.
  */
 void
-objlayout_io_set_result(struct objlayout_io_res *oir, unsigned index,
+objlayout_io_set_result(struct objlayout_io_state *state, unsigned index,
 			struct pnfs_osd_objid *pooid, int osd_error,
 			u64 offset, u64 length, bool is_write)
 {
-	struct pnfs_osd_ioerr *ioerr = &oir->ioerrs[index];
+	struct pnfs_osd_ioerr *ioerr = &state->ioerrs[index];
 
-	BUG_ON(index >= oir->num_comps);
+	BUG_ON(index >= state->num_comps);
 	if (osd_error) {
 		ioerr->oer_component = *pooid;
 		ioerr->oer_comp_offset = offset;
@@ -247,18 +285,21 @@ static void _rpc_read_complete(struct work_struct *work)
 }
 
 void
-objlayout_read_done(struct objlayout_io_res *oir, ssize_t status, bool sync)
+objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
 {
-	struct nfs_read_data *rdata = oir->rpcdata;
+	int eof = state->eof;
+	struct nfs_read_data *rdata;
 
-	oir->status = rdata->task.tk_status = status;
-	if (status >= 0)
+	state->status = status;
+	dprintk("%s: Begin status=%zd eof=%d\n", __func__, status, eof);
+	rdata = state->rpcdata;
+	rdata->task.tk_status = status;
+	if (status >= 0) {
 		rdata->res.count = status;
-	objlayout_iodone(oir);
-	/* must not use oir after this point */
-
-	dprintk("%s: Return status=%zd eof=%d sync=%d\n", __func__,
-		status, rdata->res.eof, sync);
+		rdata->res.eof = eof;
+	}
+	objlayout_iodone(state);
+	/* must not use state after this point */
 
 	if (sync)
 		pnfs_ld_read_done(rdata);
@@ -276,36 +317,40 @@ objlayout_read_pagelist(struct nfs_read_data *rdata)
 {
 	loff_t offset = rdata->args.offset;
 	size_t count = rdata->args.count;
-	int err;
+	struct objlayout_io_state *state;
+	ssize_t status = 0;
 	loff_t eof;
+
+	dprintk("%s: Begin inode %p offset %llu count %d\n",
+		__func__, rdata->inode, offset, (int)count);
 
 	eof = i_size_read(rdata->inode);
 	if (unlikely(offset + count > eof)) {
 		if (offset >= eof) {
-			err = 0;
+			status = 0;
 			rdata->res.count = 0;
 			rdata->res.eof = 1;
-			/*FIXME: do we need to call pnfs_ld_read_done() */
 			goto out;
 		}
 		count = eof - offset;
 	}
 
-	rdata->res.eof = (offset + count) >= eof;
-	_fix_verify_io_params(rdata->lseg, &rdata->args.pages,
-			      &rdata->args.pgbase,
-			      rdata->args.offset, rdata->args.count);
-
-	dprintk("%s: inode(%lx) offset 0x%llx count 0x%Zx eof=%d\n",
-		__func__, rdata->inode->i_ino, offset, count, rdata->res.eof);
-
-	err = objio_read_pagelist(rdata);
- out:
-	if (unlikely(err)) {
-		rdata->pnfs_error = err;
-		dprintk("%s: Returned Error %d\n", __func__, err);
-		return PNFS_NOT_ATTEMPTED;
+	state = objlayout_alloc_io_state(NFS_I(rdata->inode)->layout,
+					 rdata->args.pages, rdata->args.pgbase,
+					 offset, count,
+					 rdata->lseg, rdata,
+					 GFP_KERNEL);
+	if (unlikely(!state)) {
+		status = -ENOMEM;
+		goto out;
 	}
+
+	state->eof = state->offset + state->count >= eof;
+
+	status = objio_read_pagelist(state);
+ out:
+	dprintk("%s: Return status %Zd\n", __func__, status);
+	rdata->pnfs_error = status;
 	return PNFS_ATTEMPTED;
 }
 
@@ -326,20 +371,26 @@ static void _rpc_write_complete(struct work_struct *work)
 }
 
 void
-objlayout_write_done(struct objlayout_io_res *oir, ssize_t status, bool sync)
+objlayout_write_done(struct objlayout_io_state *state, ssize_t status,
+		     bool sync)
 {
-	struct nfs_write_data *wdata = oir->rpcdata;
+	struct nfs_write_data *wdata;
 
-	oir->status = wdata->task.tk_status = status;
+	dprintk("%s: Begin\n", __func__);
+	wdata = state->rpcdata;
+	state->status = status;
+	wdata->task.tk_status = status;
 	if (status >= 0) {
 		wdata->res.count = status;
-		wdata->verf.committed = oir->committed;
-	}
-	objlayout_iodone(oir);
-	/* must not use oir after this point */
-
-	dprintk("%s: Return status %zd committed %d sync=%d\n", __func__,
-		status, wdata->verf.committed, sync);
+		wdata->verf.committed = state->committed;
+		dprintk("%s: Return status %d committed %d\n",
+			__func__, wdata->task.tk_status,
+			wdata->verf.committed);
+	} else
+		dprintk("%s: Return status %d\n",
+			__func__, wdata->task.tk_status);
+	objlayout_iodone(state);
+	/* must not use state after this point */
 
 	if (sync)
 		pnfs_ld_write_done(wdata);
@@ -356,18 +407,30 @@ enum pnfs_try_status
 objlayout_write_pagelist(struct nfs_write_data *wdata,
 			 int how)
 {
-	int err;
+	struct objlayout_io_state *state;
+	ssize_t status;
 
-	_fix_verify_io_params(wdata->lseg, &wdata->args.pages,
-			      &wdata->args.pgbase,
-			      wdata->args.offset, wdata->args.count);
+	dprintk("%s: Begin inode %p offset %llu count %u\n",
+		__func__, wdata->inode, wdata->args.offset, wdata->args.count);
 
-	err = objio_write_pagelist(wdata, how);
-	if (unlikely(err)) {
-		wdata->pnfs_error = err;
-		dprintk("%s: Returned Error %d\n", __func__, err);
-		return PNFS_NOT_ATTEMPTED;
+	state = objlayout_alloc_io_state(NFS_I(wdata->inode)->layout,
+					 wdata->args.pages,
+					 wdata->args.pgbase,
+					 wdata->args.offset,
+					 wdata->args.count,
+					 wdata->lseg, wdata,
+					 GFP_NOFS);
+	if (unlikely(!state)) {
+		status = -ENOMEM;
+		goto out;
 	}
+
+	state->sync = how & FLUSH_SYNC;
+
+	status = objio_write_pagelist(state, how & FLUSH_STABLE);
+ out:
+	dprintk("%s: Return status %Zd\n", __func__, status);
+	wdata->pnfs_error = status;
 	return PNFS_ATTEMPTED;
 }
 
@@ -474,14 +537,14 @@ merge_ioerr(struct pnfs_osd_ioerr *dest_err,
 static void
 encode_accumulated_error(struct objlayout *objlay, __be32 *p)
 {
-	struct objlayout_io_res *oir, *tmp;
+	struct objlayout_io_state *state, *tmp;
 	struct pnfs_osd_ioerr accumulated_err = {.oer_errno = 0};
 
-	list_for_each_entry_safe(oir, tmp, &objlay->err_list, err_list) {
+	list_for_each_entry_safe(state, tmp, &objlay->err_list, err_list) {
 		unsigned i;
 
-		for (i = 0; i < oir->num_comps; i++) {
-			struct pnfs_osd_ioerr *ioerr = &oir->ioerrs[i];
+		for (i = 0; i < state->num_comps; i++) {
+			struct pnfs_osd_ioerr *ioerr = &state->ioerrs[i];
 
 			if (!ioerr->oer_errno)
 				continue;
@@ -500,8 +563,8 @@ encode_accumulated_error(struct objlayout *objlay, __be32 *p)
 
 			merge_ioerr(&accumulated_err, ioerr);
 		}
-		list_del(&oir->err_list);
-		objio_free_result(oir);
+		list_del(&state->err_list);
+		objlayout_free_io_state(state);
 	}
 
 	pnfs_osd_xdr_encode_ioerr(p, &accumulated_err);
@@ -513,7 +576,7 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
 			      const struct nfs4_layoutreturn_args *args)
 {
 	struct objlayout *objlay = OBJLAYOUT(pnfslay);
-	struct objlayout_io_res *oir, *tmp;
+	struct objlayout_io_state *state, *tmp;
 	__be32 *start;
 
 	dprintk("%s: Begin\n", __func__);
@@ -522,13 +585,13 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
 
 	spin_lock(&objlay->lock);
 
-	list_for_each_entry_safe(oir, tmp, &objlay->err_list, err_list) {
+	list_for_each_entry_safe(state, tmp, &objlay->err_list, err_list) {
 		__be32 *last_xdr = NULL, *p;
 		unsigned i;
 		int res = 0;
 
-		for (i = 0; i < oir->num_comps; i++) {
-			struct pnfs_osd_ioerr *ioerr = &oir->ioerrs[i];
+		for (i = 0; i < state->num_comps; i++) {
+			struct pnfs_osd_ioerr *ioerr = &state->ioerrs[i];
 
 			if (!ioerr->oer_errno)
 				continue;
@@ -552,7 +615,7 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
 			}
 
 			last_xdr = p;
-			pnfs_osd_xdr_encode_ioerr(p, &oir->ioerrs[i]);
+			pnfs_osd_xdr_encode_ioerr(p, &state->ioerrs[i]);
 		}
 
 		/* TODO: use xdr_write_pages */
@@ -568,8 +631,8 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
 			encode_accumulated_error(objlay, last_xdr);
 			goto loop_done;
 		}
-		list_del(&oir->err_list);
-		objio_free_result(oir);
+		list_del(&state->err_list);
+		objlayout_free_io_state(state);
 	}
 loop_done:
 	spin_unlock(&objlay->lock);

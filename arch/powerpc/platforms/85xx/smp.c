@@ -48,11 +48,10 @@ smp_85xx_kick_cpu(int nr)
 	const u64 *cpu_rel_addr;
 	__iomem u32 *bptr_vaddr;
 	struct device_node *np;
-	int n = 0, hw_cpu = get_hard_smp_processor_id(nr);
+	int n = 0;
 	int ioremappable;
 
-	WARN_ON(nr < 0 || nr >= NR_CPUS);
-	WARN_ON(hw_cpu < 0 || hw_cpu >= NR_CPUS);
+	WARN_ON (nr < 0 || nr >= NR_CPUS);
 
 	pr_debug("smp_85xx_kick_cpu: kick CPU #%d\n", nr);
 
@@ -80,7 +79,7 @@ smp_85xx_kick_cpu(int nr)
 
 	local_irq_save(flags);
 
-	out_be32(bptr_vaddr + BOOT_ENTRY_PIR, hw_cpu);
+	out_be32(bptr_vaddr + BOOT_ENTRY_PIR, nr);
 #ifdef CONFIG_PPC32
 	out_be32(bptr_vaddr + BOOT_ENTRY_ADDR_LOWER, __pa(__early_start));
 
@@ -89,7 +88,7 @@ smp_85xx_kick_cpu(int nr)
 				(ulong)(bptr_vaddr + SIZE_BOOT_ENTRY));
 
 	/* Wait a bit for the CPU to ack. */
-	while ((__secondary_hold_acknowledge != hw_cpu) && (++n < 1000))
+	while ((__secondary_hold_acknowledge != nr) && (++n < 1000))
 		mdelay(1);
 #else
 	smp_generic_kick_cpu(nr);
@@ -207,7 +206,7 @@ static void mpc85xx_smp_machine_kexec(struct kimage *image)
 	if ( !timeout )
 		printk(KERN_ERR "Unable to bring down secondary cpu(s)");
 
-	for_each_online_cpu(i)
+	for (i = 0; i < num_cpus; i++)
 	{
 		if ( i == smp_processor_id() ) continue;
 		mpic_reset_core(i);
@@ -244,7 +243,6 @@ void __init mpc85xx_smp_init(void)
 		 * If left NULL, .message_pass defaults to
 		 * smp_muxed_ipi_message_pass
 		 */
-		smp_85xx_ops.message_pass = NULL;
 		smp_85xx_ops.cause_ipi = doorbell_cause_ipi;
 	}
 
