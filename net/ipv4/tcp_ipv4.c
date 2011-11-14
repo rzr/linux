@@ -1521,7 +1521,6 @@ exit:
 	return NULL;
 put_and_exit:
 	tcp_clear_xmit_timers(newsk);
-	tcp_cleanup_congestion_control(newsk);
 	bh_unlock_sock(newsk);
 	sock_put(newsk);
 	goto exit;
