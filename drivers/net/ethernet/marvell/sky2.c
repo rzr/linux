@@ -1767,6 +1767,11 @@ static int sky2_open(struct net_device *dev)
 
 	sky2_hw_up(sky2);
 
+	if (hw->chip_id == CHIP_ID_YUKON_OPT ||
+	    hw->chip_id == CHIP_ID_YUKON_PRM ||
+	    hw->chip_id == CHIP_ID_YUKON_OP_2)
+		imask |= Y2_IS_PHY_QLNK;	/* enable PHY Quick Link */
+
 	/* Enable interrupts from phy/mac for port */
 	imask = sky2_read32(hw, B0_IMSK);
 
@@ -3455,13 +3460,12 @@ static void sky2_all_down(struct sky2_hw *hw)
 {
 	int i;
 
-	if (hw->flags & SKY2_HW_IRQ_SETUP) {
-		sky2_read32(hw, B0_IMSK);
-		sky2_write32(hw, B0_IMSK, 0);
+	sky2_read32(hw, B0_IMSK);
+	sky2_write32(hw, B0_IMSK, 0);
 
+	if (hw->ports > 1 || netif_running(hw->dev[0]))
 		synchronize_irq(hw->pdev->irq);
-		napi_disable(&hw->napi);
-	}
+	napi_disable(&hw->napi);
 
 	for (i = 0; i < hw->ports; i++) {
 		struct net_device *dev = hw->dev[i];
@@ -3478,7 +3482,7 @@ static void sky2_all_down(struct sky2_hw *hw)
 
 static void sky2_all_up(struct sky2_hw *hw)
 {
-	u32 imask = Y2_IS_BASE;
+	u32 imask = 0;
 	int i;
 
 	for (i = 0; i < hw->ports; i++) {
@@ -3494,7 +3498,8 @@ static void sky2_all_up(struct sky2_hw *hw)
 		netif_wake_queue(dev);
 	}
 
-	if (hw->flags & SKY2_HW_IRQ_SETUP) {
+	if (imask || hw->ports > 1) {
+		imask |= Y2_IS_BASE;
 		sky2_write32(hw, B0_IMSK, imask);
 		sky2_read32(hw, B0_IMSK);
 		sky2_read32(hw, B0_Y2_SP_LISR);
