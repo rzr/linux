@@ -52,7 +52,7 @@ enum {
 
 static int hibernation_mode = HIBERNATION_SHUTDOWN;
 
-bool freezer_test_done;
+static bool freezer_test_done;
 
 static const struct platform_hibernation_ops *hibernation_ops;
 
@@ -345,6 +345,17 @@ int hibernation_snapshot(int platform_mode)
 		goto Cleanup;
 	}
 
+	if (hibernation_test(TEST_FREEZER) ||
+		hibernation_testmode(HIBERNATION_TESTPROC)) {
+
+		/*
+		 * Indicate to the caller that we are returning due to a
+		 * successful freezer test.
+		 */
+		freezer_test_done = true;
+		goto Close;
+	}
+
 	error = dpm_prepare(PMSG_FREEZE);
 	if (error) {
 		dpm_complete(PMSG_RECOVER);
@@ -619,7 +630,7 @@ int hibernate(void)
 
 	error = freeze_processes();
 	if (error)
-		goto Free_bitmaps;
+		goto Finish;
 
 	error = hibernation_snapshot(hibernation_mode == HIBERNATION_PLATFORM);
 	if (error)
