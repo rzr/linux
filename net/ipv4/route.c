@@ -1399,7 +1399,7 @@ static void rt_del(unsigned hash, struct rtable *rt)
 	spin_unlock_bh(rt_hash_lock_addr(hash));
 }
 
-static void check_peer_redir(struct dst_entry *dst, struct inet_peer *peer)
+static int check_peer_redir(struct dst_entry *dst, struct inet_peer *peer)
 {
 	struct rtable *rt = (struct rtable *) dst;
 	__be32 orig_gw = rt->rt_gateway;
@@ -1410,19 +1410,21 @@ static void check_peer_redir(struct dst_entry *dst, struct inet_peer *peer)
 	rt->rt_gateway = peer->redirect_learned.a4;
 
 	n = ipv4_neigh_lookup(&rt->dst, &rt->rt_gateway);
-	if (IS_ERR(n)) {
-		rt->rt_gateway = orig_gw;
-		return;
-	}
+	if (IS_ERR(n))
+		return PTR_ERR(n);
 	old_n = xchg(&rt->dst._neighbour, n);
 	if (old_n)
 		neigh_release(old_n);
-	if (!(n->nud_state & NUD_VALID)) {
-		neigh_event_send(n, NULL);
+	if (!n || !(n->nud_state & NUD_VALID)) {
+		if (n)
+			neigh_event_send(n, NULL);
+		rt->rt_gateway = orig_gw;
+		return -EAGAIN;
 	} else {
 		rt->rt_flags |= RTCF_REDIRECTED;
 		call_netevent_notifiers(NETEVENT_NEIGH_UPDATE, n);
 	}
+	return 0;
 }
 
 /* called in rcu_read_lock() section */
@@ -1778,7 +1780,7 @@ static void ip_rt_update_pmtu(struct dst_entry *dst, u32 mtu)
 }
 
 
-static void ipv4_validate_peer(struct rtable *rt)
+static struct dst_entry *ipv4_dst_check(struct dst_entry *dst, u32 cookie)
 {
 	if (rt->rt_peer_genid != rt_peer_genid()) {
 		struct inet_peer *peer;
