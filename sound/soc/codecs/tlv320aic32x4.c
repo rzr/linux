@@ -528,33 +528,40 @@ static int aic32x4_set_bias_level(struct snd_soc_codec *codec,
 				  enum snd_soc_bias_level level)
 {
 	struct aic32x4_priv *aic32x4 = snd_soc_codec_get_drvdata(codec);
+	u8 value;
 
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		if (aic32x4->master) {
 			/* Switch on PLL */
-			snd_soc_update_bits(codec, AIC32X4_PLLPR,
-					    AIC32X4_PLLEN, AIC32X4_PLLEN);
+			value = snd_soc_read(codec, AIC32X4_PLLPR);
+			snd_soc_write(codec, AIC32X4_PLLPR,
+				      (value | AIC32X4_PLLEN));
 
 			/* Switch on NDAC Divider */
-			snd_soc_update_bits(codec, AIC32X4_NDAC,
-					    AIC32X4_NDACEN, AIC32X4_NDACEN);
+			value = snd_soc_read(codec, AIC32X4_NDAC);
+			snd_soc_write(codec, AIC32X4_NDAC,
+				      value | AIC32X4_NDACEN);
 
 			/* Switch on MDAC Divider */
-			snd_soc_update_bits(codec, AIC32X4_MDAC,
-					    AIC32X4_MDACEN, AIC32X4_MDACEN);
+			value = snd_soc_read(codec, AIC32X4_MDAC);
+			snd_soc_write(codec, AIC32X4_MDAC,
+				      value | AIC32X4_MDACEN);
 
 			/* Switch on NADC Divider */
-			snd_soc_update_bits(codec, AIC32X4_NADC,
-					    AIC32X4_NADCEN, AIC32X4_NADCEN);
+			value = snd_soc_read(codec, AIC32X4_NADC);
+			snd_soc_write(codec, AIC32X4_NADC,
+				      value | AIC32X4_MDACEN);
 
 			/* Switch on MADC Divider */
-			snd_soc_update_bits(codec, AIC32X4_MADC,
-					    AIC32X4_MADCEN, AIC32X4_MADCEN);
+			value = snd_soc_read(codec, AIC32X4_MADC);
+			snd_soc_write(codec, AIC32X4_MADC,
+				      value | AIC32X4_MDACEN);
 
 			/* Switch on BCLK_N Divider */
-			snd_soc_update_bits(codec, AIC32X4_BCLKN,
-					    AIC32X4_BCLKEN, AIC32X4_BCLKEN);
+			value = snd_soc_read(codec, AIC32X4_BCLKN);
+			snd_soc_write(codec, AIC32X4_BCLKN,
+				      value | AIC32X4_BCLKEN);
 		}
 		break;
 	case SND_SOC_BIAS_PREPARE:
@@ -562,28 +569,34 @@ static int aic32x4_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_STANDBY:
 		if (aic32x4->master) {
 			/* Switch off PLL */
-			snd_soc_update_bits(codec, AIC32X4_PLLPR,
-					    AIC32X4_PLLEN, 0);
+			value = snd_soc_read(codec, AIC32X4_PLLPR);
+			snd_soc_write(codec, AIC32X4_PLLPR,
+				      (value & ~AIC32X4_PLLEN));
 
 			/* Switch off NDAC Divider */
-			snd_soc_update_bits(codec, AIC32X4_NDAC,
-					    AIC32X4_NDACEN, 0);
+			value = snd_soc_read(codec, AIC32X4_NDAC);
+			snd_soc_write(codec, AIC32X4_NDAC,
+				      value & ~AIC32X4_NDACEN);
 
 			/* Switch off MDAC Divider */
-			snd_soc_update_bits(codec, AIC32X4_MDAC,
-					    AIC32X4_MDACEN, 0);
+			value = snd_soc_read(codec, AIC32X4_MDAC);
+			snd_soc_write(codec, AIC32X4_MDAC,
+				      value & ~AIC32X4_MDACEN);
 
 			/* Switch off NADC Divider */
-			snd_soc_update_bits(codec, AIC32X4_NADC,
-					    AIC32X4_NADCEN, 0);
+			value = snd_soc_read(codec, AIC32X4_NADC);
+			snd_soc_write(codec, AIC32X4_NADC,
+				      value & ~AIC32X4_NDACEN);
 
 			/* Switch off MADC Divider */
-			snd_soc_update_bits(codec, AIC32X4_MADC,
-					    AIC32X4_MADCEN, 0);
+			value = snd_soc_read(codec, AIC32X4_MADC);
+			snd_soc_write(codec, AIC32X4_MADC,
+				      value & ~AIC32X4_MDACEN);
+			value = snd_soc_read(codec, AIC32X4_BCLKN);
 
 			/* Switch off BCLK_N Divider */
-			snd_soc_update_bits(codec, AIC32X4_BCLKN,
-					    AIC32X4_BCLKEN, 0);
+			snd_soc_write(codec, AIC32X4_BCLKN,
+				      value & ~AIC32X4_BCLKEN);
 		}
 		break;
 	case SND_SOC_BIAS_OFF:
@@ -672,10 +685,10 @@ static int aic32x4_probe(struct snd_soc_codec *codec)
 	}
 
 	/* Mic PGA routing */
-	if (aic32x4->micpga_routing & AIC32X4_MICPGA_ROUTE_LMIC_IN2R_10K) {
+	if (aic32x4->micpga_routing | AIC32X4_MICPGA_ROUTE_LMIC_IN2R_10K) {
 		snd_soc_write(codec, AIC32X4_LMICPGANIN, AIC32X4_LMICPGANIN_IN2R_10K);
 	}
-	if (aic32x4->micpga_routing & AIC32X4_MICPGA_ROUTE_RMIC_IN1L_10K) {
+	if (aic32x4->micpga_routing | AIC32X4_MICPGA_ROUTE_RMIC_IN1L_10K) {
 		snd_soc_write(codec, AIC32X4_RMICPGANIN, AIC32X4_RMICPGANIN_IN1L_10K);
 	}
 

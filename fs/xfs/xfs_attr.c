@@ -319,7 +319,7 @@ xfs_attr_set_int(
 		return (error);
 	}
 
-	xfs_trans_ijoin(args.trans, dp, 0);
+	xfs_trans_ijoin(args.trans, dp);
 
 	/*
 	 * If the attribute list is non-existent or a shortform list,
@@ -389,7 +389,7 @@ xfs_attr_set_int(
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args.trans, dp, 0);
+			xfs_trans_ijoin(args.trans, dp);
 
 		/*
 		 * Commit the leaf transformation.  We'll need another (linked)
@@ -537,7 +537,7 @@ xfs_attr_remove_int(xfs_inode_t *dp, struct xfs_name *name, int flags)
 	 * No need to make quota reservations here. We expect to release some
 	 * blocks not allocate in the common case.
 	 */
-	xfs_trans_ijoin(args.trans, dp, 0);
+	xfs_trans_ijoin(args.trans, dp);
 
 	/*
 	 * Decide on what work routines to call based on the inode size.
@@ -809,7 +809,7 @@ xfs_attr_inactive(xfs_inode_t *dp)
 	 * No need to make quota reservations here. We expect to release some
 	 * blocks, not allocate, in the common case.
 	 */
-	xfs_trans_ijoin(trans, dp, 0);
+	xfs_trans_ijoin(trans, dp);
 
 	/*
 	 * Decide on what work routines to call based on the inode size.
@@ -822,6 +822,18 @@ xfs_attr_inactive(xfs_inode_t *dp)
 	error = xfs_attr_root_inactive(&trans, dp);
 	if (error)
 		goto out;
+
+	/*
+	 * Signal synchronous inactive transactions unless this is a
+	 * synchronous mount filesystem in which case we know that we're here
+	 * because we've been called out of xfs_inactive which means that the
+	 * last reference is gone and the unlink transaction has already hit
+	 * the disk so async inactive transactions are safe.
+	 */
+	if (!(mp->m_flags & XFS_MOUNT_WSYNC)) {
+		if (dp->i_d.di_anextents > 0)
+			xfs_trans_set_sync(trans);
+	}
 
 	error = xfs_itruncate_extents(&trans, dp, XFS_ATTR_FORK, 0);
 	if (error)
@@ -961,7 +973,7 @@ xfs_attr_leaf_addname(xfs_da_args_t *args)
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args->trans, dp, 0);
+			xfs_trans_ijoin(args->trans, dp);
 
 		/*
 		 * Commit the current trans (including the inode) and start
@@ -1063,7 +1075,7 @@ xfs_attr_leaf_addname(xfs_da_args_t *args)
 			 * in all transactions.
 			 */
 			if (committed)
-				xfs_trans_ijoin(args->trans, dp, 0);
+				xfs_trans_ijoin(args->trans, dp);
 		} else
 			xfs_da_buf_done(bp);
 
@@ -1137,7 +1149,7 @@ xfs_attr_leaf_removename(xfs_da_args_t *args)
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args->trans, dp, 0);
+			xfs_trans_ijoin(args->trans, dp);
 	} else
 		xfs_da_buf_done(bp);
 	return(0);
@@ -1291,7 +1303,7 @@ restart:
 			 * in all transactions.
 			 */
 			if (committed)
-				xfs_trans_ijoin(args->trans, dp, 0);
+				xfs_trans_ijoin(args->trans, dp);
 
 			/*
 			 * Commit the node conversion and start the next
@@ -1328,7 +1340,7 @@ restart:
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args->trans, dp, 0);
+			xfs_trans_ijoin(args->trans, dp);
 	} else {
 		/*
 		 * Addition succeeded, update Btree hashvals.
@@ -1440,7 +1452,7 @@ restart:
 			 * in all transactions.
 			 */
 			if (committed)
-				xfs_trans_ijoin(args->trans, dp, 0);
+				xfs_trans_ijoin(args->trans, dp);
 		}
 
 		/*
@@ -1572,7 +1584,7 @@ xfs_attr_node_removename(xfs_da_args_t *args)
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args->trans, dp, 0);
+			xfs_trans_ijoin(args->trans, dp);
 
 		/*
 		 * Commit the Btree join operation and start a new trans.
@@ -1623,7 +1635,7 @@ xfs_attr_node_removename(xfs_da_args_t *args)
 			 * in all transactions.
 			 */
 			if (committed)
-				xfs_trans_ijoin(args->trans, dp, 0);
+				xfs_trans_ijoin(args->trans, dp);
 		} else
 			xfs_da_brelse(args->trans, bp);
 	}
@@ -1963,9 +1975,10 @@ xfs_attr_rmtval_get(xfs_da_args_t *args)
 	lblkno = args->rmtblkno;
 	while (valuelen > 0) {
 		nmap = ATTR_RMTVALUE_MAPSIZE;
-		error = xfs_bmapi_read(args->dp, (xfs_fileoff_t)lblkno,
-				       args->rmtblkcnt, map, &nmap,
-				       XFS_BMAPI_ATTRFORK);
+		error = xfs_bmapi(args->trans, args->dp, (xfs_fileoff_t)lblkno,
+				  args->rmtblkcnt,
+				  XFS_BMAPI_ATTRFORK | XFS_BMAPI_METADATA,
+				  NULL, 0, map, &nmap, NULL);
 		if (error)
 			return(error);
 		ASSERT(nmap >= 1);
@@ -2039,9 +2052,10 @@ xfs_attr_rmtval_set(xfs_da_args_t *args)
 		 */
 		xfs_bmap_init(args->flist, args->firstblock);
 		nmap = 1;
-		error = xfs_bmapi_write(args->trans, dp, (xfs_fileoff_t)lblkno,
+		error = xfs_bmapi(args->trans, dp, (xfs_fileoff_t)lblkno,
 				  blkcnt,
-				  XFS_BMAPI_ATTRFORK | XFS_BMAPI_METADATA,
+				  XFS_BMAPI_ATTRFORK | XFS_BMAPI_METADATA |
+							XFS_BMAPI_WRITE,
 				  args->firstblock, args->total, &map, &nmap,
 				  args->flist);
 		if (!error) {
@@ -2060,7 +2074,7 @@ xfs_attr_rmtval_set(xfs_da_args_t *args)
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args->trans, dp, 0);
+			xfs_trans_ijoin(args->trans, dp);
 
 		ASSERT(nmap == 1);
 		ASSERT((map.br_startblock != DELAYSTARTBLOCK) &&
@@ -2090,11 +2104,14 @@ xfs_attr_rmtval_set(xfs_da_args_t *args)
 		 */
 		xfs_bmap_init(args->flist, args->firstblock);
 		nmap = 1;
-		error = xfs_bmapi_read(dp, (xfs_fileoff_t)lblkno,
-				       args->rmtblkcnt, &map, &nmap,
-				       XFS_BMAPI_ATTRFORK);
-		if (error)
+		error = xfs_bmapi(NULL, dp, (xfs_fileoff_t)lblkno,
+				  args->rmtblkcnt,
+				  XFS_BMAPI_ATTRFORK | XFS_BMAPI_METADATA,
+				  args->firstblock, 0, &map, &nmap,
+				  NULL);
+		if (error) {
 			return(error);
+		}
 		ASSERT(nmap == 1);
 		ASSERT((map.br_startblock != DELAYSTARTBLOCK) &&
 		       (map.br_startblock != HOLESTARTBLOCK));
@@ -2104,17 +2121,16 @@ xfs_attr_rmtval_set(xfs_da_args_t *args)
 
 		bp = xfs_buf_get(mp->m_ddev_targp, dblkno, blkcnt,
 				 XBF_LOCK | XBF_DONT_BLOCK);
-		if (!bp)
-			return ENOMEM;
+		ASSERT(!xfs_buf_geterror(bp));
+
 		tmp = (valuelen < XFS_BUF_SIZE(bp)) ? valuelen :
 							XFS_BUF_SIZE(bp);
 		xfs_buf_iomove(bp, 0, tmp, src, XBRW_WRITE);
 		if (tmp < XFS_BUF_SIZE(bp))
 			xfs_buf_zero(bp, tmp, XFS_BUF_SIZE(bp) - tmp);
-		error = xfs_bwrite(bp);	/* GROT: NOTE: synchronous write */
-		xfs_buf_relse(bp);
-		if (error)
-			return error;
+		if ((error = xfs_bwrite(mp, bp))) {/* GROT: NOTE: synchronous write */
+			return (error);
+		}
 		src += tmp;
 		valuelen -= tmp;
 
@@ -2150,12 +2166,16 @@ xfs_attr_rmtval_remove(xfs_da_args_t *args)
 		/*
 		 * Try to remember where we decided to put the value.
 		 */
+		xfs_bmap_init(args->flist, args->firstblock);
 		nmap = 1;
-		error = xfs_bmapi_read(args->dp, (xfs_fileoff_t)lblkno,
-				       args->rmtblkcnt, &map, &nmap,
-				       XFS_BMAPI_ATTRFORK);
-		if (error)
+		error = xfs_bmapi(NULL, args->dp, (xfs_fileoff_t)lblkno,
+					args->rmtblkcnt,
+					XFS_BMAPI_ATTRFORK | XFS_BMAPI_METADATA,
+					args->firstblock, 0, &map, &nmap,
+					args->flist);
+		if (error) {
 			return(error);
+		}
 		ASSERT(nmap == 1);
 		ASSERT((map.br_startblock != DELAYSTARTBLOCK) &&
 		       (map.br_startblock != HOLESTARTBLOCK));
@@ -2168,7 +2188,8 @@ xfs_attr_rmtval_remove(xfs_da_args_t *args)
 		 */
 		bp = xfs_incore(mp->m_ddev_targp, dblkno, blkcnt, XBF_TRYLOCK);
 		if (bp) {
-			xfs_buf_stale(bp);
+			XFS_BUF_STALE(bp);
+			XFS_BUF_UNDELAYWRITE(bp);
 			xfs_buf_relse(bp);
 			bp = NULL;
 		}
@@ -2206,7 +2227,7 @@ xfs_attr_rmtval_remove(xfs_da_args_t *args)
 		 * a new one.  We need the inode to be in all transactions.
 		 */
 		if (committed)
-			xfs_trans_ijoin(args->trans, args->dp, 0);
+			xfs_trans_ijoin(args->trans, args->dp);
 
 		/*
 		 * Close out trans and start the next one in the chain.

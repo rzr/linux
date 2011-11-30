@@ -1203,7 +1203,9 @@ static int ivtv_g_sliced_vbi_cap(struct file *file, void *fh, struct v4l2_sliced
 					cap->service_lines[f][l] = set;
 			}
 		}
-	} else if (cap->type == V4L2_BUF_TYPE_SLICED_VBI_OUTPUT) {
+		return 0;
+	}
+	if (cap->type == V4L2_BUF_TYPE_SLICED_VBI_OUTPUT) {
 		if (!(itv->v4l2_cap & V4L2_CAP_SLICED_VBI_OUTPUT))
 			return -EINVAL;
 		if (itv->is_60hz) {
@@ -1213,16 +1215,9 @@ static int ivtv_g_sliced_vbi_cap(struct file *file, void *fh, struct v4l2_sliced
 			cap->service_lines[0][23] = V4L2_SLICED_WSS_625;
 			cap->service_lines[0][16] = V4L2_SLICED_VPS;
 		}
-	} else {
-		return -EINVAL;
+		return 0;
 	}
-
-	set = 0;
-	for (f = 0; f < 2; f++)
-		for (l = 0; l < 24; l++)
-			set |= cap->service_lines[f][l];
-	cap->service_set = set;
-	return 0;
+	return -EINVAL;
 }
 
 static int ivtv_g_enc_index(struct file *file, void *fh, struct v4l2_enc_idx *idx)

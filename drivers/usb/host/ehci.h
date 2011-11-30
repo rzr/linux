@@ -62,12 +62,6 @@ struct ehci_stats {
 
 #define	EHCI_MAX_ROOT_PORTS	15		/* see HCS_N_PORTS */
 
-enum ehci_rh_state {
-	EHCI_RH_HALTED,
-	EHCI_RH_SUSPENDED,
-	EHCI_RH_RUNNING
-};
-
 struct ehci_hcd {			/* one per controller */
 	/* glue to PCI and HCD framework */
 	struct ehci_caps __iomem *caps;
@@ -76,7 +70,6 @@ struct ehci_hcd {			/* one per controller */
 
 	__u32			hcs_params;	/* cached register copy */
 	spinlock_t		lock;
-	enum ehci_rh_state	rh_state;
 
 	/* async schedule support */
 	struct ehci_qh		*async;

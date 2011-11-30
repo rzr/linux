@@ -415,7 +415,7 @@ static int hfsplus_symlink(struct inode *dir, struct dentry *dentry,
 	goto out;
 
 out_err:
-	clear_nlink(inode);
+	inode->i_nlink = 0;
 	hfsplus_delete_inode(inode);
 	iput(inode);
 out:
@@ -440,7 +440,7 @@ static int hfsplus_mknod(struct inode *dir, struct dentry *dentry,
 
 	res = hfsplus_create_cat(inode->i_ino, dir, &dentry->d_name, inode);
 	if (res) {
-		clear_nlink(inode);
+		inode->i_nlink = 0;
 		hfsplus_delete_inode(inode);
 		iput(inode);
 		goto out;

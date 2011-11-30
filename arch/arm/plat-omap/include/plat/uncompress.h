@@ -36,13 +36,7 @@ int uart_shift;
  */
 static void set_omap_uart_info(unsigned char port)
 {
-	/*
-	 * Get address of some.bss variable and round it down
-	 * a la CONFIG_AUTO_ZRELADDR.
-	 */
-	u32 ram_start = (u32)&uart_shift & 0xf8000000;
-	u32 *uart_info = (u32 *)(ram_start + OMAP_UART_INFO_OFS);
-	*uart_info = port;
+	*(volatile u32 *)OMAP_UART_INFO = port;
 }
 
 static void putc(int c)

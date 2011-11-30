@@ -87,7 +87,7 @@ static void nfs_async_unlink_done(struct rpc_task *task, void *calldata)
 	struct inode *dir = data->dir;
 
 	if (!NFS_PROTO(dir)->unlink_done(task, dir))
-		rpc_restart_call_prepare(task);
+		nfs_restart_rpc(task, NFS_SERVER(dir)->nfs_client);
 }
 
 /**
@@ -369,7 +369,7 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
 	struct dentry *new_dentry = data->new_dentry;
 
 	if (!NFS_PROTO(old_dir)->rename_done(task, old_dir, new_dir)) {
-		rpc_restart_call_prepare(task);
+		nfs_restart_rpc(task, NFS_SERVER(old_dir)->nfs_client);
 		return;
 	}
 

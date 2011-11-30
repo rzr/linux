@@ -22,7 +22,6 @@
  */
 
 #include <linux/delay.h>
-#include <linux/sched.h>	/* for init_mm */
 #include <linux/init.h>
 #include <linux/list.h>
 #include <linux/pci.h>
@@ -30,7 +29,6 @@
 #include <linux/rbtree.h>
 #include <linux/seq_file.h>
 #include <linux/spinlock.h>
-#include <linux/export.h>
 #include <linux/of.h>
 
 #include <linux/atomic.h>

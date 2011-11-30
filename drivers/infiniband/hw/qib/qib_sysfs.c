@@ -515,7 +515,8 @@ static ssize_t show_nfreectxts(struct device *device,
 	struct qib_devdata *dd = dd_from_dev(dev);
 
 	/* Return the number of free user ports (contexts) available. */
-	return scnprintf(buf, PAGE_SIZE, "%u\n", dd->freectxts);
+	return scnprintf(buf, PAGE_SIZE, "%u\n", dd->cfgctxts -
+		dd->first_user_ctxt - (u32)qib_stats.sps_ctxts);
 }
 
 static ssize_t show_serial(struct device *device,

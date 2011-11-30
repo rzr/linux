@@ -22,8 +22,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <linux/module.h>
-
 #include "drmP.h"
 #include "via_drm.h"
 #include "via_drv.h"

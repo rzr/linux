@@ -576,6 +576,7 @@ int radix_tree_tag_get(struct radix_tree_root *root,
 {
 	unsigned int height, shift;
 	struct radix_tree_node *node;
+	int saw_unset_tag = 0;
 
 	/* check the root's tag bit */
 	if (!root_tag_get(root, tag))
@@ -602,10 +603,15 @@ int radix_tree_tag_get(struct radix_tree_root *root,
 			return 0;
 
 		offset = (index >> shift) & RADIX_TREE_MAP_MASK;
+
+		/*
+		 * This is just a debug check.  Later, we can bale as soon as
+		 * we see an unset tag.
+		 */
 		if (!tag_get(node, tag, offset))
-			return 0;
+			saw_unset_tag = 1;
 		if (height == 1)
-			return 1;
+			return !!tag_get(node, tag, offset);
 		node = rcu_dereference_raw(node->slots[offset]);
 		shift -= RADIX_TREE_MAP_SHIFT;
 		height--;

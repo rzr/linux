@@ -13,7 +13,6 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
-#include <linux/module.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
 #include <linux/leds.h>

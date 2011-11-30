@@ -74,8 +74,8 @@ static int ucd9000_read_byte_data(struct i2c_client *client, int page, int reg)
 
 	switch (reg) {
 	case PMBUS_FAN_CONFIG_12:
-		if (page > 0)
-			return -ENXIO;
+		if (page)
+			return -EINVAL;
 
 		ret = ucd9000_get_fan_config(client, 0);
 		if (ret < 0)
@@ -88,8 +88,8 @@ static int ucd9000_read_byte_data(struct i2c_client *client, int page, int reg)
 		ret = fan_config;
 		break;
 	case PMBUS_FAN_CONFIG_34:
-		if (page > 0)
-			return -ENXIO;
+		if (page)
+			return -EINVAL;
 
 		ret = ucd9000_get_fan_config(client, 2);
 		if (ret < 0)
@@ -239,12 +239,13 @@ out:
 
 static int ucd9000_remove(struct i2c_client *client)
 {
+	int ret;
 	struct ucd9000_data *data;
 
 	data = to_ucd9000_data(pmbus_get_driver_info(client));
-	pmbus_do_remove(client);
+	ret = pmbus_do_remove(client);
 	kfree(data);
-	return 0;
+	return ret;
 }
 
 

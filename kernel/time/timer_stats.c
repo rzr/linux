@@ -81,7 +81,7 @@ struct entry {
 /*
  * Spinlock protecting the tables - not taken during lookup:
  */
-static DEFINE_RAW_SPINLOCK(table_lock);
+static DEFINE_SPINLOCK(table_lock);
 
 /*
  * Per-CPU lookup locks for fast hash lookup:
@@ -188,7 +188,7 @@ static struct entry *tstat_lookup(struct entry *entry, char *comm)
 	prev = NULL;
 	curr = *head;
 
-	raw_spin_lock(&table_lock);
+	spin_lock(&table_lock);
 	/*
 	 * Make sure we have not raced with another CPU:
 	 */
@@ -215,7 +215,7 @@ static struct entry *tstat_lookup(struct entry *entry, char *comm)
 			*head = curr;
 	}
  out_unlock:
-	raw_spin_unlock(&table_lock);
+	spin_unlock(&table_lock);
 
 	return curr;
 }

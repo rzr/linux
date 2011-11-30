@@ -1,8 +1,9 @@
 /*
- * Common powerdomain framework functions
+ *  linux/arch/arm/mach-omap2/powerdomain-common.c
+ *  Contains common powerdomain framework functions
  *
- * Copyright (C) 2010-2011 Texas Instruments, Inc.
- * Copyright (C) 2010 Nokia Corporation
+ *  Copyright (C) 2010 Texas Instruments, Inc.
+ *  Copyright (C) 2010 Nokia Corporation
  *
  * Derived from mach-omap2/powerdomain.c written by Paul Walmsley
  *

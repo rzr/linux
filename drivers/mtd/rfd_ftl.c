@@ -18,7 +18,6 @@
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
 #include <linux/jiffies.h>
-#include <linux/module.h>
 
 #include <asm/types.h>
 

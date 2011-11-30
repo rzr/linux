@@ -11,7 +11,6 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
-#include <linux/export.h>
 #include <linux/ioport.h>
 #include <linux/pci.h>
 #include <linux/proc_fs.h>

@@ -15,7 +15,6 @@
 
 #include "gigaset.h"
 #include <linux/isdnif.h>
-#include <linux/export.h>
 
 #define SBUFSIZE	4096	/* sk_buff payload size */
 #define TRANSBUFSIZE	768	/* bytes per skb for transparent receive */

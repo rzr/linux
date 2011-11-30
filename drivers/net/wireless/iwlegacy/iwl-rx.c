@@ -29,7 +29,6 @@
 
 #include <linux/etherdevice.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 #include <net/mac80211.h>
 #include <asm/unaligned.h>
 #include "iwl-eeprom.h"

@@ -58,6 +58,8 @@ static int find_index_from_host_irq(struct kvm_assigned_dev_kernel
 static irqreturn_t kvm_assigned_dev_thread(int irq, void *dev_id)
 {
 	struct kvm_assigned_dev_kernel *assigned_dev = dev_id;
+	u32 vector;
+	int index;
 
 	if (assigned_dev->irq_requested_type & KVM_DEV_IRQ_HOST_INTX) {
 		spin_lock(&assigned_dev->intx_lock);
@@ -66,35 +68,31 @@ static irqreturn_t kvm_assigned_dev_thread(int irq, void *dev_id)
 		spin_unlock(&assigned_dev->intx_lock);
 	}
 
-	kvm_set_irq(assigned_dev->kvm, assigned_dev->irq_source_id,
-		    assigned_dev->guest_irq, 1);
-
-	return IRQ_HANDLED;
-}
-
-#ifdef __KVM_HAVE_MSIX
-static irqreturn_t kvm_assigned_dev_thread_msix(int irq, void *dev_id)
-{
-	struct kvm_assigned_dev_kernel *assigned_dev = dev_id;
-	int index = find_index_from_host_irq(assigned_dev, irq);
-	u32 vector;
-
-	if (index >= 0) {
-		vector = assigned_dev->guest_msix_entries[index].vector;
+	if (assigned_dev->irq_requested_type & KVM_DEV_IRQ_HOST_MSIX) {
+		index = find_index_from_host_irq(assigned_dev, irq);
+		if (index >= 0) {
+			vector = assigned_dev->
+					guest_msix_entries[index].vector;
+			kvm_set_irq(assigned_dev->kvm,
+				    assigned_dev->irq_source_id, vector, 1);
+		}
+	} else
 		kvm_set_irq(assigned_dev->kvm, assigned_dev->irq_source_id,
-			    vector, 1);
-	}
+			    assigned_dev->guest_irq, 1);
 
 	return IRQ_HANDLED;
 }
-#endif
 
 /* Ack the irq line for an assigned device */
 static void kvm_assigned_dev_ack_irq(struct kvm_irq_ack_notifier *kian)
 {
-	struct kvm_assigned_dev_kernel *dev =
-		container_of(kian, struct kvm_assigned_dev_kernel,
-			     ack_notifier);
+	struct kvm_assigned_dev_kernel *dev;
+
+	if (kian->gsi == -1)
+		return;
+
+	dev = container_of(kian, struct kvm_assigned_dev_kernel,
+			   ack_notifier);
 
 	kvm_set_irq(dev->kvm, dev->irq_source_id, dev->guest_irq, 0);
 
@@ -112,9 +110,8 @@ static void kvm_assigned_dev_ack_irq(struct kvm_irq_ack_notifier *kian)
 static void deassign_guest_irq(struct kvm *kvm,
 			       struct kvm_assigned_dev_kernel *assigned_dev)
 {
-	if (assigned_dev->ack_notifier.gsi != -1)
-		kvm_unregister_irq_ack_notifier(kvm,
-						&assigned_dev->ack_notifier);
+	kvm_unregister_irq_ack_notifier(kvm, &assigned_dev->ack_notifier);
+	assigned_dev->ack_notifier.gsi = -1;
 
 	kvm_set_irq(assigned_dev->kvm, assigned_dev->irq_source_id,
 		    assigned_dev->guest_irq, 0);
@@ -146,7 +143,7 @@ static void deassign_host_irq(struct kvm *kvm,
 
 		for (i = 0; i < assigned_dev->entries_nr; i++)
 			free_irq(assigned_dev->host_msix_entries[i].vector,
-				 assigned_dev);
+				 (void *)assigned_dev);
 
 		assigned_dev->entries_nr = 0;
 		kfree(assigned_dev->host_msix_entries);
@@ -156,7 +153,7 @@ static void deassign_host_irq(struct kvm *kvm,
 		/* Deal with MSI and INTx */
 		disable_irq(assigned_dev->host_irq);
 
-		free_irq(assigned_dev->host_irq, assigned_dev);
+		free_irq(assigned_dev->host_irq, (void *)assigned_dev);
 
 		if (assigned_dev->irq_requested_type & KVM_DEV_IRQ_HOST_MSI)
 			pci_disable_msi(assigned_dev->dev);
@@ -208,8 +205,6 @@ static void kvm_free_assigned_device(struct kvm *kvm,
 	else
 		pci_restore_state(assigned_dev->dev);
 
-	assigned_dev->dev->dev_flags &= ~PCI_DEV_FLAGS_ASSIGNED;
-
 	pci_release_regions(assigned_dev->dev);
 	pci_disable_device(assigned_dev->dev);
 	pci_dev_put(assigned_dev->dev);
@@ -242,7 +237,7 @@ static int assigned_device_enable_host_intx(struct kvm *kvm,
 	 * are going to be long delays in accepting, acking, etc.
 	 */
 	if (request_threaded_irq(dev->host_irq, NULL, kvm_assigned_dev_thread,
-				 IRQF_ONESHOT, dev->irq_name, dev))
+				 IRQF_ONESHOT, dev->irq_name, (void *)dev))
 		return -EIO;
 	return 0;
 }
@@ -261,7 +256,7 @@ static int assigned_device_enable_host_msi(struct kvm *kvm,
 
 	dev->host_irq = dev->dev->irq;
 	if (request_threaded_irq(dev->host_irq, NULL, kvm_assigned_dev_thread,
-				 0, dev->irq_name, dev)) {
+				 0, dev->irq_name, (void *)dev)) {
 		pci_disable_msi(dev->dev);
 		return -EIO;
 	}
@@ -287,8 +282,8 @@ static int assigned_device_enable_host_msix(struct kvm *kvm,
 
 	for (i = 0; i < dev->entries_nr; i++) {
 		r = request_threaded_irq(dev->host_msix_entries[i].vector,
-					 NULL, kvm_assigned_dev_thread_msix,
-					 0, dev->irq_name, dev);
+					 NULL, kvm_assigned_dev_thread,
+					 0, dev->irq_name, (void *)dev);
 		if (r)
 			goto err;
 	}
@@ -296,7 +291,7 @@ static int assigned_device_enable_host_msix(struct kvm *kvm,
 	return 0;
 err:
 	for (i -= 1; i >= 0; i--)
-		free_irq(dev->host_msix_entries[i].vector, dev);
+		free_irq(dev->host_msix_entries[i].vector, (void *)dev);
 	pci_disable_msix(dev->dev);
 	return r;
 }
@@ -409,8 +404,7 @@ static int assign_guest_irq(struct kvm *kvm,
 
 	if (!r) {
 		dev->irq_requested_type |= guest_irq_type;
-		if (dev->ack_notifier.gsi != -1)
-			kvm_register_irq_ack_notifier(kvm, &dev->ack_notifier);
+		kvm_register_irq_ack_notifier(kvm, &dev->ack_notifier);
 	} else
 		kvm_free_irq_source_id(kvm, dev->irq_source_id);
 

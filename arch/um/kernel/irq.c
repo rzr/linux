@@ -258,7 +258,6 @@ void deactivate_fd(int fd, int irqnum)
 
 	ignore_sigio_fd(fd);
 }
-EXPORT_SYMBOL(deactivate_fd);
 
 /*
  * Called just before shutdown in order to provide a clean exec

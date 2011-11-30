@@ -12,7 +12,6 @@
 #include <linux/stddef.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/stat.h>
 #include <linux/pci.h>
 
 #include <asm/prom.h>

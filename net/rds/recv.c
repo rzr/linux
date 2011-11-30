@@ -34,7 +34,6 @@
 #include <linux/slab.h>
 #include <net/sock.h>
 #include <linux/in.h>
-#include <linux/export.h>
 
 #include "rds.h"
 

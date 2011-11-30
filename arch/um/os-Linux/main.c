@@ -12,6 +12,7 @@
 #include <sys/resource.h>
 #include "as-layout.h"
 #include "init.h"
+#include "kern_constants.h"
 #include "kern_util.h"
 #include "os.h"
 #include "um_malloc.h"

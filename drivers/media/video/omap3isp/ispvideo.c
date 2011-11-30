@@ -278,8 +278,7 @@ isp_video_far_end(struct isp_video *video)
  * limits reported by every block in the pipeline.
  *
  * Return 0 if all formats match, or -EPIPE if at least one link is found with
- * different formats on its two ends or if the pipeline doesn't start with a
- * video source (either a subdev with no input pad, or a non-subdev entity).
+ * different formats on its two ends.
  */
 static int isp_video_validate_pipeline(struct isp_pipeline *pipe)
 {
@@ -330,15 +329,10 @@ static int isp_video_validate_pipeline(struct isp_pipeline *pipe)
 		 * in the middle of it. */
 		shifter_link = subdev == &isp->isp_ccdc.subdev;
 
-		/* Retrieve the source format. Return an error if no source
-		 * entity can be found, and stop checking the pipeline if the
-		 * source entity isn't a subdev.
-		 */
+		/* Retrieve the source format */
 		pad = media_entity_remote_source(pad);
-		if (pad == NULL)
-			return -EPIPE;
-
-		if (media_entity_type(pad->entity) != MEDIA_ENT_T_V4L2_SUBDEV)
+		if (pad == NULL ||
+		    media_entity_type(pad->entity) != MEDIA_ENT_T_V4L2_SUBDEV)
 			break;
 
 		subdev = media_entity_to_v4l2_subdev(pad->entity);
@@ -452,7 +446,7 @@ ispmmu_vmap(struct isp_device *isp, const struct scatterlist *sglist, int sglen)
 	sgt->nents = sglen;
 	sgt->orig_nents = sglen;
 
-	da = omap_iommu_vmap(isp->domain, isp->iommu, 0, sgt, IOMMU_FLAG);
+	da = iommu_vmap(isp->iommu, 0, sgt, IOMMU_FLAG);
 	if (IS_ERR_VALUE(da))
 		kfree(sgt);
 
@@ -468,7 +462,7 @@ static void ispmmu_vunmap(struct isp_device *isp, dma_addr_t da)
 {
 	struct sg_table *sgt;
 
-	sgt = omap_iommu_vunmap(isp->domain, isp->iommu, (u32)da);
+	sgt = iommu_vunmap(isp->iommu, (u32)da);
 	kfree(sgt);
 }
 
@@ -1056,14 +1050,6 @@ error:
 		if (video->isp->pdata->set_constraints)
 			video->isp->pdata->set_constraints(video->isp, false);
 		media_entity_pipeline_stop(&video->video.entity);
-		/* The DMA queue must be emptied here, otherwise CCDC interrupts
-		 * that will get triggered the next time the CCDC is powered up
-		 * will try to access buffers that might have been freed but
-		 * still present in the DMA queue. This can easily get triggered
-		 * if the above omap3isp_pipeline_set_stream() call fails on a
-		 * system with a free-running sensor.
-		 */
-		INIT_LIST_HEAD(&video->dmaqueue);
 		video->queue = NULL;
 	}
 
@@ -1325,13 +1311,6 @@ int omap3isp_video_init(struct isp_video *video, const char *name)
 	return 0;
 }
 
-void omap3isp_video_cleanup(struct isp_video *video)
-{
-	media_entity_cleanup(&video->video.entity);
-	mutex_destroy(&video->stream_lock);
-	mutex_destroy(&video->mutex);
-}
-
 int omap3isp_video_register(struct isp_video *video, struct v4l2_device *vdev)
 {
 	int ret;
@@ -1348,6 +1327,8 @@ int omap3isp_video_register(struct isp_video *video, struct v4l2_device *vdev)
 
 void omap3isp_video_unregister(struct isp_video *video)
 {
-	if (video_is_registered(&video->video))
+	if (video_is_registered(&video->video)) {
+		media_entity_cleanup(&video->video.entity);
 		video_unregister_device(&video->video);
+	}
 }

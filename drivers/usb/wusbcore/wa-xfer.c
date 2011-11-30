@@ -84,7 +84,6 @@
 #include <linux/slab.h>
 #include <linux/hash.h>
 #include <linux/ratelimit.h>
-#include <linux/export.h>
 
 #include "wa-hc.h"
 #include "wusbhc.h"

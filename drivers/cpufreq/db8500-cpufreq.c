@@ -12,35 +12,30 @@
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#include <linux/mfd/dbx500-prcmu.h>
+#include <linux/mfd/db8500-prcmu.h>
 #include <mach/id.h>
 
 static struct cpufreq_frequency_table freq_table[] = {
 	[0] = {
 		.index = 0,
-		.frequency = 200000,
+		.frequency = 300000,
 	},
 	[1] = {
 		.index = 1,
-		.frequency = 300000,
-	},
-	[2] = {
-		.index = 2,
 		.frequency = 600000,
 	},
-	[3] = {
+	[2] = {
 		/* Used for MAX_OPP, if available */
-		.index = 3,
+		.index = 2,
 		.frequency = CPUFREQ_TABLE_END,
 	},
-	[4] = {
-		.index = 4,
+	[3] = {
+		.index = 3,
 		.frequency = CPUFREQ_TABLE_END,
 	},
 };
 
 static enum arm_opp idx2opp[] = {
-	ARM_EXTCLK,
 	ARM_50_OPP,
 	ARM_100_OPP,
 	ARM_MAX_OPP
@@ -77,13 +72,13 @@ static int db8500_cpufreq_target(struct cpufreq_policy *policy,
 
 	freqs.old = policy->cur;
 	freqs.new = freq_table[idx].frequency;
+	freqs.cpu = policy->cpu;
 
 	if (freqs.old == freqs.new)
 		return 0;
 
 	/* pre-change notification */
-	for_each_cpu(freqs.cpu, policy->cpus)
-		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 	/* request the PRCM unit for opp change */
 	if (prcmu_set_arm_opp(idx2opp[idx])) {
@@ -92,8 +87,7 @@ static int db8500_cpufreq_target(struct cpufreq_policy *policy,
 	}
 
 	/* post change notification */
-	for_each_cpu(freqs.cpu, policy->cpus)
-		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
 	return 0;
 }
@@ -109,19 +103,17 @@ static unsigned int db8500_cpufreq_getspeed(unsigned int cpu)
 
 static int __cpuinit db8500_cpufreq_init(struct cpufreq_policy *policy)
 {
-	int i, res;
+	int res;
+	int i;
 
 	BUILD_BUG_ON(ARRAY_SIZE(idx2opp) + 1 != ARRAY_SIZE(freq_table));
 
-	if (!prcmu_is_u8400()) {
-		freq_table[1].frequency = 400000;
-		freq_table[2].frequency = 800000;
+	if (cpu_is_u8500v2() && !prcmu_is_u8400()) {
+		freq_table[0].frequency = 400000;
+		freq_table[1].frequency = 800000;
 		if (prcmu_has_arm_maxopp())
-			freq_table[3].frequency = 1000000;
+			freq_table[2].frequency = 1000000;
 	}
-	pr_info("db8500-cpufreq : Available frequencies:\n");
-	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++)
-		pr_info("  %d Mhz\n", freq_table[i].frequency/1000);
 
 	/* get policy fields based on the table */
 	res = cpufreq_frequency_table_cpuinfo(policy, freq_table);
@@ -135,6 +127,10 @@ static int __cpuinit db8500_cpufreq_init(struct cpufreq_policy *policy)
 	policy->min = policy->cpuinfo.min_freq;
 	policy->max = policy->cpuinfo.max_freq;
 	policy->cur = db8500_cpufreq_getspeed(policy->cpu);
+
+	for (i = 0; freq_table[i].frequency != policy->cur; i++)
+		;
+
 	policy->governor = CPUFREQ_DEFAULT_GOVERNOR;
 
 	/*

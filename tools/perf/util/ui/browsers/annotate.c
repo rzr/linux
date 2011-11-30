@@ -1,31 +1,31 @@
-#include "../../util.h"
 #include "../browser.h"
 #include "../helpline.h"
 #include "../libslang.h"
-#include "../ui.h"
-#include "../util.h"
 #include "../../annotate.h"
 #include "../../hist.h"
 #include "../../sort.h"
 #include "../../symbol.h"
 #include <pthread.h>
-#include <newt.h>
+
+static void ui__error_window(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	newtWinMessagev((char *)"Error", (char *)"Ok", (char *)fmt, ap);
+	va_end(ap);
+}
 
 struct annotate_browser {
 	struct ui_browser b;
 	struct rb_root	  entries;
 	struct rb_node	  *curr_hot;
-	struct objdump_line *selection;
-	int		    nr_asm_entries;
-	int		    nr_entries;
-	bool		    hide_src_code;
 };
 
 struct objdump_line_rb_node {
 	struct rb_node	rb_node;
 	double		percent;
 	u32		idx;
-	int		idx_asm;
 };
 
 static inline
@@ -34,22 +34,9 @@ struct objdump_line_rb_node *objdump_line__rb(struct objdump_line *self)
 	return (struct objdump_line_rb_node *)(self + 1);
 }
 
-static bool objdump_line__filter(struct ui_browser *browser, void *entry)
-{
-	struct annotate_browser *ab = container_of(browser, struct annotate_browser, b);
-
-	if (ab->hide_src_code) {
-		struct objdump_line *ol = list_entry(entry, struct objdump_line, node);
-		return ol->offset == -1;
-	}
-
-	return false;
-}
-
 static void annotate_browser__write(struct ui_browser *self, void *entry, int row)
 {
-	struct annotate_browser *ab = container_of(self, struct annotate_browser, b);
-	struct objdump_line *ol = list_entry(entry, struct objdump_line, node);
+	struct objdump_line *ol = rb_entry(entry, struct objdump_line, node);
 	bool current_entry = ui_browser__is_current_entry(self, row);
 	int width = self->width;
 
@@ -64,11 +51,6 @@ static void annotate_browser__write(struct ui_browser *self, void *entry, int ro
 
 	SLsmg_write_char(':');
 	slsmg_write_nstring(" ", 8);
-
-	/* The scroll bar isn't being used */
-	if (!self->navkeypressed)
-		width += 1;
-
 	if (!*ol->line)
 		slsmg_write_nstring(" ", width - 18);
 	else
@@ -76,8 +58,6 @@ static void annotate_browser__write(struct ui_browser *self, void *entry, int ro
 
 	if (!current_entry)
 		ui_browser__set_color(self, HE_COLORSET_CODE);
-	else
-		ab->selection = ol;
 }
 
 static double objdump_line__calc_percent(struct objdump_line *self,
@@ -161,8 +141,7 @@ static void annotate_browser__set_top(struct annotate_browser *self,
 static void annotate_browser__calc_percent(struct annotate_browser *browser,
 					   int evidx)
 {
-	struct map_symbol *ms = browser->b.priv;
-	struct symbol *sym = ms->sym;
+	struct symbol *sym = browser->b.priv;
 	struct annotation *notes = symbol__annotation(sym);
 	struct objdump_line *pos;
 
@@ -184,60 +163,25 @@ static void annotate_browser__calc_percent(struct annotate_browser *browser,
 	browser->curr_hot = rb_last(&browser->entries);
 }
 
-static bool annotate_browser__toggle_source(struct annotate_browser *browser)
-{
-	struct objdump_line *ol;
-	struct objdump_line_rb_node *olrb;
-	off_t offset = browser->b.index - browser->b.top_idx;
-
-	browser->b.seek(&browser->b, offset, SEEK_CUR);
-	ol = list_entry(browser->b.top, struct objdump_line, node);
-	olrb = objdump_line__rb(ol);
-
-	if (browser->hide_src_code) {
-		if (olrb->idx_asm < offset)
-			offset = olrb->idx;
-
-		browser->b.nr_entries = browser->nr_entries;
-		browser->hide_src_code = false;
-		browser->b.seek(&browser->b, -offset, SEEK_CUR);
-		browser->b.top_idx = olrb->idx - offset;
-		browser->b.index = olrb->idx;
-	} else {
-		if (olrb->idx_asm < 0) {
-			ui_helpline__puts("Only available for assembly lines.");
-			browser->b.seek(&browser->b, -offset, SEEK_CUR);
-			return false;
-		}
-
-		if (olrb->idx_asm < offset)
-			offset = olrb->idx_asm;
-
-		browser->b.nr_entries = browser->nr_asm_entries;
-		browser->hide_src_code = true;
-		browser->b.seek(&browser->b, -offset, SEEK_CUR);
-		browser->b.top_idx = olrb->idx_asm - offset;
-		browser->b.index = olrb->idx_asm;
-	}
-
-	return true;
-}
-
 static int annotate_browser__run(struct annotate_browser *self, int evidx,
-				 int nr_events, void(*timer)(void *arg),
-				 void *arg, int delay_secs)
+				 int refresh)
 {
 	struct rb_node *nd = NULL;
-	struct map_symbol *ms = self->b.priv;
-	struct symbol *sym = ms->sym;
-	const char *help = "<-, ESC: exit, TAB/shift+TAB: cycle hottest lines, "
-			   "H: Hottest, -> Line action, S -> Toggle source "
-			   "code view";
+	struct symbol *sym = self->b.priv;
+	/*
+	 * RIGHT To allow builtin-annotate to cycle thru multiple symbols by
+	 * examining the exit key for this function.
+	 */
+	int exit_keys[] = { 'H', NEWT_KEY_TAB, NEWT_KEY_UNTAB,
+			    NEWT_KEY_RIGHT, 0 };
 	int key;
 
-	if (ui_browser__show(&self->b, sym->name, help) < 0)
+	if (ui_browser__show(&self->b, sym->name,
+			     "<-, -> or ESC: exit, TAB/shift+TAB: "
+			     "cycle hottest lines, H: Hottest") < 0)
 		return -1;
 
+	ui_browser__add_exit_keys(&self->b, exit_keys);
 	annotate_browser__calc_percent(self, evidx);
 
 	if (self->curr_hot)
@@ -245,10 +189,13 @@ static int annotate_browser__run(struct annotate_browser *self, int evidx,
 
 	nd = self->curr_hot;
 
-	while (1) {
-		key = ui_browser__run(&self->b, delay_secs);
+	if (refresh != 0)
+		newtFormSetTimer(self->b.form, refresh);
 
-		if (delay_secs != 0) {
+	while (1) {
+		key = ui_browser__run(&self->b);
+
+		if (refresh != 0) {
 			annotate_browser__calc_percent(self, evidx);
 			/*
 			 * Current line focus got out of the list of most active
@@ -260,14 +207,15 @@ static int annotate_browser__run(struct annotate_browser *self, int evidx,
 		}
 
 		switch (key) {
-		case K_TIMER:
-			if (timer != NULL)
-				timer(arg);
-
-			if (delay_secs != 0)
+		case -1:
+			/*
+ 			 * FIXME we need to check if it was
+ 			 * es.reason == NEWT_EXIT_TIMER
+ 			 */
+			if (refresh != 0)
 				symbol__annotate_decay_histogram(sym, evidx);
 			continue;
-		case K_TAB:
+		case NEWT_KEY_TAB:
 			if (nd != NULL) {
 				nd = rb_prev(nd);
 				if (nd == NULL)
@@ -275,7 +223,7 @@ static int annotate_browser__run(struct annotate_browser *self, int evidx,
 			} else
 				nd = self->curr_hot;
 			break;
-		case K_UNTAB:
+		case NEWT_KEY_UNTAB:
 			if (nd != NULL)
 				nd = rb_next(nd);
 				if (nd == NULL)
@@ -286,68 +234,8 @@ static int annotate_browser__run(struct annotate_browser *self, int evidx,
 		case 'H':
 			nd = self->curr_hot;
 			break;
-		case 'S':
-			if (annotate_browser__toggle_source(self))
-				ui_helpline__puts(help);
-			continue;
-		case K_ENTER:
-		case K_RIGHT:
-			if (self->selection == NULL) {
-				ui_helpline__puts("Huh? No selection. Report to linux-kernel@vger.kernel.org");
-				continue;
-			}
-
-			if (self->selection->offset == -1) {
-				ui_helpline__puts("Actions are only available for assembly lines.");
-				continue;
-			} else {
-				char *s = strstr(self->selection->line, "callq ");
-				struct annotation *notes;
-				struct symbol *target;
-				u64 ip;
-
-				if (s == NULL) {
-					ui_helpline__puts("Actions are only available for the 'callq' instruction.");
-					continue;
-				}
-
-				s = strchr(s, ' ');
-				if (s++ == NULL) {
-					ui_helpline__puts("Invallid callq instruction.");
-					continue;
-				}
-
-				ip = strtoull(s, NULL, 16);
-				ip = ms->map->map_ip(ms->map, ip);
-				target = map__find_symbol(ms->map, ip, NULL);
-				if (target == NULL) {
-					ui_helpline__puts("The called function was not found.");
-					continue;
-				}
-
-				notes = symbol__annotation(target);
-				pthread_mutex_lock(&notes->lock);
-
-				if (notes->src == NULL &&
-				    symbol__alloc_hist(target, nr_events) < 0) {
-					pthread_mutex_unlock(&notes->lock);
-					ui__warning("Not enough memory for annotating '%s' symbol!\n",
-						    target->name);
-					continue;
-				}
-
-				pthread_mutex_unlock(&notes->lock);
-				symbol__tui_annotate(target, ms->map, evidx, nr_events,
-						     timer, arg, delay_secs);
-			}
-			continue;
-		case K_LEFT:
-		case K_ESC:
-		case 'q':
-		case CTRL('c'):
-			goto out;
 		default:
-			continue;
+			goto out;
 		}
 
 		if (nd != NULL)
@@ -358,31 +246,22 @@ out:
 	return key;
 }
 
-int hist_entry__tui_annotate(struct hist_entry *he, int evidx, int nr_events,
-			     void(*timer)(void *arg), void *arg, int delay_secs)
+int hist_entry__tui_annotate(struct hist_entry *he, int evidx)
 {
-	return symbol__tui_annotate(he->ms.sym, he->ms.map, evidx, nr_events,
-				    timer, arg, delay_secs);
+	return symbol__tui_annotate(he->ms.sym, he->ms.map, evidx, 0);
 }
 
 int symbol__tui_annotate(struct symbol *sym, struct map *map, int evidx,
-			 int nr_events, void(*timer)(void *arg), void *arg,
-			 int delay_secs)
+			 int refresh)
 {
 	struct objdump_line *pos, *n;
 	struct annotation *notes;
-	struct map_symbol ms = {
-		.map = map,
-		.sym = sym,
-	};
 	struct annotate_browser browser = {
 		.b = {
 			.refresh = ui_browser__list_head_refresh,
 			.seek	 = ui_browser__list_head_seek,
 			.write	 = annotate_browser__write,
-			.filter  = objdump_line__filter,
-			.priv	 = &ms,
-			.use_navkeypressed = true,
+			.priv	 = sym,
 		},
 	};
 	int ret;
@@ -394,7 +273,7 @@ int symbol__tui_annotate(struct symbol *sym, struct map *map, int evidx,
 		return -1;
 
 	if (symbol__annotate(sym, map, sizeof(struct objdump_line_rb_node)) < 0) {
-		ui__error("%s", ui_helpline__last_msg);
+		ui__error_window(ui_helpline__last_msg);
 		return -1;
 	}
 
@@ -409,18 +288,12 @@ int symbol__tui_annotate(struct symbol *sym, struct map *map, int evidx,
 		if (browser.b.width < line_len)
 			browser.b.width = line_len;
 		rbpos = objdump_line__rb(pos);
-		rbpos->idx = browser.nr_entries++;
-		if (pos->offset != -1)
-			rbpos->idx_asm = browser.nr_asm_entries++;
-		else
-			rbpos->idx_asm = -1;
+		rbpos->idx = browser.b.nr_entries++;
 	}
 
-	browser.b.nr_entries = browser.nr_entries;
 	browser.b.entries = &notes->src->source,
 	browser.b.width += 18; /* Percentage */
-	ret = annotate_browser__run(&browser, evidx, nr_events,
-				    timer, arg, delay_secs);
+	ret = annotate_browser__run(&browser, evidx, refresh);
 	list_for_each_entry_safe(pos, n, &notes->src->source, node) {
 		list_del(&pos->node);
 		objdump_line__free(pos);

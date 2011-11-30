@@ -36,7 +36,6 @@
 
 #include "drm_pciids.h"
 #include <linux/console.h>
-#include <linux/module.h>
 
 
 /*

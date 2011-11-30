@@ -316,11 +316,6 @@ int kvmppc_vcpu_run(struct kvm_run *kvm_run, struct kvm_vcpu *vcpu)
 {
 	int ret;
 
-	if (!vcpu->arch.sane) {
-		kvm_run->exit_reason = KVM_EXIT_INTERNAL_ERROR;
-		return -EINVAL;
-	}
-
 	local_irq_disable();
 	kvm_guest_enter();
 	ret = __kvmppc_vcpu_run(kvm_run, vcpu);
@@ -623,7 +618,6 @@ int kvmppc_handle_exit(struct kvm_run *run, struct kvm_vcpu *vcpu,
 int kvm_arch_vcpu_setup(struct kvm_vcpu *vcpu)
 {
 	int i;
-	int r;
 
 	vcpu->arch.pc = 0;
 	vcpu->arch.shared->msr = 0;
@@ -640,9 +634,7 @@ int kvm_arch_vcpu_setup(struct kvm_vcpu *vcpu)
 
 	kvmppc_init_timing_stats(vcpu);
 
-	r = kvmppc_core_vcpu_setup(vcpu);
-	kvmppc_sanity_check(vcpu);
-	return r;
+	return kvmppc_core_vcpu_setup(vcpu);
 }
 
 int kvm_arch_vcpu_ioctl_get_regs(struct kvm_vcpu *vcpu, struct kvm_regs *regs)

@@ -33,7 +33,6 @@
 #include <linux/netfilter.h>
 #include <linux/route.h>
 #include <linux/mroute.h>
-#include <net/inet_ecn.h>
 #include <net/route.h>
 #include <net/xfrm.h>
 #include <net/compat.h>
@@ -579,8 +578,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 		break;
 	case IP_TOS:	/* This sets both TOS and Precedence */
 		if (sk->sk_type == SOCK_STREAM) {
-			val &= ~INET_ECN_MASK;
-			val |= inet->tos & INET_ECN_MASK;
+			val &= ~3;
+			val |= inet->tos & 3;
 		}
 		if (inet->tos != val) {
 			inet->tos = val;
@@ -962,7 +961,7 @@ mc_msf_out:
 		break;
 
 	case IP_TRANSPARENT:
-		if (!!val && !capable(CAP_NET_RAW) && !capable(CAP_NET_ADMIN)) {
+		if (!capable(CAP_NET_ADMIN)) {
 			err = -EPERM;
 			break;
 		}

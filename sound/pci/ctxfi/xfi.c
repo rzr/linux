@@ -12,7 +12,6 @@
 #include <linux/pci.h>
 #include <linux/moduleparam.h>
 #include <linux/pci_ids.h>
-#include <linux/module.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include "ctatc.h"

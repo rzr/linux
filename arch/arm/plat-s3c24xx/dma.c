@@ -1094,14 +1094,14 @@ EXPORT_SYMBOL(s3c2410_dma_config);
  *
  * configure the dma source/destination hardware type and address
  *
- * source:    DMA_FROM_DEVICE: source is hardware
- *            DMA_TO_DEVICE: source is memory
+ * source:    S3C2410_DMASRC_HW: source is hardware
+ *            S3C2410_DMASRC_MEM: source is memory
  *
  * devaddr:   physical address of the source
 */
 
 int s3c2410_dma_devconfig(enum dma_ch channel,
-			  enum dma_data_direction source,
+			  enum s3c2410_dmasrc source,
 			  unsigned long devaddr)
 {
 	struct s3c2410_dma_chan *chan = s3c_dma_lookup_channel(channel);
@@ -1131,7 +1131,7 @@ int s3c2410_dma_devconfig(enum dma_ch channel,
 	 hwcfg |= S3C2410_DISRCC_INC;
 
 	switch (source) {
-	case DMA_FROM_DEVICE:
+	case S3C2410_DMASRC_HW:
 		/* source is hardware */
 		pr_debug("%s: hw source, devaddr=%08lx, hwcfg=%d\n",
 			 __func__, devaddr, hwcfg);
@@ -1142,7 +1142,7 @@ int s3c2410_dma_devconfig(enum dma_ch channel,
 		chan->addr_reg = dma_regaddr(chan, S3C2410_DMA_DIDST);
 		break;
 
-	case DMA_TO_DEVICE:
+	case S3C2410_DMASRC_MEM:
 		/* source is memory */
 		pr_debug("%s: mem source, devaddr=%08lx, hwcfg=%d\n",
 			 __func__, devaddr, hwcfg);

@@ -13,7 +13,6 @@
 #include <linux/interrupt.h>
 #include <linux/i8253.h>
 #include <linux/time.h>
-#include <linux/export.h>
 #include <linux/mca.h>
 
 #include <asm/vsyscall.h>

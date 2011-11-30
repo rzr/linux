@@ -273,6 +273,8 @@ struct mpic
 	unsigned int		irq_count;
 	/* Number of sources */
 	unsigned int		num_sources;
+	/* Number of CPUs */
+	unsigned int		num_cpus;
 	/* default senses array */
 	unsigned char		*senses;
 	unsigned int		senses_count;

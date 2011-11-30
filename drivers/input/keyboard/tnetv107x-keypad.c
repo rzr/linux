@@ -24,7 +24,6 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/input/matrix_keypad.h>
-#include <linux/module.h>
 
 #define BITS(x)			(BIT(x) - 1)
 

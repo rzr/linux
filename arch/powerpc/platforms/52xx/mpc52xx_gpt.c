@@ -67,7 +67,6 @@
 #include <linux/watchdog.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
-#include <linux/module.h>
 #include <asm/div64.h>
 #include <asm/mpc52xx.h>
 

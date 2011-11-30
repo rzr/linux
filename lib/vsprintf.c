@@ -31,7 +31,17 @@
 #include <asm/div64.h>
 #include <asm/sections.h>	/* for dereference_function_descriptor() */
 
-#include "kstrtox.h"
+static unsigned int simple_guess_base(const char *cp)
+{
+	if (cp[0] == '0') {
+		if (_tolower(cp[1]) == 'x' && isxdigit(cp[2]))
+			return 16;
+		else
+			return 8;
+	} else {
+		return 10;
+	}
+}
 
 /**
  * simple_strtoull - convert a string to an unsigned long long
@@ -41,14 +51,23 @@
  */
 unsigned long long simple_strtoull(const char *cp, char **endp, unsigned int base)
 {
-	unsigned long long result;
-	unsigned int rv;
+	unsigned long long result = 0;
 
-	cp = _parse_integer_fixup_radix(cp, &base);
-	rv = _parse_integer(cp, base, &result);
-	/* FIXME */
-	cp += (rv & ~KSTRTOX_OVERFLOW);
+	if (!base)
+		base = simple_guess_base(cp);
 
+	if (base == 16 && cp[0] == '0' && _tolower(cp[1]) == 'x')
+		cp += 2;
+
+	while (isxdigit(*cp)) {
+		unsigned int value;
+
+		value = isdigit(*cp) ? *cp - '0' : _tolower(*cp) - 'a' + 10;
+		if (value >= base)
+			break;
+		result = result * base + value;
+		cp++;
+	}
 	if (endp)
 		*endp = (char *)cp;
 
@@ -547,7 +566,7 @@ char *mac_address_string(char *buf, char *end, u8 *addr,
 	}
 
 	for (i = 0; i < 6; i++) {
-		p = hex_byte_pack(p, addr[i]);
+		p = pack_hex_byte(p, addr[i]);
 		if (fmt[0] == 'M' && i != 5)
 			*p++ = separator;
 	}
@@ -667,13 +686,13 @@ char *ip6_compressed_string(char *p, const char *addr)
 		lo = word & 0xff;
 		if (hi) {
 			if (hi > 0x0f)
-				p = hex_byte_pack(p, hi);
+				p = pack_hex_byte(p, hi);
 			else
 				*p++ = hex_asc_lo(hi);
-			p = hex_byte_pack(p, lo);
+			p = pack_hex_byte(p, lo);
 		}
 		else if (lo > 0x0f)
-			p = hex_byte_pack(p, lo);
+			p = pack_hex_byte(p, lo);
 		else
 			*p++ = hex_asc_lo(lo);
 		needcolon = true;
@@ -695,8 +714,8 @@ char *ip6_string(char *p, const char *addr, const char *fmt)
 	int i;
 
 	for (i = 0; i < 8; i++) {
-		p = hex_byte_pack(p, *addr++);
-		p = hex_byte_pack(p, *addr++);
+		p = pack_hex_byte(p, *addr++);
+		p = pack_hex_byte(p, *addr++);
 		if (fmt[0] == 'I' && i != 7)
 			*p++ = ':';
 	}
@@ -754,7 +773,7 @@ char *uuid_string(char *buf, char *end, const u8 *addr,
 	}
 
 	for (i = 0; i < 16; i++) {
-		p = hex_byte_pack(p, addr[index[i]]);
+		p = pack_hex_byte(p, addr[index[i]]);
 		switch (i) {
 		case 3:
 		case 5:

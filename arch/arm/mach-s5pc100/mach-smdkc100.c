@@ -203,6 +203,12 @@ static struct platform_device *smdkc100_devices[] __initdata = {
 	&s5pc100_device_spdif,
 };
 
+static struct s3c2410_ts_mach_info s3c_ts_platform __initdata = {
+	.delay			= 10000,
+	.presc			= 49,
+	.oversampling_shift	= 2,
+};
+
 /* LCD Backlight data */
 static struct samsung_bl_gpio_info smdkc100_bl_gpio_info = {
 	.no = S5PC100_GPD(0),
@@ -222,7 +228,7 @@ static void __init smdkc100_map_io(void)
 
 static void __init smdkc100_machine_init(void)
 {
-	s3c24xx_ts_set_platdata(NULL);
+	s3c24xx_ts_set_platdata(&s3c_ts_platform);
 
 	/* I2C */
 	s3c_i2c0_set_platdata(NULL);
@@ -248,7 +254,7 @@ static void __init smdkc100_machine_init(void)
 
 MACHINE_START(SMDKC100, "SMDKC100")
 	/* Maintainer: Byungho Min <bhmin@samsung.com> */
-	.atag_offset	= 0x100,
+	.boot_params	= S5P_PA_SDRAM + 0x100,
 	.init_irq	= s5pc100_init_irq,
 	.map_io		= smdkc100_map_io,
 	.init_machine	= smdkc100_machine_init,

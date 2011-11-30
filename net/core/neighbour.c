@@ -844,19 +844,6 @@ static void neigh_invalidate(struct neighbour *neigh)
 	skb_queue_purge(&neigh->arp_queue);
 }
 
-static void neigh_probe(struct neighbour *neigh)
-	__releases(neigh->lock)
-{
-	struct sk_buff *skb = skb_peek(&neigh->arp_queue);
-	/* keep skb alive even if arp_queue overflows */
-	if (skb)
-		skb = skb_copy(skb, GFP_ATOMIC);
-	write_unlock(&neigh->lock);
-	neigh->ops->solicit(neigh, skb);
-	atomic_inc(&neigh->probes);
-	kfree_skb(skb);
-}
-
 /* Called when a timer expires for a neighbour entry. */
 
 static void neigh_timer_handler(unsigned long arg)
@@ -872,8 +859,12 @@ static void neigh_timer_handler(unsigned long arg)
 	now = jiffies;
 	next = now + HZ;
 
-	if (!(state & NUD_IN_TIMER))
+	if (!(state & NUD_IN_TIMER)) {
+#ifndef CONFIG_SMP
+		printk(KERN_WARNING "neigh: timer & !nud_in_timer\n");
+#endif
 		goto out;
+	}
 
 	if (state & NUD_REACHABLE) {
 		if (time_before_eq(now,
@@ -929,7 +920,14 @@ static void neigh_timer_handler(unsigned long arg)
 			neigh_hold(neigh);
 	}
 	if (neigh->nud_state & (NUD_INCOMPLETE | NUD_PROBE)) {
-		neigh_probe(neigh);
+		struct sk_buff *skb = skb_peek(&neigh->arp_queue);
+		/* keep skb alive even if arp_queue overflows */
+		if (skb)
+			skb = skb_copy(skb, GFP_ATOMIC);
+		write_unlock(&neigh->lock);
+		neigh->ops->solicit(neigh, skb);
+		atomic_inc(&neigh->probes);
+		kfree_skb(skb);
 	} else {
 out:
 		write_unlock(&neigh->lock);
@@ -944,7 +942,7 @@ out:
 int __neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
 	int rc;
-	bool immediate_probe = false;
+	unsigned long now;
 
 	write_lock_bh(&neigh->lock);
 
@@ -952,16 +950,14 @@ int __neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 	if (neigh->nud_state & (NUD_CONNECTED | NUD_DELAY | NUD_PROBE))
 		goto out_unlock_bh;
 
+	now = jiffies;
+
 	if (!(neigh->nud_state & (NUD_STALE | NUD_INCOMPLETE))) {
 		if (neigh->parms->mcast_probes + neigh->parms->app_probes) {
-			unsigned long next, now = jiffies;
-
 			atomic_set(&neigh->probes, neigh->parms->ucast_probes);
 			neigh->nud_state     = NUD_INCOMPLETE;
-			neigh->updated = now;
-			next = now + max(neigh->parms->retrans_time, HZ/2);
-			neigh_add_timer(neigh, next);
-			immediate_probe = true;
+			neigh->updated = jiffies;
+			neigh_add_timer(neigh, now + 1);
 		} else {
 			neigh->nud_state = NUD_FAILED;
 			neigh->updated = jiffies;
@@ -993,11 +989,7 @@ int __neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 		rc = 1;
 	}
 out_unlock_bh:
-	if (immediate_probe)
-		neigh_probe(neigh);
-	else
-		write_unlock(&neigh->lock);
-	local_bh_enable();
+	write_unlock_bh(&neigh->lock);
 	return rc;
 }
 EXPORT_SYMBOL(__neigh_event_send);
@@ -1164,14 +1156,10 @@ int neigh_update(struct neighbour *neigh, const u8 *lladdr, u8 new,
 			struct dst_entry *dst = skb_dst(skb);
 			struct neighbour *n2, *n1 = neigh;
 			write_unlock_bh(&neigh->lock);
-
-			rcu_read_lock();
 			/* On shaper/eql skb->dst->neighbour != neigh :( */
 			if (dst && (n2 = dst_get_neighbour(dst)) != NULL)
 				n1 = n2;
 			n1->output(n1, skb);
-			rcu_read_unlock();
-
 			write_lock_bh(&neigh->lock);
 		}
 		skb_queue_purge(&neigh->arp_queue);

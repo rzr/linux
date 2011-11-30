@@ -34,7 +34,6 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/usb.h>
-#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/info.h>
 #include <sound/pcm.h>

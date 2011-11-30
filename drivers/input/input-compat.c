@@ -8,7 +8,6 @@
  * the Free Software Foundation.
  */
 
-#include <linux/export.h>
 #include <asm/uaccess.h>
 #include "input-compat.h"
 

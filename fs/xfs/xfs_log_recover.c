@@ -183,7 +183,8 @@ xlog_bread_noalign(
 	xfsbdstrat(log->l_mp, bp);
 	error = xfs_buf_iowait(bp);
 	if (error)
-		xfs_buf_ioerror_alert(bp, __func__);
+		xfs_ioerror_alert("xlog_bread", log->l_mp,
+				  bp, XFS_BUF_ADDR(bp));
 	return error;
 }
 
@@ -267,10 +268,9 @@ xlog_bwrite(
 	xfs_buf_lock(bp);
 	XFS_BUF_SET_COUNT(bp, BBTOB(nbblks));
 
-	error = xfs_bwrite(bp);
-	if (error)
-		xfs_buf_ioerror_alert(bp, __func__);
-	xfs_buf_relse(bp);
+	if ((error = xfs_bwrite(log->l_mp, bp)))
+		xfs_ioerror_alert("xlog_bwrite", log->l_mp,
+				  bp, XFS_BUF_ADDR(bp));
 	return error;
 }
 
@@ -361,7 +361,9 @@ xlog_recover_iodone(
 		 * We're not going to bother about retrying
 		 * this during recovery. One strike!
 		 */
-		xfs_buf_ioerror_alert(bp, __func__);
+		xfs_ioerror_alert("xlog_recover_iodone",
+					bp->b_target->bt_mount, bp,
+					XFS_BUF_ADDR(bp));
 		xfs_force_shutdown(bp->b_target->bt_mount,
 					SHUTDOWN_META_IO_ERROR);
 	}
@@ -2133,7 +2135,8 @@ xlog_recover_buffer_pass2(
 		return XFS_ERROR(ENOMEM);
 	error = bp->b_error;
 	if (error) {
-		xfs_buf_ioerror_alert(bp, "xlog_recover_do..(read#1)");
+		xfs_ioerror_alert("xlog_recover_do..(read#1)", mp,
+				  bp, buf_f->blf_blkno);
 		xfs_buf_relse(bp);
 		return error;
 	}
@@ -2168,16 +2171,15 @@ xlog_recover_buffer_pass2(
 	    be16_to_cpu(*((__be16 *)xfs_buf_offset(bp, 0))) &&
 	    (XFS_BUF_COUNT(bp) != MAX(log->l_mp->m_sb.sb_blocksize,
 			(__uint32_t)XFS_INODE_CLUSTER_SIZE(log->l_mp)))) {
-		xfs_buf_stale(bp);
-		error = xfs_bwrite(bp);
+		XFS_BUF_STALE(bp);
+		error = xfs_bwrite(mp, bp);
 	} else {
 		ASSERT(bp->b_target->bt_mount == mp);
 		bp->b_iodone = xlog_recover_iodone;
-		xfs_buf_delwri_queue(bp);
+		xfs_bdwrite(mp, bp);
 	}
 
-	xfs_buf_relse(bp);
-	return error;
+	return (error);
 }
 
 STATIC int
@@ -2228,7 +2230,8 @@ xlog_recover_inode_pass2(
 	}
 	error = bp->b_error;
 	if (error) {
-		xfs_buf_ioerror_alert(bp, "xlog_recover_do..(read#2)");
+		xfs_ioerror_alert("xlog_recover_do..(read#2)", mp,
+				  bp, in_f->ilf_blkno);
 		xfs_buf_relse(bp);
 		goto error;
 	}
@@ -2436,8 +2439,7 @@ xlog_recover_inode_pass2(
 write_inode_buffer:
 	ASSERT(bp->b_target->bt_mount == mp);
 	bp->b_iodone = xlog_recover_iodone;
-	xfs_buf_delwri_queue(bp);
-	xfs_buf_relse(bp);
+	xfs_bdwrite(mp, bp);
 error:
 	if (need_free)
 		kmem_free(in_f);
@@ -2535,7 +2537,8 @@ xlog_recover_dquot_pass2(
 			     XFS_FSB_TO_BB(mp, dq_f->qlf_len),
 			     0, &bp);
 	if (error) {
-		xfs_buf_ioerror_alert(bp, "xlog_recover_do..(read#3)");
+		xfs_ioerror_alert("xlog_recover_do..(read#3)", mp,
+				  bp, dq_f->qlf_blkno);
 		return error;
 	}
 	ASSERT(bp);
@@ -2558,8 +2561,7 @@ xlog_recover_dquot_pass2(
 	ASSERT(dq_f->qlf_size == 2);
 	ASSERT(bp->b_target->bt_mount == mp);
 	bp->b_iodone = xlog_recover_iodone;
-	xfs_buf_delwri_queue(bp);
-	xfs_buf_relse(bp);
+	xfs_bdwrite(mp, bp);
 
 	return (0);
 }
@@ -3654,7 +3656,7 @@ xlog_do_recover(
 		return error;
 	}
 
-	xfs_flush_buftarg(log->l_mp->m_ddev_targp, 1);
+	XFS_bflush(log->l_mp->m_ddev_targp);
 
 	/*
 	 * If IO errors happened during recovery, bail out.
@@ -3687,7 +3689,8 @@ xlog_do_recover(
 	xfsbdstrat(log->l_mp, bp);
 	error = xfs_buf_iowait(bp);
 	if (error) {
-		xfs_buf_ioerror_alert(bp, __func__);
+		xfs_ioerror_alert("xlog_do_recover",
+				  log->l_mp, bp, XFS_BUF_ADDR(bp));
 		ASSERT(0);
 		xfs_buf_relse(bp);
 		return error;

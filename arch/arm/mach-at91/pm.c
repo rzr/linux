@@ -10,7 +10,6 @@
  * (at your option) any later version.
  */
 
-#include <linux/gpio.h>
 #include <linux/suspend.h>
 #include <linux/sched.h>
 #include <linux/proc_fs.h>
@@ -26,6 +25,7 @@
 #include <asm/mach/irq.h>
 
 #include <mach/at91_pmc.h>
+#include <mach/gpio.h>
 #include <mach/cpu.h>
 
 #include "generic.h"

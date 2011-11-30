@@ -41,7 +41,6 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/console.h>
-#include <linux/module.h>
 
 #include <asm/hvconsole.h>
 #include <asm/vio.h>

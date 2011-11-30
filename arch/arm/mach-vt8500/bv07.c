@@ -68,7 +68,7 @@ void __init bv07_init(void)
 }
 
 MACHINE_START(BV07, "Benign BV07 Mini Netbook")
-	.atag_offset	= 0x100,
+	.boot_params	= 0x00000100,
 	.reserve	= vt8500_reserve_mem,
 	.map_io		= vt8500_map_io,
 	.init_irq	= vt8500_init_irq,

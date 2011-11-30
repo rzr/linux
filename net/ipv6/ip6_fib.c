@@ -28,6 +28,10 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 
+#ifdef 	CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#endif
+
 #include <net/ipv6.h>
 #include <net/ndisc.h>
 #include <net/addrconf.h>

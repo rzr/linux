@@ -12,7 +12,6 @@
 #include <linux/ssb/ssb_regs.h>
 #include <linux/ssb/ssb_driver_chipcommon.h>
 #include <linux/delay.h>
-#include <linux/export.h>
 
 #include "ssb_private.h"
 

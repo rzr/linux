@@ -186,7 +186,6 @@ static struct timer_list watchdog_timer;
 static DECLARE_WORK(watchdog_work, clocksource_watchdog_work);
 static DEFINE_SPINLOCK(watchdog_lock);
 static int watchdog_running;
-static atomic_t watchdog_reset_pending;
 
 static int clocksource_watchdog_kthread(void *data);
 static void __clocksource_change_rating(struct clocksource *cs, int rating);
@@ -248,13 +247,11 @@ static void clocksource_watchdog(unsigned long data)
 	struct clocksource *cs;
 	cycle_t csnow, wdnow;
 	int64_t wd_nsec, cs_nsec;
-	int next_cpu, reset_pending;
+	int next_cpu;
 
 	spin_lock(&watchdog_lock);
 	if (!watchdog_running)
 		goto out;
-
-	reset_pending = atomic_read(&watchdog_reset_pending);
 
 	list_for_each_entry(cs, &watchdog_list, wd_list) {
 
@@ -271,8 +268,7 @@ static void clocksource_watchdog(unsigned long data)
 		local_irq_enable();
 
 		/* Clocksource initialized ? */
-		if (!(cs->flags & CLOCK_SOURCE_WATCHDOG) ||
-		    atomic_read(&watchdog_reset_pending)) {
+		if (!(cs->flags & CLOCK_SOURCE_WATCHDOG)) {
 			cs->flags |= CLOCK_SOURCE_WATCHDOG;
 			cs->wd_last = wdnow;
 			cs->cs_last = csnow;
@@ -287,11 +283,8 @@ static void clocksource_watchdog(unsigned long data)
 		cs->cs_last = csnow;
 		cs->wd_last = wdnow;
 
-		if (atomic_read(&watchdog_reset_pending))
-			continue;
-
 		/* Check the deviation from the watchdog clocksource. */
-		if ((abs(cs_nsec - wd_nsec) > WATCHDOG_THRESHOLD)) {
+		if (abs(cs_nsec - wd_nsec) > WATCHDOG_THRESHOLD) {
 			clocksource_unstable(cs, cs_nsec - wd_nsec);
 			continue;
 		}
@@ -308,13 +301,6 @@ static void clocksource_watchdog(unsigned long data)
 			tick_clock_notify();
 		}
 	}
-
-	/*
-	 * We only clear the watchdog_reset_pending, when we did a
-	 * full cycle through all clocksources.
-	 */
-	if (reset_pending)
-		atomic_dec(&watchdog_reset_pending);
 
 	/*
 	 * Cycle through CPUs to check if the CPUs stay synchronized
@@ -358,7 +344,23 @@ static inline void clocksource_reset_watchdog(void)
 
 static void clocksource_resume_watchdog(void)
 {
-	atomic_inc(&watchdog_reset_pending);
+	unsigned long flags;
+
+	/*
+	 * We use trylock here to avoid a potential dead lock when
+	 * kgdb calls this code after the kernel has been stopped with
+	 * watchdog_lock held. When watchdog_lock is held we just
+	 * return and accept, that the watchdog might trigger and mark
+	 * the monitored clock source (usually TSC) unstable.
+	 *
+	 * This does not affect the other caller clocksource_resume()
+	 * because at this point the kernel is UP, interrupts are
+	 * disabled and nothing can hold watchdog_lock.
+	 */
+	if (!spin_trylock_irqsave(&watchdog_lock, flags))
+		return;
+	clocksource_reset_watchdog();
+	spin_unlock_irqrestore(&watchdog_lock, flags);
 }
 
 static void clocksource_enqueue_watchdog(struct clocksource *cs)

@@ -463,11 +463,11 @@ int em28xx_ir_fini(struct em28xx *dev)
 	if (!ir)
 		return 0;
 
-	if (ir->rc)
-		rc_unregister_device(ir->rc);
+	em28xx_ir_stop(ir->rc);
+	rc_unregister_device(ir->rc);
+	kfree(ir);
 
 	/* done */
-	kfree(ir);
 	dev->ir = NULL;
 	return 0;
 }

@@ -28,8 +28,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #define MODULE_NAME "konica"
 
 #include <linux/input.h>
@@ -202,7 +200,7 @@ static void reg_w(struct gspca_dev *gspca_dev, u16 value, u16 index)
 			0,
 			1000);
 	if (ret < 0) {
-		pr_err("reg_w err %d\n", ret);
+		err("reg_w err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -223,7 +221,7 @@ static void reg_r(struct gspca_dev *gspca_dev, u16 value, u16 index)
 			2,
 			1000);
 	if (ret < 0) {
-		pr_err("reg_w err %d\n", ret);
+		err("reg_w err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -286,7 +284,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 	intf = usb_ifnum_to_if(sd->gspca_dev.dev, sd->gspca_dev.iface);
 	alt = usb_altnum_to_altsetting(intf, sd->gspca_dev.alt);
 	if (!alt) {
-		pr_err("Couldn't get altsetting\n");
+		err("Couldn't get altsetting");
 		return -EIO;
 	}
 
@@ -317,7 +315,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 			le16_to_cpu(alt->endpoint[i].desc.wMaxPacketSize);
 		urb = usb_alloc_urb(SD_NPKT, GFP_KERNEL);
 		if (!urb) {
-			pr_err("usb_alloc_urb failed\n");
+			err("usb_alloc_urb failed");
 			return -ENOMEM;
 		}
 		gspca_dev->urb[n] = urb;
@@ -326,7 +324,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 						GFP_KERNEL,
 						&urb->transfer_dma);
 		if (urb->transfer_buffer == NULL) {
-			pr_err("usb_buffer_alloc failed\n");
+			err("usb_buffer_alloc failed");
 			return -ENOMEM;
 		}
 
@@ -388,7 +386,7 @@ static void sd_isoc_irq(struct urb *urb)
 		PDEBUG(D_ERR, "urb status: %d", urb->status);
 		st = usb_submit_urb(urb, GFP_ATOMIC);
 		if (st < 0)
-			pr_err("resubmit urb error %d\n", st);
+			err("resubmit urb error %d", st);
 		return;
 	}
 
@@ -479,7 +477,7 @@ resubmit:
 	}
 	st = usb_submit_urb(status_urb, GFP_ATOMIC);
 	if (st < 0)
-		pr_err("usb_submit_urb(status_urb) ret %d\n", st);
+		err("usb_submit_urb(status_urb) ret %d", st);
 }
 
 static int sd_setbrightness(struct gspca_dev *gspca_dev, __s32 val)

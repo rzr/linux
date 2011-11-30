@@ -8,7 +8,6 @@
  * Licensed under the GNU/GPL. See COPYING for details.
  */
 
-#include <linux/export.h>
 #include <linux/ssb/ssb.h>
 #include <linux/ssb/ssb_embedded.h>
 #include <linux/ssb/ssb_driver_pci.h>

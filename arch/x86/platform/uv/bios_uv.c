@@ -20,7 +20,6 @@
  */
 
 #include <linux/efi.h>
-#include <linux/export.h>
 #include <asm/efi.h>
 #include <linux/io.h>
 #include <asm/uv/bios.h>

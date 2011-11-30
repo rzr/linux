@@ -31,12 +31,9 @@
 #include <linux/device.h>
 #include <linux/serial_core.h>
 #include <linux/serial.h>
-#include <linux/tty.h>
-#include <linux/tty_flip.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/freezer.h>
-#include <linux/module.h>
 #include "max3107.h"
 
 static const struct baud_table brg26_ext[] = {

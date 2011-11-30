@@ -208,20 +208,22 @@ xfs_iomap_write_direct(
 	if (error)
 		goto error1;
 
-	xfs_trans_ijoin(tp, ip, 0);
+	xfs_trans_ijoin(tp, ip);
 
-	bmapi_flag = 0;
+	bmapi_flag = XFS_BMAPI_WRITE;
 	if (offset < ip->i_size || extsz)
 		bmapi_flag |= XFS_BMAPI_PREALLOC;
 
 	/*
+	 * Issue the xfs_bmapi() call to allocate the blocks.
+	 *
 	 * From this point onwards we overwrite the imap pointer that the
 	 * caller gave to us.
 	 */
 	xfs_bmap_init(&free_list, &firstfsb);
 	nimaps = 1;
-	error = xfs_bmapi_write(tp, ip, offset_fsb, count_fsb, bmapi_flag,
-				&firstfsb, 0, imap, &nimaps, &free_list);
+	error = xfs_bmapi(tp, ip, offset_fsb, count_fsb, bmapi_flag,
+		&firstfsb, 0, imap, &nimaps, &free_list);
 	if (error)
 		goto error0;
 
@@ -298,8 +300,8 @@ xfs_iomap_eof_want_preallocate(
 	while (count_fsb > 0) {
 		imaps = nimaps;
 		firstblock = NULLFSBLOCK;
-		error = xfs_bmapi_read(ip, start_fsb, count_fsb, imap, &imaps,
-				       0);
+		error = xfs_bmapi(NULL, ip, start_fsb, count_fsb, 0,
+				  &firstblock, 0, imap, &imaps, NULL);
 		if (error)
 			return error;
 		for (n = 0; n < imaps; n++) {
@@ -379,6 +381,7 @@ xfs_iomap_write_delay(
 	xfs_fileoff_t	last_fsb;
 	xfs_off_t	aligned_offset;
 	xfs_fileoff_t	ioalign;
+	xfs_fsblock_t	firstblock;
 	xfs_extlen_t	extsz;
 	int		nimaps;
 	xfs_bmbt_irec_t imap[XFS_WRITE_IMAPS];
@@ -422,8 +425,12 @@ retry:
 	}
 
 	nimaps = XFS_WRITE_IMAPS;
-	error = xfs_bmapi_delay(ip, offset_fsb, last_fsb - offset_fsb,
-				imap, &nimaps, XFS_BMAPI_ENTIRE);
+	firstblock = NULLFSBLOCK;
+	error = xfs_bmapi(NULL, ip, offset_fsb,
+			  (xfs_filblks_t)(last_fsb - offset_fsb),
+			  XFS_BMAPI_DELAY | XFS_BMAPI_WRITE |
+			  XFS_BMAPI_ENTIRE, &firstblock, 1, imap,
+			  &nimaps, NULL);
 	switch (error) {
 	case 0:
 	case ENOSPC:
@@ -528,7 +535,7 @@ xfs_iomap_write_allocate(
 				return XFS_ERROR(error);
 			}
 			xfs_ilock(ip, XFS_ILOCK_EXCL);
-			xfs_trans_ijoin(tp, ip, 0);
+			xfs_trans_ijoin(tp, ip);
 
 			xfs_bmap_init(&free_list, &first_block);
 
@@ -580,12 +587,14 @@ xfs_iomap_write_allocate(
 			}
 
 			/*
+			 * Go get the actual blocks.
+	 	 	 *
 			 * From this point onwards we overwrite the imap
 			 * pointer that the caller gave to us.
 			 */
-			error = xfs_bmapi_write(tp, ip, map_start_fsb,
-						count_fsb, 0, &first_block, 1,
-						imap, &nimaps, &free_list);
+			error = xfs_bmapi(tp, ip, map_start_fsb, count_fsb,
+					XFS_BMAPI_WRITE, &first_block, 1,
+					imap, &nimaps, &free_list);
 			if (error)
 				goto trans_cancel;
 
@@ -692,15 +701,15 @@ xfs_iomap_write_unwritten(
 		}
 
 		xfs_ilock(ip, XFS_ILOCK_EXCL);
-		xfs_trans_ijoin(tp, ip, 0);
+		xfs_trans_ijoin(tp, ip);
 
 		/*
 		 * Modify the unwritten extent state of the buffer.
 		 */
 		xfs_bmap_init(&free_list, &firstfsb);
 		nimaps = 1;
-		error = xfs_bmapi_write(tp, ip, offset_fsb, count_fsb,
-				  XFS_BMAPI_CONVERT, &firstfsb,
+		error = xfs_bmapi(tp, ip, offset_fsb, count_fsb,
+				  XFS_BMAPI_WRITE|XFS_BMAPI_CONVERT, &firstfsb,
 				  1, &imap, &nimaps, &free_list);
 		if (error)
 			goto error_on_bmapi_transaction;

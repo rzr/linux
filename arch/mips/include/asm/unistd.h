@@ -365,18 +365,16 @@
 #define __NR_syncfs			(__NR_Linux + 342)
 #define __NR_sendmmsg			(__NR_Linux + 343)
 #define __NR_setns			(__NR_Linux + 344)
-#define __NR_process_vm_readv		(__NR_Linux + 345)
-#define __NR_process_vm_writev		(__NR_Linux + 346)
 
 /*
  * Offset of the last Linux o32 flavoured syscall
  */
-#define __NR_Linux_syscalls		346
+#define __NR_Linux_syscalls		344
 
 #endif /* _MIPS_SIM == _MIPS_SIM_ABI32 */
 
 #define __NR_O32_Linux			4000
-#define __NR_O32_Linux_syscalls		346
+#define __NR_O32_Linux_syscalls		344
 
 #if _MIPS_SIM == _MIPS_SIM_ABI64
 
@@ -688,18 +686,16 @@
 #define __NR_syncfs			(__NR_Linux + 301)
 #define __NR_sendmmsg			(__NR_Linux + 302)
 #define __NR_setns			(__NR_Linux + 303)
-#define __NR_process_vm_readv		(__NR_Linux + 304)
-#define __NR_process_vm_writev		(__NR_Linux + 305)
 
 /*
  * Offset of the last Linux 64-bit flavoured syscall
  */
-#define __NR_Linux_syscalls		305
+#define __NR_Linux_syscalls		303
 
 #endif /* _MIPS_SIM == _MIPS_SIM_ABI64 */
 
 #define __NR_64_Linux			5000
-#define __NR_64_Linux_syscalls		305
+#define __NR_64_Linux_syscalls		303
 
 #if _MIPS_SIM == _MIPS_SIM_NABI32
 
@@ -1016,18 +1012,16 @@
 #define __NR_syncfs			(__NR_Linux + 306)
 #define __NR_sendmmsg			(__NR_Linux + 307)
 #define __NR_setns			(__NR_Linux + 308)
-#define __NR_process_vm_readv		(__NR_Linux + 309)
-#define __NR_process_vm_writev		(__NR_Linux + 310)
 
 /*
  * Offset of the last N32 flavoured syscall
  */
-#define __NR_Linux_syscalls		310
+#define __NR_Linux_syscalls		308
 
 #endif /* _MIPS_SIM == _MIPS_SIM_NABI32 */
 
 #define __NR_N32_Linux			6000
-#define __NR_N32_Linux_syscalls		310
+#define __NR_N32_Linux_syscalls		308
 
 #ifdef __KERNEL__
 

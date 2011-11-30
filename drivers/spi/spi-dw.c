@@ -19,7 +19,6 @@
 
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
-#include <linux/module.h>
 #include <linux/highmem.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -89,35 +88,35 @@ static ssize_t  spi_show_regs(struct file *file, char __user *user_buf,
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"=================================\n");
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"CTRL0: \t\t0x%08x\n", dw_readl(dws, DW_SPI_CTRL0));
+			"CTRL0: \t\t0x%08x\n", dw_readl(dws, ctrl0));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"CTRL1: \t\t0x%08x\n", dw_readl(dws, DW_SPI_CTRL1));
+			"CTRL1: \t\t0x%08x\n", dw_readl(dws, ctrl1));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"SSIENR: \t0x%08x\n", dw_readl(dws, DW_SPI_SSIENR));
+			"SSIENR: \t0x%08x\n", dw_readl(dws, ssienr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"SER: \t\t0x%08x\n", dw_readl(dws, DW_SPI_SER));
+			"SER: \t\t0x%08x\n", dw_readl(dws, ser));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"BAUDR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_BAUDR));
+			"BAUDR: \t\t0x%08x\n", dw_readl(dws, baudr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"TXFTLR: \t0x%08x\n", dw_readl(dws, DW_SPI_TXFLTR));
+			"TXFTLR: \t0x%08x\n", dw_readl(dws, txfltr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"RXFTLR: \t0x%08x\n", dw_readl(dws, DW_SPI_RXFLTR));
+			"RXFTLR: \t0x%08x\n", dw_readl(dws, rxfltr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"TXFLR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_TXFLR));
+			"TXFLR: \t\t0x%08x\n", dw_readl(dws, txflr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"RXFLR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_RXFLR));
+			"RXFLR: \t\t0x%08x\n", dw_readl(dws, rxflr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"SR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_SR));
+			"SR: \t\t0x%08x\n", dw_readl(dws, sr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"IMR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_IMR));
+			"IMR: \t\t0x%08x\n", dw_readl(dws, imr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"ISR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_ISR));
+			"ISR: \t\t0x%08x\n", dw_readl(dws, isr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"DMACR: \t\t0x%08x\n", dw_readl(dws, DW_SPI_DMACR));
+			"DMACR: \t\t0x%08x\n", dw_readl(dws, dmacr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"DMATDLR: \t0x%08x\n", dw_readl(dws, DW_SPI_DMATDLR));
+			"DMATDLR: \t0x%08x\n", dw_readl(dws, dmatdlr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
-			"DMARDLR: \t0x%08x\n", dw_readl(dws, DW_SPI_DMARDLR));
+			"DMARDLR: \t0x%08x\n", dw_readl(dws, dmardlr));
 	len += snprintf(buf + len, SPI_REGS_BUFSIZE - len,
 			"=================================\n");
 
@@ -167,7 +166,7 @@ static inline u32 tx_max(struct dw_spi *dws)
 	u32 tx_left, tx_room, rxtx_gap;
 
 	tx_left = (dws->tx_end - dws->tx) / dws->n_bytes;
-	tx_room = dws->fifo_len - dw_readw(dws, DW_SPI_TXFLR);
+	tx_room = dws->fifo_len - dw_readw(dws, txflr);
 
 	/*
 	 * Another concern is about the tx/rx mismatch, we
@@ -188,7 +187,7 @@ static inline u32 rx_max(struct dw_spi *dws)
 {
 	u32 rx_left = (dws->rx_end - dws->rx) / dws->n_bytes;
 
-	return min(rx_left, (u32)dw_readw(dws, DW_SPI_RXFLR));
+	return min(rx_left, (u32)dw_readw(dws, rxflr));
 }
 
 static void dw_writer(struct dw_spi *dws)
@@ -204,7 +203,7 @@ static void dw_writer(struct dw_spi *dws)
 			else
 				txw = *(u16 *)(dws->tx);
 		}
-		dw_writew(dws, DW_SPI_DR, txw);
+		dw_writew(dws, dr, txw);
 		dws->tx += dws->n_bytes;
 	}
 }
@@ -215,7 +214,7 @@ static void dw_reader(struct dw_spi *dws)
 	u16 rxw;
 
 	while (max--) {
-		rxw = dw_readw(dws, DW_SPI_DR);
+		rxw = dw_readw(dws, dr);
 		/* Care rx only if the transfer's original "rx" is not null */
 		if (dws->rx_end - dws->len) {
 			if (dws->n_bytes == 1)
@@ -323,13 +322,13 @@ EXPORT_SYMBOL_GPL(dw_spi_xfer_done);
 
 static irqreturn_t interrupt_transfer(struct dw_spi *dws)
 {
-	u16 irq_status = dw_readw(dws, DW_SPI_ISR);
+	u16 irq_status = dw_readw(dws, isr);
 
 	/* Error handling */
 	if (irq_status & (SPI_INT_TXOI | SPI_INT_RXOI | SPI_INT_RXUI)) {
-		dw_readw(dws, DW_SPI_TXOICR);
-		dw_readw(dws, DW_SPI_RXOICR);
-		dw_readw(dws, DW_SPI_RXUICR);
+		dw_readw(dws, txoicr);
+		dw_readw(dws, rxoicr);
+		dw_readw(dws, rxuicr);
 		int_error_stop(dws, "interrupt_transfer: fifo overrun/underrun");
 		return IRQ_HANDLED;
 	}
@@ -353,7 +352,7 @@ static irqreturn_t interrupt_transfer(struct dw_spi *dws)
 static irqreturn_t dw_spi_irq(int irq, void *dev_id)
 {
 	struct dw_spi *dws = dev_id;
-	u16 irq_status = dw_readw(dws, DW_SPI_ISR) & 0x3f;
+	u16 irq_status = dw_readw(dws, isr) & 0x3f;
 
 	if (!irq_status)
 		return IRQ_NONE;
@@ -521,11 +520,11 @@ static void pump_transfers(unsigned long data)
 	 *	2. clk_div is changed
 	 *	3. control value changes
 	 */
-	if (dw_readw(dws, DW_SPI_CTRL0) != cr0 || cs_change || clk_div || imask) {
+	if (dw_readw(dws, ctrl0) != cr0 || cs_change || clk_div || imask) {
 		spi_enable_chip(dws, 0);
 
-		if (dw_readw(dws, DW_SPI_CTRL0) != cr0)
-			dw_writew(dws, DW_SPI_CTRL0, cr0);
+		if (dw_readw(dws, ctrl0) != cr0)
+			dw_writew(dws, ctrl0, cr0);
 
 		spi_set_clk(dws, clk_div ? clk_div : chip->clk_div);
 		spi_chip_sel(dws, spi->chip_select);
@@ -535,7 +534,7 @@ static void pump_transfers(unsigned long data)
 		if (imask)
 			spi_umask_intr(dws, imask);
 		if (txint_level)
-			dw_writew(dws, DW_SPI_TXFLTR, txint_level);
+			dw_writew(dws, txfltr, txint_level);
 
 		spi_enable_chip(dws, 1);
 		if (cs_change)
@@ -791,13 +790,13 @@ static void spi_hw_init(struct dw_spi *dws)
 	if (!dws->fifo_len) {
 		u32 fifo;
 		for (fifo = 2; fifo <= 257; fifo++) {
-			dw_writew(dws, DW_SPI_TXFLTR, fifo);
-			if (fifo != dw_readw(dws, DW_SPI_TXFLTR))
+			dw_writew(dws, txfltr, fifo);
+			if (fifo != dw_readw(dws, txfltr))
 				break;
 		}
 
 		dws->fifo_len = (fifo == 257) ? 0 : fifo;
-		dw_writew(dws, DW_SPI_TXFLTR, 0);
+		dw_writew(dws, txfltr, 0);
 	}
 }
 

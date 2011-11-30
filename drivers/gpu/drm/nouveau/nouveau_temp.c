@@ -22,8 +22,6 @@
  * Authors: Martin Peres
  */
 
-#include <linux/module.h>
-
 #include "drmP.h"
 
 #include "nouveau_drv.h"

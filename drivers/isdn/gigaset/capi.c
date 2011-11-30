@@ -17,7 +17,6 @@
 #include <linux/isdn/capilli.h>
 #include <linux/isdn/capicmd.h>
 #include <linux/isdn/capiutil.h>
-#include <linux/export.h>
 
 /* missing from kernelcapi.h */
 #define CapiNcpiNotSupportedByProtocol	0x0001

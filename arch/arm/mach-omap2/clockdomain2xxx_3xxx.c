@@ -52,6 +52,8 @@ static int omap2_clkdm_clear_all_wkdeps(struct clockdomain *clkdm)
 	u32 mask = 0;
 
 	for (cd = clkdm->wkdep_srcs; cd && cd->clkdm_name; cd++) {
+		if (!omap_chip_is(cd->omap_chip))
+			continue;
 		if (!cd->clkdm)
 			continue; /* only happens if data is erroneous */
 
@@ -96,6 +98,8 @@ static int omap3_clkdm_clear_all_sleepdeps(struct clockdomain *clkdm)
 	u32 mask = 0;
 
 	for (cd = clkdm->sleepdep_srcs; cd && cd->clkdm_name; cd++) {
+		if (!omap_chip_is(cd->omap_chip))
+			continue;
 		if (!cd->clkdm)
 			continue; /* only happens if data is erroneous */
 

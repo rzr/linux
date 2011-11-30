@@ -1019,13 +1019,12 @@ static int s3fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	unsigned int offset;
 
 	/* Calculate the offset */
-	if (info->var.bits_per_pixel == 0) {
-		offset = (var->yoffset / 16) * (info->var.xres_virtual / 2)
-		       + (var->xoffset / 2);
+	if (var->bits_per_pixel == 0) {
+		offset = (var->yoffset / 16) * (var->xres_virtual / 2) + (var->xoffset / 2);
 		offset = offset >> 2;
 	} else {
 		offset = (var->yoffset * info->fix.line_length) +
-			 (var->xoffset * info->var.bits_per_pixel / 8);
+			 (var->xoffset * var->bits_per_pixel / 8);
 		offset = offset >> 2;
 	}
 
@@ -1505,7 +1504,7 @@ static struct pci_driver s3fb_pci_driver = {
 	.resume		= s3_pci_resume,
 };
 
-/* Parse user specified options */
+/* Parse user speficied options */
 
 #ifndef MODULE
 static int  __init s3fb_setup(char *options)

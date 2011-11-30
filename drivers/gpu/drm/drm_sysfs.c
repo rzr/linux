@@ -16,7 +16,6 @@
 #include <linux/kdev_t.h>
 #include <linux/gfp.h>
 #include <linux/err.h>
-#include <linux/export.h>
 
 #include "drm_sysfs.h"
 #include "drm_core.h"

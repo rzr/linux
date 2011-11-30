@@ -87,6 +87,14 @@ static u16 reg_map[] = {
 	[CCDN]			= 0xd8,
 };
 
+static struct omap_device_pm_latency omap2_dma_latency[] = {
+	{
+		.deactivate_func = omap_device_idle_hwmods,
+		.activate_func	 = omap_device_enable_hwmods,
+		.flags		 = OMAP_DEVICE_LATENCY_AUTO_ADJUST,
+	},
+};
+
 static void __iomem *dma_base;
 static inline void dma_write(u32 val, int reg, int lch)
 {
@@ -220,7 +228,7 @@ static u32 configure_dma_errata(void)
 /* One time initializations */
 static int __init omap2_system_dma_init_dev(struct omap_hwmod *oh, void *unused)
 {
-	struct platform_device			*pdev;
+	struct omap_device			*od;
 	struct omap_system_dma_plat_info	*p;
 	struct resource				*mem;
 	char					*name = "omap_dma_system";
@@ -250,22 +258,23 @@ static int __init omap2_system_dma_init_dev(struct omap_hwmod *oh, void *unused)
 
 	p->errata		= configure_dma_errata();
 
-	pdev = omap_device_build(name, 0, oh, p, sizeof(*p), NULL, 0, 0);
+	od = omap_device_build(name, 0, oh, p, sizeof(*p),
+			omap2_dma_latency, ARRAY_SIZE(omap2_dma_latency), 0);
 	kfree(p);
-	if (IS_ERR(pdev)) {
+	if (IS_ERR(od)) {
 		pr_err("%s: Can't build omap_device for %s:%s.\n",
 			__func__, name, oh->name);
-		return PTR_ERR(pdev);
+		return PTR_ERR(od);
 	}
 
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	mem = platform_get_resource(&od->pdev, IORESOURCE_MEM, 0);
 	if (!mem) {
-		dev_err(&pdev->dev, "%s: no mem resource\n", __func__);
+		dev_err(&od->pdev.dev, "%s: no mem resource\n", __func__);
 		return -EINVAL;
 	}
 	dma_base = ioremap(mem->start, resource_size(mem));
 	if (!dma_base) {
-		dev_err(&pdev->dev, "%s: ioremap fail\n", __func__);
+		dev_err(&od->pdev.dev, "%s: ioremap fail\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -274,7 +283,7 @@ static int __init omap2_system_dma_init_dev(struct omap_hwmod *oh, void *unused)
 					(d->lch_count), GFP_KERNEL);
 
 	if (!d->chan) {
-		dev_err(&pdev->dev, "%s: kzalloc fail\n", __func__);
+		dev_err(&od->pdev.dev, "%s: kzalloc fail\n", __func__);
 		return -ENOMEM;
 	}
 	return 0;

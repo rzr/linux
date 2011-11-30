@@ -1,5 +1,4 @@
 #include <linux/kernel.h>
-#include <linux/export.h>
 #include <linux/of.h>
 #include <linux/of_pci.h>
 #include <asm/prom.h>

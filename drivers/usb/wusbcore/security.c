@@ -26,7 +26,6 @@
 #include <linux/slab.h>
 #include <linux/usb/ch9.h>
 #include <linux/random.h>
-#include <linux/export.h>
 #include "wusbhc.h"
 
 static void wusbhc_set_gtk_callback(struct urb *urb);

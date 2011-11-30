@@ -20,7 +20,6 @@
 #include <linux/init.h>
 #include <linux/kmod.h>
 #include <linux/err.h>
-#include <linux/module.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
 #include <net/sch_generic.h>

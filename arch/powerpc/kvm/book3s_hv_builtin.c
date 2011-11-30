@@ -8,7 +8,6 @@
 
 #include <linux/kvm_host.h>
 #include <linux/preempt.h>
-#include <linux/export.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 #include <linux/bootmem.h>

@@ -749,7 +749,8 @@ static void alc880_uniwill_setup(struct hda_codec *codec)
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
 	spec->autocfg.speaker_pins[0] = 0x16;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc880_uniwill_init_hook(struct hda_codec *codec)
@@ -780,7 +781,8 @@ static void alc880_uniwill_p53_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x15;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static void alc880_uniwill_p53_dcvol_automute(struct hda_codec *codec)
@@ -1049,7 +1051,8 @@ static void alc880_lg_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x1b;
 	spec->autocfg.speaker_pins[0] = 0x17;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 /*
@@ -1134,7 +1137,8 @@ static void alc880_lg_lw_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x1b;
 	spec->autocfg.speaker_pins[0] = 0x14;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 static const struct snd_kcontrol_new alc880_medion_rim_mixer[] = {
@@ -1184,7 +1188,7 @@ static void alc880_medion_rim_automute(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 	alc_hp_automute(codec);
 	/* toggle EAPD */
-	if (spec->hp_jack_present)
+	if (spec->jack_present)
 		snd_hda_codec_write(codec, 0x01, 0, AC_VERB_SET_GPIO_DATA, 0);
 	else
 		snd_hda_codec_write(codec, 0x01, 0, AC_VERB_SET_GPIO_DATA, 2);
@@ -1206,7 +1210,8 @@ static void alc880_medion_rim_setup(struct hda_codec *codec)
 
 	spec->autocfg.hp_pins[0] = 0x14;
 	spec->autocfg.speaker_pins[0] = 0x1b;
-	alc_simple_setup_automute(spec, ALC_AUTOMUTE_AMP);
+	spec->automute = 1;
+	spec->automute_mode = ALC_AUTOMUTE_AMP;
 }
 
 #ifdef CONFIG_SND_HDA_POWER_SAVE

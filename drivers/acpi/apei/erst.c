@@ -933,7 +933,7 @@ static int erst_open_pstore(struct pstore_info *psi);
 static int erst_close_pstore(struct pstore_info *psi);
 static ssize_t erst_reader(u64 *id, enum pstore_type_id *type,
 			   struct timespec *time, struct pstore_info *psi);
-static int erst_writer(enum pstore_type_id type, u64 *id, unsigned int part,
+static u64 erst_writer(enum pstore_type_id type, unsigned int part,
 		       size_t size, struct pstore_info *psi);
 static int erst_clearer(enum pstore_type_id type, u64 id,
 			struct pstore_info *psi);
@@ -1040,12 +1040,11 @@ out:
 	return (rc < 0) ? rc : (len - sizeof(*rcd));
 }
 
-static int erst_writer(enum pstore_type_id type, u64 *id, unsigned int part,
+static u64 erst_writer(enum pstore_type_id type, unsigned int part,
 		       size_t size, struct pstore_info *psi)
 {
 	struct cper_pstore_record *rcd = (struct cper_pstore_record *)
 					(erst_info.buf - sizeof(*rcd));
-	int ret;
 
 	memset(rcd, 0, sizeof(*rcd));
 	memcpy(rcd->hdr.signature, CPER_SIG_RECORD, CPER_SIG_SIZE);
@@ -1080,10 +1079,9 @@ static int erst_writer(enum pstore_type_id type, u64 *id, unsigned int part,
 	}
 	rcd->sec_hdr.section_severity = CPER_SEV_FATAL;
 
-	ret = erst_write(&rcd->hdr);
-	*id = rcd->hdr.record_id;
+	erst_write(&rcd->hdr);
 
-	return ret;
+	return rcd->hdr.record_id;
 }
 
 static int erst_clearer(enum pstore_type_id type, u64 id,
@@ -1167,7 +1165,7 @@ static int __init erst_init(void)
 		goto err_release_erange;
 
 	buf = kmalloc(erst_erange.size, GFP_KERNEL);
-	spin_lock_init(&erst_info.buf_lock);
+	mutex_init(&erst_info.buf_mutex);
 	if (buf) {
 		erst_info.buf = buf + sizeof(struct cper_pstore_record);
 		erst_info.bufsize = erst_erange.size -

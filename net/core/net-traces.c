@@ -11,7 +11,6 @@
 #include <linux/inetdevice.h>
 #include <linux/inet.h>
 #include <linux/interrupt.h>
-#include <linux/export.h>
 #include <linux/netpoll.h>
 #include <linux/sched.h>
 #include <linux/delay.h>

@@ -744,7 +744,18 @@ static struct platform_driver fsl_espi_driver = {
 	.probe		= of_fsl_espi_probe,
 	.remove		= __devexit_p(of_fsl_espi_remove),
 };
-module_platform_driver(fsl_espi_driver);
+
+static int __init fsl_espi_init(void)
+{
+	return platform_driver_register(&fsl_espi_driver);
+}
+module_init(fsl_espi_init);
+
+static void __exit fsl_espi_exit(void)
+{
+	platform_driver_unregister(&fsl_espi_driver);
+}
+module_exit(fsl_espi_exit);
 
 MODULE_AUTHOR("Mingkai Hu");
 MODULE_DESCRIPTION("Enhanced Freescale SPI Driver");

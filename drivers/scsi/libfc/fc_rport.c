@@ -51,7 +51,6 @@
 #include <linux/rcupdate.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
-#include <linux/export.h>
 #include <asm/unaligned.h>
 
 #include <scsi/libfc.h>

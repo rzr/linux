@@ -13,6 +13,7 @@
 #include <linux/pagemap.h>
 #include <linux/swapops.h>
 #include <linux/rmap.h>
+#include <linux/module.h>
 #include <linux/syscalls.h>
 #include <linux/mmu_notifier.h>
 

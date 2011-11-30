@@ -9,7 +9,6 @@
 #include <linux/stop_machine.h>
 #include <linux/freezer.h>
 #include <linux/syscore_ops.h>
-#include <linux/export.h>
 
 #include <xen/xen.h>
 #include <xen/xenbus.h>

@@ -350,7 +350,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 			dev->state < USB_STATE_CONFIGURED)
 		return -ENODEV;
 
-	max = usb_endpoint_maxp(&ep->desc);
+	max = le16_to_cpu(ep->desc.wMaxPacketSize);
 	if (max <= 0) {
 		dev_dbg(&dev->dev,
 			"bogus endpoint ep%d%s in %s (bad maxpacket %d)\n",

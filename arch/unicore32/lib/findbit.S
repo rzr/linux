@@ -17,7 +17,7 @@
  * Purpose  : Find a 'zero' bit
  * Prototype: int find_first_zero_bit(void *addr, unsigned int maxbit);
  */
-ENTRY(find_first_zero_bit)
+__uc32_find_first_zero_bit:
 		cxor.a	r1, #0
 		beq	3f
 		mov	r2, #0
@@ -29,14 +29,13 @@ ENTRY(find_first_zero_bit)
 		bub	1b
 3:		mov	r0, r1			@ no free bits
 		mov	pc, lr
-ENDPROC(find_first_zero_bit)
 
 /*
  * Purpose  : Find next 'zero' bit
  * Prototype: int find_next_zero_bit
  *		(void *addr, unsigned int maxbit, int offset)
  */
-ENTRY(find_next_zero_bit)
+ENTRY(__uc32_find_next_zero_bit)
 		cxor.a	r1, #0
 		beq	3b
 		and.a	ip, r2, #7
@@ -48,14 +47,14 @@ ENTRY(find_next_zero_bit)
 		or	r2, r2, #7		@ if zero, then no bits here
 		add	r2, r2, #1		@ align bit pointer
 		b	2b			@ loop for next bit
-ENDPROC(find_next_zero_bit)
+ENDPROC(__uc32_find_next_zero_bit)
 
 /*
  * Purpose  : Find a 'one' bit
  * Prototype: int find_first_bit
  *		(const unsigned long *addr, unsigned int maxbit);
  */
-ENTRY(find_first_bit)
+__uc32_find_first_bit:
 		cxor.a	r1, #0
 		beq	3f
 		mov	r2, #0
@@ -67,14 +66,13 @@ ENTRY(find_first_bit)
 		bub	1b
 3:		mov	r0, r1			@ no free bits
 		mov	pc, lr
-ENDPROC(find_first_bit)
 
 /*
  * Purpose  : Find next 'one' bit
  * Prototype: int find_next_zero_bit
  *		(void *addr, unsigned int maxbit, int offset)
  */
-ENTRY(find_next_bit)
+ENTRY(__uc32_find_next_bit)
 		cxor.a	r1, #0
 		beq	3b
 		and.a	ip, r2, #7
@@ -85,7 +83,7 @@ ENTRY(find_next_bit)
 		or	r2, r2, #7		@ if zero, then no bits here
 		add	r2, r2, #1		@ align bit pointer
 		b	2b			@ loop for next bit
-ENDPROC(find_next_bit)
+ENDPROC(__uc32_find_next_bit)
 
 /*
  * One or more bits in the LSB of r3 are assumed to be set.

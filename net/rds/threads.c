@@ -32,7 +32,6 @@
  */
 #include <linux/kernel.h>
 #include <linux/random.h>
-#include <linux/export.h>
 
 #include "rds.h"
 

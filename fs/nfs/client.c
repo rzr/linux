@@ -336,12 +336,11 @@ static int nfs_sockaddr_match_ipaddr6(const struct sockaddr *sa1,
 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sa1;
 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sa2;
 
-	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
+	if (ipv6_addr_scope(&sin1->sin6_addr) == IPV6_ADDR_SCOPE_LINKLOCAL &&
+	    sin1->sin6_scope_id != sin2->sin6_scope_id)
 		return 0;
-	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
-		return sin1->sin6_scope_id == sin2->sin6_scope_id;
 
-	return 1;
+	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
 }
 #else	/* !defined(CONFIG_IPV6) && !defined(CONFIG_IPV6_MODULE) */
 static int nfs_sockaddr_match_ipaddr6(const struct sockaddr *sa1,
@@ -1867,10 +1866,6 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
 
 	/* display one transport per line on subsequent lines */
 	clp = list_entry(v, struct nfs_client, cl_share_link);
-
-	/* Check if the client is initialized */
-	if (clp->cl_cons_state != NFS_CS_READY)
-		return 0;
 
 	seq_printf(m, "v%u %s %s %3d %s\n",
 		   clp->rpc_ops->version,

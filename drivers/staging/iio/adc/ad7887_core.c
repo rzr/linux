@@ -13,12 +13,11 @@
 #include <linux/spi/spi.h>
 #include <linux/regulator/consumer.h>
 #include <linux/err.h>
-#include <linux/module.h>
 
 #include "../iio.h"
 #include "../sysfs.h"
-#include "../buffer_generic.h"
-
+#include "../ring_generic.h"
+#include "adc.h"
 
 #include "ad7887.h"
 
@@ -31,24 +30,24 @@ static int ad7887_scan_direct(struct ad7887_state *st, unsigned ch)
 	return (st->data[(ch * 2)] << 8) | st->data[(ch * 2) + 1];
 }
 
-static int ad7887_read_raw(struct iio_dev *indio_dev,
+static int ad7887_read_raw(struct iio_dev *dev_info,
 			   struct iio_chan_spec const *chan,
 			   int *val,
 			   int *val2,
 			   long m)
 {
 	int ret;
-	struct ad7887_state *st = iio_priv(indio_dev);
+	struct ad7887_state *st = iio_priv(dev_info);
 	unsigned int scale_uv;
 
 	switch (m) {
 	case 0:
-		mutex_lock(&indio_dev->mlock);
-		if (iio_buffer_enabled(indio_dev))
+		mutex_lock(&dev_info->mlock);
+		if (iio_ring_enabled(dev_info))
 			ret = ad7887_scan_from_ring(st, 1 << chan->address);
 		else
 			ret = ad7887_scan_direct(st, chan->address);
-		mutex_unlock(&indio_dev->mlock);
+		mutex_unlock(&dev_info->mlock);
 
 		if (ret < 0)
 			return ret;
@@ -71,24 +70,14 @@ static const struct ad7887_chip_info ad7887_chip_info_tbl[] = {
 	 * More devices added in future
 	 */
 	[ID_AD7887] = {
-		.channel[0] = {
-			.type = IIO_VOLTAGE,
-			.indexed = 1,
-			.channel = 1,
-			.info_mask = (1 << IIO_CHAN_INFO_SCALE_SHARED),
-			.address = 1,
-			.scan_index = 1,
-			.scan_type = IIO_ST('u', 12, 16, 0),
-		},
-		.channel[1] = {
-			.type = IIO_VOLTAGE,
-			.indexed = 1,
-			.channel = 0,
-			.info_mask = (1 << IIO_CHAN_INFO_SCALE_SHARED),
-			.address = 0,
-			.scan_index = 0,
-			.scan_type = IIO_ST('u', 12, 16, 0),
-		},
+		.channel[0] = IIO_CHAN(IIO_IN, 0, 1, 0, NULL, 1, 0,
+				       (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				       1, 1, IIO_ST('u', 12, 16, 0), 0),
+
+		.channel[1] = IIO_CHAN(IIO_IN, 0, 1, 0, NULL, 0, 0,
+				       (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				       0, 0, IIO_ST('u', 12, 16, 0), 0),
+
 		.channel[2] = IIO_CHAN_SOFT_TIMESTAMP(2),
 		.int_vref_mv = 2500,
 	},
@@ -103,7 +92,7 @@ static int __devinit ad7887_probe(struct spi_device *spi)
 {
 	struct ad7887_platform_data *pdata = spi->dev.platform_data;
 	struct ad7887_state *st;
-	int ret, voltage_uv = 0;
+	int ret, voltage_uv = 0, regdone = 0;
 	struct iio_dev *indio_dev = iio_allocate_device(sizeof(*st));
 
 	if (indio_dev == NULL)
@@ -199,19 +188,18 @@ static int __devinit ad7887_probe(struct spi_device *spi)
 	if (ret)
 		goto error_disable_reg;
 
-	ret = iio_buffer_register(indio_dev,
-				  indio_dev->channels,
-				  indio_dev->num_channels);
-	if (ret)
-		goto error_cleanup_ring;
-
 	ret = iio_device_register(indio_dev);
 	if (ret)
-		goto error_unregister_ring;
+		goto error_disable_reg;
+	regdone = 1;
 
+	ret = iio_ring_buffer_register_ex(indio_dev->ring, 0,
+					  indio_dev->channels,
+					  indio_dev->num_channels);
+	if (ret)
+		goto error_cleanup_ring;
 	return 0;
-error_unregister_ring:
-	iio_buffer_unregister(indio_dev);
+
 error_cleanup_ring:
 	ad7887_ring_cleanup(indio_dev);
 error_disable_reg:
@@ -220,7 +208,10 @@ error_disable_reg:
 error_put_reg:
 	if (!IS_ERR(st->reg))
 		regulator_put(st->reg);
-	iio_free_device(indio_dev);
+	if (regdone)
+		iio_device_unregister(indio_dev);
+	else
+		iio_free_device(indio_dev);
 
 	return ret;
 }
@@ -230,14 +221,13 @@ static int ad7887_remove(struct spi_device *spi)
 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 	struct ad7887_state *st = iio_priv(indio_dev);
 
-	iio_device_unregister(indio_dev);
-	iio_buffer_unregister(indio_dev);
+	iio_ring_buffer_unregister(indio_dev->ring);
 	ad7887_ring_cleanup(indio_dev);
 	if (!IS_ERR(st->reg)) {
 		regulator_disable(st->reg);
 		regulator_put(st->reg);
 	}
-	iio_free_device(indio_dev);
+	iio_device_unregister(indio_dev);
 
 	return 0;
 }

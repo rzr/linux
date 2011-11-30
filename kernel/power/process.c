@@ -135,7 +135,7 @@ static int try_to_freeze_tasks(bool sig_only)
 }
 
 /**
- * freeze_processes - Signal user space processes to enter the refrigerator.
+ *	freeze_processes - tell processes to enter the refrigerator
  */
 int freeze_processes(void)
 {
@@ -143,30 +143,20 @@ int freeze_processes(void)
 
 	printk("Freezing user space processes ... ");
 	error = try_to_freeze_tasks(true);
-	if (!error) {
-		printk("done.");
-		oom_killer_disable();
-	}
-	printk("\n");
-	BUG_ON(in_atomic());
-
-	return error;
-}
-
-/**
- * freeze_kernel_threads - Make freezable kernel threads go to the refrigerator.
- */
-int freeze_kernel_threads(void)
-{
-	int error;
+	if (error)
+		goto Exit;
+	printk("done.\n");
 
 	printk("Freezing remaining freezable tasks ... ");
 	error = try_to_freeze_tasks(false);
-	if (!error)
-		printk("done.");
+	if (error)
+		goto Exit;
+	printk("done.");
 
-	printk("\n");
+	oom_killer_disable();
+ Exit:
 	BUG_ON(in_atomic());
+	printk("\n");
 
 	return error;
 }

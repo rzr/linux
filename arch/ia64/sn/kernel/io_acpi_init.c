@@ -14,7 +14,6 @@
 #include "xtalk/hubdev.h"
 #include <linux/acpi.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 
 
 /*

@@ -23,6 +23,7 @@
 #include <linux/stddef.h>
 #include <linux/elf.h>
 #include <linux/ptrace.h>
+#include <linux/module.h>
 #include <linux/ratelimit.h>
 
 #include <asm/sigcontext.h>

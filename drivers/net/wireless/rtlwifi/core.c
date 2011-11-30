@@ -504,8 +504,7 @@ static int _rtl_get_hal_qnum(u16 queue)
  *for mac80211 VO=0, VI=1, BE=2, BK=3
  *for rtl819x  BE=0, BK=1, VI=2, VO=3
  */
-static int rtl_op_conf_tx(struct ieee80211_hw *hw,
-		   struct ieee80211_vif *vif, u16 queue,
+static int rtl_op_conf_tx(struct ieee80211_hw *hw, u16 queue,
 		   const struct ieee80211_tx_queue_params *param)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
@@ -776,7 +775,7 @@ out:
 	mutex_unlock(&rtlpriv->locks.conf_mutex);
 }
 
-static u64 rtl_op_get_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
+static u64 rtl_op_get_tsf(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	u64 tsf;
@@ -785,8 +784,7 @@ static u64 rtl_op_get_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
 	return tsf;
 }
 
-static void rtl_op_set_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-			   u64 tsf)
+static void rtl_op_set_tsf(struct ieee80211_hw *hw, u64 tsf)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_mac *mac = rtl_mac(rtl_priv(hw));
@@ -796,8 +794,7 @@ static void rtl_op_set_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_CORRECT_TSF, (u8 *) (&bibss));
 }
 
-static void rtl_op_reset_tsf(struct ieee80211_hw *hw,
-			     struct ieee80211_vif *vif)
+static void rtl_op_reset_tsf(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	u8 tmp = 0;

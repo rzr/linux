@@ -22,7 +22,6 @@
  */
 
 #include <linux/types.h>
-#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/module.h>
@@ -42,6 +41,7 @@
 #include <asm/mach/map.h>
 
 #include <mach/board.h>
+#include <mach/gpio.h>
 #include <mach/at91cap9_matrix.h>
 #include <mach/at91sam9_smc.h>
 #include <mach/system_rev.h>
@@ -169,14 +169,19 @@ static struct mtd_partition __initdata cap9adk_nand_partitions[] = {
 	},
 };
 
+static struct mtd_partition * __init nand_partitions(int size, int *num_partitions)
+{
+	*num_partitions = ARRAY_SIZE(cap9adk_nand_partitions);
+	return cap9adk_nand_partitions;
+}
+
 static struct atmel_nand_data __initdata cap9adk_nand_data = {
 	.ale		= 21,
 	.cle		= 22,
 //	.det_pin	= ... not connected
 //	.rdy_pin	= ... not connected
 	.enable_pin	= AT91_PIN_PD15,
-	.parts		= cap9adk_nand_partitions,
-	.num_parts	= ARRAY_SIZE(cap9adk_nand_partitions),
+	.partition_info	= nand_partitions,
 };
 
 static struct sam9_smc_config __initdata cap9adk_nand_smc_config = {

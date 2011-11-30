@@ -21,25 +21,30 @@
 
 /**
  *  p9_release_req_pages - Release pages after the transaction.
+ *  @*private: PDU's private page of struct trans_rpage_info
  */
-void p9_release_pages(struct page **pages, int nr_pages)
+void
+p9_release_req_pages(struct trans_rpage_info *rpinfo)
 {
 	int i = 0;
-	while (pages[i] && nr_pages--) {
-		put_page(pages[i]);
+
+	while (rpinfo->rp_data[i] && rpinfo->rp_nr_pages--) {
+		put_page(rpinfo->rp_data[i]);
 		i++;
 	}
 }
-EXPORT_SYMBOL(p9_release_pages);
+EXPORT_SYMBOL(p9_release_req_pages);
 
 /**
  * p9_nr_pages - Return number of pages needed to accommodate the payload.
  */
-int p9_nr_pages(char *data, int len)
+int
+p9_nr_pages(struct p9_req_t *req)
 {
 	unsigned long start_page, end_page;
-	start_page =  (unsigned long)data >> PAGE_SHIFT;
-	end_page = ((unsigned long)data + len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	start_page =  (unsigned long)req->tc->pubuf >> PAGE_SHIFT;
+	end_page = ((unsigned long)req->tc->pubuf + req->tc->pbuf_size +
+			PAGE_SIZE - 1) >> PAGE_SHIFT;
 	return end_page - start_page;
 }
 EXPORT_SYMBOL(p9_nr_pages);
@@ -53,17 +58,35 @@ EXPORT_SYMBOL(p9_nr_pages);
  * @nr_pages: number of pages to accommodate the payload
  * @rw: Indicates if the pages are for read or write.
  */
-
-int p9_payload_gup(char *data, int *nr_pages, struct page **pages, int write)
+int
+p9_payload_gup(struct p9_req_t *req, size_t *pdata_off, int *pdata_len,
+		int nr_pages, u8 rw)
 {
-	int nr_mapped_pages;
+	uint32_t first_page_bytes = 0;
+	int32_t pdata_mapped_pages;
+	struct trans_rpage_info  *rpinfo;
 
-	nr_mapped_pages = get_user_pages_fast((unsigned long)data,
-					      *nr_pages, write, pages);
-	if (nr_mapped_pages <= 0)
-		return nr_mapped_pages;
+	*pdata_off = (__force size_t)req->tc->pubuf & (PAGE_SIZE-1);
 
-	*nr_pages = nr_mapped_pages;
+	if (*pdata_off)
+		first_page_bytes = min(((size_t)PAGE_SIZE - *pdata_off),
+				       req->tc->pbuf_size);
+
+	rpinfo = req->tc->private;
+	pdata_mapped_pages = get_user_pages_fast((unsigned long)req->tc->pubuf,
+			nr_pages, rw, &rpinfo->rp_data[0]);
+	if (pdata_mapped_pages <= 0)
+		return pdata_mapped_pages;
+
+	rpinfo->rp_nr_pages = pdata_mapped_pages;
+	if (*pdata_off) {
+		*pdata_len = first_page_bytes;
+		*pdata_len += min((req->tc->pbuf_size - *pdata_len),
+				((size_t)pdata_mapped_pages - 1) << PAGE_SHIFT);
+	} else {
+		*pdata_len = min(req->tc->pbuf_size,
+				(size_t)pdata_mapped_pages << PAGE_SHIFT);
+	}
 	return 0;
 }
 EXPORT_SYMBOL(p9_payload_gup);

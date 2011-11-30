@@ -41,6 +41,12 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
+#ifdef	CONFIG_ARM
+#include <mach/hardware.h>
+#include <mach/memory.h>
+#include <asm/mach-types.h>
+#endif
+
 #include <asm/uaccess.h>
 
 #include "musb_core.h"

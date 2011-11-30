@@ -22,7 +22,7 @@
 #if defined(CONFIG_DEBUG_ICEDCC)
 		@@ debug using ARM EmbeddedICE DCC channel
 
-		.macro	addruart, rp, rv, tmp
+		.macro	addruart, rp, rv
 		.endm
 
 #if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V6K) || defined(CONFIG_CPU_V7)
@@ -106,7 +106,7 @@
 
 #ifdef CONFIG_MMU
 		.macro	addruart_current, rx, tmp1, tmp2
-		addruart	\tmp1, \tmp2, \rx
+		addruart	\tmp1, \tmp2
 		mrc		p15, 0, \rx, c1, c0
 		tst		\rx, #1
 		moveq		\rx, \tmp1
@@ -151,8 +151,6 @@ printhex:	adr	r2, hexbuf
 		b	printascii
 ENDPROC(printhex2)
 
-hexbuf:		.space 16
-
 		.ltorg
 
 ENTRY(printascii)
@@ -177,3 +175,5 @@ ENTRY(printch)
 		mov	r0, #0
 		b	1b
 ENDPROC(printch)
+
+hexbuf:		.space 16

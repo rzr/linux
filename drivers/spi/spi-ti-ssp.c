@@ -22,7 +22,6 @@
 #include <linux/err.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
-#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/mfd/ti_ssp.h>
@@ -384,7 +383,18 @@ static struct platform_driver ti_ssp_spi_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-module_platform_driver(ti_ssp_spi_driver);
+
+static int __init ti_ssp_spi_init(void)
+{
+	return platform_driver_register(&ti_ssp_spi_driver);
+}
+module_init(ti_ssp_spi_init);
+
+static void __exit ti_ssp_spi_exit(void)
+{
+	platform_driver_unregister(&ti_ssp_spi_driver);
+}
+module_exit(ti_ssp_spi_exit);
 
 MODULE_DESCRIPTION("SSP SPI Master");
 MODULE_AUTHOR("Cyril Chemparathy");

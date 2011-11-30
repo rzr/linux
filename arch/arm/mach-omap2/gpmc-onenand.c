@@ -10,7 +10,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/mtd/onenand_regs.h>

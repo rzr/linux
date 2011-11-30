@@ -8,7 +8,6 @@
 #include <linux/swap.h>
 #include <linux/bootmem.h>
 #include <linux/uaccess.h>
-#include <linux/export.h>
 #include <asm/bfin-global.h>
 #include <asm/pda.h>
 #include <asm/cplbinit.h>

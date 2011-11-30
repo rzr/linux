@@ -25,12 +25,11 @@ struct intel_iommu;
 struct dmar_domain;
 struct root_entry;
 
-
-#ifdef CONFIG_INTEL_IOMMU
 extern void free_dmar_iommu(struct intel_iommu *iommu);
+
+#ifdef CONFIG_DMAR
 extern int iommu_calculate_agaw(struct intel_iommu *iommu);
 extern int iommu_calculate_max_sagaw(struct intel_iommu *iommu);
-extern int dmar_disabled;
 #else
 static inline int iommu_calculate_agaw(struct intel_iommu *iommu)
 {
@@ -40,11 +39,8 @@ static inline int iommu_calculate_max_sagaw(struct intel_iommu *iommu)
 {
 	return 0;
 }
-static inline void free_dmar_iommu(struct intel_iommu *iommu)
-{
-}
-#define dmar_disabled	(1)
 #endif
 
+extern int dmar_disabled;
 
 #endif

@@ -19,7 +19,6 @@
 #include <net/ipv6.h>
 #include <linux/sunrpc/clnt.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 
 #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 
@@ -256,13 +255,12 @@ EXPORT_SYMBOL_GPL(rpc_pton);
 /**
  * rpc_sockaddr2uaddr - Construct a universal address string from @sap.
  * @sap: socket address
- * @gfp_flags: allocation mode
  *
  * Returns a %NUL-terminated string in dynamically allocated memory;
  * otherwise NULL is returned if an error occurred.  Caller must
  * free the returned string.
  */
-char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
+char *rpc_sockaddr2uaddr(const struct sockaddr *sap)
 {
 	char portbuf[RPCBIND_MAXUADDRPLEN];
 	char addrbuf[RPCBIND_MAXUADDRLEN];
@@ -290,8 +288,9 @@ char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
 	if (strlcat(addrbuf, portbuf, sizeof(addrbuf)) > sizeof(addrbuf))
 		return NULL;
 
-	return kstrdup(addrbuf, gfp_flags);
+	return kstrdup(addrbuf, GFP_KERNEL);
 }
+EXPORT_SYMBOL_GPL(rpc_sockaddr2uaddr);
 
 /**
  * rpc_uaddr2sockaddr - convert a universal address to a socket address.

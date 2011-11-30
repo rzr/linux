@@ -36,7 +36,6 @@
  * Thomas Hellström <thomas-at-tungstengraphics-dot-com>
  */
 
-#include <linux/export.h>
 #include "drm_sman.h"
 
 struct drm_owner_item {

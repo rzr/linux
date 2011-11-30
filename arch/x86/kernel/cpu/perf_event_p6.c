@@ -1,7 +1,4 @@
-#include <linux/perf_event.h>
-#include <linux/types.h>
-
-#include "perf_event.h"
+#ifdef CONFIG_CPU_SUP_INTEL
 
 /*
  * Not sure about some of these
@@ -117,7 +114,7 @@ static __initconst const struct x86_pmu p6_pmu = {
 	.event_constraints	= p6_event_constraints,
 };
 
-__init int p6_pmu_init(void)
+static __init int p6_pmu_init(void)
 {
 	switch (boot_cpu_data.x86_model) {
 	case 1:
@@ -141,3 +138,5 @@ __init int p6_pmu_init(void)
 
 	return 0;
 }
+
+#endif /* CONFIG_CPU_SUP_INTEL */

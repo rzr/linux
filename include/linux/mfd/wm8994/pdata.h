@@ -167,13 +167,6 @@ struct wm8994_pdata {
 
 	/* WM8958 microphone bias configuration */
 	int micbias[2];
-
-	/* Disable the internal pull downs on the LDOs if they are
-	 * always driven (eg, connected to an always on supply or
-	 * GPIO that always drives an output.  If they float power
-	 * consumption will rise.
-	 */
-	bool ldo_ena_always_driven;
 };
 
 #endif

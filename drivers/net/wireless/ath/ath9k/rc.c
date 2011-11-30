@@ -16,7 +16,6 @@
  */
 
 #include <linux/slab.h>
-#include <linux/export.h>
 
 #include "ath9k.h"
 
@@ -604,8 +603,7 @@ static u8 ath_rc_setvalid_htrates(struct ath_rate_priv *ath_rc_priv,
 static u8 ath_rc_get_highest_rix(struct ath_softc *sc,
 			         struct ath_rate_priv *ath_rc_priv,
 				 const struct ath_rate_table *rate_table,
-				 int *is_probing,
-				 bool legacy)
+				 int *is_probing)
 {
 	u32 best_thruput, this_thruput, now_msec;
 	u8 rate, next_rate, best_rate, maxindex, minindex;
@@ -626,8 +624,6 @@ static u8 ath_rc_get_highest_rix(struct ath_softc *sc,
 		u8 per_thres;
 
 		rate = ath_rc_priv->valid_rate_index[index];
-		if (legacy && !(rate_table->info[rate].rate_flags & RC_LEGACY))
-			continue;
 		if (rate > ath_rc_priv->rate_max_phy)
 			continue;
 
@@ -771,7 +767,7 @@ static void ath_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 	struct ieee80211_tx_rate *rates = tx_info->control.rates;
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	__le16 fc = hdr->frame_control;
-	u8 try_per_rate, i = 0, rix, high_rix;
+	u8 try_per_rate, i = 0, rix;
 	int is_probe = 0;
 
 	if (rate_control_send_low(sta, priv_sta, txrc))
@@ -790,9 +786,7 @@ static void ath_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 	try_per_rate = 4;
 
 	rate_table = ath_rc_priv->rate_table;
-	rix = ath_rc_get_highest_rix(sc, ath_rc_priv, rate_table,
-				     &is_probe, false);
-	high_rix = rix;
+	rix = ath_rc_get_highest_rix(sc, ath_rc_priv, rate_table, &is_probe);
 
 	/*
 	 * If we're in HT mode and both us and our peer supports LDPC.
@@ -828,7 +822,10 @@ static void ath_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 	}
 
 	/* Fill in the other rates for multirate retry */
-	for ( ; i < 3; i++) {
+	for ( ; i < 4; i++) {
+		/* Use twice the number of tries for the last MRR segment. */
+		if (i + 1 == 4)
+			try_per_rate = 8;
 
 		ath_rc_get_lower_rix(rate_table, ath_rc_priv, rix, &rix);
 		/* All other rates in the series have RTS enabled */
@@ -836,24 +833,6 @@ static void ath_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 				       try_per_rate, rix, 1);
 	}
 
-	/* Use twice the number of tries for the last MRR segment. */
-	try_per_rate = 8;
-
-	/*
-	 * Use a legacy rate as last retry to ensure that the frame
-	 * is tried in both MCS and legacy rates.
-	 */
-	if ((rates[2].flags & IEEE80211_TX_RC_MCS) &&
-	    (!(tx_info->flags & IEEE80211_TX_CTL_AMPDU) ||
-	    (ath_rc_priv->per[high_rix] > 45)))
-		rix = ath_rc_get_highest_rix(sc, ath_rc_priv, rate_table,
-				&is_probe, true);
-	else
-		ath_rc_get_lower_rix(rate_table, ath_rc_priv, rix, &rix);
-
-	/* All other rates in the series have RTS enabled */
-	ath_rc_rate_set_series(rate_table, &rates[i], txrc,
-			       try_per_rate, rix, 1);
 	/*
 	 * NB:Change rate series to enable aggregation when operating
 	 * at lower MCS rates. When first rate in series is MCS2
@@ -1363,6 +1342,12 @@ static void ath_tx_status(void *priv, struct ieee80211_supported_band *sband,
 	if (tx_info->flags & IEEE80211_TX_STAT_TX_FILTERED)
 		return;
 
+	if (!(tx_info->flags & IEEE80211_TX_STAT_AMPDU)) {
+		tx_info->status.ampdu_ack_len =
+			(tx_info->flags & IEEE80211_TX_STAT_ACK ? 1 : 0);
+		tx_info->status.ampdu_len = 1;
+	}
+
 	if (!(tx_info->flags & IEEE80211_TX_STAT_ACK))
 		tx_status = 1;
 
@@ -1499,7 +1484,7 @@ static ssize_t read_file_rcstat(struct file *file, char __user *user_buf,
 	if (rc->rate_table == NULL)
 		return 0;
 
-	max = 80 + rc->rate_table_size * 1024 + 1;
+	max = 80 + rc->rate_table->rate_cnt * 1024 + 1;
 	buf = kmalloc(max, GFP_KERNEL);
 	if (buf == NULL)
 		return -ENOMEM;
@@ -1509,7 +1494,7 @@ static ssize_t read_file_rcstat(struct file *file, char __user *user_buf,
 		       "HT", "MCS", "Rate",
 		       "Success", "Retries", "XRetries", "PER");
 
-	for (i = 0; i < rc->rate_table_size; i++) {
+	for (i = 0; i < rc->rate_table->rate_cnt; i++) {
 		u32 ratekbps = rc->rate_table->info[i].ratekbps;
 		struct ath_rc_stats *stats = &rc->rcstats[i];
 		char mcs[5];

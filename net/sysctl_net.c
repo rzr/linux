@@ -12,7 +12,6 @@
  */
 
 #include <linux/mm.h>
-#include <linux/export.h>
 #include <linux/sysctl.h>
 #include <linux/nsproxy.h>
 

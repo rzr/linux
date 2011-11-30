@@ -402,5 +402,3 @@ sys_call_table:
 	.long sys_syncfs
 	.long sys_sendmmsg
 	.long sys_setns			/* 375 */
-	.long sys_process_vm_readv
-	.long sys_process_vm_writev

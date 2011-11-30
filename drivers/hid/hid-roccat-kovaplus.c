@@ -323,7 +323,6 @@ static ssize_t kovaplus_sysfs_set_actual_profile(struct device *dev,
 	struct usb_device *usb_dev;
 	unsigned long profile;
 	int retval;
-	struct kovaplus_roccat_report roccat_report;
 
 	dev = dev->parent->parent;
 	kovaplus = hid_get_drvdata(dev_get_drvdata(dev));
@@ -338,22 +337,10 @@ static ssize_t kovaplus_sysfs_set_actual_profile(struct device *dev,
 
 	mutex_lock(&kovaplus->kovaplus_lock);
 	retval = kovaplus_set_actual_profile(usb_dev, profile);
-	if (retval) {
-		mutex_unlock(&kovaplus->kovaplus_lock);
-		return retval;
-	}
-
 	kovaplus_profile_activated(kovaplus, profile);
-
-	roccat_report.type = KOVAPLUS_MOUSE_REPORT_BUTTON_TYPE_PROFILE_1;
-	roccat_report.profile = profile + 1;
-	roccat_report.button = 0;
-	roccat_report.data1 = profile + 1;
-	roccat_report.data2 = 0;
-	roccat_report_event(kovaplus->chrdev_minor,
-			(uint8_t const *)&roccat_report);
-
 	mutex_unlock(&kovaplus->kovaplus_lock);
+	if (retval)
+		return retval;
 
 	return size;
 }

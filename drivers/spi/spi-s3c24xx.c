@@ -24,7 +24,6 @@
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
-#include <linux/module.h>
 
 #include <plat/regs-spi.h>
 #include <mach/spi.h>
@@ -506,7 +505,7 @@ static void s3c24xx_spi_initialsetup(struct s3c24xx_spi *hw)
 	}
 }
 
-static int __devinit s3c24xx_spi_probe(struct platform_device *pdev)
+static int __init s3c24xx_spi_probe(struct platform_device *pdev)
 {
 	struct s3c2410_spi_info *pdata;
 	struct s3c24xx_spi *hw;
@@ -662,7 +661,7 @@ static int __devinit s3c24xx_spi_probe(struct platform_device *pdev)
 	return err;
 }
 
-static int __devexit s3c24xx_spi_remove(struct platform_device *dev)
+static int __exit s3c24xx_spi_remove(struct platform_device *dev)
 {
 	struct s3c24xx_spi *hw = platform_get_drvdata(dev);
 
@@ -720,15 +719,26 @@ static const struct dev_pm_ops s3c24xx_spi_pmops = {
 
 MODULE_ALIAS("platform:s3c2410-spi");
 static struct platform_driver s3c24xx_spi_driver = {
-	.probe		= s3c24xx_spi_probe,
-	.remove		= __devexit_p(s3c24xx_spi_remove),
+	.remove		= __exit_p(s3c24xx_spi_remove),
 	.driver		= {
 		.name	= "s3c2410-spi",
 		.owner	= THIS_MODULE,
 		.pm	= S3C24XX_SPI_PMOPS,
 	},
 };
-module_platform_driver(s3c24xx_spi_driver);
+
+static int __init s3c24xx_spi_init(void)
+{
+        return platform_driver_probe(&s3c24xx_spi_driver, s3c24xx_spi_probe);
+}
+
+static void __exit s3c24xx_spi_exit(void)
+{
+        platform_driver_unregister(&s3c24xx_spi_driver);
+}
+
+module_init(s3c24xx_spi_init);
+module_exit(s3c24xx_spi_exit);
 
 MODULE_DESCRIPTION("S3C24XX SPI Driver");
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");

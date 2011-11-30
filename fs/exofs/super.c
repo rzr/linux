@@ -35,7 +35,6 @@
 #include <linux/parser.h>
 #include <linux/vfs.h>
 #include <linux/random.h>
-#include <linux/module.h>
 #include <linux/exportfs.h>
 #include <linux/slab.h>
 
@@ -267,7 +266,7 @@ static int __sbi_read_stats(struct exofs_sb_info *sbi)
 	struct ore_io_state *ios;
 	int ret;
 
-	ret = ore_get_io_state(&sbi->layout, &sbi->oc, &ios);
+	ret = ore_get_io_state(&sbi->layout, &sbi->comps, &ios);
 	if (unlikely(ret)) {
 		EXOFS_ERR("%s: ore_get_io_state failed.\n", __func__);
 		return ret;
@@ -322,7 +321,7 @@ int exofs_sbi_write_stats(struct exofs_sb_info *sbi)
 	struct ore_io_state *ios;
 	int ret;
 
-	ret = ore_get_io_state(&sbi->layout, &sbi->oc, &ios);
+	ret = ore_get_io_state(&sbi->layout, &sbi->comps, &ios);
 	if (unlikely(ret)) {
 		EXOFS_ERR("%s: ore_get_io_state failed.\n", __func__);
 		return ret;
@@ -356,12 +355,12 @@ static const struct export_operations exofs_export_ops;
 /*
  * Write the superblock to the OSD
  */
-static int exofs_sync_fs(struct super_block *sb, int wait)
+int exofs_sync_fs(struct super_block *sb, int wait)
 {
 	struct exofs_sb_info *sbi;
 	struct exofs_fscb *fscb;
 	struct ore_comp one_comp;
-	struct ore_components oc;
+	struct ore_components comps;
 	struct ore_io_state *ios;
 	int ret = -ENOMEM;
 
@@ -379,9 +378,9 @@ static int exofs_sync_fs(struct super_block *sb, int wait)
 	 * the writeable info is set in exofs_sbi_write_stats() above.
 	 */
 
-	exofs_init_comps(&oc, &one_comp, sbi, EXOFS_SUPER_ID);
+	exofs_init_comps(&comps, &one_comp, sbi, EXOFS_SUPER_ID);
 
-	ret = ore_get_io_state(&sbi->layout, &oc, &ios);
+	ret = ore_get_io_state(&sbi->layout, &comps, &ios);
 	if (unlikely(ret))
 		goto out;
 
@@ -430,20 +429,19 @@ static void _exofs_print_device(const char *msg, const char *dev_path,
 		msg, dev_path ?: "", odi->osdname, _LLU(pid));
 }
 
-static void exofs_free_sbi(struct exofs_sb_info *sbi)
+void exofs_free_sbi(struct exofs_sb_info *sbi)
 {
-	unsigned numdevs = sbi->oc.numdevs;
-
-	while (numdevs) {
-		unsigned i = --numdevs;
-		struct osd_dev *od = ore_comp_dev(&sbi->oc, i);
+	while (sbi->comps.numdevs) {
+		int i = --sbi->comps.numdevs;
+		struct osd_dev *od = sbi->comps.ods[i];
 
 		if (od) {
-			ore_comp_set_dev(&sbi->oc, i, NULL);
+			sbi->comps.ods[i] = NULL;
 			osduld_put_device(od);
 		}
 	}
-	kfree(sbi->oc.ods);
+	if (sbi->comps.ods != sbi->_min_one_dev)
+		kfree(sbi->comps.ods);
 	kfree(sbi);
 }
 
@@ -470,7 +468,7 @@ static void exofs_put_super(struct super_block *sb)
 				  msecs_to_jiffies(100));
 	}
 
-	_exofs_print_device("Unmounting", NULL, ore_comp_dev(&sbi->oc, 0),
+	_exofs_print_device("Unmounting", NULL, sbi->comps.ods[0],
 			    sbi->one_comp.obj.partition);
 
 	bdi_destroy(&sbi->bdi);
@@ -481,20 +479,76 @@ static void exofs_put_super(struct super_block *sb)
 static int _read_and_match_data_map(struct exofs_sb_info *sbi, unsigned numdevs,
 				    struct exofs_device_table *dt)
 {
-	int ret;
+	u64 stripe_length;
 
-	sbi->layout.stripe_unit =
+	sbi->data_map.odm_num_comps   =
+				le32_to_cpu(dt->dt_data_map.cb_num_comps);
+	sbi->data_map.odm_stripe_unit =
 				le64_to_cpu(dt->dt_data_map.cb_stripe_unit);
-	sbi->layout.group_width =
+	sbi->data_map.odm_group_width =
 				le32_to_cpu(dt->dt_data_map.cb_group_width);
-	sbi->layout.group_depth =
+	sbi->data_map.odm_group_depth =
 				le32_to_cpu(dt->dt_data_map.cb_group_depth);
-	sbi->layout.mirrors_p1  =
-				le32_to_cpu(dt->dt_data_map.cb_mirror_cnt) + 1;
-	sbi->layout.raid_algorithm  =
+	sbi->data_map.odm_mirror_cnt  =
+				le32_to_cpu(dt->dt_data_map.cb_mirror_cnt);
+	sbi->data_map.odm_raid_algorithm  =
 				le32_to_cpu(dt->dt_data_map.cb_raid_algorithm);
 
-	ret = ore_verify_layout(numdevs, &sbi->layout);
+/* FIXME: Only raid0 for now. if not so, do not mount */
+	if (sbi->data_map.odm_num_comps != numdevs) {
+		EXOFS_ERR("odm_num_comps(%u) != numdevs(%u)\n",
+			  sbi->data_map.odm_num_comps, numdevs);
+		return -EINVAL;
+	}
+	if (sbi->data_map.odm_raid_algorithm != PNFS_OSD_RAID_0) {
+		EXOFS_ERR("Only RAID_0 for now\n");
+		return -EINVAL;
+	}
+	if (0 != (numdevs % (sbi->data_map.odm_mirror_cnt + 1))) {
+		EXOFS_ERR("Data Map wrong, numdevs=%d mirrors=%d\n",
+			  numdevs, sbi->data_map.odm_mirror_cnt);
+		return -EINVAL;
+	}
+
+	if (0 != (sbi->data_map.odm_stripe_unit & ~PAGE_MASK)) {
+		EXOFS_ERR("Stripe Unit(0x%llx)"
+			  " must be Multples of PAGE_SIZE(0x%lx)\n",
+			  _LLU(sbi->data_map.odm_stripe_unit), PAGE_SIZE);
+		return -EINVAL;
+	}
+
+	sbi->layout.stripe_unit = sbi->data_map.odm_stripe_unit;
+	sbi->layout.mirrors_p1 = sbi->data_map.odm_mirror_cnt + 1;
+
+	if (sbi->data_map.odm_group_width) {
+		sbi->layout.group_width = sbi->data_map.odm_group_width;
+		sbi->layout.group_depth = sbi->data_map.odm_group_depth;
+		if (!sbi->layout.group_depth) {
+			EXOFS_ERR("group_depth == 0 && group_width != 0\n");
+			return -EINVAL;
+		}
+		sbi->layout.group_count = sbi->data_map.odm_num_comps /
+						sbi->layout.mirrors_p1 /
+						sbi->data_map.odm_group_width;
+	} else {
+		if (sbi->data_map.odm_group_depth) {
+			printk(KERN_NOTICE "Warning: group_depth ignored "
+				"group_width == 0 && group_depth == %d\n",
+				sbi->data_map.odm_group_depth);
+			sbi->data_map.odm_group_depth = 0;
+		}
+		sbi->layout.group_width = sbi->data_map.odm_num_comps /
+							sbi->layout.mirrors_p1;
+		sbi->layout.group_depth = -1;
+		sbi->layout.group_count = 1;
+	}
+
+	stripe_length = (u64)sbi->layout.group_width * sbi->layout.stripe_unit;
+	if (stripe_length >= (1ULL << 32)) {
+		EXOFS_ERR("Total Stripe length(0x%llx)"
+			  " >= 32bit is not supported\n", _LLU(stripe_length));
+		return -EINVAL;
+	}
 
 	EXOFS_DBGMSG("exofs: layout: "
 		"num_comps=%u stripe_unit=0x%x group_width=%u "
@@ -504,8 +558,8 @@ static int _read_and_match_data_map(struct exofs_sb_info *sbi, unsigned numdevs,
 		sbi->layout.group_width,
 		_LLU(sbi->layout.group_depth),
 		sbi->layout.mirrors_p1,
-		sbi->layout.raid_algorithm);
-	return ret;
+		sbi->data_map.odm_raid_algorithm);
+	return 0;
 }
 
 static unsigned __ra_pages(struct ore_layout *layout)
@@ -551,40 +605,12 @@ static int exofs_devs_2_odi(struct exofs_dt_device_info *dt_dev,
 	return !(odi->systemid_len || odi->osdname_len);
 }
 
-int __alloc_dev_table(struct exofs_sb_info *sbi, unsigned numdevs,
-		      struct exofs_dev **peds)
-{
-	struct __alloc_ore_devs_and_exofs_devs {
-		/* Twice bigger table: See exofs_init_comps() and comment at
-		 * exofs_read_lookup_dev_table()
-		 */
-		struct ore_dev *oreds[numdevs * 2 - 1];
-		struct exofs_dev eds[numdevs];
-	} *aoded;
-	struct exofs_dev *eds;
-	unsigned i;
-
-	aoded = kzalloc(sizeof(*aoded), GFP_KERNEL);
-	if (unlikely(!aoded)) {
-		EXOFS_ERR("ERROR: faild allocating Device array[%d]\n",
-			  numdevs);
-		return -ENOMEM;
-	}
-
-	sbi->oc.ods = aoded->oreds;
-	*peds = eds = aoded->eds;
-	for (i = 0; i < numdevs; ++i)
-		aoded->oreds[i] = &eds[i].ored;
-	return 0;
-}
-
 static int exofs_read_lookup_dev_table(struct exofs_sb_info *sbi,
 				       struct osd_dev *fscb_od,
 				       unsigned table_count)
 {
 	struct ore_comp comp;
 	struct exofs_device_table *dt;
-	struct exofs_dev *eds;
 	unsigned table_bytes = table_count * sizeof(dt->dt_dev_table[0]) +
 					     sizeof(*dt);
 	unsigned numdevs, i;
@@ -597,7 +623,7 @@ static int exofs_read_lookup_dev_table(struct exofs_sb_info *sbi,
 		return -ENOMEM;
 	}
 
-	sbi->oc.numdevs = 0;
+	sbi->comps.numdevs = 0;
 
 	comp.obj.partition = sbi->one_comp.obj.partition;
 	comp.obj.id = EXOFS_DEVTABLE_ID;
@@ -621,16 +647,20 @@ static int exofs_read_lookup_dev_table(struct exofs_sb_info *sbi,
 	if (unlikely(ret))
 		goto out;
 
-	ret = __alloc_dev_table(sbi, numdevs, &eds);
-	if (unlikely(ret))
-		goto out;
-	/* exofs round-robins the device table view according to inode
-	 * number. We hold a: twice bigger table hence inodes can point
-	 * to any device and have a sequential view of the table
-	 * starting at this device. See exofs_init_comps()
-	 */
-	memcpy(&sbi->oc.ods[numdevs], &sbi->oc.ods[0],
-		(numdevs - 1) * sizeof(sbi->oc.ods[0]));
+	if (likely(numdevs > 1)) {
+		unsigned size = numdevs * sizeof(sbi->comps.ods[0]);
+
+		/* Twice bigger table: See exofs_init_comps() and below
+		 * comment
+		 */
+		sbi->comps.ods = kzalloc(size + size - 1, GFP_KERNEL);
+		if (unlikely(!sbi->comps.ods)) {
+			EXOFS_ERR("ERROR: faild allocating Device array[%d]\n",
+				  numdevs);
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
 
 	for (i = 0; i < numdevs; i++) {
 		struct exofs_fscb fscb;
@@ -646,16 +676,13 @@ static int exofs_read_lookup_dev_table(struct exofs_sb_info *sbi,
 		printk(KERN_NOTICE "Add device[%d]: osd_name-%s\n",
 		       i, odi.osdname);
 
-		/* the exofs id is currently the table index */
-		eds[i].did = i;
-
 		/* On all devices the device table is identical. The user can
 		 * specify any one of the participating devices on the command
 		 * line. We always keep them in device-table order.
 		 */
 		if (fscb_od && osduld_device_same(fscb_od, &odi)) {
-			eds[i].ored.od = fscb_od;
-			++sbi->oc.numdevs;
+			sbi->comps.ods[i] = fscb_od;
+			++sbi->comps.numdevs;
 			fscb_od = NULL;
 			continue;
 		}
@@ -668,8 +695,8 @@ static int exofs_read_lookup_dev_table(struct exofs_sb_info *sbi,
 			goto out;
 		}
 
-		eds[i].ored.od = od;
-		++sbi->oc.numdevs;
+		sbi->comps.ods[i] = od;
+		++sbi->comps.numdevs;
 
 		/* Read the fscb of the other devices to make sure the FS
 		 * partition is there.
@@ -691,10 +718,21 @@ static int exofs_read_lookup_dev_table(struct exofs_sb_info *sbi,
 
 out:
 	kfree(dt);
-	if (unlikely(fscb_od && !ret)) {
+	if (likely(!ret)) {
+		unsigned numdevs = sbi->comps.numdevs;
+
+		if (unlikely(fscb_od)) {
 			EXOFS_ERR("ERROR: Bad device-table container device not present\n");
 			osduld_put_device(fscb_od);
 			return -EINVAL;
+		}
+		/* exofs round-robins the device table view according to inode
+		 * number. We hold a: twice bigger table hence inodes can point
+		 * to any device and have a sequential view of the table
+		 * starting at this device. See exofs_init_comps()
+		 */
+		for (i = 0; i < numdevs - 1; ++i)
+			sbi->comps.ods[i + numdevs] = sbi->comps.ods[i];
 	}
 	return ret;
 }
@@ -745,9 +783,10 @@ static int exofs_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->one_comp.obj.partition = opts->pid;
 	sbi->one_comp.obj.id = 0;
 	exofs_make_credential(sbi->one_comp.cred, &sbi->one_comp.obj);
-	sbi->oc.numdevs = 1;
-	sbi->oc.single_comp = EC_SINGLE_COMP;
-	sbi->oc.comps = &sbi->one_comp;
+	sbi->comps.numdevs = 1;
+	sbi->comps.single_comp = EC_SINGLE_COMP;
+	sbi->comps.comps = &sbi->one_comp;
+	sbi->comps.ods = sbi->_min_one_dev;
 
 	/* fill in some other data by hand */
 	memset(sb->s_id, 0, sizeof(sb->s_id));
@@ -796,13 +835,7 @@ static int exofs_fill_super(struct super_block *sb, void *data, int silent)
 		if (unlikely(ret))
 			goto free_sbi;
 	} else {
-		struct exofs_dev *eds;
-
-		ret = __alloc_dev_table(sbi, 1, &eds);
-		if (unlikely(ret))
-			goto free_sbi;
-
-		ore_comp_set_dev(&sbi->oc, 0, od);
+		sbi->comps.ods[0] = od;
 	}
 
 	__sbi_read_stats(sbi);
@@ -842,8 +875,7 @@ static int exofs_fill_super(struct super_block *sb, void *data, int silent)
 		goto free_sbi;
 	}
 
-	_exofs_print_device("Mounting", opts->dev_name,
-			    ore_comp_dev(&sbi->oc, 0),
+	_exofs_print_device("Mounting", opts->dev_name, sbi->comps.ods[0],
 			    sbi->one_comp.obj.partition);
 	return 0;
 
@@ -892,7 +924,7 @@ static int exofs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	uint64_t used = ULLONG_MAX;
 	int ret;
 
-	ret = ore_get_io_state(&sbi->layout, &sbi->oc, &ios);
+	ret = ore_get_io_state(&sbi->layout, &sbi->comps, &ios);
 	if (ret) {
 		EXOFS_DBGMSG("ore_get_io_state failed.\n");
 		return ret;
@@ -949,7 +981,7 @@ static const struct super_operations exofs_sops = {
  * EXPORT OPERATIONS
  *****************************************************************************/
 
-static struct dentry *exofs_get_parent(struct dentry *child)
+struct dentry *exofs_get_parent(struct dentry *child)
 {
 	unsigned long ino = exofs_parent_ino(child);
 

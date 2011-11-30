@@ -442,11 +442,7 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 	struct usb_ctrlrequest *cmd;
  	u16		typeReq, wValue, wIndex, wLength;
 	u8		*ubuf = urb->transfer_buffer;
-	/*
-	 * tbuf should be as big as the BOS descriptor and
-	 * the USB hub descriptor.
-	 */
-	u8		tbuf[USB_DT_BOS_SIZE + USB_DT_USB_SS_CAP_SIZE]
+	u8		tbuf [sizeof (struct usb_hub_descriptor)]
 		__attribute__((aligned(4)));
 	const u8	*bufp = tbuf;
 	unsigned	len = 0;
@@ -566,8 +562,6 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 			else /* unsupported IDs --> "protocol stall" */
 				goto error;
 			break;
-		case USB_DT_BOS << 8:
-			goto nongeneric;
 		default:
 			goto error;
 		}
@@ -602,7 +596,6 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 	/* CLASS REQUESTS (and errors) */
 
 	default:
-nongeneric:
 		/* non-generic request */
 		switch (typeReq) {
 		case GetHubStatus:
@@ -611,9 +604,6 @@ nongeneric:
 			break;
 		case GetHubDescriptor:
 			len = sizeof (struct usb_hub_descriptor);
-			break;
-		case DeviceRequest | USB_REQ_GET_DESCRIPTOR:
-			/* len is returned by hub_control */
 			break;
 		}
 		status = hcd->driver->hub_control (hcd,
@@ -625,7 +615,7 @@ error:
 		status = -EPIPE;
 	}
 
-	if (status < 0) {
+	if (status) {
 		len = 0;
 		if (status != -EPIPE) {
 			dev_dbg (hcd->self.controller,
@@ -634,10 +624,6 @@ error:
 				typeReq, wValue, wIndex,
 				wLength, status);
 		}
-	} else if (status > 0) {
-		/* hub_control may return the length of data copied. */
-		len = status;
-		status = 0;
 	}
 	if (len) {
 		if (urb->transfer_buffer_length < len)
@@ -1975,9 +1961,8 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 	int		status;
 	int		old_state = hcd->state;
 
-	dev_dbg(&rhdev->dev, "bus %ssuspend, wakeup %d\n",
-			(PMSG_IS_AUTO(msg) ? "auto-" : ""),
-			rhdev->do_remote_wakeup);
+	dev_dbg(&rhdev->dev, "bus %s%s\n",
+			(msg.event & PM_EVENT_AUTO ? "auto-" : ""), "suspend");
 	if (HCD_DEAD(hcd)) {
 		dev_dbg(&rhdev->dev, "skipped %s of dead bus\n", "suspend");
 		return 0;
@@ -2012,8 +1997,8 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 	int		status;
 	int		old_state = hcd->state;
 
-	dev_dbg(&rhdev->dev, "usb %sresume\n",
-			(PMSG_IS_AUTO(msg) ? "auto-" : ""));
+	dev_dbg(&rhdev->dev, "usb %s%s\n",
+			(msg.event & PM_EVENT_AUTO ? "auto-" : ""), "resume");
 	if (HCD_DEAD(hcd)) {
 		dev_dbg(&rhdev->dev, "skipped %s of dead bus\n", "resume");
 		return 0;
@@ -2444,7 +2429,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	 * but drivers can override it in reset() if needed, along with
 	 * recording the overall controller's system wakeup capability.
 	 */
-	device_set_wakeup_capable(&rhdev->dev, 1);
+	device_init_wakeup(&rhdev->dev, 1);
 
 	/* HCD_FLAG_RH_RUNNING doesn't matter until the root hub is
 	 * registered.  But since the controller can die at any time,
@@ -2493,13 +2478,6 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	}
 	if (hcd->uses_new_polling && HCD_POLL_RH(hcd))
 		usb_hcd_poll_rh_status(hcd);
-
-	/*
-	 * Host controllers don't generate their own wakeup requests;
-	 * they only forward requests from the root hub.  Therefore
-	 * controllers should always be enabled for remote wakeup.
-	 */
-	device_wakeup_enable(hcd->self.controller);
 	return retval;
 
 error_create_attr_group:

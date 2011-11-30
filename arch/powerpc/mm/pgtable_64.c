@@ -26,7 +26,6 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/string.h>
-#include <linux/export.h>
 #include <linux/types.h>
 #include <linux/mman.h>
 #include <linux/mm.h>

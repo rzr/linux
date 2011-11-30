@@ -546,7 +546,7 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
 /*
  *	Handle state transitions
  */
-static void
+static int
 tcp_state_transition(struct ip_vs_conn *cp, int direction,
 		     const struct sk_buff *skb,
 		     struct ip_vs_proto_data *pd)
@@ -561,11 +561,13 @@ tcp_state_transition(struct ip_vs_conn *cp, int direction,
 
 	th = skb_header_pointer(skb, ihl, sizeof(_tcph), &_tcph);
 	if (th == NULL)
-		return;
+		return 0;
 
 	spin_lock(&cp->lock);
 	set_tcp_state(pd, cp, direction, th);
 	spin_unlock(&cp->lock);
+
+	return 1;
 }
 
 static inline __u16 tcp_app_hashkey(__be16 port)

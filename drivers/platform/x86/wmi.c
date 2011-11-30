@@ -36,7 +36,6 @@
 #include <linux/list.h>
 #include <linux/acpi.h>
 #include <linux/slab.h>
-#include <linux/module.h>
 #include <acpi/acpi_bus.h>
 #include <acpi/acpi_drivers.h>
 

@@ -201,7 +201,9 @@ static void zc_remove(struct hid_device *hdev)
 	struct zc_device *zc = hid_get_drvdata(hdev);
 
 	hid_hw_stop(hdev);
-	kfree(zc);
+
+	if (NULL != zc)
+		kfree(zc);
 }
 
 static const struct hid_device_id zc_devices[] = {

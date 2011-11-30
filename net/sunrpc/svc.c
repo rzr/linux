@@ -295,18 +295,6 @@ svc_pool_map_put(void)
 }
 
 
-static int svc_pool_map_get_node(unsigned int pidx)
-{
-	const struct svc_pool_map *m = &svc_pool_map;
-
-	if (m->count) {
-		if (m->mode == SVC_POOL_PERCPU)
-			return cpu_to_node(m->pool_to[pidx]);
-		if (m->mode == SVC_POOL_PERNODE)
-			return m->pool_to[pidx];
-	}
-	return NUMA_NO_NODE;
-}
 /*
  * Set the given thread's cpus_allowed mask so that it
  * will only run on cpus in the given pool.
@@ -366,42 +354,6 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
 	return &serv->sv_pools[pidx % serv->sv_nrpools];
 }
 
-static int svc_rpcb_setup(struct svc_serv *serv)
-{
-	int err;
-
-	err = rpcb_create_local();
-	if (err)
-		return err;
-
-	/* Remove any stale portmap registrations */
-	svc_unregister(serv);
-	return 0;
-}
-
-void svc_rpcb_cleanup(struct svc_serv *serv)
-{
-	svc_unregister(serv);
-	rpcb_put_local();
-}
-EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
-
-static int svc_uses_rpcbind(struct svc_serv *serv)
-{
-	struct svc_program	*progp;
-	unsigned int		i;
-
-	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-		for (i = 0; i < progp->pg_nvers; i++) {
-			if (progp->pg_vers[i] == NULL)
-				continue;
-			if (progp->pg_vers[i]->vs_hidden == 0)
-				return 1;
-		}
-	}
-
-	return 0;
-}
 
 /*
  * Create an RPC service
@@ -467,15 +419,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
 		spin_lock_init(&pool->sp_lock);
 	}
 
-	if (svc_uses_rpcbind(serv)) {
-	       	if (svc_rpcb_setup(serv) < 0) {
-			kfree(serv->sv_pools);
-			kfree(serv);
-			return NULL;
-		}
-		if (!serv->sv_shutdown)
-			serv->sv_shutdown = svc_rpcb_cleanup;
-	}
+	/* Remove any stale portmap registrations */
+	svc_unregister(serv);
 
 	return serv;
 }
@@ -543,6 +488,7 @@ svc_destroy(struct svc_serv *serv)
 	if (svc_serv_is_pooled(serv))
 		svc_pool_map_put();
 
+	svc_unregister(serv);
 	kfree(serv->sv_pools);
 	kfree(serv);
 }
@@ -553,7 +499,7 @@ EXPORT_SYMBOL_GPL(svc_destroy);
  * We allocate pages and place them in rq_argpages.
  */
 static int
-svc_init_buffer(struct svc_rqst *rqstp, unsigned int size, int node)
+svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
 {
 	unsigned int pages, arghi;
 
@@ -567,7 +513,7 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size, int node)
 	arghi = 0;
 	BUG_ON(pages > RPCSVC_MAXPAGES);
 	while (pages) {
-		struct page *p = alloc_pages_node(node, GFP_KERNEL, 0);
+		struct page *p = alloc_page(GFP_KERNEL);
 		if (!p)
 			break;
 		rqstp->rq_pages[arghi++] = p;
@@ -590,11 +536,11 @@ svc_release_buffer(struct svc_rqst *rqstp)
 }
 
 struct svc_rqst *
-svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
 {
 	struct svc_rqst	*rqstp;
 
-	rqstp = kzalloc_node(sizeof(*rqstp), GFP_KERNEL, node);
+	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
 	if (!rqstp)
 		goto out_enomem;
 
@@ -608,15 +554,15 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
 	rqstp->rq_server = serv;
 	rqstp->rq_pool = pool;
 
-	rqstp->rq_argp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
+	rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
 	if (!rqstp->rq_argp)
 		goto out_thread;
 
-	rqstp->rq_resp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
+	rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
 	if (!rqstp->rq_resp)
 		goto out_thread;
 
-	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
+	if (!svc_init_buffer(rqstp, serv->sv_max_mesg))
 		goto out_thread;
 
 	return rqstp;
@@ -701,7 +647,6 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
 	struct svc_pool *chosen_pool;
 	int error = 0;
 	unsigned int state = serv->sv_nrthreads-1;
-	int node;
 
 	if (pool == NULL) {
 		/* The -1 assumes caller has done a svc_get() */
@@ -717,16 +662,14 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
 		nrservs--;
 		chosen_pool = choose_pool(serv, pool, &state);
 
-		node = svc_pool_map_get_node(chosen_pool->sp_id);
-		rqstp = svc_prepare_thread(serv, chosen_pool, node);
+		rqstp = svc_prepare_thread(serv, chosen_pool);
 		if (IS_ERR(rqstp)) {
 			error = PTR_ERR(rqstp);
 			break;
 		}
 
 		__module_get(serv->sv_module);
-		task = kthread_create_on_node(serv->sv_function, rqstp,
-					      node, serv->sv_name);
+		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
 		if (IS_ERR(task)) {
 			error = PTR_ERR(task);
 			module_put(serv->sv_module);
@@ -1013,8 +956,9 @@ static void svc_unregister(const struct svc_serv *serv)
 /*
  * Printk the given error with the address of the client that caused it.
  */
-static __printf(2, 3)
-int svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
+static int
+__attribute__ ((format (printf, 2, 3)))
+svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
 {
 	va_list args;
 	int 	r;

@@ -17,7 +17,6 @@
 #include <linux/ide.h>
 #include <linux/pci.h>
 #include <linux/dmi.h>
-#include <linux/module.h>
 
 #include <acpi/acpi_bus.h>
 

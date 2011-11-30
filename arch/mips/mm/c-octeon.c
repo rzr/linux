@@ -169,10 +169,6 @@ static void octeon_flush_cache_page(struct vm_area_struct *vma,
 		octeon_flush_icache_all_cores(vma);
 }
 
-static void octeon_flush_kernel_vmap_range(unsigned long vaddr, int size)
-{
-	BUG();
-}
 
 /**
  * Probe Octeon's caches
@@ -276,8 +272,6 @@ void __cpuinit octeon_cache_init(void)
 	flush_data_cache_page		= octeon_flush_data_cache_page;
 	flush_icache_range		= octeon_flush_icache_range;
 	local_flush_icache_range	= local_octeon_flush_icache_range;
-
-	__flush_kernel_vmap_range	= octeon_flush_kernel_vmap_range;
 
 	build_clear_page();
 	build_copy_page();

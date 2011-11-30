@@ -11,7 +11,6 @@
 #include <linux/rtc.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
-#include <linux/module.h>
 #include <linux/io.h>
 #include <linux/gfp.h>
 #include <asm/txx9/tx4939.h>

@@ -1,7 +1,7 @@
 /*
  * Sonix sn9c102p sn9c105 sn9c120 (jpeg) subdriver
  *
- * Copyright (C) 2009-2011 Jean-François Moine <http://moinejf.free.fr>
+ * Copyright (C) 2009-2010 Jean-François Moine <http://moinejf.free.fr>
  * Copyright (C) 2005 Michel Xhaard mxhaard@magic.fr
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,8 +18,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #define MODULE_NAME "sonixj"
 
@@ -138,7 +136,7 @@ static void setillum(struct gspca_dev *gspca_dev);
 static void setfreq(struct gspca_dev *gspca_dev);
 
 static const struct ctrl sd_ctrls[NCTRLS] = {
-[BRIGHTNESS] = {
+[BRIGHTNESS] =  {
 	    {
 		.id      = V4L2_CID_BRIGHTNESS,
 		.type    = V4L2_CTRL_TYPE_INTEGER,
@@ -159,7 +157,7 @@ static const struct ctrl sd_ctrls[NCTRLS] = {
 #define CONTRAST_MAX 127
 		.maximum = CONTRAST_MAX,
 		.step    = 1,
-		.default_value = 20,
+		.default_value = 63,
 	    },
 	    .set_control = setcontrast
 	},
@@ -739,7 +737,7 @@ static const u8 mi0360_sensor_init[][8] = {
 	{0xd1, 0x5d, 0x22, 0x00, 0x00, 0x00, 0x00, 0x10},
 	{0xd1, 0x5d, 0x24, 0x00, 0x00, 0x00, 0x00, 0x10},
 	{0xd1, 0x5d, 0x26, 0x00, 0x00, 0x00, 0x24, 0x10},
-	{0xd1, 0x5d, 0x2f, 0xf7, 0xb0, 0x00, 0x04, 0x10},
+	{0xd1, 0x5d, 0x2f, 0xf7, 0xB0, 0x00, 0x04, 0x10},
 	{0xd1, 0x5d, 0x31, 0x00, 0x00, 0x00, 0x00, 0x10},
 	{0xd1, 0x5d, 0x33, 0x00, 0x00, 0x01, 0x00, 0x10},
 	{0xb1, 0x5d, 0x3d, 0x06, 0x8f, 0x00, 0x00, 0x10},
@@ -1279,7 +1277,7 @@ static const u8 soi768_sensor_param1[][8] = {
 			/* global gain ? : 07 - change with 0x15 at the end */
 	{0xa1, 0x21, 0x10, 0x3f, 0x00, 0x00, 0x00, 0x10}, /* ???? : 063f */
 	{0xa1, 0x21, 0x04, 0x06, 0x00, 0x00, 0x00, 0x10},
-	{0xb1, 0x21, 0x2d, 0x63, 0x03, 0x00, 0x00, 0x10},
+	{0xb1, 0x21, 0x2d, 0x00, 0x02, 0x00, 0x00, 0x10},
 			/* exposure ? : 0200 - change with 0x1e at the end */
 	{}
 };
@@ -1397,7 +1395,7 @@ static void reg_r(struct gspca_dev *gspca_dev,
 		return;
 #ifdef GSPCA_DEBUG
 	if (len > USB_BUF_SZ) {
-		pr_err("reg_r: buffer overflow\n");
+		err("reg_r: buffer overflow");
 		return;
 	}
 #endif
@@ -1410,7 +1408,7 @@ static void reg_r(struct gspca_dev *gspca_dev,
 			500);
 	PDEBUG(D_USBI, "reg_r [%02x] -> %02x", value, gspca_dev->usb_buf[0]);
 	if (ret < 0) {
-		pr_err("reg_r err %d\n", ret);
+		err("reg_r err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -1434,7 +1432,7 @@ static void reg_w1(struct gspca_dev *gspca_dev,
 			gspca_dev->usb_buf, 1,
 			500);
 	if (ret < 0) {
-		pr_err("reg_w1 err %d\n", ret);
+		err("reg_w1 err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -1451,7 +1449,7 @@ static void reg_w(struct gspca_dev *gspca_dev,
 		value, buffer[0], buffer[1]);
 #ifdef GSPCA_DEBUG
 	if (len > USB_BUF_SZ) {
-		pr_err("reg_w: buffer overflow\n");
+		err("reg_w: buffer overflow");
 		return;
 	}
 #endif
@@ -1464,7 +1462,7 @@ static void reg_w(struct gspca_dev *gspca_dev,
 			gspca_dev->usb_buf, len,
 			500);
 	if (ret < 0) {
-		pr_err("reg_w err %d\n", ret);
+		err("reg_w err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -1504,7 +1502,7 @@ static void i2c_w1(struct gspca_dev *gspca_dev, u8 reg, u8 val)
 			gspca_dev->usb_buf, 8,
 			500);
 	if (ret < 0) {
-		pr_err("i2c_w1 err %d\n", ret);
+		err("i2c_w1 err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -1529,7 +1527,7 @@ static void i2c_w8(struct gspca_dev *gspca_dev,
 			500);
 	msleep(2);
 	if (ret < 0) {
-		pr_err("i2c_w8 err %d\n", ret);
+		err("i2c_w8 err %d", ret);
 		gspca_dev->usb_err = ret;
 	}
 }
@@ -1593,7 +1591,7 @@ static void hv7131r_probe(struct gspca_dev *gspca_dev)
 		PDEBUG(D_PROBE, "Sensor HV7131R found");
 		return;
 	}
-	pr_warn("Erroneous HV7131R ID 0x%02x 0x%02x 0x%02x\n",
+	warn("Erroneous HV7131R ID 0x%02x 0x%02x 0x%02x",
 		gspca_dev->usb_buf[0], gspca_dev->usb_buf[1],
 		gspca_dev->usb_buf[2]);
 }
@@ -1712,7 +1710,7 @@ static void ov7648_probe(struct gspca_dev *gspca_dev)
 		sd->sensor = SENSOR_PO1030;
 		return;
 	}
-	pr_err("Unknown sensor %04x\n", val);
+	err("Unknown sensor %04x", val);
 }
 
 /* 0c45:6142 sensor may be po2030n, gc0305 or gc0307 */
@@ -1750,7 +1748,7 @@ static void po2030n_probe(struct gspca_dev *gspca_dev)
 		PDEBUG(D_PROBE, "Sensor po2030n");
 /*		sd->sensor = SENSOR_PO2030N; */
 	} else {
-		pr_err("Unknown sensor ID %04x\n", val);
+		err("Unknown sensor ID %04x", val);
 	}
 }
 
@@ -2008,7 +2006,8 @@ static void setbrightness(struct gspca_dev *gspca_dev)
 	case SENSOR_OM6802:
 		expo = brightness << 2;
 		sd->exposure = setexposure(gspca_dev, expo);
-		return;			/* Y offset already set */
+		k2 = brightness >> 3;
+		break;
 	}
 
 	reg_w1(gspca_dev, 0x96, k2);	/* color matrix Y offset */
@@ -2020,13 +2019,13 @@ static void setcontrast(struct gspca_dev *gspca_dev)
 	u8 k2;
 	u8 contrast[6];
 
-	k2 = sd->ctrls[CONTRAST].val * 37 / (CONTRAST_MAX + 1)
-				+ 37;		/* 37..73 */
+	k2 = sd->ctrls[CONTRAST].val * 0x30 / (CONTRAST_MAX + 1)
+				+ 0x10;		/* 10..40 */
 	contrast[0] = (k2 + 1) / 2;		/* red */
 	contrast[1] = 0;
 	contrast[2] = k2;			/* green */
 	contrast[3] = 0;
-	contrast[4] = k2 / 5;			/* blue */
+	contrast[4] = (k2 + 1) / 5;		/* blue */
 	contrast[5] = 0;
 	reg_w(gspca_dev, 0x84, contrast, sizeof contrast);
 }
@@ -2508,7 +2507,9 @@ static int sd_start(struct gspca_dev *gspca_dev)
 		break;
 	case SENSOR_HV7131R:
 	case SENSOR_MI0360:
-		if (!mode)
+		if (mode)
+			reg01 |= SYS_SEL_48M;	/* 320x240: clk 48Mhz */
+		else
 			reg01 &= ~SYS_SEL_48M;	/* 640x480: clk 24Mhz */
 		reg17 &= ~MCK_SIZE_MASK;
 		reg17 |= 0x01;			/* clock / 1 */

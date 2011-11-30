@@ -511,7 +511,18 @@ static struct platform_driver mpc52xx_psc_spi_of_driver = {
 		.of_match_table = mpc52xx_psc_spi_of_match,
 	},
 };
-module_platform_driver(mpc52xx_psc_spi_of_driver);
+
+static int __init mpc52xx_psc_spi_init(void)
+{
+	return platform_driver_register(&mpc52xx_psc_spi_of_driver);
+}
+module_init(mpc52xx_psc_spi_init);
+
+static void __exit mpc52xx_psc_spi_exit(void)
+{
+	platform_driver_unregister(&mpc52xx_psc_spi_of_driver);
+}
+module_exit(mpc52xx_psc_spi_exit);
 
 MODULE_AUTHOR("Dragos Carp");
 MODULE_DESCRIPTION("MPC52xx PSC SPI Driver");

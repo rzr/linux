@@ -464,7 +464,7 @@ static inline void kb_wait(void)
 	}
 }
 
-static void vmxoff_nmi(int cpu, struct pt_regs *regs)
+static void vmxoff_nmi(int cpu, struct die_args *args)
 {
 	cpu_emergency_vmxoff();
 }
@@ -736,9 +736,13 @@ static nmi_shootdown_cb shootdown_callback;
 
 static atomic_t waiting_for_crash_ipi;
 
-static int crash_nmi_callback(unsigned int val, struct pt_regs *regs)
+static int crash_nmi_callback(struct notifier_block *self,
+			unsigned long val, void *data)
 {
 	int cpu;
+
+	if (val != DIE_NMI)
+		return NOTIFY_OK;
 
 	cpu = raw_smp_processor_id();
 
@@ -747,10 +751,10 @@ static int crash_nmi_callback(unsigned int val, struct pt_regs *regs)
 	 * an NMI if system was initially booted with nmi_watchdog parameter.
 	 */
 	if (cpu == crashing_cpu)
-		return NMI_HANDLED;
+		return NOTIFY_STOP;
 	local_irq_disable();
 
-	shootdown_callback(cpu, regs);
+	shootdown_callback(cpu, (struct die_args *)data);
 
 	atomic_dec(&waiting_for_crash_ipi);
 	/* Assume hlt works */
@@ -758,13 +762,19 @@ static int crash_nmi_callback(unsigned int val, struct pt_regs *regs)
 	for (;;)
 		cpu_relax();
 
-	return NMI_HANDLED;
+	return 1;
 }
 
 static void smp_send_nmi_allbutself(void)
 {
 	apic->send_IPI_allbutself(NMI_VECTOR);
 }
+
+static struct notifier_block crash_nmi_nb = {
+	.notifier_call = crash_nmi_callback,
+	/* we want to be the first one called */
+	.priority = NMI_LOCAL_HIGH_PRIOR+1,
+};
 
 /* Halt all other CPUs, calling the specified function on each of them
  *
@@ -784,8 +794,7 @@ void nmi_shootdown_cpus(nmi_shootdown_cb callback)
 
 	atomic_set(&waiting_for_crash_ipi, num_online_cpus() - 1);
 	/* Would it be better to replace the trap vector here? */
-	if (register_nmi_handler(NMI_LOCAL, crash_nmi_callback,
-				 NMI_FLAG_FIRST, "crash"))
+	if (register_die_notifier(&crash_nmi_nb))
 		return;		/* return what? */
 	/* Ensure the new callback function is set before sending
 	 * out the NMI

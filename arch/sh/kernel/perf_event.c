@@ -25,7 +25,6 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/perf_event.h>
-#include <linux/export.h>
 #include <asm/processor.h>
 
 struct cpu_hw_events {

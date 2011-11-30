@@ -47,10 +47,6 @@ static irqreturn_t iio_gpio_trigger_poll(int irq, void *private)
 	return IRQ_HANDLED;
 }
 
-static const struct iio_trigger_ops iio_gpio_trigger_ops = {
-	.owner = THIS_MODULE,
-};
-
 static int iio_gpio_trigger_probe(struct platform_device *pdev)
 {
 	struct iio_gpio_trigger_info *trig_info;
@@ -85,7 +81,7 @@ static int iio_gpio_trigger_probe(struct platform_device *pdev)
 			}
 			trig->private_data = trig_info;
 			trig_info->irq = irq;
-			trig->ops = &iio_gpio_trigger_ops;
+			trig->owner = THIS_MODULE;
 			ret = request_irq(irq, iio_gpio_trigger_poll,
 					  irqflags, trig->name, trig);
 			if (ret) {

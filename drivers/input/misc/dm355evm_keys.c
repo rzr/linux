@@ -17,7 +17,6 @@
 #include <linux/interrupt.h>
 
 #include <linux/i2c/dm355evm_msp.h>
-#include <linux/module.h>
 
 
 /*

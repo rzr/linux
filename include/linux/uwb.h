@@ -33,7 +33,6 @@
 #include <linux/wait.h>
 #include <linux/workqueue.h>
 #include <linux/uwb/spec.h>
-#include <asm/page.h>
 
 struct uwb_dev;
 struct uwb_beca_e;

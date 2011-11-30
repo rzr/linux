@@ -81,7 +81,6 @@ struct s3c_fb;
  * @palette: Address of palette memory, or 0 if none.
  * @has_prtcon: Set if has PRTCON register.
  * @has_shadowcon: Set if has SHADOWCON register.
- * @has_clksel: Set if VIDCON0 register has CLKSEL bit.
  */
 struct s3c_fb_variant {
 	unsigned int	is_2443:1;
@@ -99,7 +98,6 @@ struct s3c_fb_variant {
 
 	unsigned int	has_prtcon:1;
 	unsigned int	has_shadowcon:1;
-	unsigned int	has_clksel:1;
 };
 
 /**
@@ -188,7 +186,6 @@ struct s3c_fb_vsync {
  * @dev: The device that we bound to, for printing, etc.
  * @regs_res: The resource we claimed for the IO registers.
  * @bus_clk: The clk (hclk) feeding our interface and possibly pixclk.
- * @lcd_clk: The clk (sclk) feeding pixclk.
  * @regs: The mapped hardware registers.
  * @variant: Variant information for this hardware.
  * @enabled: A bitmask of enabled hardware windows.
@@ -203,7 +200,6 @@ struct s3c_fb {
 	struct device		*dev;
 	struct resource		*regs_res;
 	struct clk		*bus_clk;
-	struct clk		*lcd_clk;
 	void __iomem		*regs;
 	struct s3c_fb_variant	 variant;
 
@@ -340,14 +336,9 @@ static int s3c_fb_check_var(struct fb_var_screeninfo *var,
  */
 static int s3c_fb_calc_pixclk(struct s3c_fb *sfb, unsigned int pixclk)
 {
-	unsigned long clk;
+	unsigned long clk = clk_get_rate(sfb->bus_clk);
 	unsigned long long tmp;
 	unsigned int result;
-
-	if (sfb->variant.has_clksel)
-		clk = clk_get_rate(sfb->bus_clk);
-	else
-		clk = clk_get_rate(sfb->lcd_clk);
 
 	tmp = (unsigned long long)clk;
 	tmp *= pixclk;
@@ -892,7 +883,7 @@ static int s3c_fb_pan_display(struct fb_var_screeninfo *var,
 		}
 	}
 	/* Offset in bytes to the end of the displayed area */
-	end_boff = start_boff + info->var.yres * info->fix.line_length;
+	end_boff = start_boff + var->yres * info->fix.line_length;
 
 	/* Temporarily turn off per-vsync update from shadow registers until
 	 * both start and end addresses are updated to prevent corruption */
@@ -1363,24 +1354,13 @@ static int __devinit s3c_fb_probe(struct platform_device *pdev)
 
 	clk_enable(sfb->bus_clk);
 
-	if (!sfb->variant.has_clksel) {
-		sfb->lcd_clk = clk_get(dev, "sclk_fimd");
-		if (IS_ERR(sfb->lcd_clk)) {
-			dev_err(dev, "failed to get lcd clock\n");
-			ret = PTR_ERR(sfb->lcd_clk);
-			goto err_bus_clk;
-		}
-
-		clk_enable(sfb->lcd_clk);
-	}
-
 	pm_runtime_enable(sfb->dev);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(dev, "failed to find registers\n");
 		ret = -ENOENT;
-		goto err_lcd_clk;
+		goto err_clk;
 	}
 
 	sfb->regs_res = request_mem_region(res->start, resource_size(res),
@@ -1388,7 +1368,7 @@ static int __devinit s3c_fb_probe(struct platform_device *pdev)
 	if (!sfb->regs_res) {
 		dev_err(dev, "failed to claim register region\n");
 		ret = -ENOENT;
-		goto err_lcd_clk;
+		goto err_clk;
 	}
 
 	sfb->regs = ioremap(res->start, resource_size(res));
@@ -1470,13 +1450,7 @@ err_ioremap:
 err_req_region:
 	release_mem_region(sfb->regs_res->start, resource_size(sfb->regs_res));
 
-err_lcd_clk:
-	if (!sfb->variant.has_clksel) {
-		clk_disable(sfb->lcd_clk);
-		clk_put(sfb->lcd_clk);
-	}
-
-err_bus_clk:
+err_clk:
 	clk_disable(sfb->bus_clk);
 	clk_put(sfb->bus_clk);
 
@@ -1507,11 +1481,6 @@ static int __devexit s3c_fb_remove(struct platform_device *pdev)
 
 	iounmap(sfb->regs);
 
-	if (!sfb->variant.has_clksel) {
-		clk_disable(sfb->lcd_clk);
-		clk_put(sfb->lcd_clk);
-	}
-
 	clk_disable(sfb->bus_clk);
 	clk_put(sfb->bus_clk);
 
@@ -1541,9 +1510,6 @@ static int s3c_fb_suspend(struct device *dev)
 		s3c_fb_blank(FB_BLANK_POWERDOWN, win->fbinfo);
 	}
 
-	if (!sfb->variant.has_clksel)
-		clk_disable(sfb->lcd_clk);
-
 	clk_disable(sfb->bus_clk);
 	return 0;
 }
@@ -1557,9 +1523,6 @@ static int s3c_fb_resume(struct device *dev)
 	int win_no;
 
 	clk_enable(sfb->bus_clk);
-
-	if (!sfb->variant.has_clksel)
-		clk_enable(sfb->lcd_clk);
 
 	/* setup gpio and output polarity controls */
 	pd->setup_gpio();
@@ -1606,9 +1569,6 @@ static int s3c_fb_runtime_suspend(struct device *dev)
 		s3c_fb_blank(FB_BLANK_POWERDOWN, win->fbinfo);
 	}
 
-	if (!sfb->variant.has_clksel)
-		clk_disable(sfb->lcd_clk);
-
 	clk_disable(sfb->bus_clk);
 	return 0;
 }
@@ -1622,9 +1582,6 @@ static int s3c_fb_runtime_resume(struct device *dev)
 	int win_no;
 
 	clk_enable(sfb->bus_clk);
-
-	if (!sfb->variant.has_clksel)
-		clk_enable(sfb->lcd_clk);
 
 	/* setup gpio and output polarity controls */
 	pd->setup_gpio();
@@ -1798,7 +1755,6 @@ static struct s3c_fb_driverdata s3c_fb_data_64xx = {
 		},
 
 		.has_prtcon	= 1,
-		.has_clksel	= 1,
 	},
 	.win[0]	= &s3c_fb_data_64xx_wins[0],
 	.win[1]	= &s3c_fb_data_64xx_wins[1],
@@ -1829,7 +1785,6 @@ static struct s3c_fb_driverdata s3c_fb_data_s5pc100 = {
 		},
 
 		.has_prtcon	= 1,
-		.has_clksel	= 1,
 	},
 	.win[0]	= &s3c_fb_data_s5p_wins[0],
 	.win[1]	= &s3c_fb_data_s5p_wins[1],
@@ -1839,37 +1794,6 @@ static struct s3c_fb_driverdata s3c_fb_data_s5pc100 = {
 };
 
 static struct s3c_fb_driverdata s3c_fb_data_s5pv210 = {
-	.variant = {
-		.nr_windows	= 5,
-		.vidtcon	= VIDTCON0,
-		.wincon		= WINCON(0),
-		.winmap		= WINxMAP(0),
-		.keycon		= WKEYCON,
-		.osd		= VIDOSD_BASE,
-		.osd_stride	= 16,
-		.buf_start	= VIDW_BUF_START(0),
-		.buf_size	= VIDW_BUF_SIZE(0),
-		.buf_end	= VIDW_BUF_END(0),
-
-		.palette = {
-			[0] = 0x2400,
-			[1] = 0x2800,
-			[2] = 0x2c00,
-			[3] = 0x3000,
-			[4] = 0x3400,
-		},
-
-		.has_shadowcon	= 1,
-		.has_clksel	= 1,
-	},
-	.win[0]	= &s3c_fb_data_s5p_wins[0],
-	.win[1]	= &s3c_fb_data_s5p_wins[1],
-	.win[2]	= &s3c_fb_data_s5p_wins[2],
-	.win[3]	= &s3c_fb_data_s5p_wins[3],
-	.win[4]	= &s3c_fb_data_s5p_wins[4],
-};
-
-static struct s3c_fb_driverdata s3c_fb_data_exynos4 = {
 	.variant = {
 		.nr_windows	= 5,
 		.vidtcon	= VIDTCON0,
@@ -1919,7 +1843,6 @@ static struct s3c_fb_driverdata s3c_fb_data_s3c2443 = {
 			[0] = 0x400,
 			[1] = 0x800,
 		},
-		.has_clksel	= 1,
 	},
 	.win[0] = &(struct s3c_fb_win_variant) {
 		.palette_sz	= 256,
@@ -1936,30 +1859,6 @@ static struct s3c_fb_driverdata s3c_fb_data_s3c2443 = {
 	},
 };
 
-static struct s3c_fb_driverdata s3c_fb_data_s5p64x0 = {
-	.variant = {
-		.nr_windows	= 3,
-		.vidtcon	= VIDTCON0,
-		.wincon		= WINCON(0),
-		.winmap		= WINxMAP(0),
-		.keycon		= WKEYCON,
-		.osd		= VIDOSD_BASE,
-		.osd_stride	= 16,
-		.buf_start	= VIDW_BUF_START(0),
-		.buf_size	= VIDW_BUF_SIZE(0),
-		.buf_end	= VIDW_BUF_END(0),
-
-		.palette = {
-			[0] = 0x2400,
-			[1] = 0x2800,
-			[2] = 0x2c00,
-		},
-	},
-	.win[0] = &s3c_fb_data_s5p_wins[0],
-	.win[1] = &s3c_fb_data_s5p_wins[1],
-	.win[2] = &s3c_fb_data_s5p_wins[2],
-};
-
 static struct platform_device_id s3c_fb_driver_ids[] = {
 	{
 		.name		= "s3c-fb",
@@ -1971,14 +1870,8 @@ static struct platform_device_id s3c_fb_driver_ids[] = {
 		.name		= "s5pv210-fb",
 		.driver_data	= (unsigned long)&s3c_fb_data_s5pv210,
 	}, {
-		.name		= "exynos4-fb",
-		.driver_data	= (unsigned long)&s3c_fb_data_exynos4,
-	}, {
 		.name		= "s3c2443-fb",
 		.driver_data	= (unsigned long)&s3c_fb_data_s3c2443,
-	}, {
-		.name		= "s5p64x0-fb",
-		.driver_data	= (unsigned long)&s3c_fb_data_s5p64x0,
 	},
 	{},
 };

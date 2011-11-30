@@ -33,7 +33,6 @@
 		0)
 #define cpu_is_mx28()		(					\
 		machine_is_mx28evk() ||					\
-		machine_is_m28evk() ||					\
 		machine_is_tx28() ||					\
 		0)
 
@@ -86,8 +85,6 @@
 	.length = soc ## _ ## name ## _SIZE,				\
 	.type = _type,							\
 }
-
-#define MXS_GPIO_NR(bank, nr)	((bank) * 32 + (nr))
 
 #define MXS_SET_ADDR		0x4
 #define MXS_CLR_ADDR		0x8

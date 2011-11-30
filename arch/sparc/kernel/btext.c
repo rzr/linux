@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/console.h>
 
 #include <asm/btext.h>

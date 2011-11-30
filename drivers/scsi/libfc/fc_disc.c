@@ -35,7 +35,6 @@
 #include <linux/timer.h>
 #include <linux/slab.h>
 #include <linux/err.h>
-#include <linux/export.h>
 #include <asm/unaligned.h>
 
 #include <scsi/fc/fc_gs.h>

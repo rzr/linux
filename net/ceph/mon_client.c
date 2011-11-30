@@ -116,12 +116,14 @@ static void __send_prepared_auth_request(struct ceph_mon_client *monc, int len)
  */
 static void __close_session(struct ceph_mon_client *monc)
 {
-	dout("__close_session closing mon%d\n", monc->cur_mon);
-	ceph_con_revoke(monc->con, monc->m_auth);
-	ceph_con_close(monc->con);
-	monc->cur_mon = -1;
-	monc->pending_auth = 0;
-	ceph_auth_reset(monc->auth);
+	if (monc->con) {
+		dout("__close_session closing mon%d\n", monc->cur_mon);
+		ceph_con_revoke(monc->con, monc->m_auth);
+		ceph_con_close(monc->con);
+		monc->cur_mon = -1;
+		monc->pending_auth = 0;
+		ceph_auth_reset(monc->auth);
+	}
 }
 
 /*
@@ -300,6 +302,15 @@ void ceph_monc_request_next_osdmap(struct ceph_mon_client *monc)
  */
 int ceph_monc_open_session(struct ceph_mon_client *monc)
 {
+	if (!monc->con) {
+		monc->con = kmalloc(sizeof(*monc->con), GFP_KERNEL);
+		if (!monc->con)
+			return -ENOMEM;
+		ceph_con_init(monc->client->msgr, monc->con);
+		monc->con->private = monc;
+		monc->con->ops = &mon_con_ops;
+	}
+
 	mutex_lock(&monc->mutex);
 	__open_session(monc);
 	__schedule_delayed(monc);
@@ -517,12 +528,10 @@ int ceph_monc_do_statfs(struct ceph_mon_client *monc, struct ceph_statfs *buf)
 	init_completion(&req->completion);
 
 	err = -ENOMEM;
-	req->request = ceph_msg_new(CEPH_MSG_STATFS, sizeof(*h), GFP_NOFS,
-				    true);
+	req->request = ceph_msg_new(CEPH_MSG_STATFS, sizeof(*h), GFP_NOFS);
 	if (!req->request)
 		goto out;
-	req->reply = ceph_msg_new(CEPH_MSG_STATFS_REPLY, 1024, GFP_NOFS,
-				  true);
+	req->reply = ceph_msg_new(CEPH_MSG_STATFS_REPLY, 1024, GFP_NOFS);
 	if (!req->reply)
 		goto out;
 
@@ -617,12 +626,10 @@ int ceph_monc_do_poolop(struct ceph_mon_client *monc, u32 op,
 	init_completion(&req->completion);
 
 	err = -ENOMEM;
-	req->request = ceph_msg_new(CEPH_MSG_POOLOP, sizeof(*h), GFP_NOFS,
-				    true);
+	req->request = ceph_msg_new(CEPH_MSG_POOLOP, sizeof(*h), GFP_NOFS);
 	if (!req->request)
 		goto out;
-	req->reply = ceph_msg_new(CEPH_MSG_POOLOP_REPLY, 1024, GFP_NOFS,
-				  true);
+	req->reply = ceph_msg_new(CEPH_MSG_POOLOP_REPLY, 1024, GFP_NOFS);
 	if (!req->reply)
 		goto out;
 
@@ -748,21 +755,13 @@ int ceph_monc_init(struct ceph_mon_client *monc, struct ceph_client *cl)
 	if (err)
 		goto out;
 
-	/* connection */
-	monc->con = kmalloc(sizeof(*monc->con), GFP_KERNEL);
-	if (!monc->con)
-		goto out_monmap;
-	ceph_con_init(monc->client->msgr, monc->con);
-	monc->con->private = monc;
-	monc->con->ops = &mon_con_ops;
+	monc->con = NULL;
 
 	/* authentication */
 	monc->auth = ceph_auth_init(cl->options->name,
 				    cl->options->key);
-	if (IS_ERR(monc->auth)) {
-		err = PTR_ERR(monc->auth);
-		goto out_con;
-	}
+	if (IS_ERR(monc->auth))
+		return PTR_ERR(monc->auth);
 	monc->auth->want_keys =
 		CEPH_ENTITY_TYPE_AUTH | CEPH_ENTITY_TYPE_MON |
 		CEPH_ENTITY_TYPE_OSD | CEPH_ENTITY_TYPE_MDS;
@@ -771,21 +770,19 @@ int ceph_monc_init(struct ceph_mon_client *monc, struct ceph_client *cl)
 	err = -ENOMEM;
 	monc->m_subscribe_ack = ceph_msg_new(CEPH_MSG_MON_SUBSCRIBE_ACK,
 				     sizeof(struct ceph_mon_subscribe_ack),
-				     GFP_NOFS, true);
+				     GFP_NOFS);
 	if (!monc->m_subscribe_ack)
-		goto out_auth;
+		goto out_monmap;
 
-	monc->m_subscribe = ceph_msg_new(CEPH_MSG_MON_SUBSCRIBE, 96, GFP_NOFS,
-					 true);
+	monc->m_subscribe = ceph_msg_new(CEPH_MSG_MON_SUBSCRIBE, 96, GFP_NOFS);
 	if (!monc->m_subscribe)
 		goto out_subscribe_ack;
 
-	monc->m_auth_reply = ceph_msg_new(CEPH_MSG_AUTH_REPLY, 4096, GFP_NOFS,
-					  true);
+	monc->m_auth_reply = ceph_msg_new(CEPH_MSG_AUTH_REPLY, 4096, GFP_NOFS);
 	if (!monc->m_auth_reply)
 		goto out_subscribe;
 
-	monc->m_auth = ceph_msg_new(CEPH_MSG_AUTH, 4096, GFP_NOFS, true);
+	monc->m_auth = ceph_msg_new(CEPH_MSG_AUTH, 4096, GFP_NOFS);
 	monc->pending_auth = 0;
 	if (!monc->m_auth)
 		goto out_auth_reply;
@@ -811,10 +808,6 @@ out_subscribe:
 	ceph_msg_put(monc->m_subscribe);
 out_subscribe_ack:
 	ceph_msg_put(monc->m_subscribe_ack);
-out_auth:
-	ceph_auth_destroy(monc->auth);
-out_con:
-	monc->con->ops->put(monc->con);
 out_monmap:
 	kfree(monc->monmap);
 out:
@@ -829,11 +822,11 @@ void ceph_monc_stop(struct ceph_mon_client *monc)
 
 	mutex_lock(&monc->mutex);
 	__close_session(monc);
-
-	monc->con->private = NULL;
-	monc->con->ops->put(monc->con);
-	monc->con = NULL;
-
+	if (monc->con) {
+		monc->con->private = NULL;
+		monc->con->ops->put(monc->con);
+		monc->con = NULL;
+	}
 	mutex_unlock(&monc->mutex);
 
 	ceph_auth_destroy(monc->auth);
@@ -980,7 +973,7 @@ static struct ceph_msg *mon_alloc_msg(struct ceph_connection *con,
 	case CEPH_MSG_MON_MAP:
 	case CEPH_MSG_MDS_MAP:
 	case CEPH_MSG_OSD_MAP:
-		m = ceph_msg_new(type, front_len, GFP_NOFS, false);
+		m = ceph_msg_new(type, front_len, GFP_NOFS);
 		break;
 	}
 
@@ -1007,7 +1000,7 @@ static void mon_fault(struct ceph_connection *con)
 	if (!con->private)
 		goto out;
 
-	if (!monc->hunting)
+	if (monc->con && !monc->hunting)
 		pr_info("mon%d %s session lost, "
 			"hunting for new mon\n", monc->cur_mon,
 			ceph_pr_addr(&monc->con->peer_addr.in_addr));

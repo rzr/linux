@@ -151,7 +151,7 @@ void tipc_subscr_report_overlap(struct subscription *sub,
 	if (!must && !(sub->filter & TIPC_SUB_PORTS))
 		return;
 
-	subscr_send_event(sub, found_lower, found_upper, event, port_ref, node);
+	sub->event_cb(sub, found_lower, found_upper, event, port_ref, node);
 }
 
 /**
@@ -365,6 +365,7 @@ static struct subscription *subscr_subscribe(struct tipc_subscr *s,
 		subscr_terminate(subscriber);
 		return NULL;
 	}
+	sub->event_cb = subscr_send_event;
 	INIT_LIST_HEAD(&sub->nameseq_list);
 	list_add(&sub->subscription_list, &subscriber->subscription_list);
 	sub->server_ref = subscriber->port_ref;

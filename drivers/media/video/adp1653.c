@@ -31,9 +31,7 @@
  */
 
 #include <linux/delay.h>
-#include <linux/module.h>
 #include <linux/i2c.h>
-#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <media/adp1653.h>
@@ -260,7 +258,7 @@ static int adp1653_init_controls(struct adp1653_flash *flash)
 	if (flash->ctrls.error)
 		return flash->ctrls.error;
 
-	fault->flags |= V4L2_CTRL_FLAG_VOLATILE;
+	fault->is_volatile = 1;
 
 	flash->subdev.ctrl_handler = &flash->ctrls;
 	return 0;
@@ -415,10 +413,6 @@ static int adp1653_probe(struct i2c_client *client,
 	struct adp1653_flash *flash;
 	int ret;
 
-	/* we couldn't work without platform data */
-	if (client->dev.platform_data == NULL)
-		return -ENODEV;
-
 	flash = kzalloc(sizeof(*flash), GFP_KERNEL);
 	if (flash == NULL)
 		return -ENOMEM;
@@ -431,21 +425,12 @@ static int adp1653_probe(struct i2c_client *client,
 	flash->subdev.internal_ops = &adp1653_internal_ops;
 	flash->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
-	ret = adp1653_init_controls(flash);
-	if (ret)
-		goto free_and_quit;
+	adp1653_init_controls(flash);
 
 	ret = media_entity_init(&flash->subdev.entity, 0, NULL, 0);
 	if (ret < 0)
-		goto free_and_quit;
+		kfree(flash);
 
-	flash->subdev.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_FLASH;
-
-	return 0;
-
-free_and_quit:
-	v4l2_ctrl_handler_free(&flash->ctrls);
-	kfree(flash);
 	return ret;
 }
 

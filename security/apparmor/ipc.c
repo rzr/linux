@@ -19,7 +19,6 @@
 #include "include/capability.h"
 #include "include/context.h"
 #include "include/policy.h"
-#include "include/ipc.h"
 
 /* call back to audit ptrace fields */
 static void audit_cb(struct audit_buffer *ab, void *va)

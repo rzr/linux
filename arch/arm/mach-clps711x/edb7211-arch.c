@@ -37,7 +37,8 @@ static void __init edb7211_reserve(void)
 }
 
 static void __init
-fixup_edb7211(struct tag *tags, char **cmdline, struct meminfo *mi)
+fixup_edb7211(struct machine_desc *desc, struct tag *tags,
+	      char **cmdline, struct meminfo *mi)
 {
 	/*
 	 * Bank start addresses are not present in the information
@@ -56,7 +57,7 @@ fixup_edb7211(struct tag *tags, char **cmdline, struct meminfo *mi)
 
 MACHINE_START(EDB7211, "CL-EDB7211 (EP7211 eval board)")
 	/* Maintainer: Jon McClintock */
-	.atag_offset	= 0x20100,	/* 0xc0000000 - 0xc001ffff can be video RAM */
+	.boot_params	= 0xc0020100,	/* 0xc0000000 - 0xc001ffff can be video RAM */
 	.fixup		= fixup_edb7211,
 	.map_io		= edb7211_map_io,
 	.reserve	= edb7211_reserve,

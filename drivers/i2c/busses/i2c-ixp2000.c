@@ -35,7 +35,7 @@
 #include <linux/slab.h>
 
 #include <mach/hardware.h>	/* Pick up IXP2000-specific bits */
-#include <mach/gpio-ixp2000.h>
+#include <mach/gpio.h>
 
 static inline int ixp2000_scl_pin(void *data)
 {

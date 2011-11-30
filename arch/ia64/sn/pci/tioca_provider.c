@@ -11,7 +11,6 @@
 #include <linux/pci.h>
 #include <linux/bitmap.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 #include <asm/sn/sn_sal.h>
 #include <asm/sn/addrs.h>
 #include <asm/sn/io.h>

@@ -24,7 +24,7 @@
 #include "ath5k.h"
 #include "reg.h"
 #include "debug.h"
-#include "../regd.h"
+#include "base.h"
 
 /*
  * Fill the capabilities struct

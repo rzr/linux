@@ -179,7 +179,7 @@ i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 	mutex_unlock(&dev->struct_mutex);
 
 	args->aper_size = dev_priv->mm.gtt_total;
-	args->aper_available_size = args->aper_size - pinned;
+	args->aper_available_size = args->aper_size -pinned;
 
 	return 0;
 }
@@ -195,8 +195,6 @@ i915_gem_create(struct drm_file *file,
 	u32 handle;
 
 	size = roundup(size, PAGE_SIZE);
-	if (size == 0)
-		return -EINVAL;
 
 	/* Allocate the new object */
 	obj = i915_gem_alloc_object(dev, size);
@@ -802,11 +800,11 @@ i915_gem_shmem_pwrite_fast(struct drm_device *dev,
 		if (IS_ERR(page))
 			return PTR_ERR(page);
 
-		vaddr = kmap_atomic(page);
+		vaddr = kmap_atomic(page, KM_USER0);
 		ret = __copy_from_user_inatomic(vaddr + page_offset,
 						user_data,
 						page_length);
-		kunmap_atomic(vaddr);
+		kunmap_atomic(vaddr, KM_USER0);
 
 		set_page_dirty(page);
 		mark_page_accessed(page);
@@ -1267,6 +1265,74 @@ out:
 }
 
 /**
+ * i915_gem_create_mmap_offset - create a fake mmap offset for an object
+ * @obj: obj in question
+ *
+ * GEM memory mapping works by handing back to userspace a fake mmap offset
+ * it can use in a subsequent mmap(2) call.  The DRM core code then looks
+ * up the object based on the offset and sets up the various memory mapping
+ * structures.
+ *
+ * This routine allocates and attaches a fake offset for @obj.
+ */
+static int
+i915_gem_create_mmap_offset(struct drm_i915_gem_object *obj)
+{
+	struct drm_device *dev = obj->base.dev;
+	struct drm_gem_mm *mm = dev->mm_private;
+	struct drm_map_list *list;
+	struct drm_local_map *map;
+	int ret = 0;
+
+	/* Set the object up for mmap'ing */
+	list = &obj->base.map_list;
+	list->map = kzalloc(sizeof(struct drm_map_list), GFP_KERNEL);
+	if (!list->map)
+		return -ENOMEM;
+
+	map = list->map;
+	map->type = _DRM_GEM;
+	map->size = obj->base.size;
+	map->handle = obj;
+
+	/* Get a DRM GEM mmap offset allocated... */
+	list->file_offset_node = drm_mm_search_free(&mm->offset_manager,
+						    obj->base.size / PAGE_SIZE,
+						    0, 0);
+	if (!list->file_offset_node) {
+		DRM_ERROR("failed to allocate offset for bo %d\n",
+			  obj->base.name);
+		ret = -ENOSPC;
+		goto out_free_list;
+	}
+
+	list->file_offset_node = drm_mm_get_block(list->file_offset_node,
+						  obj->base.size / PAGE_SIZE,
+						  0);
+	if (!list->file_offset_node) {
+		ret = -ENOMEM;
+		goto out_free_list;
+	}
+
+	list->hash.key = list->file_offset_node->start;
+	ret = drm_ht_insert_item(&mm->offset_hash, &list->hash);
+	if (ret) {
+		DRM_ERROR("failed to add to map hash\n");
+		goto out_free_mm;
+	}
+
+	return 0;
+
+out_free_mm:
+	drm_mm_put_block(list->file_offset_node);
+out_free_list:
+	kfree(list->map);
+	list->map = NULL;
+
+	return ret;
+}
+
+/**
  * i915_gem_release_mmap - remove physical page mappings
  * @obj: obj in question
  *
@@ -1292,6 +1358,19 @@ i915_gem_release_mmap(struct drm_i915_gem_object *obj)
 				    obj->base.size, 1);
 
 	obj->fault_mappable = false;
+}
+
+static void
+i915_gem_free_mmap_offset(struct drm_i915_gem_object *obj)
+{
+	struct drm_device *dev = obj->base.dev;
+	struct drm_gem_mm *mm = dev->mm_private;
+	struct drm_map_list *list = &obj->base.map_list;
+
+	drm_ht_remove_item(&mm->offset_hash, &list->hash);
+	drm_mm_put_block(list->file_offset_node);
+	kfree(list->map);
+	list->map = NULL;
 }
 
 static uint32_t
@@ -1396,7 +1475,7 @@ i915_gem_mmap_gtt(struct drm_file *file,
 
 	if (obj->base.size > dev_priv->mm.gtt_mappable_end) {
 		ret = -E2BIG;
-		goto out;
+		goto unlock;
 	}
 
 	if (obj->madv != I915_MADV_WILLNEED) {
@@ -1406,7 +1485,7 @@ i915_gem_mmap_gtt(struct drm_file *file,
 	}
 
 	if (!obj->base.map_list.map) {
-		ret = drm_gem_create_mmap_offset(&obj->base);
+		ret = i915_gem_create_mmap_offset(obj);
 		if (ret)
 			goto out;
 	}
@@ -1478,7 +1557,7 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj,
 		obj->pages[i] = page;
 	}
 
-	if (i915_gem_object_needs_bit17_swizzle(obj))
+	if (obj->tiling_mode != I915_TILING_NONE)
 		i915_gem_object_do_bit_17_swizzle(obj);
 
 	return 0;
@@ -1500,7 +1579,7 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 
 	BUG_ON(obj->madv == __I915_MADV_PURGED);
 
-	if (i915_gem_object_needs_bit17_swizzle(obj))
+	if (obj->tiling_mode != I915_TILING_NONE)
 		i915_gem_object_save_bit_17_swizzle(obj);
 
 	if (obj->madv == I915_MADV_DONTNEED)
@@ -1777,7 +1856,7 @@ void i915_gem_reset(struct drm_device *dev)
 	 * lost bo to the inactive list.
 	 */
 	while (!list_empty(&dev_priv->mm.flushing_list)) {
-		obj = list_first_entry(&dev_priv->mm.flushing_list,
+		obj= list_first_entry(&dev_priv->mm.flushing_list,
 				      struct drm_i915_gem_object,
 				      mm_list);
 
@@ -1843,7 +1922,7 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 	while (!list_empty(&ring->active_list)) {
 		struct drm_i915_gem_object *obj;
 
-		obj = list_first_entry(&ring->active_list,
+		obj= list_first_entry(&ring->active_list,
 				      struct drm_i915_gem_object,
 				      ring_list);
 
@@ -2193,7 +2272,13 @@ int
 i915_gpu_idle(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
+	bool lists_empty;
 	int ret, i;
+
+	lists_empty = (list_empty(&dev_priv->mm.flushing_list) &&
+		       list_empty(&dev_priv->mm.active_list));
+	if (lists_empty)
+		return 0;
 
 	/* Flush everything onto the inactive list. */
 	for (i = 0; i < I915_NUM_RINGS; i++) {
@@ -2797,7 +2882,7 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 
 	fenceable =
 		obj->gtt_space->size == fence_size &&
-		(obj->gtt_space->start & (fence_alignment - 1)) == 0;
+		(obj->gtt_space->start & (fence_alignment -1)) == 0;
 
 	mappable =
 		obj->gtt_offset + obj->base.size <= dev_priv->mm.gtt_mappable_end;
@@ -3513,7 +3598,7 @@ i915_gem_busy_ioctl(struct drm_device *dev, void *data,
 			 */
 			request = kzalloc(sizeof(*request), GFP_KERNEL);
 			if (request)
-				ret = i915_add_request(obj->ring, NULL, request);
+				ret = i915_add_request(obj->ring, NULL,request);
 			else
 				ret = -ENOMEM;
 		}
@@ -3538,7 +3623,7 @@ int
 i915_gem_throttle_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
-	return i915_gem_ring_throttle(dev, file_priv);
+    return i915_gem_ring_throttle(dev, file_priv);
 }
 
 int
@@ -3667,7 +3752,7 @@ static void i915_gem_free_object_tail(struct drm_i915_gem_object *obj)
 	trace_i915_gem_object_destroy(obj);
 
 	if (obj->base.map_list.map)
-		drm_gem_free_mmap_offset(&obj->base);
+		i915_gem_free_mmap_offset(obj);
 
 	drm_gem_object_release(&obj->base);
 	i915_gem_info_remove_obj(dev_priv, obj->base.size);

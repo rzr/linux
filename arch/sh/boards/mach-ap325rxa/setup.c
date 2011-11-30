@@ -345,10 +345,9 @@ static struct soc_camera_platform_info camera_info = {
 		.width = 640,
 		.height = 480,
 	},
-	.mbus_param = V4L2_MBUS_PCLK_SAMPLE_RISING | V4L2_MBUS_MASTER |
-	V4L2_MBUS_VSYNC_ACTIVE_HIGH | V4L2_MBUS_HSYNC_ACTIVE_HIGH |
-	V4L2_MBUS_DATA_ACTIVE_HIGH,
-	.mbus_type = V4L2_MBUS_PARALLEL,
+	.bus_param = SOCAM_PCLK_SAMPLE_RISING | SOCAM_HSYNC_ACTIVE_HIGH |
+	SOCAM_VSYNC_ACTIVE_HIGH | SOCAM_MASTER | SOCAM_DATAWIDTH_8 |
+	SOCAM_DATA_ACTIVE_HIGH,
 	.set_capture = camera_set_capture,
 };
 
@@ -502,7 +501,8 @@ static struct i2c_board_info ap325rxa_i2c_camera[] = {
 };
 
 static struct ov772x_camera_info ov7725_info = {
-	.flags		= OV772X_FLAG_VFLIP | OV772X_FLAG_HFLIP,
+	.flags		= OV772X_FLAG_VFLIP | OV772X_FLAG_HFLIP | \
+			  OV772X_FLAG_8BIT,
 	.edgectrl	= OV772X_AUTO_EDGECTRL(0xf, 0),
 };
 

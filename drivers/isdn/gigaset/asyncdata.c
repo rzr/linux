@@ -16,7 +16,6 @@
 #include "gigaset.h"
 #include <linux/crc-ccitt.h>
 #include <linux/bitrev.h>
-#include <linux/export.h>
 
 /* check if byte must be stuffed/escaped
  * I'm not sure which data should be encoded.

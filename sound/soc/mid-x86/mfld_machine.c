@@ -28,7 +28,6 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/io.h>
-#include <linux/module.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
@@ -55,7 +54,9 @@ static unsigned int	hs_switch;
 static unsigned int	lo_dac;
 
 struct mfld_mc_private {
+	struct platform_device *socdev;
 	void __iomem *int_base;
+	struct snd_soc_codec *codec;
 	u8 interrupt_status;
 };
 
@@ -234,6 +235,7 @@ static int mfld_init(struct snd_soc_pcm_runtime *runtime)
 	/* always connected */
 	snd_soc_dapm_enable_pin(dapm, "Headphones");
 	snd_soc_dapm_enable_pin(dapm, "Mic");
+	snd_soc_dapm_sync(dapm);
 
 	ret_val = snd_soc_add_controls(codec, mfld_snd_controls,
 				ARRAY_SIZE(mfld_snd_controls));
@@ -251,6 +253,7 @@ static int mfld_init(struct snd_soc_pcm_runtime *runtime)
 	/* we dont use linein in this so set to NC */
 	snd_soc_dapm_disable_pin(dapm, "LINEINL");
 	snd_soc_dapm_disable_pin(dapm, "LINEINR");
+	snd_soc_dapm_sync(dapm);
 
 	/* Headset and button jack detection */
 	ret_val = snd_soc_jack_new(codec, "Intel(R) MID Audio Jack",

@@ -20,7 +20,6 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/bootmem.h>
-#include <linux/export.h>
 
 #include <asm/machvec.h>
 #include <asm/page.h>

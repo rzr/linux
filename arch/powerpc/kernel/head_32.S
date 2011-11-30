@@ -139,7 +139,8 @@ __start:
 	trap
 #endif /* CONFIG_PPC_PMAC */
 
-1:	mr	r31,r3			/* save device tree ptr */
+1:	mr	r31,r3			/* save parameters */
+	mr	r30,r4
 	li	r24,0			/* cpu # */
 
 /*
@@ -963,8 +964,8 @@ start_here:
  * Do early platform-specific initialization,
  * and set up the MMU.
  */
-	li	r3,0
-	mr	r4,r31
+	mr	r3,r31
+	mr	r4,r30
 	bl	machine_init
 	bl	__save_cpu_setup
 	bl	MMU_init

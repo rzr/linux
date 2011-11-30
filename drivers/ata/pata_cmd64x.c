@@ -82,7 +82,7 @@ static int cmd648_cable_detect(struct ata_port *ap)
 }
 
 /**
- *	cmd64x_set_timing	-	set PIO and MWDMA timing
+ *	cmd64x_set_piomode	-	set PIO and MWDMA timing
  *	@ap: ATA interface
  *	@adev: ATA device
  *	@mode: mode
@@ -288,22 +288,6 @@ static struct ata_port_operations cmd648_port_ops = {
 	.cable_detect	= cmd648_cable_detect,
 };
 
-static void cmd64x_fixup(struct pci_dev *pdev)
-{
-	u8 mrdmode;
-
-	pci_write_config_byte(pdev, PCI_LATENCY_TIMER, 64);
-	pci_read_config_byte(pdev, MRDMODE, &mrdmode);
-	mrdmode &= ~0x30;	/* IRQ set up */
-	mrdmode |= 0x02;	/* Memory read line enable */
-	pci_write_config_byte(pdev, MRDMODE, mrdmode);
-
-	/* PPC specific fixup copied from old driver */
-#ifdef CONFIG_PPC
-	pci_write_config_byte(pdev, UDIDETCR0, 0xF0);
-#endif
-}
-
 static int cmd64x_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	static const struct ata_port_info cmd_info[6] = {
@@ -352,7 +336,7 @@ static int cmd64x_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		&cmd_info[id->driver_data],
 		NULL
 	};
-	u8 reg;
+	u8 mrdmode, reg;
 	int rc;
 	struct pci_dev *bridge = pdev->bus->self;
 	/* mobility split bridges don't report enabled ports correctly */
@@ -384,7 +368,11 @@ static int cmd64x_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 			cntrl_ch0_ok = 0;
 	}
 
-	cmd64x_fixup(pdev);
+	pci_write_config_byte(pdev, PCI_LATENCY_TIMER, 64);
+	pci_read_config_byte(pdev, MRDMODE, &mrdmode);
+	mrdmode &= ~ 0x30;	/* IRQ set up */
+	mrdmode |= 0x02;	/* Memory read line enable */
+	pci_write_config_byte(pdev, MRDMODE, mrdmode);
 
 	/* check for enabled ports */
 	pci_read_config_byte(pdev, CNTRL, &reg);
@@ -400,6 +388,13 @@ static int cmd64x_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		ppi[1] = &ata_dummy_port_info;
 	}
 
+	/* Force PIO 0 here.. */
+
+	/* PPC specific fixup copied from old driver */
+#ifdef CONFIG_PPC
+	pci_write_config_byte(pdev, UDIDETCR0, 0xF0);
+#endif
+
 	return ata_pci_bmdma_init_one(pdev, ppi, &cmd64x_sht, NULL, 0);
 }
 
@@ -407,14 +402,21 @@ static int cmd64x_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 static int cmd64x_reinit_one(struct pci_dev *pdev)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
+	u8 mrdmode;
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);
 	if (rc)
 		return rc;
 
-	cmd64x_fixup(pdev);
-
+	pci_write_config_byte(pdev, PCI_LATENCY_TIMER, 64);
+	pci_read_config_byte(pdev, MRDMODE, &mrdmode);
+	mrdmode &= ~ 0x30;	/* IRQ set up */
+	mrdmode |= 0x02;	/* Memory read line enable */
+	pci_write_config_byte(pdev, MRDMODE, mrdmode);
+#ifdef CONFIG_PPC
+	pci_write_config_byte(pdev, UDIDETCR0, 0xF0);
+#endif
 	ata_host_resume(host);
 	return 0;
 }

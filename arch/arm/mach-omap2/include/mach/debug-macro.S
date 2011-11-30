@@ -13,9 +13,14 @@
 
 #include <linux/serial_reg.h>
 
+#include <asm/memory.h>
+
 #include <plat/serial.h>
 
 #define UART_OFFSET(addr)	((addr) & 0x00ffffff)
+
+#define omap_uart_v2p(x)	((x) - PAGE_OFFSET + PLAT_PHYS_OFFSET)
+#define omap_uart_p2v(x)	((x) - PLAT_PHYS_OFFSET + PAGE_OFFSET)
 
 		.pushsection .data
 omap_uart_phys:	.word	0
@@ -29,25 +34,26 @@ omap_uart_lsr:	.word	0
 		 * the desired UART phys and virt addresses temporarily into
 		 * the omap_uart_phys and omap_uart_virt above.
 		 */
-		.macro	addruart, rp, rv, tmp
+		.macro	addruart, rp, rv
 
 		/* Use omap_uart_phys/virt if already configured */
-10:		adr	\rp, 99f		@ get effective addr of 99f
-		ldr	\rv, [\rp]		@ get absolute addr of 99f
-		sub	\rv, \rv, \rp		@ offset between the two
-		ldr	\rp, [\rp, #4]		@ abs addr of omap_uart_phys
-		sub	\tmp, \rp, \rv		@ make it effective
-		ldr	\rp, [\tmp, #0]		@ omap_uart_phys
-		ldr	\rv, [\tmp, #4]		@ omap_uart_virt
+10:		mrc	p15, 0, \rp, c1, c0
+		tst	\rp, #1			@ MMU enabled?
+		ldreq	\rp, =omap_uart_v2p(omap_uart_phys)	@ MMU disabled
+		ldrne	\rp, =omap_uart_phys	@ MMU enabled
+		add	\rv, \rp, #4		@ omap_uart_virt
+		ldr	\rp, [\rp, #0]
+		ldr	\rv, [\rv, #0]
 		cmp	\rp, #0			@ is port configured?
 		cmpne	\rv, #0
-		bne	100f			@ already configured
+		bne	99f			@ already configured
 
 		/* Check the debug UART configuration set in uncompress.h */
-		mov	\rp, pc
-		ldr	\rv, =OMAP_UART_INFO_OFS
-		and	\rp, \rp, #0xff000000
-		ldr	\rp, [\rp, \rv]
+		mrc	p15, 0, \rp, c1, c0
+		tst	\rp, #1			@ MMU enabled?
+		ldreq	\rp, =OMAP_UART_INFO	@ MMU not enabled
+		ldrne	\rp, =omap_uart_p2v(OMAP_UART_INFO)	@ MMU enabled
+		ldr	\rp, [\rp, #0]
 
 		/* Select the UART to use based on the UART1 scratchpad value */
 		cmp	\rp, #0			@ no port configured?
@@ -100,47 +106,50 @@ omap_uart_lsr:	.word	0
 		b	98f
 83:		mov	\rp, #UART_OFFSET(TI816X_UART3_BASE)
 		b	98f
-
 95:		ldr	\rp, =ZOOM_UART_BASE
-		str	\rp, [\tmp, #0]		@ omap_uart_phys
+		mrc	p15, 0, \rv, c1, c0
+		tst	\rv, #1			@ MMU enabled?
+		ldreq	\rv, =omap_uart_v2p(omap_uart_phys)	@ MMU disabled
+		ldrne	\rv, =omap_uart_phys	@ MMU enabled
+		str	\rp, [\rv, #0]
 		ldr	\rp, =ZOOM_UART_VIRT
-		str	\rp, [\tmp, #4]		@ omap_uart_virt
+		add	\rv, \rv, #4		@ omap_uart_virt
+		str	\rp, [\rv, #0]
 		mov	\rp, #(UART_LSR << ZOOM_PORT_SHIFT)
-		str	\rp, [\tmp, #8]		@ omap_uart_lsr
+		add	\rv, \rv, #4		@ omap_uart_lsr
+		str	\rp, [\rv, #0]
 		b	10b
 
 		/* Store both phys and virt address for the uart */
 98:		add	\rp, \rp, #0x48000000	@ phys base
-		str	\rp, [\tmp, #0]		@ omap_uart_phys
+		mrc	p15, 0, \rv, c1, c0
+		tst	\rv, #1			@ MMU enabled?
+		ldreq	\rv, =omap_uart_v2p(omap_uart_phys)	@ MMU disabled
+		ldrne	\rv, =omap_uart_phys	@ MMU enabled
+		str	\rp, [\rv, #0]
 		sub	\rp, \rp, #0x48000000	@ phys base
 		add	\rp, \rp, #0xfa000000	@ virt base
-		str	\rp, [\tmp, #4]		@ omap_uart_virt
+		add	\rv, \rv, #4		@ omap_uart_virt
+		str	\rp, [\rv, #0]
 		mov	\rp, #(UART_LSR << OMAP_PORT_SHIFT)
-		str	\rp, [\tmp, #8]		@ omap_uart_lsr
+		add	\rv, \rv, #4		@ omap_uart_lsr
+		str	\rp, [\rv, #0]
 
 		b	10b
-
-		.align
-99:		.word	.
-		.word	omap_uart_phys
-		.ltorg
-
-100:		/* Pass the UART_LSR reg address */
-		ldr	\tmp, [\tmp, #8]	@ omap_uart_lsr
-		add	\rp, \rp, \tmp
-		add	\rv, \rv, \tmp
+99:
 		.endm
 
 		.macro	senduart,rd,rx
-		orr	\rd, \rd, \rx, lsl #24	@ preserve LSR reg offset
-		bic	\rx, \rx, #0xff		@ get base (THR) reg address
-		strb	\rd, [\rx]		@ send lower byte of rd
-		orr	\rx, \rx, \rd, lsr #24	@ restore original rx (LSR)
-		bic	\rd, \rd, #(0xff << 24)	@ restore original rd
+		strb	\rd, [\rx]
 		.endm
 
 		.macro	busyuart,rd,rx
-1001:		ldrb	\rd, [\rx]		@ rx contains UART_LSR address
+1001:		mrc	p15, 0, \rd, c1, c0
+		tst	\rd, #1			@ MMU enabled?
+		ldreq	\rd, =omap_uart_v2p(omap_uart_lsr)	@ MMU disabled
+		ldrne	\rd, =omap_uart_lsr	@ MMU enabled
+		ldr	\rd, [\rd, #0]
+		ldrb	\rd, [\rx, \rd]
 		and	\rd, \rd, #(UART_LSR_TEMT | UART_LSR_THRE)
 		teq	\rd, #(UART_LSR_TEMT | UART_LSR_THRE)
 		bne	1001b

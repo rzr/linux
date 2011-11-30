@@ -35,7 +35,6 @@
 #include <linux/fs.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 
 #include <net/irda/irda.h>
 #include <net/irda/irlmp.h>

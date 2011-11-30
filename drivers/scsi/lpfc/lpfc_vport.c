@@ -692,14 +692,13 @@ lpfc_vport_delete(struct fc_vport *fc_vport)
 			/* Indicate free memory when release */
 			NLP_SET_FREE_REQ(ndlp);
 		} else {
-			if (!NLP_CHK_NODE_ACT(ndlp)) {
+			if (!NLP_CHK_NODE_ACT(ndlp))
 				ndlp = lpfc_enable_node(vport, ndlp,
 						NLP_STE_UNUSED_NODE);
 				if (!ndlp)
 					goto skip_logo;
-			}
 
-			/* Remove ndlp from vport list */
+			/* Remove ndlp from vport npld list */
 			lpfc_dequeue_node(vport, ndlp);
 			spin_lock_irq(&phba->ndlp_lock);
 			if (!NLP_CHK_FREE_REQ(ndlp))
@@ -712,17 +711,8 @@ lpfc_vport_delete(struct fc_vport *fc_vport)
 			}
 			spin_unlock_irq(&phba->ndlp_lock);
 		}
-
-		/*
-		 * If the vpi is not registered, then a valid FDISC doesn't
-		 * exist and there is no need for a ELS LOGO.  Just cleanup
-		 * the ndlp.
-		 */
-		if (!(vport->vpi_state & LPFC_VPI_REGISTERED)) {
-			lpfc_nlp_put(ndlp);
+		if (!(vport->vpi_state & LPFC_VPI_REGISTERED))
 			goto skip_logo;
-		}
-
 		vport->unreg_vpi_cmpl = VPORT_INVAL;
 		timeout = msecs_to_jiffies(phba->fc_ratov * 2000);
 		if (!lpfc_issue_els_npiv_logo(vport, ndlp))

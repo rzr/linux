@@ -12,7 +12,6 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/mm.h>
-#include <linux/elf.h>
 #include <linux/smp.h>
 #include <linux/ptrace.h>
 #include <linux/user.h>

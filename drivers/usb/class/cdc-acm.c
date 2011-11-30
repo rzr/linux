@@ -1058,11 +1058,11 @@ made_compressed_probe:
 		goto alloc_fail;
 	}
 
-	ctrlsize = usb_endpoint_maxp(epctrl);
-	readsize = usb_endpoint_maxp(epread) *
+	ctrlsize = le16_to_cpu(epctrl->wMaxPacketSize);
+	readsize = le16_to_cpu(epread->wMaxPacketSize) *
 				(quirks == SINGLE_RX_URB ? 1 : 2);
 	acm->combined_interfaces = combined_interfaces;
-	acm->writesize = usb_endpoint_maxp(epwrite) * 20;
+	acm->writesize = le16_to_cpu(epwrite->wMaxPacketSize) * 20;
 	acm->control = control_interface;
 	acm->data = data_interface;
 	acm->minor = minor;
@@ -1305,7 +1305,7 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 	struct acm *acm = usb_get_intfdata(intf);
 	int cnt;
 
-	if (PMSG_IS_AUTO(message)) {
+	if (message.event & PM_EVENT_AUTO) {
 		int b;
 
 		spin_lock_irq(&acm->write_lock);

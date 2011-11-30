@@ -35,13 +35,16 @@ static const struct rpc_call_ops nfs_read_partial_ops;
 static const struct rpc_call_ops nfs_read_full_ops;
 
 static struct kmem_cache *nfs_rdata_cachep;
+static mempool_t *nfs_rdata_mempool;
+
+#define MIN_POOL_READ	(32)
 
 struct nfs_read_data *nfs_readdata_alloc(unsigned int pagecount)
 {
-	struct nfs_read_data *p;
+	struct nfs_read_data *p = mempool_alloc(nfs_rdata_mempool, GFP_KERNEL);
 
-	p = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
 	if (p) {
+		memset(p, 0, sizeof(*p));
 		INIT_LIST_HEAD(&p->pages);
 		p->npages = pagecount;
 		if (pagecount <= ARRAY_SIZE(p->page_array))
@@ -49,7 +52,7 @@ struct nfs_read_data *nfs_readdata_alloc(unsigned int pagecount)
 		else {
 			p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_KERNEL);
 			if (!p->pagevec) {
-				kmem_cache_free(nfs_rdata_cachep, p);
+				mempool_free(p, nfs_rdata_mempool);
 				p = NULL;
 			}
 		}
@@ -61,7 +64,7 @@ void nfs_readdata_free(struct nfs_read_data *p)
 {
 	if (p && (p->pagevec != &p->page_array[0]))
 		kfree(p->pagevec);
-	kmem_cache_free(nfs_rdata_cachep, p);
+	mempool_free(p, nfs_rdata_mempool);
 }
 
 void nfs_readdata_release(struct nfs_read_data *rdata)
@@ -273,6 +276,7 @@ nfs_async_read_error(struct list_head *head)
 	while (!list_empty(head)) {
 		req = nfs_list_entry(head->next);
 		nfs_list_remove_request(req);
+		SetPageError(req->wb_page);
 		nfs_readpage_release(req);
 	}
 }
@@ -318,6 +322,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc, struct list_head
 		offset += len;
 	} while(nbytes != 0);
 	atomic_set(&req->wb_complete, requests);
+	ClearPageError(page);
 	desc->pg_rpc_callops = &nfs_read_partial_ops;
 	return ret;
 out_bad:
@@ -326,6 +331,7 @@ out_bad:
 		list_del(&data->list);
 		nfs_readdata_free(data);
 	}
+	SetPageError(page);
 	nfs_readpage_release(req);
 	return -ENOMEM;
 }
@@ -351,6 +357,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
 		req = nfs_list_entry(head->next);
 		nfs_list_remove_request(req);
 		nfs_list_add_request(req, &data->pages);
+		ClearPageError(req->wb_page);
 		*pages++ = req->wb_page;
 	}
 	req = nfs_list_entry(data->pages.next);
@@ -428,7 +435,7 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data
 	argp->offset += resp->count;
 	argp->pgbase += resp->count;
 	argp->count -= resp->count;
-	rpc_restart_call_prepare(task);
+	nfs_restart_rpc(task, NFS_SERVER(data->inode)->nfs_client);
 }
 
 /*
@@ -455,10 +462,10 @@ static void nfs_readpage_release_partial(void *calldata)
 	int status = data->task.tk_status;
 
 	if (status < 0)
-		set_bit(PG_PARTIAL_READ_FAILED, &req->wb_flags);
+		SetPageError(page);
 
 	if (atomic_dec_and_test(&req->wb_complete)) {
-		if (!test_bit(PG_PARTIAL_READ_FAILED, &req->wb_flags))
+		if (!PageError(page))
 			SetPageUptodate(page);
 		nfs_readpage_release(req);
 	}
@@ -651,6 +658,7 @@ readpage_async_filler(void *data, struct page *page)
 	return 0;
 out_error:
 	error = PTR_ERR(new);
+	SetPageError(page);
 out_unlock:
 	unlock_page(page);
 	return error;
@@ -713,10 +721,16 @@ int __init nfs_init_readpagecache(void)
 	if (nfs_rdata_cachep == NULL)
 		return -ENOMEM;
 
+	nfs_rdata_mempool = mempool_create_slab_pool(MIN_POOL_READ,
+						     nfs_rdata_cachep);
+	if (nfs_rdata_mempool == NULL)
+		return -ENOMEM;
+
 	return 0;
 }
 
 void nfs_destroy_readpagecache(void)
 {
+	mempool_destroy(nfs_rdata_mempool);
 	kmem_cache_destroy(nfs_rdata_cachep);
 }

@@ -20,7 +20,6 @@
 #include <linux/virtio_console.h>
 #include <linux/interrupt.h>
 #include <linux/virtio_ring.h>
-#include <linux/export.h>
 #include <linux/pfn.h>
 #include <asm/io.h>
 #include <asm/kvm_para.h>
@@ -34,7 +33,7 @@
  * The pointer to our (page) of device descriptions.
  */
 static void *kvm_devices;
-static struct work_struct hotplug_work;
+struct work_struct hotplug_work;
 
 struct kvm_device {
 	struct virtio_device vdev;
@@ -335,10 +334,10 @@ static void scan_devices(void)
  */
 static int match_desc(struct device *dev, void *data)
 {
-	struct virtio_device *vdev = dev_to_virtio(dev);
-	struct kvm_device *kdev = to_kvmdev(vdev);
+	if ((ulong)to_kvmdev(dev_to_virtio(dev))->desc == (ulong)data)
+		return 1;
 
-	return kdev->desc == data;
+	return 0;
 }
 
 /*

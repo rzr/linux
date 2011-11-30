@@ -26,7 +26,6 @@
  * Send feedback to <colpatch@us.ibm.com>
  */
 #include <linux/nodemask.h>
-#include <linux/export.h>
 #include <linux/mmzone.h>
 #include <linux/init.h>
 #include <linux/smp.h>

@@ -228,14 +228,8 @@ void ath9k_init_leds(struct ath9k_htc_priv *priv)
 
 static bool ath_is_rfkill_set(struct ath9k_htc_priv *priv)
 {
-	bool is_blocked;
-
-	ath9k_htc_ps_wakeup(priv);
-	is_blocked = ath9k_hw_gpio_get(priv->ah, priv->ah->rfkill_gpio) ==
-						 priv->ah->rfkill_polarity;
-	ath9k_htc_ps_restore(priv);
-
-	return is_blocked;
+	return ath9k_hw_gpio_get(priv->ah, priv->ah->rfkill_gpio) ==
+		priv->ah->rfkill_polarity;
 }
 
 void ath9k_htc_rfkill_poll_state(struct ieee80211_hw *hw)

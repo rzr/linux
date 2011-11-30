@@ -23,7 +23,6 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/input/cma3000.h>
-#include <linux/module.h>
 
 #include "cma3000_d0x.h"
 

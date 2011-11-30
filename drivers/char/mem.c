@@ -26,7 +26,6 @@
 #include <linux/bootmem.h>
 #include <linux/splice.h>
 #include <linux/pfn.h>
-#include <linux/export.h>
 
 #include <asm/uaccess.h>
 #include <asm/io.h>

@@ -288,8 +288,8 @@ enum txentry_desc_flags {
  * @signal: PLCP signal.
  * @service: PLCP service.
  * @msc: MCS.
- * @stbc: Use Space Time Block Coding (only available for MCS rates < 8).
- * @ba_size: Size of the recepients RX reorder buffer - 1.
+ * @stbc: STBC.
+ * @ba_size: BA size.
  * @rate_mode: Rate mode (See @enum rate_modulation).
  * @mpdu_density: MDPU density.
  * @retry_limit: Max number of retries.
@@ -321,7 +321,6 @@ struct txentry_desc {
 			u8 ba_size;
 			u8 mpdu_density;
 			enum txop txop;
-			int wcid;
 		} ht;
 	} u;
 

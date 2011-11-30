@@ -58,7 +58,7 @@ static struct cdev mei_cdev;
 static int mei_major;
 /* The device pointer */
 /* Currently this driver works as long as there is only a single AMT device. */
-struct pci_dev *mei_device;
+static struct pci_dev *mei_device;
 
 static struct class *mei_class;
 
@@ -151,26 +151,17 @@ static int __devinit mei_probe(struct pci_dev *pdev,
 		err = -ENOMEM;
 		goto free_device;
 	}
-	pci_enable_msi(pdev);
-
-	 /* request and enable interrupt */
-	if (pci_dev_msi_enabled(pdev))
-		err = request_threaded_irq(pdev->irq,
-			NULL,
-			mei_interrupt_thread_handler,
-			0, mei_driver_name, dev);
-	else
-		err = request_threaded_irq(pdev->irq,
+	/* request and enable interrupt   */
+	err = request_threaded_irq(pdev->irq,
 			mei_interrupt_quick_handler,
 			mei_interrupt_thread_handler,
 			IRQF_SHARED, mei_driver_name, dev);
-
 	if (err) {
 		printk(KERN_ERR "mei: request_threaded_irq failure. irq = %d\n",
 		       pdev->irq);
 		goto unmap_memory;
 	}
-	INIT_DELAYED_WORK(&dev->timer_work, mei_timer);
+	INIT_DELAYED_WORK(&dev->wd_work, mei_wd_timer);
 	if (mei_hw_init(dev)) {
 		printk(KERN_ERR "mei: Init hw failure.\n");
 		err = -ENODEV;
@@ -178,7 +169,7 @@ static int __devinit mei_probe(struct pci_dev *pdev,
 	}
 	mei_device = pdev;
 	pci_set_drvdata(pdev, dev);
-	schedule_delayed_work(&dev->timer_work, HZ);
+	schedule_delayed_work(&dev->wd_work, HZ);
 
 	mutex_unlock(&mei_mutex);
 
@@ -192,7 +183,6 @@ release_irq:
 	mei_disable_interrupts(dev);
 	flush_scheduled_work();
 	free_irq(pdev->irq, dev);
-	pci_disable_msi(pdev);
 unmap_memory:
 	pci_iounmap(pdev, dev->mem_addr);
 free_device:
@@ -241,10 +231,6 @@ static void __devexit mei_remove(struct pci_dev *pdev)
 		mei_disconnect_host_client(dev, &dev->wd_cl);
 	}
 
-	/* Unregistering watchdog device */
-	if (dev->wd_interface_reg)
-		watchdog_unregister_device(&amt_wd_dev);
-
 	/* remove entry if already in list */
 	dev_dbg(&pdev->dev, "list del iamthif and wd file list.\n");
 	mei_remove_client_from_file_list(dev, dev->wd_cl.host_client_id);
@@ -261,7 +247,6 @@ static void __devexit mei_remove(struct pci_dev *pdev)
 	mei_disable_interrupts(dev);
 
 	free_irq(pdev->irq, dev);
-	pci_disable_msi(pdev);
 	pci_set_drvdata(pdev, NULL);
 
 	if (dev->mem_addr)
@@ -417,7 +402,7 @@ static int mei_open(struct inode *inode, struct file *file)
 	err = -ENOMEM;
 	cl = mei_cl_allocate(dev);
 	if (!cl)
-		goto out_unlock;
+		goto out;
 
 	err = -ENODEV;
 	if (dev->mei_state != MEI_ENABLED) {
@@ -1111,7 +1096,7 @@ static int mei_pci_suspend(struct device *device)
 	mutex_unlock(&dev->device_lock);
 
 	free_irq(pdev->irq, dev);
-	pci_disable_msi(pdev);
+
 
 	return err;
 }
@@ -1126,20 +1111,11 @@ static int mei_pci_resume(struct device *device)
 	if (!dev)
 		return -ENODEV;
 
-	pci_enable_msi(pdev);
-
-	/* request and enable interrupt */
-	if (pci_dev_msi_enabled(pdev))
-		err = request_threaded_irq(pdev->irq,
-			NULL,
-			mei_interrupt_thread_handler,
-			0, mei_driver_name, dev);
-	else
-		err = request_threaded_irq(pdev->irq,
+	/* request and enable interrupt   */
+	err = request_threaded_irq(pdev->irq,
 			mei_interrupt_quick_handler,
 			mei_interrupt_thread_handler,
 			IRQF_SHARED, mei_driver_name, dev);
-
 	if (err) {
 		printk(KERN_ERR "mei: Request_irq failure. irq = %d\n",
 		       pdev->irq);
@@ -1151,9 +1127,12 @@ static int mei_pci_resume(struct device *device)
 	mei_reset(dev, 1);
 	mutex_unlock(&dev->device_lock);
 
-	/* Start timer if stopped in suspend */
-	schedule_delayed_work(&dev->timer_work, HZ);
-
+	/* Start watchdog if stopped in suspend */
+	if (dev->wd_timeout) {
+		mei_wd_start_setup(dev);
+		dev->wd_due_counter = 1;
+		schedule_delayed_work(&dev->wd_work, HZ);
+	}
 	return err;
 }
 static SIMPLE_DEV_PM_OPS(mei_pm_ops, mei_pci_suspend, mei_pci_resume);

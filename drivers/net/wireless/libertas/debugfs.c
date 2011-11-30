@@ -5,7 +5,6 @@
 #include <linux/mm.h>
 #include <linux/string.h>
 #include <linux/slab.h>
-#include <linux/export.h>
 
 #include "decl.h"
 #include "cmd.h"

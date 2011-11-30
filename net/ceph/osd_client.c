@@ -227,7 +227,7 @@ struct ceph_osd_request *ceph_osdc_alloc_request(struct ceph_osd_client *osdc,
 		msg = ceph_msgpool_get(&osdc->msgpool_op_reply, 0);
 	else
 		msg = ceph_msg_new(CEPH_MSG_OSD_OPREPLY,
-				   OSD_OPREPLY_FRONT_LEN, gfp_flags, true);
+				   OSD_OPREPLY_FRONT_LEN, gfp_flags);
 	if (!msg) {
 		ceph_osdc_put_request(req);
 		return NULL;
@@ -250,7 +250,7 @@ struct ceph_osd_request *ceph_osdc_alloc_request(struct ceph_osd_client *osdc,
 	if (use_mempool)
 		msg = ceph_msgpool_get(&osdc->msgpool_op, 0);
 	else
-		msg = ceph_msg_new(CEPH_MSG_OSD_OP, msg_size, gfp_flags, true);
+		msg = ceph_msg_new(CEPH_MSG_OSD_OP, msg_size, gfp_flags);
 	if (!msg) {
 		ceph_osdc_put_request(req);
 		return NULL;
@@ -943,7 +943,7 @@ EXPORT_SYMBOL(ceph_osdc_set_request_linger);
  * Caller should hold map_sem for read and request_mutex.
  */
 static int __map_request(struct ceph_osd_client *osdc,
-			 struct ceph_osd_request *req, int force_resend)
+			 struct ceph_osd_request *req)
 {
 	struct ceph_osd_request_head *reqhead = req->r_request->front.iov_base;
 	struct ceph_pg pgid;
@@ -967,8 +967,7 @@ static int __map_request(struct ceph_osd_client *osdc,
 		num = err;
 	}
 
-	if ((!force_resend &&
-	     req->r_osd && req->r_osd->o_osd == o &&
+	if ((req->r_osd && req->r_osd->o_osd == o &&
 	     req->r_sent >= req->r_osd->o_incarnation &&
 	     req->r_num_pg_osds == num &&
 	     memcmp(req->r_pg_osds, acting, sizeof(acting[0])*num) == 0) ||
@@ -1290,18 +1289,18 @@ static void reset_changed_osds(struct ceph_osd_client *osdc)
  *
  * Caller should hold map_sem for read and request_mutex.
  */
-static void kick_requests(struct ceph_osd_client *osdc, int force_resend)
+static void kick_requests(struct ceph_osd_client *osdc)
 {
 	struct ceph_osd_request *req, *nreq;
 	struct rb_node *p;
 	int needmap = 0;
 	int err;
 
-	dout("kick_requests %s\n", force_resend ? " (force resend)" : "");
+	dout("kick_requests\n");
 	mutex_lock(&osdc->request_mutex);
 	for (p = rb_first(&osdc->requests); p; p = rb_next(p)) {
 		req = rb_entry(p, struct ceph_osd_request, r_node);
-		err = __map_request(osdc, req, force_resend);
+		err = __map_request(osdc, req);
 		if (err < 0)
 			continue;  /* error */
 		if (req->r_osd == NULL) {
@@ -1319,7 +1318,7 @@ static void kick_requests(struct ceph_osd_client *osdc, int force_resend)
 				 r_linger_item) {
 		dout("linger req=%p req->r_osd=%p\n", req, req->r_osd);
 
-		err = __map_request(osdc, req, force_resend);
+		err = __map_request(osdc, req);
 		if (err == 0)
 			continue;  /* no change and no osd was specified */
 		if (err < 0)
@@ -1396,7 +1395,7 @@ void ceph_osdc_handle_map(struct ceph_osd_client *osdc, struct ceph_msg *msg)
 				ceph_osdmap_destroy(osdc->osdmap);
 				osdc->osdmap = newmap;
 			}
-			kick_requests(osdc, 0);
+			kick_requests(osdc);
 			reset_changed_osds(osdc);
 		} else {
 			dout("ignoring incremental map %u len %d\n",
@@ -1424,8 +1423,6 @@ void ceph_osdc_handle_map(struct ceph_osd_client *osdc, struct ceph_msg *msg)
 			     "older than our %u\n", epoch, maplen,
 			     osdc->osdmap->epoch);
 		} else {
-			int skipped_map = 0;
-
 			dout("taking full map %u len %d\n", epoch, maplen);
 			newmap = osdmap_decode(&p, p+maplen);
 			if (IS_ERR(newmap)) {
@@ -1435,12 +1432,9 @@ void ceph_osdc_handle_map(struct ceph_osd_client *osdc, struct ceph_msg *msg)
 			BUG_ON(!newmap);
 			oldmap = osdc->osdmap;
 			osdc->osdmap = newmap;
-			if (oldmap) {
-				if (oldmap->epoch + 1 < newmap->epoch)
-					skipped_map = 1;
+			if (oldmap)
 				ceph_osdmap_destroy(oldmap);
-			}
-			kick_requests(osdc, skipped_map);
+			kick_requests(osdc);
 		}
 		p += maplen;
 		nr_maps--;
@@ -1713,7 +1707,7 @@ int ceph_osdc_start_request(struct ceph_osd_client *osdc,
 	 * the request still han't been touched yet.
 	 */
 	if (req->r_sent == 0) {
-		rc = __map_request(osdc, req, 0);
+		rc = __map_request(osdc, req);
 		if (rc < 0) {
 			if (nofail) {
 				dout("osdc_start_request failed map, "
@@ -2038,7 +2032,7 @@ static struct ceph_msg *get_reply(struct ceph_connection *con,
 	if (front > req->r_reply->front.iov_len) {
 		pr_warning("get_reply front %d > preallocated %d\n",
 			   front, (int)req->r_reply->front.iov_len);
-		m = ceph_msg_new(CEPH_MSG_OSD_OPREPLY, front, GFP_NOFS, false);
+		m = ceph_msg_new(CEPH_MSG_OSD_OPREPLY, front, GFP_NOFS);
 		if (!m)
 			goto out;
 		ceph_msg_put(req->r_reply);
@@ -2086,7 +2080,7 @@ static struct ceph_msg *alloc_msg(struct ceph_connection *con,
 	switch (type) {
 	case CEPH_MSG_OSD_MAP:
 	case CEPH_MSG_WATCH_NOTIFY:
-		return ceph_msg_new(type, front, GFP_NOFS, false);
+		return ceph_msg_new(type, front, GFP_NOFS);
 	case CEPH_MSG_OSD_OPREPLY:
 		return get_reply(con, hdr, skip);
 	default:

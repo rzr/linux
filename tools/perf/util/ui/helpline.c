@@ -1,28 +1,20 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <newt.h>
 
 #include "../debug.h"
 #include "helpline.h"
 #include "ui.h"
-#include "libslang.h"
 
 void ui_helpline__pop(void)
 {
+	newtPopHelpLine();
 }
-
-char ui_helpline__current[512];
 
 void ui_helpline__push(const char *msg)
 {
-	const size_t sz = sizeof(ui_helpline__current);
-
-	SLsmg_gotorc(SLtt_Screen_Rows - 1, 0);
-	SLsmg_set_color(0);
-	SLsmg_write_nstring((char *)msg, SLtt_Screen_Cols);
-	SLsmg_refresh();
-	strncpy(ui_helpline__current, msg, sz)[sz - 1] = '\0';
+	newtPushHelpLine(msg);
 }
 
 void ui_helpline__vpush(const char *fmt, va_list ap)
@@ -71,7 +63,7 @@ int ui_helpline__show_help(const char *format, va_list ap)
 
 	if (ui_helpline__last_msg[backlog - 1] == '\n') {
 		ui_helpline__puts(ui_helpline__last_msg);
-		SLsmg_refresh();
+		newtRefresh();
 		backlog = 0;
 	}
 	pthread_mutex_unlock(&ui__lock);

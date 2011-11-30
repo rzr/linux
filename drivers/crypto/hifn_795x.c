@@ -2744,8 +2744,10 @@ static int __init hifn_init(void)
 	unsigned int freq;
 	int err;
 
-	/* HIFN supports only 32-bit addresses */
-	BUILD_BUG_ON(sizeof(dma_addr_t) != 4);
+	if (sizeof(dma_addr_t) > 4) {
+		printk(KERN_INFO "HIFN supports only 32-bit addresses.\n");
+		return -EINVAL;
+	}
 
 	if (strncmp(hifn_pll_ref, "ext", 3) &&
 	    strncmp(hifn_pll_ref, "pci", 3)) {

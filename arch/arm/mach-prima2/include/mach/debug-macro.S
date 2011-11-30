@@ -9,7 +9,7 @@
 #include <mach/hardware.h>
 #include <mach/uart.h>
 
-	.macro	addruart, rp, rv, tmp
+	.macro	addruart, rp, rv
 	ldr	\rp, =SIRFSOC_UART1_PA_BASE		@ physical
 	ldr	\rv, =SIRFSOC_UART1_VA_BASE		@ virtual
 	.endm

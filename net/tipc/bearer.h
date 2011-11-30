@@ -39,8 +39,8 @@
 
 #include "bcast.h"
 
-#define MAX_BEARERS	2
-#define MAX_MEDIA	2
+#define MAX_BEARERS 8
+#define MAX_MEDIA 4
 
 /*
  * Identifiers of supported TIPC media types

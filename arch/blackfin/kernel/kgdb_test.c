@@ -50,7 +50,8 @@ void kgdb_l2_test(void)
 
 #endif
 
-noinline int kgdb_test(char *name, int len, int count, int z)
+
+int kgdb_test(char *name, int len, int count, int z)
 {
 	pr_alert("kgdb name(%d): %s, %d, %d\n", len, name, count, z);
 	count = z;

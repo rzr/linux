@@ -32,7 +32,7 @@ extern void __uc32_iounmap(volatile void __iomem *addr);
  * ioremap and friends.
  *
  * ioremap takes a PCI memory address, as specified in
- * Documentation/io-mapping.txt.
+ * Documentation/IO-mapping.txt.
  *
  */
 #define ioremap(cookie, size)		__uc32_ioremap(cookie, size)

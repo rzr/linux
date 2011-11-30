@@ -14,6 +14,7 @@
 #include <linux/ssb/ssb.h>
 #include <linux/ssb/ssb_driver_chipcommon.h>
 
+#include <linux/wireless.h>
 #include <net/mac80211.h>
 
 #include "debugfs.h"
@@ -21,6 +22,10 @@
 #include "rfkill.h"
 #include "phy.h"
 
+
+/* The unique identifier of the firmware that's officially supported by this
+ * driver version. */
+#define B43legacy_SUPPORTED_FIRMWARE_ID	"FW10"
 
 #define B43legacy_IRQWAIT_MAX_RETRIES	20
 
@@ -810,15 +815,15 @@ struct b43legacy_lopair *b43legacy_get_lopair(struct b43legacy_phy *phy,
 
 
 /* Message printing */
-__printf(2, 3)
-void b43legacyinfo(struct b43legacy_wl *wl, const char *fmt, ...);
-__printf(2, 3)
-void b43legacyerr(struct b43legacy_wl *wl, const char *fmt, ...);
-__printf(2, 3)
-void b43legacywarn(struct b43legacy_wl *wl, const char *fmt, ...);
+void b43legacyinfo(struct b43legacy_wl *wl, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
+void b43legacyerr(struct b43legacy_wl *wl, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
+void b43legacywarn(struct b43legacy_wl *wl, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
 #if B43legacy_DEBUG
-__printf(2, 3)
-void b43legacydbg(struct b43legacy_wl *wl, const char *fmt, ...);
+void b43legacydbg(struct b43legacy_wl *wl, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
 #else /* DEBUG */
 # define b43legacydbg(wl, fmt...) do { /* nothing */ } while (0)
 #endif /* DEBUG */

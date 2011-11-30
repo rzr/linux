@@ -15,19 +15,17 @@
 #include "../../fs/internal.h"
 
 /**
- * tomoyo_encode2 - Encode binary string to ascii string.
+ * tomoyo_encode: Convert binary string to ascii string.
  *
- * @str:     String in binary format.
- * @str_len: Size of @str in byte.
+ * @str: String in binary format.
  *
  * Returns pointer to @str in ascii format on success, NULL otherwise.
  *
  * This function uses kzalloc(), so caller must kfree() if this function
  * didn't return NULL.
  */
-char *tomoyo_encode2(const char *str, int str_len)
+char *tomoyo_encode(const char *str)
 {
-	int i;
 	int len = 0;
 	const char *p = str;
 	char *cp;
@@ -35,9 +33,8 @@ char *tomoyo_encode2(const char *str, int str_len)
 
 	if (!p)
 		return NULL;
-	for (i = 0; i < str_len; i++) {
-		const unsigned char c = p[i];
-
+	while (*p) {
+		const unsigned char c = *p++;
 		if (c == '\\')
 			len += 2;
 		else if (c > ' ' && c < 127)
@@ -52,8 +49,8 @@ char *tomoyo_encode2(const char *str, int str_len)
 		return NULL;
 	cp0 = cp;
 	p = str;
-	for (i = 0; i < str_len; i++) {
-		const unsigned char c = p[i];
+	while (*p) {
+		const unsigned char c = *p++;
 
 		if (c == '\\') {
 			*cp++ = '\\';
@@ -68,21 +65,6 @@ char *tomoyo_encode2(const char *str, int str_len)
 		}
 	}
 	return cp0;
-}
-
-/**
- * tomoyo_encode - Encode binary string to ascii string.
- *
- * @str: String in binary format.
- *
- * Returns pointer to @str in ascii format on success, NULL otherwise.
- *
- * This function uses kzalloc(), so caller must kfree() if this function
- * didn't return NULL.
- */
-char *tomoyo_encode(const char *str)
-{
-	return str ? tomoyo_encode2(str, strlen(str)) : NULL;
 }
 
 /**

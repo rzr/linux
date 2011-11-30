@@ -97,12 +97,18 @@ static struct mtd_partition __initdata snapper9260_nand_partitions[] = {
 	},
 };
 
+static struct mtd_partition * __init
+snapper9260_nand_partition_info(int size, int *num_partitions)
+{
+	*num_partitions = ARRAY_SIZE(snapper9260_nand_partitions);
+	return snapper9260_nand_partitions;
+}
+
 static struct atmel_nand_data __initdata snapper9260_nand_data = {
 	.ale		= 21,
 	.cle		= 22,
 	.rdy_pin	= AT91_PIN_PC13,
-	.parts		= snapper9260_nand_partitions,
-	.num_parts	= ARRAY_SIZE(snapper9260_nand_partitions),
+	.partition_info	= snapper9260_nand_partition_info,
 	.bus_width_16	= 0,
 };
 

@@ -1,5 +1,6 @@
-#include "../util.h"
+#include <newt.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/ttydefaults.h>
@@ -7,74 +8,71 @@
 #include "../cache.h"
 #include "../debug.h"
 #include "browser.h"
-#include "keysyms.h"
 #include "helpline.h"
 #include "ui.h"
 #include "util.h"
-#include "libslang.h"
 
-static void ui_browser__argv_write(struct ui_browser *browser,
-				   void *entry, int row)
+static void newt_form__set_exit_keys(newtComponent self)
 {
-	char **arg = entry;
-	bool current_entry = ui_browser__is_current_entry(browser, row);
-
-	ui_browser__set_color(browser, current_entry ? HE_COLORSET_SELECTED :
-						       HE_COLORSET_NORMAL);
-	slsmg_write_nstring(*arg, browser->width);
+	newtFormAddHotKey(self, NEWT_KEY_LEFT);
+	newtFormAddHotKey(self, NEWT_KEY_ESCAPE);
+	newtFormAddHotKey(self, 'Q');
+	newtFormAddHotKey(self, 'q');
+	newtFormAddHotKey(self, CTRL('c'));
 }
 
-static int popup_menu__run(struct ui_browser *menu)
+static newtComponent newt_form__new(void)
 {
-	int key;
-
-	if (ui_browser__show(menu, " ", "ESC: exit, ENTER|->: Select option") < 0)
-		return -1;
-
-	while (1) {
-		key = ui_browser__run(menu, 0);
-
-		switch (key) {
-		case K_RIGHT:
-		case K_ENTER:
-			key = menu->index;
-			break;
-		case K_LEFT:
-		case K_ESC:
-		case 'q':
-		case CTRL('c'):
-			key = -1;
-			break;
-		default:
-			continue;
-		}
-
-		break;
-	}
-
-	ui_browser__hide(menu);
-	return key;
+	newtComponent self = newtForm(NULL, NULL, 0);
+	if (self)
+		newt_form__set_exit_keys(self);
+	return self;
 }
 
 int ui__popup_menu(int argc, char * const argv[])
 {
-	struct ui_browser menu = {
-		.entries    = (void *)argv,
-		.refresh    = ui_browser__argv_refresh,
-		.seek	    = ui_browser__argv_seek,
-		.write	    = ui_browser__argv_write,
-		.nr_entries = argc,
-	};
+	struct newtExitStruct es;
+	int i, rc = -1, max_len = 5;
+	newtComponent listbox, form = newt_form__new();
 
-	return popup_menu__run(&menu);
+	if (form == NULL)
+		return -1;
+
+	listbox = newtListbox(0, 0, argc, NEWT_FLAG_RETURNEXIT);
+	if (listbox == NULL)
+		goto out_destroy_form;
+
+	newtFormAddComponent(form, listbox);
+
+	for (i = 0; i < argc; ++i) {
+		int len = strlen(argv[i]);
+		if (len > max_len)
+			max_len = len;
+		if (newtListboxAddEntry(listbox, argv[i], (void *)(long)i))
+			goto out_destroy_form;
+	}
+
+	newtCenteredWindow(max_len, argc, NULL);
+	newtFormRun(form, &es);
+	rc = newtListboxGetCurrent(listbox) - NULL;
+	if (es.reason == NEWT_EXIT_HOTKEY)
+		rc = -1;
+	newtPopWindow();
+out_destroy_form:
+	newtFormDestroy(form);
+	return rc;
 }
 
-int ui__question_window(const char *title, const char *text,
-			const char *exit_msg, int delay_secs)
+int ui__help_window(const char *text)
 {
-	int x, y;
+	struct newtExitStruct es;
+	newtComponent tb, form = newt_form__new();
+	int rc = -1;
 	int max_len = 0, nr_lines = 0;
 	const char *t;
+
+	if (form == NULL)
+		return -1;
 
 	t = text;
 	while (1) {
@@ -92,77 +90,41 @@ int ui__question_window(const char *title, const char *text,
 		t = sep + 1;
 	}
 
-	max_len += 2;
-	nr_lines += 4;
-	y = SLtt_Screen_Rows / 2 - nr_lines / 2,
-	x = SLtt_Screen_Cols / 2 - max_len / 2;
+	tb = newtTextbox(0, 0, max_len, nr_lines, 0);
+	if (tb == NULL)
+		goto out_destroy_form;
 
-	SLsmg_set_color(0);
-	SLsmg_draw_box(y, x++, nr_lines, max_len);
-	if (title) {
-		SLsmg_gotorc(y, x + 1);
-		SLsmg_write_string((char *)title);
-	}
-	SLsmg_gotorc(++y, x);
-	nr_lines -= 2;
-	max_len -= 2;
-	SLsmg_write_wrapped_string((unsigned char *)text, y, x,
-				   nr_lines, max_len, 1);
-	SLsmg_gotorc(y + nr_lines - 2, x);
-	SLsmg_write_nstring((char *)" ", max_len);
-	SLsmg_gotorc(y + nr_lines - 1, x);
-	SLsmg_write_nstring((char *)exit_msg, max_len);
-	SLsmg_refresh();
-	return ui__getch(delay_secs);
+	newtTextboxSetText(tb, text);
+	newtFormAddComponent(form, tb);
+	newtCenteredWindow(max_len, nr_lines, NULL);
+	newtFormRun(form, &es);
+	newtPopWindow();
+	rc = 0;
+out_destroy_form:
+	newtFormDestroy(form);
+	return rc;
 }
 
-int ui__help_window(const char *text)
+static const char yes[] = "Yes", no[] = "No",
+		  warning_str[] = "Warning!", ok[] = "Ok";
+
+bool ui__dialog_yesno(const char *msg)
 {
-	return ui__question_window("Help", text, "Press any key...", 0);
+	/* newtWinChoice should really be accepting const char pointers... */
+	return newtWinChoice(NULL, (char *)yes, (char *)no, (char *)msg) == 1;
 }
 
-int ui__dialog_yesno(const char *msg)
+void ui__warning(const char *format, ...)
 {
-	return ui__question_window(NULL, msg, "Enter: Yes, ESC: No", 0);
-}
+	va_list args;
 
-int __ui__warning(const char *title, const char *format, va_list args)
-{
-	char *s;
-
-	if (use_browser > 0 && vasprintf(&s, format, args) > 0) {
-		int key;
-
+	va_start(args, format);
+	if (use_browser > 0) {
 		pthread_mutex_lock(&ui__lock);
-		key = ui__question_window(title, s, "Press any key...", 0);
+		newtWinMessagev((char *)warning_str, (char *)ok,
+				(char *)format, args);
 		pthread_mutex_unlock(&ui__lock);
-		free(s);
-		return key;
-	}
-
-	fprintf(stderr, "%s:\n", title);
-	vfprintf(stderr, format, args);
-	return K_ESC;
-}
-
-int ui__warning(const char *format, ...)
-{
-	int key;
-	va_list args;
-
-	va_start(args, format);
-	key = __ui__warning("Warning", format, args);
+	} else
+		vfprintf(stderr, format, args);
 	va_end(args);
-	return key;
-}
-
-int ui__error(const char *format, ...)
-{
-	int key;
-	va_list args;
-
-	va_start(args, format);
-	key = __ui__warning("Error", format, args);
-	va_end(args);
-	return key;
 }

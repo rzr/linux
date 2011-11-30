@@ -46,7 +46,6 @@
 #include <linux/sched.h>
 #include <linux/gfp.h>
 #include <linux/errno.h>
-#include <linux/export.h>
 
 #include <linux/usb/quirks.h>
 

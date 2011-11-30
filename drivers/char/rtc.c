@@ -80,7 +80,6 @@
 #include <linux/bcd.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
-#include <linux/ratelimit.h>
 
 #include <asm/current.h>
 #include <asm/system.h>
@@ -1196,8 +1195,10 @@ static void rtc_dropped_irq(unsigned long data)
 
 	spin_unlock_irq(&rtc_lock);
 
-	printk_ratelimited(KERN_WARNING "rtc: lost some interrupts at %ldHz.\n",
-			   freq);
+	if (printk_ratelimit()) {
+		printk(KERN_WARNING "rtc: lost some interrupts at %ldHz.\n",
+			freq);
+	}
 
 	/* Now we have new data */
 	wake_up_interruptible(&rtc_wait);

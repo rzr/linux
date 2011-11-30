@@ -198,7 +198,7 @@ static int hfs_create(struct inode *dir, struct dentry *dentry, int mode,
 
 	res = hfs_cat_create(inode->i_ino, dir, &dentry->d_name, inode);
 	if (res) {
-		clear_nlink(inode);
+		inode->i_nlink = 0;
 		hfs_delete_inode(inode);
 		iput(inode);
 		return res;
@@ -227,7 +227,7 @@ static int hfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 
 	res = hfs_cat_create(inode->i_ino, dir, &dentry->d_name, inode);
 	if (res) {
-		clear_nlink(inode);
+		inode->i_nlink = 0;
 		hfs_delete_inode(inode);
 		iput(inode);
 		return res;

@@ -26,7 +26,6 @@
 */
 
 #include <linux/init.h>
-#include <linux/moduleparam.h>
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_dpi.h"
 #include "mdfld_dsi_output.h"

@@ -49,7 +49,6 @@
 
 #include <mach/regs-gpio.h>
 #include <mach/leds-gpio.h>
-#include <mach/regs-lcd.h>
 #include <plat/regs-serial.h>
 #include <mach/fb.h>
 #include <plat/nand.h>
@@ -345,7 +344,7 @@ static void __init qt2410_machine_init(void)
 }
 
 MACHINE_START(QT2410, "QT2410")
-	.atag_offset	= 0x100,
+	.boot_params	= S3C2410_SDRAM_PA + 0x100,
 	.map_io		= qt2410_map_io,
 	.init_irq	= s3c24xx_init_irq,
 	.init_machine	= qt2410_machine_init,

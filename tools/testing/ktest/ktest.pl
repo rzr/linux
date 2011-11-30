@@ -42,7 +42,6 @@ $default{"BISECT_MANUAL"}	= 0;
 $default{"BISECT_SKIP"}		= 1;
 $default{"SUCCESS_LINE"}	= "login:";
 $default{"DETECT_TRIPLE_FAULT"} = 1;
-$default{"NO_INSTALL"}		= 0;
 $default{"BOOTED_TIMEOUT"}	= 1;
 $default{"DIE_ON_FAILURE"}	= 1;
 $default{"SSH_EXEC"}		= "ssh \$SSH_USER\@\$MACHINE \$SSH_COMMAND";
@@ -85,7 +84,6 @@ my $grub_number;
 my $target;
 my $make;
 my $post_install;
-my $no_install;
 my $noclean;
 my $minconfig;
 my $start_minconfig;
@@ -117,7 +115,6 @@ my $timeout;
 my $booted_timeout;
 my $detect_triplefault;
 my $console;
-my $reboot_success_line;
 my $success_line;
 my $stop_after_success;
 my $stop_after_failure;
@@ -132,12 +129,6 @@ my %entered_configs;
 my %config_help;
 my %variable;
 my %force_config;
-
-# do not force reboots on config problems
-my $no_reboot = 1;
-
-# default variables that can be used
-chomp ($variable{"PWD"} = `pwd`);
 
 $config_help{"MACHINE"} = << "EOF"
  The machine hostname that you will test.
@@ -250,7 +241,6 @@ sub read_yn {
 
 sub get_ktest_config {
     my ($config) = @_;
-    my $ans;
 
     return if (defined($opt{$config}));
 
@@ -264,17 +254,16 @@ sub get_ktest_config {
 	if (defined($default{$config})) {
 	    print "\[$default{$config}\] ";
 	}
-	$ans = <STDIN>;
-	$ans =~ s/^\s*(.*\S)\s*$/$1/;
-	if ($ans =~ /^\s*$/) {
+	$entered_configs{$config} = <STDIN>;
+	$entered_configs{$config} =~ s/^\s*(.*\S)\s*$/$1/;
+	if ($entered_configs{$config} =~ /^\s*$/) {
 	    if ($default{$config}) {
-		$ans = $default{$config};
+		$entered_configs{$config} = $default{$config};
 	    } else {
 		print "Your answer can not be blank\n";
 		next;
 	    }
 	}
-	$entered_configs{$config} = process_variables($ans);
 	last;
     }
 }
@@ -309,7 +298,7 @@ sub get_ktest_configs {
 }
 
 sub process_variables {
-    my ($value, $remove_undef) = @_;
+    my ($value) = @_;
     my $retval = "";
 
     # We want to check for '\', and it is just easier
@@ -327,10 +316,6 @@ sub process_variables {
 	$retval = "$retval$begin";
 	if (defined($variable{$var})) {
 	    $retval = "$retval$variable{$var}";
-	} elsif (defined($remove_undef) && $remove_undef) {
-	    # for if statements, any variable that is not defined,
-	    # we simple convert to 0
-	    $retval = "${retval}0";
 	} else {
 	    # put back the origin piece.
 	    $retval = "$retval\$\{$var\}";
@@ -346,17 +331,10 @@ sub process_variables {
 }
 
 sub set_value {
-    my ($lvalue, $rvalue, $override, $overrides, $name) = @_;
+    my ($lvalue, $rvalue) = @_;
 
     if (defined($opt{$lvalue})) {
-	if (!$override || defined(${$overrides}{$lvalue})) {
-	    my $extra = "";
-	    if ($override) {
-		$extra = "In the same override section!\n";
-	    }
-	    die "$name: $.: Option $lvalue defined more than once!\n$extra";
-	}
-	${$overrides}{$lvalue} = $rvalue;
+	die "Error: Option $lvalue defined more than once!\n";
     }
     if ($rvalue =~ /^\s*$/) {
 	delete $opt{$lvalue};
@@ -377,272 +355,84 @@ sub set_variable {
     }
 }
 
-sub process_compare {
-    my ($lval, $cmp, $rval) = @_;
+sub read_config {
+    my ($config) = @_;
 
-    # remove whitespace
-
-    $lval =~ s/^\s*//;
-    $lval =~ s/\s*$//;
-
-    $rval =~ s/^\s*//;
-    $rval =~ s/\s*$//;
-
-    if ($cmp eq "==") {
-	return $lval eq $rval;
-    } elsif ($cmp eq "!=") {
-	return $lval ne $rval;
-    }
-
-    my $statement = "$lval $cmp $rval";
-    my $ret = eval $statement;
-
-    # $@ stores error of eval
-    if ($@) {
-	return -1;
-    }
-
-    return $ret;
-}
-
-sub value_defined {
-    my ($val) = @_;
-
-    return defined($variable{$2}) ||
-	defined($opt{$2});
-}
-
-my $d = 0;
-sub process_expression {
-    my ($name, $val) = @_;
-
-    my $c = $d++;
-
-    while ($val =~ s/\(([^\(]*?)\)/\&\&\&\&VAL\&\&\&\&/) {
-	my $express = $1;
-
-	if (process_expression($name, $express)) {
-	    $val =~ s/\&\&\&\&VAL\&\&\&\&/ 1 /;
-	} else {
-	    $val =~ s/\&\&\&\&VAL\&\&\&\&/ 0 /;
-	}
-    }
-
-    $d--;
-    my $OR = "\\|\\|";
-    my $AND = "\\&\\&";
-
-    while ($val =~ s/^(.*?)($OR|$AND)//) {
-	my $express = $1;
-	my $op = $2;
-
-	if (process_expression($name, $express)) {
-	    if ($op eq "||") {
-		return 1;
-	    }
-	} else {
-	    if ($op eq "&&") {
-		return 0;
-	    }
-	}
-    }
-
-    if ($val =~ /(.*)(==|\!=|>=|<=|>|<)(.*)/) {
-	my $ret = process_compare($1, $2, $3);
-	if ($ret < 0) {
-	    die "$name: $.: Unable to process comparison\n";
-	}
-	return $ret;
-    }
-
-    if ($val =~ /^\s*(NOT\s*)?DEFINED\s+(\S+)\s*$/) {
-	if (defined $1) {
-	    return !value_defined($2);
-	} else {
-	    return value_defined($2);
-	}
-    }
-
-    if ($val =~ /^\s*0\s*$/) {
-	return 0;
-    } elsif ($val =~ /^\s*\d+\s*$/) {
-	return 1;
-    }
-
-    die ("$name: $.: Undefined content $val in if statement\n");
-}
-
-sub process_if {
-    my ($name, $value) = @_;
-
-    # Convert variables and replace undefined ones with 0
-    my $val = process_variables($value, 1);
-    my $ret = process_expression $name, $val;
-
-    return $ret;
-}
-
-sub __read_config {
-    my ($config, $current_test_num) = @_;
-
-    my $in;
-    open($in, $config) || die "can't read file $config";
+    open(IN, $config) || die "can't read file $config";
 
     my $name = $config;
     $name =~ s,.*/(.*),$1,;
 
-    my $test_num = $$current_test_num;
+    my $test_num = 0;
     my $default = 1;
     my $repeat = 1;
     my $num_tests_set = 0;
     my $skip = 0;
     my $rest;
-    my $line;
     my $test_case = 0;
-    my $if = 0;
-    my $if_set = 0;
-    my $override = 0;
 
-    my %overrides;
-
-    while (<$in>) {
+    while (<IN>) {
 
 	# ignore blank lines and comments
 	next if (/^\s*$/ || /\s*\#/);
 
-	if (/^\s*(TEST_START|DEFAULTS)\b(.*)/) {
+	if (/^\s*TEST_START(.*)/) {
 
-	    my $type = $1;
-	    $rest = $2;
-	    $line = $2;
+	    $rest = $1;
 
-	    my $old_test_num;
-	    my $old_repeat;
-	    $override = 0;
-
-	    if ($type eq "TEST_START") {
-
-		if ($num_tests_set) {
-		    die "$name: $.: Can not specify both NUM_TESTS and TEST_START\n";
-		}
-
-		$old_test_num = $test_num;
-		$old_repeat = $repeat;
-
-		$test_num += $repeat;
-		$default = 0;
-		$repeat = 1;
-	    } else {
-		$default = 1;
+	    if ($num_tests_set) {
+		die "$name: $.: Can not specify both NUM_TESTS and TEST_START\n";
 	    }
 
-	    # If SKIP is anywhere in the line, the command will be skipped
-	    if ($rest =~ s/\s+SKIP\b//) {
+	    my $old_test_num = $test_num;
+	    my $old_repeat = $repeat;
+
+	    $test_num += $repeat;
+	    $default = 0;
+	    $repeat = 1;
+
+	    if ($rest =~ /\s+SKIP(.*)/) {
+		$rest = $1;
 		$skip = 1;
 	    } else {
 		$test_case = 1;
 		$skip = 0;
 	    }
 
-	    if ($rest =~ s/\sELSE\b//) {
-		if (!$if) {
-		    die "$name: $.: ELSE found with out matching IF section\n$_";
-		}
-		$if = 0;
-
-		if ($if_set) {
-		    $skip = 1;
-		} else {
-		    $skip = 0;
-		}
+	    if ($rest =~ /\s+ITERATE\s+(\d+)(.*)$/) {
+		$repeat = $1;
+		$rest = $2;
+		$repeat_tests{"$test_num"} = $repeat;
 	    }
 
-	    if ($rest =~ s/\sIF\s+(.*)//) {
-		if (process_if($name, $1)) {
-		    $if_set = 1;
-		} else {
-		    $skip = 1;
-		}
-		$if = 1;
-	    } else {
-		$if = 0;
-		$if_set = 0;
+	    if ($rest =~ /\s+SKIP(.*)/) {
+		$rest = $1;
+		$skip = 1;
 	    }
 
-	    if (!$skip) {
-		if ($type eq "TEST_START") {
-		    if ($rest =~ s/\s+ITERATE\s+(\d+)//) {
-			$repeat = $1;
-			$repeat_tests{"$test_num"} = $repeat;
-		    }
-		} elsif ($rest =~ s/\sOVERRIDE\b//) {
-		    # DEFAULT only
-		    $override = 1;
-		    # Clear previous overrides
-		    %overrides = ();
-		}
+	    if ($rest !~ /^\s*$/) {
+		die "$name: $.: Gargbage found after TEST_START\n$_";
 	    }
 
-	    if (!$skip && $rest !~ /^\s*$/) {
-		die "$name: $.: Gargbage found after $type\n$_";
-	    }
-
-	    if ($skip && $type eq "TEST_START") {
+	    if ($skip) {
 		$test_num = $old_test_num;
 		$repeat = $old_repeat;
 	    }
 
-	} elsif (/^\s*ELSE\b(.*)$/) {
-	    if (!$if) {
-		die "$name: $.: ELSE found with out matching IF section\n$_";
-	    }
+	} elsif (/^\s*DEFAULTS(.*)$/) {
+	    $default = 1;
+
 	    $rest = $1;
-	    if ($if_set) {
+
+	    if ($rest =~ /\s+SKIP(.*)/) {
+		$rest = $1;
 		$skip = 1;
-		$rest = "";
 	    } else {
 		$skip = 0;
-
-		if ($rest =~ /\sIF\s+(.*)/) {
-		    # May be a ELSE IF section.
-		    if (!process_if($name, $1)) {
-			$skip = 1;
-		    }
-		    $rest = "";
-		} else {
-		    $if = 0;
-		}
 	    }
 
 	    if ($rest !~ /^\s*$/) {
 		die "$name: $.: Gargbage found after DEFAULTS\n$_";
-	    }
-
-	} elsif (/^\s*INCLUDE\s+(\S+)/) {
-
-	    next if ($skip);
-
-	    if (!$default) {
-		die "$name: $.: INCLUDE can only be done in default sections\n$_";
-	    }
-
-	    my $file = process_variables($1);
-
-	    if ($file !~ m,^/,) {
-		# check the path of the config file first
-		if ($config =~ m,(.*)/,) {
-		    if (-f "$1/$file") {
-			$file = "$1/$file";
-		    }
-		}
-	    }
-		
-	    if ( ! -r $file ) {
-		die "$name: $.: Can't read file $file\n$_";
-	    }
-
-	    if (__read_config($file, \$test_num)) {
-		$test_case = 1;
 	    }
 
 	} elsif (/^\s*([A-Z_\[\]\d]+)\s*=\s*(.*?)\s*$/) {
@@ -670,10 +460,10 @@ sub __read_config {
 	    }
 
 	    if ($default || $lvalue =~ /\[\d+\]$/) {
-		set_value($lvalue, $rvalue, $override, \%overrides, $name);
+		set_value($lvalue, $rvalue);
 	    } else {
 		my $val = "$lvalue\[$test_num\]";
-		set_value($val, $rvalue, $override, \%overrides, $name);
+		set_value($val, $rvalue);
 
 		if ($repeat > 1) {
 		    $repeats{$val} = $repeat;
@@ -700,25 +490,12 @@ sub __read_config {
 	}
     }
 
+    close(IN);
+
     if ($test_num) {
 	$test_num += $repeat - 1;
 	$opt{"NUM_TESTS"} = $test_num;
     }
-
-    close($in);
-
-    $$current_test_num = $test_num;
-
-    return $test_case;
-}
-
-sub read_config {
-    my ($config) = @_;
-
-    my $test_case;
-    my $test_num = 0;
-
-    $test_case = __read_config $config, \$test_num;
 
     # make sure we have all mandatory configs
     get_ktest_configs;
@@ -826,20 +603,8 @@ sub doprint {
 }
 
 sub run_command;
-sub start_monitor;
-sub end_monitor;
-sub wait_for_monitor;
 
 sub reboot {
-    my ($time) = @_;
-
-    if (defined($time)) {
-	start_monitor;
-	# flush out current monitor
-	# May contain the reboot success line
-	wait_for_monitor 1;
-    }
-
     # try to reboot normally
     if (run_command $reboot) {
 	if (defined($powercycle_after_reboot)) {
@@ -850,17 +615,12 @@ sub reboot {
 	# nope? power cycle it.
 	run_command "$power_cycle";
     }
-
-    if (defined($time)) {
-	wait_for_monitor($time, $reboot_success_line);
-	end_monitor;
-    }
 }
 
 sub do_not_reboot {
     my $i = $iteration;
 
-    return $test_type eq "build" || $no_reboot ||
+    return $test_type eq "build" ||
 	($test_type eq "patchcheck" && $opt{"PATCHCHECK_TYPE[$i]"} eq "build") ||
 	($test_type eq "bisect" && $opt{"BISECT_TYPE[$i]"} eq "build");
 }
@@ -933,29 +693,16 @@ sub end_monitor {
 }
 
 sub wait_for_monitor {
-    my ($time, $stop) = @_;
-    my $full_line = "";
+    my ($time) = @_;
     my $line;
-    my $booted = 0;
 
     doprint "** Wait for monitor to settle down **\n";
 
     # read the monitor and wait for the system to calm down
-    while (!$booted) {
+    do {
 	$line = wait_for_input($monitor_fp, $time);
-	last if (!defined($line));
-	print "$line";
-	$full_line .= $line;
-
-	if (defined($stop) && $full_line =~ /$stop/) {
-	    doprint "wait for monitor detected $stop\n";
-	    $booted = 1;
-	}
-
-	if ($line =~ /\n/) {
-	    $full_line = "";
-	}
-    }
+	print "$line" if (defined($line));
+    } while (defined($line));
     print "** Monitor flushed **\n";
 }
 
@@ -972,7 +719,10 @@ sub fail {
 	# no need to reboot for just building.
 	if (!do_not_reboot) {
 	    doprint "REBOOTING\n";
-	    reboot $sleep_time;
+	    reboot;
+	    start_monitor;
+	    wait_for_monitor $sleep_time;
+	    end_monitor;
 	}
 
 	my $name = "";
@@ -1104,12 +854,9 @@ sub get_grub_index {
     open(IN, "$ssh_grub |")
 	or die "unable to get menu.lst";
 
-    my $found = 0;
-
     while (<IN>) {
 	if (/^\s*title\s+$grub_menu\s*$/) {
 	    $grub_number++;
-	    $found = 1;
 	    last;
 	} elsif (/^\s*title\s/) {
 	    $grub_number++;
@@ -1118,7 +865,7 @@ sub get_grub_index {
     close(IN);
 
     die "Could not find '$grub_menu' in /boot/grub/menu on $machine"
-	if (!$found);
+	if ($grub_number < 0);
     doprint "$grub_number\n";
 }
 
@@ -1155,8 +902,7 @@ sub wait_for_input
 
 sub reboot_to {
     if ($reboot_type eq "grub") {
-	run_ssh "'(echo \"savedefault --default=$grub_number --once\" | grub --batch)'";
-	reboot;
+	run_ssh "'(echo \"savedefault --default=$grub_number --once\" | grub --batch && reboot)'";
 	return;
     }
 
@@ -1337,8 +1083,6 @@ sub do_post_install {
 
 sub install {
 
-    return if ($no_install);
-
     run_scp "$outputdir/$build_target", "$target_image" or
 	dodie "failed to copy image";
 
@@ -1396,11 +1140,6 @@ sub get_version {
 }
 
 sub start_monitor_and_boot {
-    # Make sure the stable kernel has finished booting
-    start_monitor;
-    wait_for_monitor 5;
-    end_monitor;
-
     get_grub_index;
     get_version;
     install;
@@ -1511,10 +1250,6 @@ sub build {
 
     unlink $buildlog;
 
-    # Failed builds should not reboot the target
-    my $save_no_reboot = $no_reboot;
-    $no_reboot = 1;
-
     if (defined($pre_build)) {
 	my $ret = run_command $pre_build;
 	if (!$ret && defined($pre_build_die) &&
@@ -1537,15 +1272,15 @@ sub build {
 	# allow for empty configs
 	run_command "touch $output_config";
 
-	if (!$noclean) {
-	    run_command "mv $output_config $outputdir/config_temp" or
-		dodie "moving .config";
+	run_command "mv $output_config $outputdir/config_temp" or
+	    dodie "moving .config";
 
-	    run_command "$make mrproper" or dodie "make mrproper";
-
-	    run_command "mv $outputdir/config_temp $output_config" or
-		dodie "moving config_temp";
+	if (!$noclean && !run_command "$make mrproper") {
+	    dodie "make mrproper";
 	}
+
+	run_command "mv $outputdir/config_temp $output_config" or
+	    dodie "moving config_temp";
 
     } elsif (!$noclean) {
 	unlink "$output_config";
@@ -1583,14 +1318,9 @@ sub build {
 
     if (!$build_ret) {
 	# bisect may need this to pass
-	if ($in_bisect) {
-	    $no_reboot = $save_no_reboot;
-	    return 0;
-	}
+	return 0 if ($in_bisect);
 	fail "failed build" and return 0;
     }
-
-    $no_reboot = $save_no_reboot;
 
     return 1;
 }
@@ -1626,7 +1356,10 @@ sub success {
 
     if ($i != $opt{"NUM_TESTS"} && !do_not_reboot) {
 	doprint "Reboot and wait $sleep_time seconds\n";
-	reboot $sleep_time;
+	reboot;
+	start_monitor;
+	wait_for_monitor $sleep_time;
+	end_monitor;
     }
 }
 
@@ -1767,7 +1500,10 @@ sub run_git_bisect {
 
 sub bisect_reboot {
     doprint "Reboot and sleep $bisect_sleep_time seconds\n";
-    reboot $bisect_sleep_time;
+    reboot;
+    start_monitor;
+    wait_for_monitor $bisect_sleep_time;
+    end_monitor;
 }
 
 # returns 1 on success, 0 on failure, -1 on skip
@@ -2330,7 +2066,10 @@ sub config_bisect {
 
 sub patchcheck_reboot {
     doprint "Reboot and sleep $patchcheck_sleep_time seconds\n";
-    reboot $patchcheck_sleep_time;
+    reboot;
+    start_monitor;
+    wait_for_monitor $patchcheck_sleep_time;
+    end_monitor;
 }
 
 sub patchcheck {
@@ -2439,30 +2178,11 @@ sub patchcheck {
 }
 
 my %depends;
-my %depcount;
 my $iflevel = 0;
 my @ifdeps;
 
 # prevent recursion
 my %read_kconfigs;
-
-sub add_dep {
-    # $config depends on $dep
-    my ($config, $dep) = @_;
-
-    if (defined($depends{$config})) {
-	$depends{$config} .= " " . $dep;
-    } else {
-	$depends{$config} = $dep;
-    }
-
-    # record the number of configs depending on $dep
-    if (defined $depcount{$dep}) {
-	$depcount{$dep}++;
-    } else {
-	$depcount{$dep} = 1;
-    } 
-}
 
 # taken from streamline_config.pl
 sub read_kconfig {
@@ -2510,19 +2230,30 @@ sub read_kconfig {
 	    $config = $2;
 
 	    for (my $i = 0; $i < $iflevel; $i++) {
-		add_dep $config, $ifdeps[$i];
+		if ($i) {
+		    $depends{$config} .= " " . $ifdeps[$i];
+		} else {
+		    $depends{$config} = $ifdeps[$i];
+		}
+		$state = "DEP";
 	    }
 
 	# collect the depends for the config
 	} elsif ($state eq "NEW" && /^\s*depends\s+on\s+(.*)$/) {
 
-	    add_dep $config, $1;
+	    if (defined($depends{$1})) {
+		$depends{$config} .= " " . $1;
+	    } else {
+		$depends{$config} = $1;
+	    }
 
 	# Get the configs that select this config
-	} elsif ($state eq "NEW" && /^\s*select\s+(\S+)/) {
-
-	    # selected by depends on config
-	    add_dep $1, $config;
+	} elsif ($state ne "NONE" && /^\s*select\s+(\S+)/) {
+	    if (defined($depends{$1})) {
+		$depends{$1} .= " " . $config;
+	    } else {
+		$depends{$1} = $config;
+	    }
 
 	# Check for if statements
 	} elsif (/^if\s+(.*\S)\s*$/) {
@@ -2634,18 +2365,11 @@ sub make_new_config {
     close OUT;
 }
 
-sub chomp_config {
-    my ($config) = @_;
-
-    $config =~ s/CONFIG_//;
-
-    return $config;
-}
-
 sub get_depends {
     my ($dep) = @_;
 
-    my $kconfig = chomp_config $dep;
+    my $kconfig = $dep;
+    $kconfig =~ s/CONFIG_//;
 
     $dep = $depends{"$kconfig"};
 
@@ -2695,7 +2419,8 @@ sub test_this_config {
 	return undef;
     }
 
-    my $kconfig = chomp_config $config;
+    my $kconfig = $config;
+    $kconfig =~ s/CONFIG_//;
 
     # Test dependencies first
     if (defined($depends{"$kconfig"})) {
@@ -2785,14 +2510,6 @@ sub make_min_config {
 
     my @config_keys = keys %min_configs;
 
-    # All configs need a depcount
-    foreach my $config (@config_keys) {
-	my $kconfig = chomp_config $config;
-	if (!defined $depcount{$kconfig}) {
-		$depcount{$kconfig} = 0;
-	}
-    }
-
     # Remove anything that was set by the make allnoconfig
     # we shouldn't need them as they get set for us anyway.
     foreach my $config (@config_keys) {
@@ -2831,13 +2548,8 @@ sub make_min_config {
 	# Now disable each config one by one and do a make oldconfig
 	# till we find a config that changes our list.
 
-	my @test_configs = keys %min_configs;
-
-	# Sort keys by who is most dependent on
-	@test_configs = sort  { $depcount{chomp_config($b)} <=> $depcount{chomp_config($a)} }
-			  @test_configs ;
-
 	# Put configs that did not modify the config at the end.
+	my @test_configs = keys %min_configs;
 	my $reset = 1;
 	for (my $i = 0; $i < $#test_configs; $i++) {
 	    if (!defined($nochange_config{$test_configs[0]})) {
@@ -2947,7 +2659,10 @@ sub make_min_config {
 	}
 
 	doprint "Reboot and wait $sleep_time seconds\n";
-	reboot $sleep_time;
+	reboot;
+	start_monitor;
+	wait_for_monitor $sleep_time;
+	end_monitor;
     }
 
     success $i;
@@ -3068,9 +2783,6 @@ sub set_test_option {
 # First we need to do is the builds
 for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
 
-    # Do not reboot on failing test options
-    $no_reboot = 1;
-
     $iteration = $i;
 
     my $makecmd = set_test_option("MAKE_CMD", $i);
@@ -3099,7 +2811,6 @@ for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
     $reboot_type = set_test_option("REBOOT_TYPE", $i);
     $grub_menu = set_test_option("GRUB_MENU", $i);
     $post_install = set_test_option("POST_INSTALL", $i);
-    $no_install = set_test_option("NO_INSTALL", $i);
     $reboot_script = set_test_option("REBOOT_SCRIPT", $i);
     $reboot_on_error = set_test_option("REBOOT_ON_ERROR", $i);
     $poweroff_on_error = set_test_option("POWEROFF_ON_ERROR", $i);
@@ -3121,7 +2832,6 @@ for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
     $console = set_test_option("CONSOLE", $i);
     $detect_triplefault = set_test_option("DETECT_TRIPLE_FAULT", $i);
     $success_line = set_test_option("SUCCESS_LINE", $i);
-    $reboot_success_line = set_test_option("REBOOT_SUCCESS_LINE", $i);
     $stop_after_success = set_test_option("STOP_AFTER_SUCCESS", $i);
     $stop_after_failure = set_test_option("STOP_AFTER_FAILURE", $i);
     $stop_test_after = set_test_option("STOP_TEST_AFTER", $i);
@@ -3140,11 +2850,9 @@ for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
 
     chdir $builddir || die "can't change directory to $builddir";
 
-    foreach my $dir ($tmpdir, $outputdir) {
-	if (!-d $dir) {
-	    mkpath($dir) or
-		die "can't create $dir";
-	}
+    if (!-d $tmpdir) {
+	mkpath($tmpdir) or
+	    die "can't create $tmpdir";
     }
 
     $ENV{"SSH_USER"} = $ssh_user;
@@ -3181,11 +2889,8 @@ for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
 	$run_type = "ERROR";
     }
 
-    my $installme = "";
-    $installme = " no_install" if ($no_install);
-
     doprint "\n\n";
-    doprint "RUNNING TEST $i of $opt{NUM_TESTS} with option $test_type $run_type$installme\n\n";
+    doprint "RUNNING TEST $i of $opt{NUM_TESTS} with option $test_type $run_type\n\n";
 
     unlink $dmesg;
     unlink $buildlog;
@@ -3206,9 +2911,6 @@ for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
 	    die "failed to checkout $checkout";
     }
 
-    $no_reboot = 0;
-
-
     if ($test_type eq "bisect") {
 	bisect $i;
 	next;
@@ -3225,13 +2927,6 @@ for (my $i = 1; $i <= $opt{"NUM_TESTS"}; $i++) {
 
     if ($build_type ne "nobuild") {
 	build $build_type or next;
-    }
-
-    if ($test_type eq "install") {
-	get_version;
-	install;
-	success $i;
-	next;
     }
 
     if ($test_type ne "build") {

@@ -335,7 +335,7 @@ static struct snd_soc_dai_ops ep93xx_ac97_dai_ops = {
 	.trigger	= ep93xx_ac97_trigger,
 };
 
-static struct snd_soc_dai_driver ep93xx_ac97_dai = {
+struct snd_soc_dai_driver ep93xx_ac97_dai = {
 	.name		= "ep93xx-ac97",
 	.id		= 0,
 	.ac97_control	= 1,

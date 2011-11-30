@@ -10,7 +10,6 @@
 
 #include <linux/ssb/ssb.h>
 #include <linux/ssb/ssb_regs.h>
-#include <linux/export.h>
 #include <linux/pci.h>
 
 #include "ssb_private.h"

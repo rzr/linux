@@ -11,7 +11,7 @@
  *
 */
 
-		.macro	addruart, rp, rv, tmp
+		.macro	addruart, rp, rv
 		mov	\rp, #0x16000000	@ physical base address
 		mov	\rv, #0xf0000000	@ virtual base
 		add	\rv, \rv, #0x16000000 >> 4

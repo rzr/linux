@@ -122,6 +122,12 @@ static void evergreen_cs_track_init(struct evergreen_cs_track *track)
 	track->db_s_write_bo = NULL;
 }
 
+static inline int evergreen_cs_track_validate_cb(struct radeon_cs_parser *p, int i)
+{
+	/* XXX fill in */
+	return 0;
+}
+
 static int evergreen_cs_track_check(struct radeon_cs_parser *p)
 {
 	struct evergreen_cs_track *track = p->track;
@@ -227,6 +233,28 @@ static int evergreen_cs_packet_next_reloc(struct radeon_cs_parser *p,
 	/* FIXME: we assume reloc size is 4 dwords */
 	*cs_reloc = p->relocs_ptr[(idx / 4)];
 	return 0;
+}
+
+/**
+ * evergreen_cs_packet_next_is_pkt3_nop() - test if next packet is packet3 nop for reloc
+ * @parser:		parser structure holding parsing context.
+ *
+ * Check next packet is relocation packet3, do bo validation and compute
+ * GPU offset using the provided start.
+ **/
+static inline int evergreen_cs_packet_next_is_pkt3_nop(struct radeon_cs_parser *p)
+{
+	struct radeon_cs_packet p3reloc;
+	int r;
+
+	r = evergreen_cs_packet_parse(p, &p3reloc, p->idx);
+	if (r) {
+		return 0;
+	}
+	if (p3reloc.type != PACKET_TYPE3 || p3reloc.opcode != PACKET3_NOP) {
+		return 0;
+	}
+	return 1;
 }
 
 /**
@@ -386,7 +414,7 @@ static int evergreen_cs_parse_packet0(struct radeon_cs_parser *p,
  * if register is safe. If register is not flag as safe this function
  * will test it against a list of register needind special handling.
  */
-static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
+static inline int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 {
 	struct evergreen_cs_track *track = (struct evergreen_cs_track *)p->track;
 	struct radeon_cs_reloc *reloc;
@@ -962,7 +990,7 @@ static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
  * This function will check that the resource has valid field and that
  * the texture and mipmap bo object are big enough to cover this resource.
  */
-static int evergreen_check_texture_resource(struct radeon_cs_parser *p,  u32 idx,
+static inline int evergreen_check_texture_resource(struct radeon_cs_parser *p,  u32 idx,
 						   struct radeon_bo *texture,
 						   struct radeon_bo *mipmap)
 {

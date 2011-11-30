@@ -296,8 +296,7 @@ static void carl9170_tx_release(struct kref *ref)
 			super = (void *)skb->data;
 			txinfo->status.ampdu_len = super->s.rix;
 			txinfo->status.ampdu_ack_len = super->s.cnt;
-		} else if ((txinfo->flags & IEEE80211_TX_STAT_ACK) &&
-			   !(txinfo->flags & IEEE80211_TX_CTL_REQ_TX_STATUS)) {
+		} else if (txinfo->flags & IEEE80211_TX_STAT_ACK) {
 			/*
 			 * drop redundant tx_status reports:
 			 *
@@ -309,17 +308,15 @@ static void carl9170_tx_release(struct kref *ref)
 			 *
 			 * 3. minstrel_ht is picky, it only accepts
 			 *    reports of frames with the TX_STATUS_AMPDU flag.
-			 *
-			 * 4. mac80211 is not particularly interested in
-			 *    feedback either [CTL_REQ_TX_STATUS not set]
 			 */
 
 			dev_kfree_skb_any(skb);
 			return;
 		} else {
 			/*
-			 * Either the frame transmission has failed or
-			 * mac80211 requested tx status.
+			 * Frame has failed, but we want to keep it in
+			 * case it was lost due to a power-state
+			 * transition.
 			 */
 		}
 	}

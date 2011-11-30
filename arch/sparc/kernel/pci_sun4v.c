@@ -12,7 +12,6 @@
 #include <linux/percpu.h>
 #include <linux/irq.h>
 #include <linux/msi.h>
-#include <linux/export.h>
 #include <linux/log2.h>
 #include <linux/of_device.h>
 

@@ -387,7 +387,7 @@ static int __devinit highlander_i2c_probe(struct platform_device *pdev)
 		dev->irq = 0;
 
 	if (dev->irq) {
-		ret = request_irq(dev->irq, highlander_i2c_irq, 0,
+		ret = request_irq(dev->irq, highlander_i2c_irq, IRQF_DISABLED,
 				  pdev->name, dev);
 		if (unlikely(ret))
 			goto err_unmap;

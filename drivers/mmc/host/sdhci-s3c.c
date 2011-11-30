@@ -203,23 +203,17 @@ static void sdhci_s3c_set_clock(struct sdhci_host *host, unsigned int clock)
 		writel(ctrl, host->ioaddr + S3C_SDHCI_CONTROL2);
 	}
 
-	/* reprogram default hardware configuration */
-	writel(S3C64XX_SDHCI_CONTROL4_DRIVE_9mA,
-		host->ioaddr + S3C64XX_SDHCI_CONTROL4);
+	/* reconfigure the hardware for new clock rate */
 
-	ctrl = readl(host->ioaddr + S3C_SDHCI_CONTROL2);
-	ctrl |= (S3C64XX_SDHCI_CTRL2_ENSTAASYNCCLR |
-		  S3C64XX_SDHCI_CTRL2_ENCMDCNFMSK |
-		  S3C_SDHCI_CTRL2_ENFBCLKRX |
-		  S3C_SDHCI_CTRL2_DFCNT_NONE |
-		  S3C_SDHCI_CTRL2_ENCLKOUTHOLD);
-	writel(ctrl, host->ioaddr + S3C_SDHCI_CONTROL2);
+	{
+		struct mmc_ios ios;
 
-	/* reconfigure the controller for new clock rate */
-	ctrl = (S3C_SDHCI_CTRL3_FCSEL1 | S3C_SDHCI_CTRL3_FCSEL0);
-	if (clock < 25 * 1000000)
-		ctrl |= (S3C_SDHCI_CTRL3_FCSEL3 | S3C_SDHCI_CTRL3_FCSEL2);
-	writel(ctrl, host->ioaddr + S3C_SDHCI_CONTROL3);
+		ios.clock = clock;
+
+		if (ourhost->pdata->cfg_card)
+			(ourhost->pdata->cfg_card)(ourhost->pdev, host->ioaddr,
+						   &ios, NULL);
+	}
 }
 
 /**
@@ -567,10 +561,8 @@ static int __devinit sdhci_s3c_probe(struct platform_device *pdev)
 
  err_req_regs:
 	for (ptr = 0; ptr < MAX_BUS_CLK; ptr++) {
-		if (sc->clk_bus[ptr]) {
-			clk_disable(sc->clk_bus[ptr]);
-			clk_put(sc->clk_bus[ptr]);
-		}
+		clk_disable(sc->clk_bus[ptr]);
+		clk_put(sc->clk_bus[ptr]);
 	}
 
  err_no_busclks:

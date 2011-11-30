@@ -82,7 +82,8 @@ static int _DoC_WaitReady(struct DiskOnChip *doc)
 	void __iomem *docptr = doc->virtadr;
 	unsigned long timeo = jiffies + (HZ * 10);
 
-	pr_debug("_DoC_WaitReady called for out-of-line wait\n");
+	DEBUG(MTD_DEBUG_LEVEL3,
+	      "_DoC_WaitReady called for out-of-line wait\n");
 
 	/* Out-of-line routine to wait for chip response */
 	while (!(ReadDOC(docptr, CDSNControl) & CDSN_CTRL_FR_B)) {
@@ -91,7 +92,7 @@ static int _DoC_WaitReady(struct DiskOnChip *doc)
 		DoC_Delay(doc, 2);
 
 		if (time_after(jiffies, timeo)) {
-			pr_debug("_DoC_WaitReady timed out.\n");
+			DEBUG(MTD_DEBUG_LEVEL2, "_DoC_WaitReady timed out.\n");
 			return -EIO;
 		}
 		udelay(1);
@@ -322,7 +323,8 @@ static int DoC_IdentChip(struct DiskOnChip *doc, int floor, int chip)
 
 	/* Reset the chip */
 	if (DoC_Command(doc, NAND_CMD_RESET, CDSN_CTRL_WP)) {
-		pr_debug("DoC_Command (reset) for %d,%d returned true\n",
+		DEBUG(MTD_DEBUG_LEVEL2,
+		      "DoC_Command (reset) for %d,%d returned true\n",
 		      floor, chip);
 		return 0;
 	}
@@ -330,7 +332,8 @@ static int DoC_IdentChip(struct DiskOnChip *doc, int floor, int chip)
 
 	/* Read the NAND chip ID: 1. Send ReadID command */
 	if (DoC_Command(doc, NAND_CMD_READID, CDSN_CTRL_WP)) {
-		pr_debug("DoC_Command (ReadID) for %d,%d returned true\n",
+		DEBUG(MTD_DEBUG_LEVEL2,
+		      "DoC_Command (ReadID) for %d,%d returned true\n",
 		      floor, chip);
 		return 0;
 	}
@@ -696,7 +699,7 @@ static int doc_read(struct mtd_info *mtd, loff_t from, size_t len,
 #ifdef ECC_DEBUG
 			printk(KERN_ERR "DiskOnChip ECC Error: Read at %lx\n", (long)from);
 #endif
-			/* Read the ECC syndrome through the DiskOnChip ECC
+			/* Read the ECC syndrom through the DiskOnChip ECC
 			   logic.  These syndrome will be all ZERO when there
 			   is no error */
 			for (i = 0; i < 6; i++) {
@@ -927,7 +930,7 @@ static int doc_read_oob(struct mtd_info *mtd, loff_t ofs,
 	uint8_t *buf = ops->oobbuf;
 	size_t len = ops->len;
 
-	BUG_ON(ops->mode != MTD_OPS_PLACE_OOB);
+	BUG_ON(ops->mode != MTD_OOB_PLACE);
 
 	ofs += ops->ooboffs;
 
@@ -1091,7 +1094,7 @@ static int doc_write_oob(struct mtd_info *mtd, loff_t ofs,
 	struct DiskOnChip *this = mtd->priv;
 	int ret;
 
-	BUG_ON(ops->mode != MTD_OPS_PLACE_OOB);
+	BUG_ON(ops->mode != MTD_OOB_PLACE);
 
 	mutex_lock(&this->lock);
 	ret = doc_write_oob_nolock(mtd, ofs + ops->ooboffs, ops->len,

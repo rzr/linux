@@ -90,6 +90,11 @@ static struct mtd_partition nand_partitions[] = {
 	},
 };
 
+static struct mtd_partition *nand_part_info(int size, int *num_partitions)
+{
+	*num_partitions = ARRAY_SIZE(nand_partitions);
+	return nand_partitions;
+}
 
 static struct atmel_nand_data atngw100mkii_nand_data __initdata = {
 	.cle		= 21,
@@ -97,8 +102,7 @@ static struct atmel_nand_data atngw100mkii_nand_data __initdata = {
 	.rdy_pin	= GPIO_PIN_PB(28),
 	.enable_pin	= GPIO_PIN_PE(23),
 	.bus_width_16	= true,
-	.parts		= nand_partitions,
-	.num_parts	= ARRAY_SIZE(nand_partitions),
+	.partition_info	= nand_part_info,
 };
 #endif
 

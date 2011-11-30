@@ -33,8 +33,8 @@
 #include <mach/regs-gpio.h>
 #include <mach/regs-modem.h>
 #include <mach/regs-srom.h>
+#include <mach/s3c6410.h>
 
-#include <plat/s3c6410.h>
 #include <plat/adc.h>
 #include <plat/cpu.h>
 #include <plat/devs.h>
@@ -198,6 +198,12 @@ static struct platform_device *real6410_devices[] __initdata = {
 	&s3c_device_ohci,
 };
 
+static struct s3c2410_ts_mach_info s3c_ts_platform __initdata = {
+	.delay			= 10000,
+	.presc			= 49,
+	.oversampling_shift	= 2,
+};
+
 static void __init real6410_map_io(void)
 {
 	u32 tmp;
@@ -294,7 +300,7 @@ static void __init real6410_machine_init(void)
 
 	s3c_fb_set_platdata(&real6410_lcd_pdata);
 	s3c_nand_set_platdata(&real6410_nand_info);
-	s3c24xx_ts_set_platdata(NULL);
+	s3c24xx_ts_set_platdata(&s3c_ts_platform);
 
 	/* configure nCS1 width to 16 bits */
 
@@ -323,7 +329,7 @@ static void __init real6410_machine_init(void)
 
 MACHINE_START(REAL6410, "REAL6410")
 	/* Maintainer: Darius Augulis <augulis.darius@gmail.com> */
-	.atag_offset	= 0x100,
+	.boot_params	= S3C64XX_PA_SDRAM + 0x100,
 
 	.init_irq	= s3c6410_init_irq,
 	.map_io		= real6410_map_io,

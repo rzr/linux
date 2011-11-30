@@ -7,7 +7,7 @@
  * License version 2.  This program is licensed "as is" without any
  * warranty of any kind, whether express or implied.
  */
-#include <linux/gpio.h>
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -21,6 +21,7 @@
 #include <linux/serial_reg.h>
 #include <linux/ata_platform.h>
 #include <asm/mach-types.h>
+#include <asm/gpio.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/pci.h>
 #include <mach/orion5x.h>
@@ -379,7 +380,7 @@ static void __init kurobox_pro_init(void)
 #ifdef CONFIG_MACH_KUROBOX_PRO
 MACHINE_START(KUROBOX_PRO, "Buffalo/Revogear Kurobox Pro")
 	/* Maintainer: Ronen Shitrit <rshitrit@marvell.com> */
-	.atag_offset	= 0x100,
+	.boot_params	= 0x00000100,
 	.init_machine	= kurobox_pro_init,
 	.map_io		= orion5x_map_io,
 	.init_early	= orion5x_init_early,
@@ -392,7 +393,7 @@ MACHINE_END
 #ifdef CONFIG_MACH_LINKSTATION_PRO
 MACHINE_START(LINKSTATION_PRO, "Buffalo Linkstation Pro/Live")
 	/* Maintainer: Byron Bradley <byron.bbradley@gmail.com> */
-	.atag_offset	= 0x100,
+	.boot_params	= 0x00000100,
 	.init_machine	= kurobox_pro_init,
 	.map_io		= orion5x_map_io,
 	.init_early	= orion5x_init_early,

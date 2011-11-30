@@ -53,6 +53,8 @@
 #include "powerdomain.h"
 #include "clockdomain.h"
 
+static int omap2_pm_debug;
+
 #ifdef CONFIG_SUSPEND
 static suspend_state_t suspend_state = PM_SUSPEND_ON;
 static inline bool is_suspending(void)
@@ -94,6 +96,7 @@ static int omap2_fclks_active(void)
 static void omap2_enter_full_retention(void)
 {
 	u32 l;
+	struct timespec ts_preidle, ts_postidle, ts_idle;
 
 	/* There is 1 reference hold for all children of the oscillator
 	 * clock, the following will remove it. If no one else uses the
@@ -120,6 +123,10 @@ static void omap2_enter_full_retention(void)
 	omap_ctrl_writel(l, OMAP2_CONTROL_DEVCONF0);
 
 	omap2_gpio_prepare_for_idle(0);
+
+	if (omap2_pm_debug) {
+		getnstimeofday(&ts_preidle);
+	}
 
 	/* One last check for pending IRQs to avoid extra latency due
 	 * to sleeping unnecessarily. */
@@ -148,6 +155,13 @@ static void omap2_enter_full_retention(void)
 		console_unlock();
 
 no_sleep:
+	if (omap2_pm_debug) {
+		unsigned long long tmp;
+
+		getnstimeofday(&ts_postidle);
+		ts_idle = timespec_sub(ts_postidle, ts_preidle);
+		tmp = timespec_to_ns(&ts_idle) * NSEC_PER_USEC;
+	}
 	omap2_gpio_resume_after_idle();
 
 	clk_enable(osc_ck);
@@ -205,6 +219,7 @@ static int omap2_allow_mpu_retention(void)
 static void omap2_enter_mpu_retention(void)
 {
 	int only_idle = 0;
+	struct timespec ts_preidle, ts_postidle, ts_idle;
 
 	/* Putting MPU into the WFI state while a transfer is active
 	 * seems to cause the I2C block to timeout. Why? Good question. */
@@ -231,7 +246,19 @@ static void omap2_enter_mpu_retention(void)
 		only_idle = 1;
 	}
 
+	if (omap2_pm_debug) {
+		getnstimeofday(&ts_preidle);
+	}
+
 	omap2_sram_idle();
+
+	if (omap2_pm_debug) {
+		unsigned long long tmp;
+
+		getnstimeofday(&ts_postidle);
+		ts_idle = timespec_sub(ts_postidle, ts_preidle);
+		tmp = timespec_to_ns(&ts_idle) * NSEC_PER_USEC;
+	}
 }
 
 static int omap2_can_sleep(void)

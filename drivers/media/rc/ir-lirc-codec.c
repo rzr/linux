@@ -14,7 +14,6 @@
 
 #include <linux/sched.h>
 #include <linux/wait.h>
-#include <linux/module.h>
 #include <media/lirc.h>
 #include <media/lirc_dev.h>
 #include <media/rc-core.h>
@@ -99,7 +98,7 @@ static int ir_lirc_decode(struct rc_dev *dev, struct ir_raw_event ev)
 	return 0;
 }
 
-static ssize_t ir_lirc_transmit_ir(struct file *file, const char __user *buf,
+static ssize_t ir_lirc_transmit_ir(struct file *file, const char *buf,
 				   size_t n, loff_t *ppos)
 {
 	struct lirc_codec *lirc;
@@ -141,11 +140,10 @@ out:
 }
 
 static long ir_lirc_ioctl(struct file *filep, unsigned int cmd,
-			unsigned long arg)
+			unsigned long __user arg)
 {
 	struct lirc_codec *lirc;
 	struct rc_dev *dev;
-	u32 __user *argp = (u32 __user *)(arg);
 	int ret = 0;
 	__u32 val = 0, tmp;
 
@@ -158,7 +156,7 @@ static long ir_lirc_ioctl(struct file *filep, unsigned int cmd,
 		return -EFAULT;
 
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
-		ret = get_user(val, argp);
+		ret = get_user(val, (__u32 *)arg);
 		if (ret)
 			return ret;
 	}
@@ -267,7 +265,7 @@ static long ir_lirc_ioctl(struct file *filep, unsigned int cmd,
 	}
 
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		ret = put_user(val, argp);
+		ret = put_user(val, (__u32 *)arg);
 
 	return ret;
 }

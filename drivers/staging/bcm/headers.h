@@ -74,6 +74,4 @@
 #define DRV_VERSION	VER_FILEVERSION_STR
 #define PFX		DRV_NAME " "
 
-extern struct class *bcm_class;
-
 #endif

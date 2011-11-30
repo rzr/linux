@@ -45,21 +45,16 @@ static void __init __omap2_set_globals(struct omap_globals *omap2_globals)
 static struct omap_globals omap242x_globals = {
 	.class	= OMAP242X_CLASS,
 	.tap	= OMAP2_L4_IO_ADDRESS(0x48014000),
-	.sdrc	= OMAP2_L3_IO_ADDRESS(OMAP2420_SDRC_BASE),
-	.sms	= OMAP2_L3_IO_ADDRESS(OMAP2420_SMS_BASE),
-	.ctrl	= OMAP2_L4_IO_ADDRESS(OMAP242X_CTRL_BASE),
-	.prm	= OMAP2_L4_IO_ADDRESS(OMAP2420_PRM_BASE),
-	.cm	= OMAP2_L4_IO_ADDRESS(OMAP2420_CM_BASE),
+	.sdrc	= OMAP2420_SDRC_BASE,
+	.sms	= OMAP2420_SMS_BASE,
+	.ctrl	= OMAP242X_CTRL_BASE,
+	.prm	= OMAP2420_PRM_BASE,
+	.cm	= OMAP2420_CM_BASE,
 };
 
 void __init omap2_set_globals_242x(void)
 {
 	__omap2_set_globals(&omap242x_globals);
-}
-
-void __init omap242x_map_io(void)
-{
-	omap242x_map_common_io();
 }
 #endif
 
@@ -68,21 +63,16 @@ void __init omap242x_map_io(void)
 static struct omap_globals omap243x_globals = {
 	.class	= OMAP243X_CLASS,
 	.tap	= OMAP2_L4_IO_ADDRESS(0x4900a000),
-	.sdrc	= OMAP2_L3_IO_ADDRESS(OMAP243X_SDRC_BASE),
-	.sms	= OMAP2_L3_IO_ADDRESS(OMAP243X_SMS_BASE),
-	.ctrl	= OMAP2_L4_IO_ADDRESS(OMAP243X_CTRL_BASE),
-	.prm	= OMAP2_L4_IO_ADDRESS(OMAP2430_PRM_BASE),
-	.cm	= OMAP2_L4_IO_ADDRESS(OMAP2430_CM_BASE),
+	.sdrc	= OMAP243X_SDRC_BASE,
+	.sms	= OMAP243X_SMS_BASE,
+	.ctrl	= OMAP243X_CTRL_BASE,
+	.prm	= OMAP2430_PRM_BASE,
+	.cm	= OMAP2430_CM_BASE,
 };
 
 void __init omap2_set_globals_243x(void)
 {
 	__omap2_set_globals(&omap243x_globals);
-}
-
-void __init omap243x_map_io(void)
-{
-	omap243x_map_common_io();
 }
 #endif
 
@@ -91,11 +81,11 @@ void __init omap243x_map_io(void)
 static struct omap_globals omap3_globals = {
 	.class	= OMAP343X_CLASS,
 	.tap	= OMAP2_L4_IO_ADDRESS(0x4830A000),
-	.sdrc	= OMAP2_L3_IO_ADDRESS(OMAP343X_SDRC_BASE),
-	.sms	= OMAP2_L3_IO_ADDRESS(OMAP343X_SMS_BASE),
-	.ctrl	= OMAP2_L4_IO_ADDRESS(OMAP343X_CTRL_BASE),
-	.prm	= OMAP2_L4_IO_ADDRESS(OMAP3430_PRM_BASE),
-	.cm	= OMAP2_L4_IO_ADDRESS(OMAP3430_CM_BASE),
+	.sdrc	= OMAP343X_SDRC_BASE,
+	.sms	= OMAP343X_SMS_BASE,
+	.ctrl	= OMAP343X_CTRL_BASE,
+	.prm	= OMAP3430_PRM_BASE,
+	.cm	= OMAP3430_CM_BASE,
 };
 
 void __init omap2_set_globals_3xxx(void)
@@ -105,6 +95,7 @@ void __init omap2_set_globals_3xxx(void)
 
 void __init omap3_map_io(void)
 {
+	omap2_set_globals_3xxx();
 	omap34xx_map_common_io();
 }
 
@@ -119,9 +110,9 @@ void __init omap3_map_io(void)
 static struct omap_globals ti816x_globals = {
 	.class  = OMAP343X_CLASS,
 	.tap    = OMAP2_L4_IO_ADDRESS(TI816X_TAP_BASE),
-	.ctrl   = OMAP2_L4_IO_ADDRESS(TI816X_CTRL_BASE),
-	.prm    = OMAP2_L4_IO_ADDRESS(TI816X_PRCM_BASE),
-	.cm     = OMAP2_L4_IO_ADDRESS(TI816X_PRCM_BASE),
+	.ctrl   = TI816X_CTRL_BASE,
+	.prm    = TI816X_PRCM_BASE,
+	.cm     = TI816X_PRCM_BASE,
 };
 
 void __init omap2_set_globals_ti816x(void)
@@ -134,11 +125,11 @@ void __init omap2_set_globals_ti816x(void)
 static struct omap_globals omap4_globals = {
 	.class	= OMAP443X_CLASS,
 	.tap	= OMAP2_L4_IO_ADDRESS(OMAP443X_SCM_BASE),
-	.ctrl	= OMAP2_L4_IO_ADDRESS(OMAP443X_SCM_BASE),
-	.ctrl_pad	= OMAP2_L4_IO_ADDRESS(OMAP443X_CTRL_BASE),
-	.prm	= OMAP2_L4_IO_ADDRESS(OMAP4430_PRM_BASE),
-	.cm	= OMAP2_L4_IO_ADDRESS(OMAP4430_CM_BASE),
-	.cm2	= OMAP2_L4_IO_ADDRESS(OMAP4430_CM2_BASE),
+	.ctrl	= OMAP443X_SCM_BASE,
+	.ctrl_pad	= OMAP443X_CTRL_BASE,
+	.prm	= OMAP4430_PRM_BASE,
+	.cm	= OMAP4430_CM_BASE,
+	.cm2	= OMAP4430_CM2_BASE,
 };
 
 void __init omap2_set_globals_443x(void)
@@ -146,11 +137,6 @@ void __init omap2_set_globals_443x(void)
 	omap2_set_globals_tap(&omap4_globals);
 	omap2_set_globals_control(&omap4_globals);
 	omap2_set_globals_prcm(&omap4_globals);
-}
-
-void __init omap4_map_io(void)
-{
-	omap44xx_map_common_io();
 }
 #endif
 

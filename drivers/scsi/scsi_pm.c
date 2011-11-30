@@ -6,7 +6,6 @@
  */
 
 #include <linux/pm_runtime.h>
-#include <linux/export.h>
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_device.h>

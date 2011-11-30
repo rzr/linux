@@ -93,7 +93,7 @@ static void __init nxdkn_init(void)
 }
 
 MACHINE_START(NXDKN, "Hilscher nxdkn")
-	.atag_offset	= 0x100,
+	.boot_params	= 0x80000100,
 	.map_io		= netx_map_io,
 	.init_irq	= netx_init_irq,
 	.timer		= &netx_timer,

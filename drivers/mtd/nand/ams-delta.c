@@ -26,7 +26,7 @@
 #include <asm/io.h>
 #include <mach/hardware.h>
 #include <asm/sizes.h>
-#include <asm/gpio.h>
+#include <mach/gpio.h>
 #include <plat/board-ams-delta.h>
 
 /*

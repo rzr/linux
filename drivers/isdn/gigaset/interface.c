@@ -14,7 +14,6 @@
 #include "gigaset.h"
 #include <linux/gigaset_dev.h>
 #include <linux/tty_flip.h>
-#include <linux/module.h>
 
 /*** our ioctls ***/
 

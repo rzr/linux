@@ -139,10 +139,21 @@ void mid_disable_pipe_event(struct drm_psb_private *dev_priv, int pipe)
 }
 
 /**
+ * Display controller interrupt handler for vsync/vblank.
+ *
+ */
+static void mid_vblank_handler(struct drm_device *dev, uint32_t pipe)
+{
+	drm_handle_vblank(dev, pipe);
+}
+
+
+/**
  * Display controller interrupt handler for pipe event.
  *
  */
-static void mid_pipe_event_handler(struct drm_device *dev, int pipe)
+#define WAIT_STATUS_CLEAR_LOOP_COUNT 0xffff
+static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 {
 	struct drm_psb_private *dev_priv =
 	    (struct drm_psb_private *) dev->dev_private;
@@ -151,7 +162,6 @@ static void mid_pipe_event_handler(struct drm_device *dev, int pipe)
 	uint32_t pipe_stat_reg = psb_pipestat(pipe);
 	uint32_t pipe_enable = dev_priv->pipestat[pipe];
 	uint32_t pipe_status = dev_priv->pipestat[pipe] >> 16;
-	uint32_t pipe_clear;
 	uint32_t i = 0;
 
 	spin_lock(&dev_priv->irqmask_lock);
@@ -162,23 +172,27 @@ static void mid_pipe_event_handler(struct drm_device *dev, int pipe)
 
 	spin_unlock(&dev_priv->irqmask_lock);
 
-	/* Clear the 2nd level interrupt status bits
-	 * Sometimes the bits are very sticky so we repeat until they unstick */
-	for (i = 0; i < 0xffff; i++) {
+	/* clear the 2nd level interrupt status bits */
+	/**
+	* FIXME: shouldn't use while loop here. However, the interrupt
+	* status 'sticky' bits cannot be cleared by setting '1' to that
+	* bit once...
+	*/
+	for (i = 0; i < WAIT_STATUS_CLEAR_LOOP_COUNT; i++) {
 		PSB_WVDC32(PSB_RVDC32(pipe_stat_reg), pipe_stat_reg);
-		pipe_clear = PSB_RVDC32(pipe_stat_reg) & pipe_status;
+		(void) PSB_RVDC32(pipe_stat_reg);
 
-		if (pipe_clear == 0)
+		if ((PSB_RVDC32(pipe_stat_reg) & pipe_status) == 0)
 			break;
 	}
 
-	if (pipe_clear)
+	if (i == WAIT_STATUS_CLEAR_LOOP_COUNT)
 		dev_err(dev->dev,
-		"%s, can't clear status bits for pipe %d, its value = 0x%x.\n",
-		__func__, pipe, PSB_RVDC32(pipe_stat_reg));
+	"%s, can't clear the status bits in pipe_stat_reg, its value = 0x%x.\n",
+			__func__, PSB_RVDC32(pipe_stat_reg));
 
 	if (pipe_stat_val & PIPE_VBLANK_STATUS)
-		drm_handle_vblank(dev, pipe);
+		mid_vblank_handler(dev, pipe);
 
 	if (pipe_stat_val & PIPE_TE_STATUS)
 		drm_handle_vblank(dev, pipe);
@@ -189,11 +203,8 @@ static void mid_pipe_event_handler(struct drm_device *dev, int pipe)
  */
 static void psb_vdc_interrupt(struct drm_device *dev, uint32_t vdc_stat)
 {
-	if (vdc_stat & _PSB_VSYNC_PIPEA_FLAG)
+	if (vdc_stat & _PSB_PIPEA_EVENT_FLAG)
 		mid_pipe_event_handler(dev, 0);
-
-	if (vdc_stat & _PSB_VSYNC_PIPEB_FLAG)
-		mid_pipe_event_handler(dev, 1);
 }
 
 irqreturn_t psb_irq_handler(DRM_IRQ_ARGS)
@@ -209,13 +220,8 @@ irqreturn_t psb_irq_handler(DRM_IRQ_ARGS)
 
 	vdc_stat = PSB_RVDC32(PSB_INT_IDENTITY_R);
 
-	if (vdc_stat & _PSB_PIPE_EVENT_FLAG)
-		dsp_int = 1;
-
-	/* FIXME: Handle Medfield
 	if (vdc_stat & _MDFLD_DISP_ALL_IRQ_FLAG)
 		dsp_int = 1;
-	*/
 
 	if (vdc_stat & _PSB_IRQ_SGX_FLAG)
 		sgx_int = 1;
@@ -261,18 +267,13 @@ void psb_irq_preinstall(struct drm_device *dev)
 	if (gma_power_is_on(dev))
 		PSB_WVDC32(0xFFFFFFFF, PSB_HWSTAM);
 	if (dev->vblank_enabled[0])
-		dev_priv->vdc_irq_mask |= _PSB_VSYNC_PIPEA_FLAG;
-	if (dev->vblank_enabled[1])
-		dev_priv->vdc_irq_mask |= _PSB_VSYNC_PIPEB_FLAG;
-
-	/* FIXME: Handle Medfield irq mask
+		dev_priv->vdc_irq_mask |= _PSB_PIPEA_EVENT_FLAG;
 	if (dev->vblank_enabled[1])
 		dev_priv->vdc_irq_mask |= _MDFLD_PIPEB_EVENT_FLAG;
 	if (dev->vblank_enabled[2])
 		dev_priv->vdc_irq_mask |= _MDFLD_PIPEC_EVENT_FLAG;
-	*/
 
-	/* This register is safe even if display island is off */
+	/*This register is safe even if display island is off*/
 	PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
 	spin_unlock_irqrestore(&dev_priv->irqmask_lock, irqflags);
 }
@@ -470,13 +471,7 @@ int psb_enable_vblank(struct drm_device *dev, int pipe)
 
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 
-	if (pipe == 0)
-		dev_priv->vdc_irq_mask |= _PSB_VSYNC_PIPEA_FLAG;
-	else if (pipe == 1)
-		dev_priv->vdc_irq_mask |= _PSB_VSYNC_PIPEB_FLAG;
-
-	PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
-	PSB_WVDC32(dev_priv->vdc_irq_mask, PSB_INT_ENABLE_R);
+	mid_enable_pipe_event(dev_priv, pipe);
 	psb_enable_pipestat(dev_priv, pipe, PIPE_VBLANK_INTERRUPT_ENABLE);
 
 	spin_unlock_irqrestore(&dev_priv->irqmask_lock, irqflags);
@@ -498,13 +493,7 @@ void psb_disable_vblank(struct drm_device *dev, int pipe)
 #endif
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 
-	if (pipe == 0)
-		dev_priv->vdc_irq_mask &= ~_PSB_VSYNC_PIPEA_FLAG;
-	else if (pipe == 1)
-		dev_priv->vdc_irq_mask &= ~_PSB_VSYNC_PIPEB_FLAG;
-
-	PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
-	PSB_WVDC32(dev_priv->vdc_irq_mask, PSB_INT_ENABLE_R);
+	mid_disable_pipe_event(dev_priv, pipe);
 	psb_disable_pipestat(dev_priv, pipe, PIPE_VBLANK_INTERRUPT_ENABLE);
 
 	spin_unlock_irqrestore(&dev_priv->irqmask_lock, irqflags);

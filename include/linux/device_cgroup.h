@@ -1,3 +1,4 @@
+#include <linux/module.h>
 #include <linux/fs.h>
 
 #ifdef CONFIG_CGROUP_DEVICE

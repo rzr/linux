@@ -16,6 +16,7 @@
 #include <sys/mman.h>
 #include <sys/param.h>
 #include "asm/types.h"
+#include "user.h"
 #include "ubd_user.h"
 #include "os.h"
 #include "cow.h"

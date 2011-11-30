@@ -72,14 +72,11 @@ struct symbol_conf {
 			use_modules,
 			sort_by_name,
 			show_nr_samples,
-			show_total_period,
 			use_callchain,
 			exclude_other,
 			show_cpu_utilization,
 			initialized,
-			kptr_restrict,
-			annotate_asm_raw,
-			annotate_src;
+			kptr_restrict;
 	const char	*vmlinux_name,
 			*kallsyms_name,
 			*source_prefix,

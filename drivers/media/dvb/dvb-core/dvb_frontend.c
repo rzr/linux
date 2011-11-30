@@ -149,24 +149,29 @@ static void dvb_frontend_add_event(struct dvb_frontend *fe, fe_status_t status)
 
 	dprintk ("%s\n", __func__);
 
-	if ((status & FE_HAS_LOCK) && fe->ops.get_frontend)
-		fe->ops.get_frontend(fe, &fepriv->parameters_out);
-
-	mutex_lock(&events->mtx);
+	if (mutex_lock_interruptible (&events->mtx))
+		return;
 
 	wp = (events->eventw + 1) % MAX_EVENT;
+
 	if (wp == events->eventr) {
 		events->overflow = 1;
 		events->eventr = (events->eventr + 1) % MAX_EVENT;
 	}
 
 	e = &events->events[events->eventw];
-	e->status = status;
+
+	if (status & FE_HAS_LOCK)
+		if (fe->ops.get_frontend)
+			fe->ops.get_frontend(fe, &fepriv->parameters_out);
+
 	e->parameters = fepriv->parameters_out;
 
 	events->eventw = wp;
 
 	mutex_unlock(&events->mtx);
+
+	e->status = status;
 
 	wake_up_interruptible (&events->wait_queue);
 }
@@ -202,22 +207,17 @@ static int dvb_frontend_get_event(struct dvb_frontend *fe,
 			return ret;
 	}
 
-	mutex_lock(&events->mtx);
-	*event = events->events[events->eventr];
+	if (mutex_lock_interruptible (&events->mtx))
+		return -ERESTARTSYS;
+
+	memcpy (event, &events->events[events->eventr],
+		sizeof(struct dvb_frontend_event));
+
 	events->eventr = (events->eventr + 1) % MAX_EVENT;
+
 	mutex_unlock(&events->mtx);
 
 	return 0;
-}
-
-static void dvb_frontend_clear_events(struct dvb_frontend *fe)
-{
-	struct dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct dvb_fe_events *events = &fepriv->events;
-
-	mutex_lock(&events->mtx);
-	events->eventr = events->eventw;
-	mutex_unlock(&events->mtx);
 }
 
 static void dvb_frontend_init(struct dvb_frontend *fe)
@@ -537,6 +537,7 @@ static int dvb_frontend_thread(void *data)
 {
 	struct dvb_frontend *fe = data;
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
+	unsigned long timeout;
 	fe_status_t s;
 	enum dvbfe_algo algo;
 
@@ -557,7 +558,7 @@ static int dvb_frontend_thread(void *data)
 	while (1) {
 		up(&fepriv->sem);	    /* is locked when we enter the thread... */
 restart:
-		wait_event_interruptible_timeout(fepriv->wait_queue,
+		timeout = wait_event_interruptible_timeout(fepriv->wait_queue,
 			dvb_frontend_should_wakeup(fe) || kthread_should_stop()
 				|| freezing(current),
 			fepriv->delay);
@@ -576,10 +577,12 @@ restart:
 
 		if (fepriv->reinitialise) {
 			dvb_frontend_init(fe);
-			if (fe->ops.set_tone && fepriv->tone != -1)
+			if (fepriv->tone != -1) {
 				fe->ops.set_tone(fe, fepriv->tone);
-			if (fe->ops.set_voltage && fepriv->voltage != -1)
+			}
+			if (fepriv->voltage != -1) {
 				fe->ops.set_voltage(fe, fepriv->voltage);
+			}
 			fepriv->reinitialise = 0;
 		}
 
@@ -1016,29 +1019,6 @@ static int is_legacy_delivery_system(fe_delivery_system_t s)
 	return 0;
 }
 
-/* Initialize the cache with some default values derived from the
- * legacy frontend_info structure.
- */
-static void dtv_property_cache_init(struct dvb_frontend *fe,
-				    struct dtv_frontend_properties *c)
-{
-	switch (fe->ops.info.type) {
-	case FE_QPSK:
-		c->modulation = QPSK;   /* implied for DVB-S in legacy API */
-		c->rolloff = ROLLOFF_35;/* implied for DVB-S */
-		c->delivery_system = SYS_DVBS;
-		break;
-	case FE_QAM:
-		c->delivery_system = SYS_DVBC_ANNEX_AC;
-		break;
-	case FE_OFDM:
-		c->delivery_system = SYS_DVBT;
-		break;
-	case FE_ATSC:
-		break;
-	}
-}
-
 /* Synchronise the legacy tuning parameters into the cache, so that demodulator
  * drivers can use a single set_frontend tuning function, regardless of whether
  * it's being used for the legacy or new API, reducing code and complexity.
@@ -1052,13 +1032,17 @@ static void dtv_property_cache_sync(struct dvb_frontend *fe,
 
 	switch (fe->ops.info.type) {
 	case FE_QPSK:
+		c->modulation = QPSK;   /* implied for DVB-S in legacy API */
+		c->rolloff = ROLLOFF_35;/* implied for DVB-S */
 		c->symbol_rate = p->u.qpsk.symbol_rate;
 		c->fec_inner = p->u.qpsk.fec_inner;
+		c->delivery_system = SYS_DVBS;
 		break;
 	case FE_QAM:
 		c->symbol_rate = p->u.qam.symbol_rate;
 		c->fec_inner = p->u.qam.fec_inner;
 		c->modulation = p->u.qam.modulation;
+		c->delivery_system = SYS_DVBC_ANNEX_AC;
 		break;
 	case FE_OFDM:
 		if (p->u.ofdm.bandwidth == BANDWIDTH_6_MHZ)
@@ -1076,6 +1060,7 @@ static void dtv_property_cache_sync(struct dvb_frontend *fe,
 		c->transmission_mode = p->u.ofdm.transmission_mode;
 		c->guard_interval = p->u.ofdm.guard_interval;
 		c->hierarchy = p->u.ofdm.hierarchy_information;
+		c->delivery_system = SYS_DVBT;
 		break;
 	case FE_ATSC:
 		c->modulation = p->u.vsb.modulation;
@@ -1147,13 +1132,16 @@ static void dtv_property_adv_params_sync(struct dvb_frontend *fe)
 	p->frequency = c->frequency;
 	p->inversion = c->inversion;
 
-	if (c->delivery_system == SYS_DSS ||
-	    c->delivery_system == SYS_DVBS ||
-	    c->delivery_system == SYS_DVBS2 ||
-	    c->delivery_system == SYS_ISDBS ||
-	    c->delivery_system == SYS_TURBO) {
+	switch(c->modulation) {
+	case PSK_8:
+	case APSK_16:
+	case APSK_32:
+	case QPSK:
 		p->u.qpsk.symbol_rate = c->symbol_rate;
 		p->u.qpsk.fec_inner = c->fec_inner;
+		break;
+	default:
+		break;
 	}
 
 	/* Fake out a generic DVB-T request so we pass validation in the ioctl */
@@ -1836,16 +1824,8 @@ static int dvb_frontend_ioctl_legacy(struct file *file,
 
 			memcpy (&fepriv->parameters_in, parg,
 				sizeof (struct dvb_frontend_parameters));
-			dtv_property_cache_init(fe, c);
 			dtv_property_cache_sync(fe, c, &fepriv->parameters_in);
 		}
-
-		/*
-		 * Initialize output parameters to match the values given by
-		 * the user. FE_SET_FRONTEND triggers an initial frontend event
-		 * with status = 0, which copies output parameters to userspace.
-		 */
-		fepriv->parameters_out = fepriv->parameters_in;
 
 		memset(&fetunesettings, 0, sizeof(struct dvb_frontend_tune_settings));
 		memcpy(&fetunesettings.parameters, parg,
@@ -1904,9 +1884,8 @@ static int dvb_frontend_ioctl_legacy(struct file *file,
 		/* Request the search algorithm to search */
 		fepriv->algo_status |= DVBFE_ALGO_SEARCH_AGAIN;
 
-		dvb_frontend_clear_events(fe);
-		dvb_frontend_add_event(fe, 0);
 		dvb_frontend_wakeup(fe);
+		dvb_frontend_add_event(fe, 0);
 		fepriv->status = 0;
 		err = 0;
 		break;

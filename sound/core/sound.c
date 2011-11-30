@@ -23,7 +23,7 @@
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/device.h>
-#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/info.h>

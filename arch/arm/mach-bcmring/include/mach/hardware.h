@@ -22,6 +22,7 @@
 #define __ASM_ARCH_HARDWARE_H
 
 #include <asm/sizes.h>
+#include <mach/memory.h>
 #include <cfg_global.h>
 #include <mach/csp/mm_io.h>
 
@@ -30,7 +31,7 @@
  *  *_SIZE  is the size of the region
  *  *_BASE  is the virtual address
  */
-#define RAM_START               PHYS_OFFSET
+#define RAM_START               PLAT_PHYS_OFFSET
 
 #define RAM_SIZE                (CFG_GLOBAL_RAM_SIZE-CFG_GLOBAL_RAM_SIZE_RESERVED)
 #define RAM_BASE                PAGE_OFFSET

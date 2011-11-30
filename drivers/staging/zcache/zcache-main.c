@@ -651,7 +651,7 @@ static unsigned int zv_max_zsize = (PAGE_SIZE / 8) * 7;
 /*
  * byte count defining poor *mean* compression; pages with greater zsize
  * will be rejected until sufficient better-compressed pages are accepted
- * driving the mean below this threshold
+ * driving the man below this threshold
  */
 static unsigned int zv_max_mean_zsize = (PAGE_SIZE / 8) * 5;
 
@@ -962,6 +962,15 @@ out:
 static unsigned long zcache_failed_get_free_pages;
 static unsigned long zcache_failed_alloc;
 static unsigned long zcache_put_to_flush;
+static unsigned long zcache_aborted_preload;
+static unsigned long zcache_aborted_shrink;
+
+/*
+ * Ensure that memory allocation requests in zcache don't result
+ * in direct reclaim requests via the shrinker, which would cause
+ * an infinite loop.  Maybe a GFP flag would be better?
+ */
+static DEFINE_SPINLOCK(zcache_direct_reclaim_lock);
 
 /*
  * for now, used named slabs so can easily track usage; later can
@@ -1000,6 +1009,10 @@ static int zcache_do_preload(struct tmem_pool *pool)
 		goto out;
 	if (unlikely(zcache_obj_cache == NULL))
 		goto out;
+	if (!spin_trylock(&zcache_direct_reclaim_lock)) {
+		zcache_aborted_preload++;
+		goto out;
+	}
 	preempt_disable();
 	kp = &__get_cpu_var(zcache_preloads);
 	while (kp->nr < ARRAY_SIZE(kp->objnodes)) {
@@ -1008,7 +1021,7 @@ static int zcache_do_preload(struct tmem_pool *pool)
 				ZCACHE_GFP_MASK);
 		if (unlikely(objnode == NULL)) {
 			zcache_failed_alloc++;
-			goto out;
+			goto unlock_out;
 		}
 		preempt_disable();
 		kp = &__get_cpu_var(zcache_preloads);
@@ -1021,13 +1034,13 @@ static int zcache_do_preload(struct tmem_pool *pool)
 	obj = kmem_cache_alloc(zcache_obj_cache, ZCACHE_GFP_MASK);
 	if (unlikely(obj == NULL)) {
 		zcache_failed_alloc++;
-		goto out;
+		goto unlock_out;
 	}
 	page = (void *)__get_free_page(ZCACHE_GFP_MASK);
 	if (unlikely(page == NULL)) {
 		zcache_failed_get_free_pages++;
 		kmem_cache_free(zcache_obj_cache, obj);
-		goto out;
+		goto unlock_out;
 	}
 	preempt_disable();
 	kp = &__get_cpu_var(zcache_preloads);
@@ -1040,6 +1053,8 @@ static int zcache_do_preload(struct tmem_pool *pool)
 	else
 		free_page((unsigned long)page);
 	ret = 0;
+unlock_out:
+	spin_unlock(&zcache_direct_reclaim_lock);
 out:
 	return ret;
 }
@@ -1342,14 +1357,8 @@ static int zcache_cpu_notifier(struct notifier_block *nb,
 			kp->objnodes[kp->nr - 1] = NULL;
 			kp->nr--;
 		}
-		if (kp->obj) {
-			kmem_cache_free(zcache_obj_cache, kp->obj);
-			kp->obj = NULL;
-		}
-		if (kp->page) {
-			free_page((unsigned long)kp->page);
-			kp->page = NULL;
-		}
+		kmem_cache_free(zcache_obj_cache, kp->obj);
+		free_page((unsigned long)kp->page);
 		break;
 	default:
 		break;
@@ -1414,6 +1423,8 @@ ZCACHE_SYSFS_RO(evicted_buddied_pages);
 ZCACHE_SYSFS_RO(failed_get_free_pages);
 ZCACHE_SYSFS_RO(failed_alloc);
 ZCACHE_SYSFS_RO(put_to_flush);
+ZCACHE_SYSFS_RO(aborted_preload);
+ZCACHE_SYSFS_RO(aborted_shrink);
 ZCACHE_SYSFS_RO(compress_poor);
 ZCACHE_SYSFS_RO(mean_compress_poor);
 ZCACHE_SYSFS_RO_ATOMIC(zbud_curr_raw_pages);
@@ -1455,6 +1466,8 @@ static struct attribute *zcache_attrs[] = {
 	&zcache_failed_get_free_pages_attr.attr,
 	&zcache_failed_alloc_attr.attr,
 	&zcache_put_to_flush_attr.attr,
+	&zcache_aborted_preload_attr.attr,
+	&zcache_aborted_shrink_attr.attr,
 	&zcache_zbud_unbuddied_list_counts_attr.attr,
 	&zcache_zbud_cumul_chunk_counts_attr.attr,
 	&zcache_zv_curr_dist_counts_attr.attr,
@@ -1494,7 +1507,11 @@ static int shrink_zcache_memory(struct shrinker *shrink,
 		if (!(gfp_mask & __GFP_FS))
 			/* does this case really need to be skipped? */
 			goto out;
-		zbud_evict_pages(nr);
+		if (spin_trylock(&zcache_direct_reclaim_lock)) {
+			zbud_evict_pages(nr);
+			spin_unlock(&zcache_direct_reclaim_lock);
+		} else
+			zcache_aborted_shrink++;
 	}
 	ret = (int)atomic_read(&zcache_zbud_curr_raw_pages);
 out:
@@ -1651,7 +1668,7 @@ static int zcache_new_pool(uint16_t cli_id, uint32_t flags)
 	if (cli == NULL)
 		goto out;
 	atomic_inc(&cli->refcount);
-	pool = kmalloc(sizeof(struct tmem_pool), GFP_ATOMIC);
+	pool = kmalloc(sizeof(struct tmem_pool), GFP_KERNEL);
 	if (pool == NULL) {
 		pr_info("zcache: pool creation failed: out of memory\n");
 		goto out;
@@ -1781,10 +1798,8 @@ static int zcache_frontswap_poolid = -1;
 /*
  * Swizzling increases objects per swaptype, increasing tmem concurrency
  * for heavy swaploads.  Later, larger nr_cpus -> larger SWIZ_BITS
- * Setting SWIZ_BITS to 27 basically reconstructs the swap entry from
- * frontswap_get_page()
  */
-#define SWIZ_BITS		27
+#define SWIZ_BITS		4
 #define SWIZ_MASK		((1 << SWIZ_BITS) - 1)
 #define _oswiz(_type, _ind)	((_type << SWIZ_BITS) | (_ind & SWIZ_MASK))
 #define iswiz(_ind)		(_ind >> SWIZ_BITS)
@@ -1978,7 +1993,7 @@ static int __init zcache_init(void)
 		pr_info("zcache: frontswap enabled using kernel "
 			"transcendent memory and xvmalloc\n");
 		if (old_ops.init != NULL)
-			pr_warning("zcache: frontswap_ops overridden");
+			pr_warning("ktmem: frontswap_ops overridden");
 	}
 #endif
 out:

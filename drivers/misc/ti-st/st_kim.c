@@ -35,7 +35,6 @@
 
 #include <linux/skbuff.h>
 #include <linux/ti_wilink_st.h>
-#include <linux/module.h>
 
 
 #define MAX_ST_DEVICES	3	/* Imagine 1 on each UART for now */

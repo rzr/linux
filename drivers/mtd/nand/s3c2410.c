@@ -723,7 +723,7 @@ static int s3c24xx_nand_remove(struct platform_device *pdev)
 
 	/* free the common resources */
 
-	if (!IS_ERR(info->clk)) {
+	if (info->clk != NULL && !IS_ERR(info->clk)) {
 		s3c2410_nand_clk_set_state(info, CLOCK_DISABLE);
 		clk_put(info->clk);
 	}
@@ -744,15 +744,26 @@ static int s3c24xx_nand_remove(struct platform_device *pdev)
 	return 0;
 }
 
+const char *part_probes[] = { "cmdlinepart", NULL };
 static int s3c2410_nand_add_partition(struct s3c2410_nand_info *info,
 				      struct s3c2410_nand_mtd *mtd,
 				      struct s3c2410_nand_set *set)
 {
-	if (set)
-		mtd->mtd.name = set->name;
+	struct mtd_partition *part_info;
+	int nr_part = 0;
 
-	return mtd_device_parse_register(&mtd->mtd, NULL, 0,
-			set->partitions, set->nr_partitions);
+	if (set == NULL)
+		return mtd_device_register(&mtd->mtd, NULL, 0);
+
+	mtd->mtd.name = set->name;
+	nr_part = parse_mtd_partitions(&mtd->mtd, part_probes, &part_info, 0);
+
+	if (nr_part <= 0 && set->nr_partitions > 0) {
+		nr_part = set->nr_partitions;
+		part_info = set->partitions;
+	}
+
+	return mtd_device_register(&mtd->mtd, part_info, nr_part);
 }
 
 /**
@@ -869,10 +880,8 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 	/* If you use u-boot BBT creation code, specifying this flag will
 	 * let the kernel fish out the BBT from the NAND, and also skip the
 	 * full NAND scan that can take 1/2s or so. Little things... */
-	if (set->flash_bbt) {
-		chip->bbt_options |= NAND_BBT_USE_FLASH;
-		chip->options |= NAND_SKIP_BBTSCAN;
-	}
+	if (set->flash_bbt)
+		chip->options |= NAND_USE_FLASH_BBT | NAND_SKIP_BBTSCAN;
 }
 
 /**

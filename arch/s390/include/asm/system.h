@@ -20,8 +20,6 @@
 
 struct task_struct;
 
-extern int sysctl_userprocess_debug;
-
 extern struct task_struct *__switch_to(void *, void *);
 extern void update_per_regs(struct task_struct *task);
 
@@ -116,8 +114,6 @@ extern void pfault_fini(void);
 extern void cmma_init(void);
 extern int memcpy_real(void *, void *, size_t);
 extern void copy_to_absolute_zero(void *dest, void *src, size_t count);
-extern int copy_to_user_real(void __user *dest, void *src, size_t count);
-extern int copy_from_user_real(void *dest, void __user *src, size_t count);
 
 #define finish_arch_switch(prev) do {					     \
 	set_fs(current->thread.mm_segment);				     \
@@ -214,10 +210,8 @@ __set_psw_mask(unsigned long mask)
 	__load_psw_mask(mask | (arch_local_save_flags() & ~(-1UL >> 8)));
 }
 
-#define local_mcck_enable() \
-	__set_psw_mask(psw_kernel_bits | PSW_MASK_DAT | PSW_MASK_MCHECK)
-#define local_mcck_disable() \
-	__set_psw_mask(psw_kernel_bits | PSW_MASK_DAT)
+#define local_mcck_enable()  __set_psw_mask(psw_kernel_bits)
+#define local_mcck_disable() __set_psw_mask(psw_kernel_bits & ~PSW_MASK_MCHECK)
 
 #ifdef CONFIG_SMP
 

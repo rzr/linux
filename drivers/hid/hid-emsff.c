@@ -24,7 +24,6 @@
 #include <linux/hid.h>
 #include <linux/input.h>
 #include <linux/usb.h>
-#include <linux/module.h>
 
 #include "hid-ids.h"
 #include "usbhid/usbhid.h"

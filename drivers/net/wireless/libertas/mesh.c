@@ -129,19 +129,6 @@ static int lbs_mesh_config(struct lbs_private *priv, uint16_t action,
 	return __lbs_mesh_config_send(priv, &cmd, action, priv->mesh_tlv);
 }
 
-int lbs_mesh_set_channel(struct lbs_private *priv, u8 channel)
-{
-	return lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START, channel);
-}
-
-static uint16_t lbs_mesh_get_channel(struct lbs_private *priv)
-{
-	struct wireless_dev *mesh_wdev = priv->mesh_dev->ieee80211_ptr;
-	if (mesh_wdev->channel)
-		return mesh_wdev->channel->hw_value;
-	else
-		return 1;
-}
 
 /***************************************************************************
  * Mesh sysfs support
@@ -825,6 +812,7 @@ static void lbs_persist_config_remove(struct net_device *dev)
  */
 int lbs_init_mesh(struct lbs_private *priv)
 {
+	struct net_device *dev = priv->dev;
 	int ret = 0;
 
 	lbs_deb_enter(LBS_DEB_MESH);
@@ -849,9 +837,11 @@ int lbs_init_mesh(struct lbs_private *priv)
 		   useful */
 
 		priv->mesh_tlv = TLV_TYPE_OLD_MESH_ID;
-		if (lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START, 1)) {
+		if (lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START,
+				    priv->channel)) {
 			priv->mesh_tlv = TLV_TYPE_MESH_ID;
-			if (lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START, 1))
+			if (lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START,
+					    priv->channel))
 				priv->mesh_tlv = 0;
 		}
 	} else
@@ -861,16 +851,23 @@ int lbs_init_mesh(struct lbs_private *priv)
 		 * 0x100+37; Do not invoke command with old TLV.
 		 */
 		priv->mesh_tlv = TLV_TYPE_MESH_ID;
-		if (lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START, 1))
+		if (lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START,
+				    priv->channel))
 			priv->mesh_tlv = 0;
 	}
 
 	/* Stop meshing until interface is brought up */
-	lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_STOP, 1);
+	lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_STOP, priv->channel);
 
 	if (priv->mesh_tlv) {
 		sprintf(priv->mesh_ssid, "mesh");
 		priv->mesh_ssid_len = 4;
+
+		lbs_add_mesh(priv);
+
+		if (device_create_file(&dev->dev, &dev_attr_lbs_mesh))
+			netdev_err(dev, "cannot register lbs_mesh attribute\n");
+
 		ret = 1;
 	}
 
@@ -878,13 +875,6 @@ int lbs_init_mesh(struct lbs_private *priv)
 	return ret;
 }
 
-void lbs_start_mesh(struct lbs_private *priv)
-{
-	lbs_add_mesh(priv);
-
-	if (device_create_file(&priv->dev->dev, &dev_attr_lbs_mesh))
-		netdev_err(priv->dev, "cannot register lbs_mesh attribute\n");
-}
 
 int lbs_deinit_mesh(struct lbs_private *priv)
 {
@@ -914,8 +904,7 @@ static int lbs_mesh_stop(struct net_device *dev)
 	struct lbs_private *priv = dev->ml_priv;
 
 	lbs_deb_enter(LBS_DEB_MESH);
-	lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_STOP,
-		lbs_mesh_get_channel(priv));
+	lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_STOP, priv->channel);
 
 	spin_lock_irq(&priv->driver_lock);
 
@@ -924,9 +913,7 @@ static int lbs_mesh_stop(struct net_device *dev)
 
 	spin_unlock_irq(&priv->driver_lock);
 
-	lbs_update_mcast(priv);
-	if (!lbs_iface_active(priv))
-		lbs_stop_iface(priv);
+	schedule_work(&priv->mcast_work);
 
 	lbs_deb_leave(LBS_DEB_MESH);
 	return 0;
@@ -944,11 +931,6 @@ static int lbs_mesh_dev_open(struct net_device *dev)
 	int ret = 0;
 
 	lbs_deb_enter(LBS_DEB_NET);
-	if (!priv->iface_running) {
-		ret = lbs_start_iface(priv);
-		if (ret)
-			goto out;
-	}
 
 	spin_lock_irq(&priv->driver_lock);
 
@@ -965,8 +947,7 @@ static int lbs_mesh_dev_open(struct net_device *dev)
 
 	spin_unlock_irq(&priv->driver_lock);
 
-	ret = lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START,
-		lbs_mesh_get_channel(priv));
+	ret = lbs_mesh_config(priv, CMD_ACT_MESH_CONFIG_START, priv->channel);
 
 out:
 	lbs_deb_leave_args(LBS_DEB_NET, "ret %d", ret);
@@ -978,7 +959,7 @@ static const struct net_device_ops mesh_netdev_ops = {
 	.ndo_stop 		= lbs_mesh_stop,
 	.ndo_start_xmit		= lbs_hard_start_xmit,
 	.ndo_set_mac_address	= lbs_set_mac_address,
-	.ndo_set_rx_mode	= lbs_set_multicast_list,
+	.ndo_set_multicast_list = lbs_set_multicast_list,
 };
 
 /**
@@ -990,32 +971,18 @@ static const struct net_device_ops mesh_netdev_ops = {
 static int lbs_add_mesh(struct lbs_private *priv)
 {
 	struct net_device *mesh_dev = NULL;
-	struct wireless_dev *mesh_wdev;
 	int ret = 0;
 
 	lbs_deb_enter(LBS_DEB_MESH);
 
 	/* Allocate a virtual mesh device */
-	mesh_wdev = kzalloc(sizeof(struct wireless_dev), GFP_KERNEL);
-	if (!mesh_wdev) {
-		lbs_deb_mesh("init mshX wireless device failed\n");
-		ret = -ENOMEM;
-		goto done;
-	}
-
 	mesh_dev = alloc_netdev(0, "msh%d", ether_setup);
 	if (!mesh_dev) {
 		lbs_deb_mesh("init mshX device failed\n");
 		ret = -ENOMEM;
-		goto err_free_wdev;
+		goto done;
 	}
-
-	mesh_wdev->iftype = NL80211_IFTYPE_MESH_POINT;
-	mesh_wdev->wiphy = priv->wdev->wiphy;
-	mesh_wdev->netdev = mesh_dev;
-
 	mesh_dev->ml_priv = priv;
-	mesh_dev->ieee80211_ptr = mesh_wdev;
 	priv->mesh_dev = mesh_dev;
 
 	mesh_dev->netdev_ops = &mesh_netdev_ops;
@@ -1029,7 +996,7 @@ static int lbs_add_mesh(struct lbs_private *priv)
 	ret = register_netdev(mesh_dev);
 	if (ret) {
 		pr_err("cannot register mshX virtual interface\n");
-		goto err_free_netdev;
+		goto err_free;
 	}
 
 	ret = sysfs_create_group(&(mesh_dev->dev.kobj), &lbs_mesh_attr_group);
@@ -1045,11 +1012,8 @@ static int lbs_add_mesh(struct lbs_private *priv)
 err_unregister:
 	unregister_netdev(mesh_dev);
 
-err_free_netdev:
+err_free:
 	free_netdev(mesh_dev);
-
-err_free_wdev:
-	kfree(mesh_wdev);
 
 done:
 	lbs_deb_leave_args(LBS_DEB_MESH, "ret %d", ret);
@@ -1071,7 +1035,6 @@ void lbs_remove_mesh(struct lbs_private *priv)
 	lbs_persist_config_remove(mesh_dev);
 	unregister_netdev(mesh_dev);
 	priv->mesh_dev = NULL;
-	kfree(mesh_dev->ieee80211_ptr);
 	free_netdev(mesh_dev);
 	lbs_deb_leave(LBS_DEB_MESH);
 }

@@ -141,7 +141,6 @@ int regulator_enable(struct regulator *regulator);
 int regulator_disable(struct regulator *regulator);
 int regulator_force_disable(struct regulator *regulator);
 int regulator_is_enabled(struct regulator *regulator);
-int regulator_disable_deferred(struct regulator *regulator, int ms);
 
 int regulator_bulk_get(struct device *dev, int num_consumers,
 		       struct regulator_bulk_data *consumers);
@@ -208,12 +207,6 @@ static inline int regulator_enable(struct regulator *regulator)
 }
 
 static inline int regulator_disable(struct regulator *regulator)
-{
-	return 0;
-}
-
-static inline int regulator_disable_deferred(struct regulator *regulator,
-					     int ms)
 {
 	return 0;
 }

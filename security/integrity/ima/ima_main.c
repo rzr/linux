@@ -22,7 +22,6 @@
 #include <linux/mount.h>
 #include <linux/mman.h>
 #include <linux/slab.h>
-#include <linux/ima.h>
 
 #include "ima.h"
 
@@ -83,7 +82,7 @@ out:
 				  "open_writers");
 }
 
-static void ima_check_last_writer(struct integrity_iint_cache *iint,
+static void ima_check_last_writer(struct ima_iint_cache *iint,
 				  struct inode *inode,
 				  struct file *file)
 {
@@ -106,12 +105,12 @@ static void ima_check_last_writer(struct integrity_iint_cache *iint,
 void ima_file_free(struct file *file)
 {
 	struct inode *inode = file->f_dentry->d_inode;
-	struct integrity_iint_cache *iint;
+	struct ima_iint_cache *iint;
 
 	if (!iint_initialized || !S_ISREG(inode->i_mode))
 		return;
 
-	iint = integrity_iint_find(inode);
+	iint = ima_iint_find(inode);
 	if (!iint)
 		return;
 
@@ -122,7 +121,7 @@ static int process_measurement(struct file *file, const unsigned char *filename,
 			       int mask, int function)
 {
 	struct inode *inode = file->f_dentry->d_inode;
-	struct integrity_iint_cache *iint;
+	struct ima_iint_cache *iint;
 	int rc = 0;
 
 	if (!ima_initialized || !S_ISREG(inode->i_mode))
@@ -132,9 +131,9 @@ static int process_measurement(struct file *file, const unsigned char *filename,
 	if (rc != 0)
 		return rc;
 retry:
-	iint = integrity_iint_find(inode);
+	iint = ima_iint_find(inode);
 	if (!iint) {
-		rc = integrity_inode_alloc(inode);
+		rc = ima_inode_alloc(inode);
 		if (!rc || rc == -EEXIST)
 			goto retry;
 		return rc;

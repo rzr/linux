@@ -13,7 +13,6 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <mach/hardware.h>
-#include <mach/common.h>
 #include "crm_regs.h"
 
 /* set cpu low power mode before WFI instruction. This function is called

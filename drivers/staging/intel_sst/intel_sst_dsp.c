@@ -104,7 +104,7 @@ static int sst_start_mrst(void)
 /**
  * sst_start_medfield - Start the SST DSP processor
  *
- * This starts the DSP in Medfield platfroms
+ * This starts the DSP in MRST platfroms
  */
 static int sst_start_medfield(void)
 {

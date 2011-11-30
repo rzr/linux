@@ -193,7 +193,7 @@ int gnttab_query_foreign_access(grant_ref_t ref)
 
 	nflags = shared[ref].flags;
 
-	return nflags & (GTF_reading|GTF_writing);
+	return (nflags & (GTF_reading|GTF_writing));
 }
 EXPORT_SYMBOL_GPL(gnttab_query_foreign_access);
 
@@ -448,8 +448,7 @@ unsigned int gnttab_max_grant_frames(void)
 EXPORT_SYMBOL_GPL(gnttab_max_grant_frames);
 
 int gnttab_map_refs(struct gnttab_map_grant_ref *map_ops,
-			struct gnttab_map_grant_ref *kmap_ops,
-			struct page **pages, unsigned int count)
+		    struct page **pages, unsigned int count)
 {
 	int i, ret;
 	pte_t *pte;
@@ -489,7 +488,8 @@ int gnttab_map_refs(struct gnttab_map_grant_ref *map_ops,
 			 */
 			return -EOPNOTSUPP;
 		}
-		ret = m2p_add_override(mfn, pages[i], &kmap_ops[i]);
+		ret = m2p_add_override(mfn, pages[i],
+				       map_ops[i].flags & GNTMAP_contains_pte);
 		if (ret)
 			return ret;
 	}

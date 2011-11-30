@@ -2438,8 +2438,7 @@ struct qla_hw_data {
 		uint32_t	quiesce_owner:1;
 		uint32_t	thermal_supported:1;
 		uint32_t	isp82xx_reset_hdlr_active:1;
-		uint32_t	isp82xx_reset_owner:1;
-		/* 28 bits */
+		/* 26 bits */
 	} flags;
 
 	/* This spinlock is used to protect "io transactions", you must
@@ -2823,12 +2822,6 @@ struct qla_hw_data {
 
 	uint8_t fw_type;
 	__le32 file_prd_off;	/* File firmware product offset */
-
-	uint32_t	md_template_size;
-	void		*md_tmplt_hdr;
-	dma_addr_t      md_tmplt_hdr_dma;
-	void            *md_dump;
-	uint32_t	md_dump_size;
 };
 
 /*

@@ -24,7 +24,7 @@
 #include <linux/init.h>
 #include <asm/intel_scu_ipc.h>
 
-static int major;
+static u32 major;
 
 #define MAX_FW_SIZE 264192
 
@@ -117,11 +117,7 @@ static const struct file_operations scu_ipc_fops = {
 
 static int __init ipc_module_init(void)
 {
-	major = register_chrdev(0, "intel_mid_scu", &scu_ipc_fops);
-	if (major < 0)
-		return major;
-
-	return 0;
+	return register_chrdev(0, "intel_mid_scu", &scu_ipc_fops);
 }
 
 static void __exit ipc_module_exit(void)

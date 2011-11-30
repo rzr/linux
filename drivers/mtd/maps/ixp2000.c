@@ -38,6 +38,7 @@
 struct ixp2000_flash_info {
 	struct		mtd_info *mtd;
 	struct		map_info map;
+	struct		mtd_partition *partitions;
 	struct		resource *res;
 };
 
@@ -123,6 +124,8 @@ static int ixp2000_flash_remove(struct platform_device *dev)
 	}
 	if (info->map.map_priv_1)
 		iounmap((void *) info->map.map_priv_1);
+
+	kfree(info->partitions);
 
 	if (info->res) {
 		release_resource(info->res);
@@ -226,7 +229,13 @@ static int ixp2000_flash_probe(struct platform_device *dev)
 	}
 	info->mtd->owner = THIS_MODULE;
 
-	err = mtd_device_parse_register(info->mtd, probes, 0, NULL, 0);
+	err = parse_mtd_partitions(info->mtd, probes, &info->partitions, 0);
+	if (err > 0) {
+		err = mtd_device_register(info->mtd, info->partitions, err);
+		if(err)
+			dev_err(&dev->dev, "Could not parse partitions\n");
+	}
+
 	if (err)
 		goto Error;
 

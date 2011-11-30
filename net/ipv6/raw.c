@@ -61,7 +61,6 @@
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
-#include <linux/export.h>
 
 static struct raw_hashinfo raw_v6_hashinfo = {
 	.lock = __RW_LOCK_UNLOCKED(raw_v6_hashinfo.lock),
@@ -131,14 +130,14 @@ static mh_filter_t __rcu *mh_filter __read_mostly;
 
 int rawv6_mh_filter_register(mh_filter_t filter)
 {
-	RCU_INIT_POINTER(mh_filter, filter);
+	rcu_assign_pointer(mh_filter, filter);
 	return 0;
 }
 EXPORT_SYMBOL(rawv6_mh_filter_register);
 
 int rawv6_mh_filter_unregister(mh_filter_t filter)
 {
-	RCU_INIT_POINTER(mh_filter, NULL);
+	rcu_assign_pointer(mh_filter, NULL);
 	synchronize_rcu();
 	return 0;
 }
@@ -373,9 +372,9 @@ void raw6_icmp_error(struct sk_buff *skb, int nexthdr,
 	read_unlock(&raw_v6_hashinfo.lock);
 }
 
-static inline int rawv6_rcv_skb(struct sock *sk, struct sk_buff *skb)
+static inline int rawv6_rcv_skb(struct sock * sk, struct sk_buff * skb)
 {
-	if ((raw6_sk(sk)->checksum || rcu_access_pointer(sk->sk_filter)) &&
+	if ((raw6_sk(sk)->checksum || rcu_dereference_raw(sk->sk_filter)) &&
 	    skb_checksum_complete(skb)) {
 		atomic_inc(&sk->sk_drops);
 		kfree_skb(skb);
@@ -543,7 +542,8 @@ static int rawv6_push_pending_frames(struct sock *sk, struct flowi6 *fl6,
 		goto out;
 
 	offset = rp->offset;
-	total_len = inet_sk(sk)->cork.base.length;
+	total_len = inet_sk(sk)->cork.base.length - (skb_network_header(skb) -
+						     skb->data);
 	if (offset >= total_len - 1) {
 		err = -EINVAL;
 		ip6_flush_pending_frames(sk);
