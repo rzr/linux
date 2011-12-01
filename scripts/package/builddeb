@@ -246,7 +246,15 @@ mkdir -p "$destdir"
 (cd $srctree; tar -c -f - -T /tmp/files$$) | (cd $destdir; tar -xf -)
 (cd $objtree; tar -c -f - -T /tmp/objfiles$$) | (cd $destdir; tar -xf -)
 rm -f /tmp/files$$ /tmp/objfiles$$
-arch=$(dpkg --print-architecture)
+#{
+#arch=$(dpkg --print-architecture)#orig
+
+if [ -n "$KBUILD_DEBARCH" ] ; then
+	arch="$KBUILD_DEBARCH"
+else
+	arch=$(dpkg --print-architecture)
+fi
+#}
 
 cat <<EOF >> debian/control
 
