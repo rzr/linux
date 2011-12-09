@@ -235,32 +235,38 @@ static void bcma_host_pci_remove(struct pci_dev *dev)
 }
 
 #ifdef CONFIG_PM
-static int bcma_host_pci_suspend(struct device *dev)
+static int bcma_host_pci_suspend(struct pci_dev *dev, pm_message_t state)
 {
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct bcma_bus *bus = pci_get_drvdata(pdev);
+	/* Host specific */
+	pci_save_state(dev);
+	pci_disable_device(dev);
+	pci_set_power_state(dev, pci_choose_state(dev, state));
 
-	bus->mapped_core = NULL;
-
-	return bcma_bus_suspend(bus);
+	return 0;
 }
 
-static int bcma_host_pci_resume(struct device *dev)
+static int bcma_host_pci_resume(struct pci_dev *dev)
 {
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct bcma_bus *bus = pci_get_drvdata(pdev);
+	struct bcma_bus *bus = pci_get_drvdata(dev);
+	int err;
 
-	return bcma_bus_resume(bus);
+	/* Host specific */
+	pci_set_power_state(dev, 0);
+	err = pci_enable_device(dev);
+	if (err)
+		return err;
+	pci_restore_state(dev);
+
+	/* Bus specific */
+	err = bcma_bus_resume(bus);
+	if (err)
+		return err;
+
+	return 0;
 }
-
-static SIMPLE_DEV_PM_OPS(bcma_pm_ops, bcma_host_pci_suspend,
-			 bcma_host_pci_resume);
-#define BCMA_PM_OPS	(&bcma_pm_ops)
-
 #else /* CONFIG_PM */
-
-#define BCMA_PM_OPS     NULL
-
+# define bcma_host_pci_suspend	NULL
+# define bcma_host_pci_resume	NULL
 #endif /* CONFIG_PM */
 
 static DEFINE_PCI_DEVICE_TABLE(bcma_pci_bridge_tbl) = {
@@ -278,7 +284,8 @@ static struct pci_driver bcma_pci_bridge_driver = {
 	.id_table = bcma_pci_bridge_tbl,
 	.probe = bcma_host_pci_probe,
 	.remove = bcma_host_pci_remove,
-	.driver.pm = BCMA_PM_OPS,
+	.suspend = bcma_host_pci_suspend,
+	.resume = bcma_host_pci_resume,
 };
 
 int __init bcma_host_pci_init(void)
