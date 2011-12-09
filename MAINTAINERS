@@ -6311,9 +6311,9 @@ S:	Maintained
 F:	arch/alpha/kernel/srm_env.c
 
 STABLE BRANCH
-M:	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+M:	Greg Kroah-Hartman <greg@kroah.com>
 L:	stable@vger.kernel.org
-S:	Supported
+S:	Maintained
 
 STAGING SUBSYSTEM
 M:	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
