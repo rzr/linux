@@ -880,7 +880,7 @@ static int usbhsg_gadget_start(struct usb_gadget *gadget,
 
 	if (!driver		||
 	    !driver->setup	||
-	    driver->max_speed < USB_SPEED_FULL)
+	    driver->speed < USB_SPEED_FULL)
 		return -EINVAL;
 
 	/* first hook up the driver ... */
@@ -941,11 +941,6 @@ static int usbhsg_stop(struct usbhs_priv *priv)
 	return usbhsg_try_stop(priv, USBHSG_STATUS_STARTED);
 }
 
-static void usbhs_mod_gadget_release(struct device *pdev)
-{
-	/* do nothing */
-}
-
 int usbhs_mod_gadget_probe(struct usbhs_priv *priv)
 {
 	struct usbhsg_gpriv *gpriv;
@@ -997,7 +992,7 @@ int usbhs_mod_gadget_probe(struct usbhs_priv *priv)
 	gpriv->gadget.dev.release	= usbhs_mod_gadget_release;
 	gpriv->gadget.name		= "renesas_usbhs_udc";
 	gpriv->gadget.ops		= &usbhsg_gadget_ops;
-	gpriv->gadget.max_speed		= USB_SPEED_HIGH;
+	gpriv->gadget.is_dualspeed	= 1;
 	ret = device_register(&gpriv->gadget.dev);
 	if (ret < 0)
 		goto err_add_udc;
@@ -1054,6 +1049,8 @@ void usbhs_mod_gadget_remove(struct usbhs_priv *priv)
 	usb_del_gadget_udc(&gpriv->gadget);
 
 	device_unregister(&gpriv->gadget.dev);
+
+	usbhsg_controller_unregister(gpriv);
 
 	kfree(gpriv->uep);
 	kfree(gpriv);

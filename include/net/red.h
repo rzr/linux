@@ -145,7 +145,7 @@ struct red_vars {
 					   number generation */
 	u32		qR;		/* Cached random number */
 
-	unsigned long	qavg;		/* Average queue length: Wlog scaled */
+	unsigned long	qavg;		/* Average queue length: A scaled */
 	ktime_t		qidlestart;	/* Start of current idle period */
 };
 
@@ -205,17 +205,17 @@ static inline void red_set_parms(struct red_parms *p,
 
 static inline int red_is_idling(const struct red_vars *v)
 {
-	return v->qidlestart.tv64 != 0;
+	return p->qidlestart.tv64 != 0;
 }
 
 static inline void red_start_of_idle_period(struct red_vars *v)
 {
-	v->qidlestart = ktime_get();
+	p->qidlestart = ktime_get();
 }
 
 static inline void red_end_of_idle_period(struct red_vars *v)
 {
-	v->qidlestart.tv64 = 0;
+	p->qidlestart.tv64 = 0;
 }
 
 static inline void red_restart(struct red_vars *v)
@@ -228,7 +228,7 @@ static inline void red_restart(struct red_vars *v)
 static inline unsigned long red_calc_qavg_from_idle_time(const struct red_parms *p,
 							 const struct red_vars *v)
 {
-	s64 delta = ktime_us_delta(ktime_get(), v->qidlestart);
+	s64 delta = ktime_us_delta(ktime_get(), p->qidlestart);
 	long us_idle = min_t(s64, delta, p->Scell_max);
 	int  shift;
 

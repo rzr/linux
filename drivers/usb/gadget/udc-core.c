@@ -215,6 +215,7 @@ static void usb_gadget_remove_driver(struct usb_udc *udc)
 		udc->driver->unbind(udc->gadget);
 		usb_gadget_disconnect(udc->gadget);
 		usb_gadget_udc_stop(udc->gadget, udc->driver);
+		usb_gadget_disconnect(udc->gadget);
 	} else {
 		usb_gadget_stop(udc->gadget, udc->driver);
 	}
@@ -399,7 +400,7 @@ static ssize_t usb_udc_is_dualspeed_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n",
 			gadget_is_dualspeed(udc->gadget));
 }
-static DEVICE_ATTR(is_dualspeed, S_IRUSR, usb_udc_is_dualspeed_show, NULL);
+static DEVICE_ATTR(speed, S_IRUGO, usb_udc_speed_show, NULL);
 
 #define USB_UDC_ATTR(name)					\
 ssize_t usb_udc_##name##_show(struct device *dev,		\

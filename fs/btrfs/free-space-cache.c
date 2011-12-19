@@ -2329,6 +2329,7 @@ again:
 	if (!total_found) {
 		start = i;
 		cluster->max_size = 0;
+		found = true;
 	}
 
 	total_found += found_bits;
@@ -2548,10 +2549,6 @@ int btrfs_find_space_cluster(struct btrfs_trans_handle *trans,
 		goto out;
 	}
 
-	trace_btrfs_find_cluster(block_group, offset, bytes, empty_size,
-				 min_bytes);
-
-	INIT_LIST_HEAD(&bitmaps);
 	ret = setup_cluster_no_bitmap(block_group, cluster, &bitmaps, offset,
 				      bytes + empty_size,
 				      cont1_bytes, min_bytes);

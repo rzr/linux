@@ -227,35 +227,6 @@ enum tcm_sense_reason_table {
 	TCM_RESERVATION_CONFLICT		= 0x10,
 };
 
-enum target_sc_flags_table {
-	TARGET_SCF_BIDI_OP		= 0x01,
-	TARGET_SCF_ACK_KREF		= 0x02,
-};
-
-/* fabric independent task management function values */
-enum tcm_tmreq_table {
-	TMR_ABORT_TASK		= 1,
-	TMR_ABORT_TASK_SET	= 2,
-	TMR_CLEAR_ACA		= 3,
-	TMR_CLEAR_TASK_SET	= 4,
-	TMR_LUN_RESET		= 5,
-	TMR_TARGET_WARM_RESET	= 6,
-	TMR_TARGET_COLD_RESET	= 7,
-	TMR_FABRIC_TMR		= 255,
-};
-
-/* fabric independent task management response values */
-enum tcm_tmrsp_table {
-	TMR_FUNCTION_COMPLETE		= 0,
-	TMR_TASK_DOES_NOT_EXIST		= 1,
-	TMR_LUN_DOES_NOT_EXIST		= 2,
-	TMR_TASK_STILL_ALLEGIANT	= 3,
-	TMR_TASK_FAILOVER_NOT_SUPPORTED	= 4,
-	TMR_TASK_MGMT_FUNCTION_NOT_SUPPORTED	= 5,
-	TMR_FUNCTION_AUTHORIZATION_FAILED = 6,
-	TMR_FUNCTION_REJECTED		= 255,
-};
-
 struct se_obj {
 	atomic_t obj_access_count;
 };
@@ -836,7 +807,7 @@ struct se_device {
 	struct se_subsystem_api *transport;
 	/* Linked list for struct se_hba struct se_device list */
 	struct list_head	dev_list;
-};
+}  ____cacheline_aligned;
 
 struct se_hba {
 	u16			hba_tpgt;

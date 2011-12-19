@@ -18,6 +18,14 @@
 #include <linux/bitops.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
+#include <asm/system.h>
+
+#include <linux/kbd_kern.h>
+#include <linux/vt_kern.h>
+#include <linux/selection.h>
+
+#include <linux/kmod.h>
+#include <linux/nsproxy.h>
 #include <linux/ratelimit.h>
 
 /*
@@ -540,6 +548,8 @@ static int tty_ldisc_wait_idle(struct tty_struct *tty, long timeout)
 	long ret;
 	ret = wait_event_timeout(tty_ldisc_idle,
 			atomic_read(&tty->ldisc->users) == 1, timeout);
+	if (ret < 0)
+		return ret;
 	return ret > 0 ? 0 : -EBUSY;
 }
 

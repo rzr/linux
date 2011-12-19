@@ -1650,10 +1650,36 @@ static int pass_accept_req(struct c4iw_dev *dev, struct sk_buff *skb)
 		goto reject;
 	}
 	dst = &rt->dst;
-
-	child_ep = alloc_ep(sizeof(*child_ep), GFP_KERNEL);
-	if (!child_ep) {
-		printk(KERN_ERR MOD "%s - failed to allocate ep entry!\n",
+	rcu_read_lock();
+	neigh = dst_get_neighbour(dst);
+	if (neigh->dev->flags & IFF_LOOPBACK) {
+		pdev = ip_dev_find(&init_net, peer_ip);
+		BUG_ON(!pdev);
+		l2t = cxgb4_l2t_get(dev->rdev.lldi.l2t, neigh, pdev, 0);
+		mtu = pdev->mtu;
+		tx_chan = cxgb4_port_chan(pdev);
+		smac_idx = (cxgb4_port_viid(pdev) & 0x7F) << 1;
+		step = dev->rdev.lldi.ntxq / dev->rdev.lldi.nchan;
+		txq_idx = cxgb4_port_idx(pdev) * step;
+		ctrlq_idx = cxgb4_port_idx(pdev);
+		step = dev->rdev.lldi.nrxq / dev->rdev.lldi.nchan;
+		rss_qid = dev->rdev.lldi.rxq_ids[cxgb4_port_idx(pdev) * step];
+		dev_put(pdev);
+	} else {
+		l2t = cxgb4_l2t_get(dev->rdev.lldi.l2t, neigh, neigh->dev, 0);
+		mtu = dst_mtu(dst);
+		tx_chan = cxgb4_port_chan(neigh->dev);
+		smac_idx = (cxgb4_port_viid(neigh->dev) & 0x7F) << 1;
+		step = dev->rdev.lldi.ntxq / dev->rdev.lldi.nchan;
+		txq_idx = cxgb4_port_idx(neigh->dev) * step;
+		ctrlq_idx = cxgb4_port_idx(neigh->dev);
+		step = dev->rdev.lldi.nrxq / dev->rdev.lldi.nchan;
+		rss_qid = dev->rdev.lldi.rxq_ids[
+			  cxgb4_port_idx(neigh->dev) * step];
+	}
+	rcu_read_unlock();
+	if (!l2t) {
+		printk(KERN_ERR MOD "%s - failed to allocate l2t entry!\n",
 		       __func__);
 		dst_release(dst);
 		goto reject;
@@ -1843,9 +1869,45 @@ static int c4iw_reconnect(struct c4iw_ep *ep)
 	}
 	ep->dst = &rt->dst;
 
-	err = import_ep(ep, ep->com.cm_id->remote_addr.sin_addr.s_addr,
-			ep->dst, ep->com.dev, false);
-	if (err) {
+	rcu_read_lock();
+	neigh = dst_get_neighbour(ep->dst);
+
+	/* get a l2t entry */
+	if (neigh->dev->flags & IFF_LOOPBACK) {
+		PDBG("%s LOOPBACK\n", __func__);
+		pdev = ip_dev_find(&init_net,
+				   ep->com.cm_id->remote_addr.sin_addr.s_addr);
+		ep->l2t = cxgb4_l2t_get(ep->com.dev->rdev.lldi.l2t,
+					neigh, pdev, 0);
+		ep->mtu = pdev->mtu;
+		ep->tx_chan = cxgb4_port_chan(pdev);
+		ep->smac_idx = (cxgb4_port_viid(pdev) & 0x7F) << 1;
+		step = ep->com.dev->rdev.lldi.ntxq /
+			ep->com.dev->rdev.lldi.nchan;
+		ep->txq_idx = cxgb4_port_idx(pdev) * step;
+		step = ep->com.dev->rdev.lldi.nrxq /
+			ep->com.dev->rdev.lldi.nchan;
+		ep->ctrlq_idx = cxgb4_port_idx(pdev);
+		ep->rss_qid = ep->com.dev->rdev.lldi.rxq_ids[
+			cxgb4_port_idx(pdev) * step];
+		dev_put(pdev);
+	} else {
+		ep->l2t = cxgb4_l2t_get(ep->com.dev->rdev.lldi.l2t,
+					neigh, neigh->dev, 0);
+		ep->mtu = dst_mtu(ep->dst);
+		ep->tx_chan = cxgb4_port_chan(neigh->dev);
+		ep->smac_idx = (cxgb4_port_viid(neigh->dev) & 0x7F) << 1;
+		step = ep->com.dev->rdev.lldi.ntxq /
+			ep->com.dev->rdev.lldi.nchan;
+		ep->txq_idx = cxgb4_port_idx(neigh->dev) * step;
+		ep->ctrlq_idx = cxgb4_port_idx(neigh->dev);
+		step = ep->com.dev->rdev.lldi.nrxq /
+			ep->com.dev->rdev.lldi.nchan;
+		ep->rss_qid = ep->com.dev->rdev.lldi.rxq_ids[
+			cxgb4_port_idx(neigh->dev) * step];
+	}
+	rcu_read_unlock();
+	if (!ep->l2t) {
 		printk(KERN_ERR MOD "%s - cannot alloc l2e.\n", __func__);
 		goto fail4;
 	}
@@ -2286,9 +2348,47 @@ int c4iw_connect(struct iw_cm_id *cm_id, struct iw_cm_conn_param *conn_param)
 	}
 	ep->dst = &rt->dst;
 
-	err = import_ep(ep, cm_id->remote_addr.sin_addr.s_addr,
-			ep->dst, ep->com.dev, true);
-	if (err) {
+	rcu_read_lock();
+	neigh = dst_get_neighbour(ep->dst);
+
+	/* get a l2t entry */
+	if (neigh->dev->flags & IFF_LOOPBACK) {
+		PDBG("%s LOOPBACK\n", __func__);
+		pdev = ip_dev_find(&init_net,
+				   cm_id->remote_addr.sin_addr.s_addr);
+		ep->l2t = cxgb4_l2t_get(ep->com.dev->rdev.lldi.l2t,
+					neigh, pdev, 0);
+		ep->mtu = pdev->mtu;
+		ep->tx_chan = cxgb4_port_chan(pdev);
+		ep->smac_idx = (cxgb4_port_viid(pdev) & 0x7F) << 1;
+		step = ep->com.dev->rdev.lldi.ntxq /
+		       ep->com.dev->rdev.lldi.nchan;
+		ep->txq_idx = cxgb4_port_idx(pdev) * step;
+		step = ep->com.dev->rdev.lldi.nrxq /
+		       ep->com.dev->rdev.lldi.nchan;
+		ep->ctrlq_idx = cxgb4_port_idx(pdev);
+		ep->rss_qid = ep->com.dev->rdev.lldi.rxq_ids[
+			      cxgb4_port_idx(pdev) * step];
+		dev_put(pdev);
+	} else {
+		ep->l2t = cxgb4_l2t_get(ep->com.dev->rdev.lldi.l2t,
+					neigh, neigh->dev, 0);
+		ep->mtu = dst_mtu(ep->dst);
+		ep->tx_chan = cxgb4_port_chan(neigh->dev);
+		ep->smac_idx = (cxgb4_port_viid(neigh->dev) & 0x7F) << 1;
+		step = ep->com.dev->rdev.lldi.ntxq /
+		       ep->com.dev->rdev.lldi.nchan;
+		ep->txq_idx = cxgb4_port_idx(neigh->dev) * step;
+		ep->ctrlq_idx = cxgb4_port_idx(neigh->dev);
+		step = ep->com.dev->rdev.lldi.nrxq /
+		       ep->com.dev->rdev.lldi.nchan;
+		ep->rss_qid = ep->com.dev->rdev.lldi.rxq_ids[
+			      cxgb4_port_idx(neigh->dev) * step];
+		ep->retry_with_mpa_v1 = 0;
+		ep->tried_with_mpa_v1 = 0;
+	}
+	rcu_read_unlock();
+	if (!ep->l2t) {
 		printk(KERN_ERR MOD "%s - cannot alloc l2e.\n", __func__);
 		goto fail4;
 	}

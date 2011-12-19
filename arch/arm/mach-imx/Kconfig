@@ -22,18 +22,6 @@ config ARCH_MX25
 config MACH_MX27
 	bool
 
-config ARCH_MX5
-	bool
-
-config ARCH_MX50
-	bool
-
-config ARCH_MX51
-	bool
-
-config ARCH_MX53
-	bool
-
 config SOC_IMX1
 	bool
 	select ARCH_MX1

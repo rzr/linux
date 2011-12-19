@@ -207,7 +207,8 @@ void pstore_get_records(int quiet)
 		return;
 
 	mutex_lock(&psi->read_mutex);
-	if (psi->open && psi->open(psi))
+	rc = psi->open(psi);
+	if (rc)
 		goto out;
 
 	while ((size = psi->read(&id, &type, &time, &buf, psi)) > 0) {

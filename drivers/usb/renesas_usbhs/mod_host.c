@@ -98,6 +98,10 @@ struct usbhsh_hpriv {
 	u32	port_stat;	/* USB_PORT_STAT_xxx */
 
 	struct completion	setup_ack_done;
+
+	/* see usbhsh_req_alloc/free */
+	struct list_head	ureq_link_active;
+	struct list_head	ureq_link_free;
 };
 
 
@@ -597,14 +601,88 @@ static void usbhsh_device_detach(struct usbhsh_hpriv *hpriv,
 
 	if (usbhsh_device_has_endpoint(udev)) {
 		dev_warn(dev, "udev still have endpoint\n");
-		usbhsh_endpoint_detach_all(hpriv, udev);
+
+	/*
+	 * usbhsh_usbv_to_udev()
+	 * usbhsh_udev_to_usbv()
+	 * will be disable
+	 */
+	dev_set_drvdata(&usbv->dev, NULL);
+	udev->usbv = NULL;
+}
+
+/*
+ *		end-point control
+ */
+struct usbhsh_ep *usbhsh_endpoint_alloc(struct usbhsh_hpriv *hpriv,
+					struct usbhsh_device *udev,
+					struct usb_host_endpoint *ep,
+					int dir_in_req,
+					gfp_t mem_flags)
+{
+	struct usbhs_priv *priv = usbhsh_hpriv_to_priv(hpriv);
+	struct usb_hcd *hcd = usbhsh_hpriv_to_hcd(hpriv);
+	struct usbhsh_ep *uep;
+	struct usbhsh_pipe_info *info;
+	struct usbhs_pipe *pipe, *best_pipe;
+	struct device *dev = usbhsh_hcd_to_dev(hcd);
+	struct usb_endpoint_descriptor *desc = &ep->desc;
+	int type, i, dir_in;
+	unsigned int min_usr;
+
+	dir_in_req = !!dir_in_req;
+
+	uep = kzalloc(sizeof(struct usbhsh_ep), mem_flags);
+	if (!uep) {
+		dev_err(dev, "usbhsh_ep alloc fail\n");
+		return NULL;
+	}
+
+	if (usb_endpoint_xfer_control(desc)) {
+		best_pipe = usbhsh_hpriv_to_dcp(hpriv);
+		goto usbhsh_endpoint_alloc_find_pipe;
 	}
 
 	/*
 	 * There is nothing to do if it is device0.
 	 * see
-	 *  usbhsh_device_attach()
-	 *  usbhsh_device_get()
+	 *	HARDWARE LIMITATION
+	 */
+	type = usb_endpoint_type(desc);
+	min_usr = ~0;
+	best_pipe = NULL;
+	usbhs_for_each_pipe(pipe, priv, i) {
+		if (!usbhs_pipe_type_is(pipe, type))
+			continue;
+
+		dir_in = !!usbhs_pipe_is_dir_in(pipe);
+		if (0 != (dir_in - dir_in_req))
+			continue;
+
+		info = usbhsh_pipe_info(pipe);
+
+		if (min_usr > info->usr_cnt) {
+			min_usr		= info->usr_cnt;
+			best_pipe	= pipe;
+		}
+	}
+
+	if (unlikely(!best_pipe)) {
+		dev_err(dev, "couldn't find best pipe\n");
+		kfree(uep);
+		return NULL;
+	}
+usbhsh_endpoint_alloc_find_pipe:
+	/*
+	 * init uep
+	 */
+	uep->pipe	= best_pipe;
+	uep->maxp	= usb_endpoint_maxp(desc);
+	usbhsh_uep_to_udev(uep)	= udev;
+	usbhsh_ep_to_uep(ep)	= uep;
+
+	/*
+	 * update pipe user count
 	 */
 	if (0 == usbhsh_device_number(hpriv, udev))
 		return;
@@ -617,8 +695,42 @@ static void usbhsh_device_detach(struct usbhsh_hpriv *hpriv,
 	 * usbhsh_udev_to_usbv()
 	 * will be disable
 	 */
-	dev_set_drvdata(&usbv->dev, NULL);
-	udev->usbv = NULL;
+	usbhs_pipe_sequence_data0(uep->pipe);
+	usbhs_pipe_config_update(uep->pipe,
+				 usbhsh_device_number(hpriv, udev),
+				 usb_endpoint_num(desc),
+				 uep->maxp);
+
+	dev_dbg(dev, "%s [%d-%s](%p)\n", __func__,
+		usbhsh_device_number(hpriv, udev),
+		usbhs_pipe_name(uep->pipe), uep);
+
+	return uep;
+}
+
+void usbhsh_endpoint_free(struct usbhsh_hpriv *hpriv,
+			  struct usb_host_endpoint *ep)
+{
+	struct usbhs_priv *priv = usbhsh_hpriv_to_priv(hpriv);
+	struct device *dev = usbhs_priv_to_dev(priv);
+	struct usbhsh_ep *uep = usbhsh_ep_to_uep(ep);
+	struct usbhsh_pipe_info *info;
+
+	if (!uep)
+		return;
+
+	dev_dbg(dev, "%s [%d-%s](%p)\n", __func__,
+		usbhsh_device_number(hpriv, usbhsh_uep_to_udev(uep)),
+		usbhs_pipe_name(uep->pipe), uep);
+
+	info = usbhsh_pipe_info(uep->pipe);
+	info->usr_cnt--;
+
+	/* remove this endpoint from udev */
+	list_del_init(&uep->ep_list);
+
+	usbhsh_uep_to_udev(uep) = NULL;
+	usbhsh_ep_to_uep(ep) = NULL;
 
 	usbhs_unlock(priv, flags);
 	/********************  spin unlock ******************/
@@ -939,18 +1051,15 @@ static int usbhsh_urb_enqueue(struct usb_hcd *hcd,
 	struct usbhs_priv *priv = usbhsh_hpriv_to_priv(hpriv);
 	struct device *dev = usbhs_priv_to_dev(priv);
 	struct usb_host_endpoint *ep = urb->ep;
-	struct usbhsh_device *new_udev = NULL;
+	struct usbhsh_request *ureq;
+	struct usbhsh_device *udev, *new_udev = NULL;
+	struct usbhs_pipe *pipe;
+	struct usbhsh_ep *uep;
 	int is_dir_in = usb_pipein(urb->pipe);
-	int i;
+
 	int ret;
 
 	dev_dbg(dev, "%s (%s)\n", __func__, is_dir_in ? "in" : "out");
-
-	if (!usbhsh_is_running(hpriv)) {
-		ret = -EIO;
-		dev_err(dev, "host is not running\n");
-		goto usbhsh_urb_enqueue_error_not_linked;
-	}
 
 	ret = usb_hcd_link_urb_to_ep(hcd, urb);
 	if (ret) {
@@ -975,10 +1084,11 @@ static int usbhsh_urb_enqueue(struct usb_hcd *hcd,
 	 * attach endpoint if needed
 	 * see [image of mod_host]
 	 */
-	if (!usbhsh_ep_to_uep(ep)) {
-		ret = usbhsh_endpoint_attach(hpriv, urb, mem_flags);
-		if (ret < 0) {
-			dev_err(dev, "endpoint attach failed\n");
+	uep = usbhsh_ep_to_uep(ep);
+	if (!uep) {
+		uep = usbhsh_endpoint_alloc(hpriv, udev, ep,
+					    is_dir_in, mem_flags);
+		if (!uep)
 			goto usbhsh_urb_enqueue_error_free_device;
 		}
 	}
@@ -1536,6 +1646,9 @@ int usbhs_mod_host_probe(struct usbhs_priv *priv)
 	hpriv->mod.name		= "host";
 	hpriv->mod.start	= usbhsh_start;
 	hpriv->mod.stop		= usbhsh_stop;
+	hpriv->pipe_info	= pipe_info;
+	hpriv->pipe_size	= pipe_size;
+	usbhsh_req_list_init(hpriv);
 	usbhsh_port_stat_init(hpriv);
 
 	/* init all device */

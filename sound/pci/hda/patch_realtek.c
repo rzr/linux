@@ -288,8 +288,6 @@ static inline hda_nid_t get_capsrc(struct alc_spec *spec, int idx)
 		spec->capsrc_nids[idx] : spec->adc_nids[idx];
 }
 
-static void call_update_outputs(struct hda_codec *codec);
-
 /* select the given imux item; either unmute exclusively or select the route */
 static int alc_mux_select(struct hda_codec *codec, unsigned int adc_idx,
 			  unsigned int idx, bool force)
@@ -3036,8 +3034,6 @@ static int alc_auto_fill_dac_nids(struct hda_codec *codec)
 {
 	struct alc_spec *spec = codec->spec;
 	struct auto_pin_cfg *cfg = &spec->autocfg;
-	unsigned int location, defcfg;
-	int num_pins;
 	bool redone = false;
 	int i;
 
@@ -3128,13 +3124,6 @@ static int alc_auto_fill_dac_nids(struct hda_codec *codec)
 			goto again;
 		}
 	}
-
-	if (!spec->multi_ios &&
-	    cfg->line_out_type == AUTO_PIN_SPEAKER_OUT &&
-	    cfg->hp_outs) {
-		/* try multi-ios with HP + inputs */
-		defcfg = snd_hda_codec_get_pincfg(codec, cfg->hp_pins[0]);
-		location = get_defcfg_location(defcfg);
 
 		num_pins = alc_auto_fill_multi_ios(codec, location, 1);
 		if (num_pins > 0) {

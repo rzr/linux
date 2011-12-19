@@ -335,7 +335,8 @@ int hibernation_snapshot(int platform_mode)
 	if (error)
 		goto Cleanup;
 
-	if (hibernation_test(TEST_FREEZER)) {
+	if (hibernation_test(TEST_FREEZER) ||
+		hibernation_testmode(HIBERNATION_TESTPROC)) {
 
 		/*
 		 * Indicate to the caller that we are returning due to a
@@ -345,20 +346,9 @@ int hibernation_snapshot(int platform_mode)
 		goto Cleanup;
 	}
 
-	if (hibernation_test(TEST_FREEZER) ||
-		hibernation_testmode(HIBERNATION_TESTPROC)) {
-
-		/*
-		 * Indicate to the caller that we are returning due to a
-		 * successful freezer test.
-		 */
-		freezer_test_done = true;
-		goto Close;
-	}
-
 	error = dpm_prepare(PMSG_FREEZE);
 	if (error) {
-		dpm_complete(PMSG_RECOVER);
+		dpm_complete(msg);
 		goto Cleanup;
 	}
 
@@ -394,6 +384,10 @@ int hibernation_snapshot(int platform_mode)
  Close:
 	platform_end(platform_mode);
 	return error;
+
+ Recover_platform:
+	platform_recover(platform_mode);
+	goto Resume_devices;
 
  Cleanup:
 	swsusp_free();

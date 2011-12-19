@@ -842,9 +842,7 @@ struct radeon_cs_parser {
 	void			*track;
 	unsigned		family;
 	int			parser_error;
-	u32			cs_flags;
-	u32			ring;
-	s32			priority;
+	bool			keep_tiling_flags;
 };
 
 extern int radeon_cs_update_pages(struct radeon_cs_parser *p, int pg_idx);

@@ -15,7 +15,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/smp.h>
-#include <asm/smp_plat.h>
+#include <asm/unified.h>
 
 #define SRC_SCR				0x000
 #define SRC_GPR1			0x020
@@ -24,6 +24,10 @@
 #define BP_SRC_SCR_CORE1_ENABLE		22
 
 static void __iomem *src_base;
+
+#ifndef CONFIG_SMP
+#define cpu_logical_map(cpu)		0
+#endif
 
 void imx_enable_cpu(int cpu, bool enable)
 {
@@ -39,7 +43,7 @@ void imx_enable_cpu(int cpu, bool enable)
 void imx_set_cpu_jump(int cpu, void *jump_addr)
 {
 	cpu = cpu_logical_map(cpu);
-	writel_relaxed(virt_to_phys(jump_addr),
+	writel_relaxed(BSYM(virt_to_phys(jump_addr)),
 		       src_base + SRC_GPR1 + cpu * 8);
 }
 

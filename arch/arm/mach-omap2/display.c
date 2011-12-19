@@ -28,7 +28,7 @@
 #include <plat/omap_hwmod.h>
 #include <plat/omap_device.h>
 #include <plat/omap-pm.h>
-#include "common.h"
+#include <plat/common.h>
 
 #include "mux.h"
 #include "control.h"

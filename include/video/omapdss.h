@@ -313,8 +313,6 @@ struct omap_dss_board_info {
 
 /* Init with the board info */
 extern int omap_display_init(struct omap_dss_board_info *board_data);
-/* HDMI mux init*/
-extern int omap_hdmi_init(enum omap_hdmi_flags flags);
 
 struct omap_display_platform_data {
 	struct omap_dss_board_info *board_data;

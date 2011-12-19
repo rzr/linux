@@ -417,6 +417,9 @@ check_scsi_name:
 static int
 target_emulate_evpd_86(struct se_cmd *cmd, unsigned char *buf)
 {
+	if (cmd->data_length < 60)
+		return 0;
+
 	buf[3] = 0x3c;
 	/* Set HEADSUP, ORDSUP, SIMPSUP */
 	buf[5] = 0x07;
@@ -615,16 +618,11 @@ int target_emulate_inquiry(struct se_task *task)
 	 * don't have to worry about overruns in all our INQUIRY
 	 * emulation handling.
 	 */
-	if (cmd->data_length < SE_INQUIRY_BUF &&
-	    (cmd->se_cmd_flags & SCF_PASSTHROUGH_SG_TO_MEM_NOALLOC)) {
-		buf = kzalloc(SE_INQUIRY_BUF, GFP_KERNEL);
-		if (!buf) {
-			transport_kunmap_data_sg(cmd);
-			cmd->scsi_sense_reason = TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
-			return -ENOMEM;
-		}
-	} else {
-		buf = map_buf;
+	if (cmd->data_length < 4) {
+		pr_err("SCSI Inquiry payload length: %u"
+			" too small for EVPD=1\n", cmd->data_length);
+		cmd->scsi_sense_reason = TCM_INVALID_CDB_FIELD;
+		return -EINVAL;
 	}
 
 	if (dev == tpg->tpg_virt_lun0.lun_se_dev)
@@ -654,7 +652,7 @@ int target_emulate_inquiry(struct se_task *task)
 	}
 
 	pr_err("Unknown VPD Code: 0x%02x\n", cdb[2]);
-	cmd->scsi_sense_reason = TCM_INVALID_CDB_FIELD;
+	cmd->scsi_sense_reason = TCM_UNSUPPORTED_SCSI_OPCODE;
 	ret = -EINVAL;
 
 out:

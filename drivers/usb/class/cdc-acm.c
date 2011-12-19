@@ -609,10 +609,7 @@ static void acm_port_shutdown(struct tty_port *port)
 	struct acm *acm = container_of(port, struct acm, port);
 	int i;
 
-	dev_dbg(&acm->control->dev, "%s\n", __func__);
-
-	mutex_lock(&acm->mutex);
-	if (!acm->disconnected) {
+	if (acm->dev) {
 		usb_autopm_get_interface(acm->control);
 		acm_set_control(acm, acm->ctrlout = 0);
 		usb_kill_urb(acm->ctrlurb);
@@ -623,14 +620,6 @@ static void acm_port_shutdown(struct tty_port *port)
 		acm->control->needs_remote_wakeup = 0;
 		usb_autopm_put_interface(acm->control);
 	}
-	mutex_unlock(&acm->mutex);
-}
-
-static void acm_tty_cleanup(struct tty_struct *tty)
-{
-	struct acm *acm = tty->driver_data;
-	dev_dbg(&acm->control->dev, "%s\n", __func__);
-	tty_port_put(&acm->port);
 }
 
 static void acm_tty_hangup(struct tty_struct *tty)
@@ -638,13 +627,34 @@ static void acm_tty_hangup(struct tty_struct *tty)
 	struct acm *acm = tty->driver_data;
 	dev_dbg(&acm->control->dev, "%s\n", __func__);
 	tty_port_hangup(&acm->port);
+	mutex_lock(&open_mutex);
+	acm_port_down(acm);
+	mutex_unlock(&open_mutex);
 }
 
 static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 {
 	struct acm *acm = tty->driver_data;
-	dev_dbg(&acm->control->dev, "%s\n", __func__);
-	tty_port_close(&acm->port, tty, filp);
+
+	/* Perform the closing process and see if we need to do the hardware
+	   shutdown */
+	if (!acm)
+		return;
+
+	mutex_lock(&open_mutex);
+	if (tty_port_close_start(&acm->port, tty, filp) == 0) {
+		if (!acm->dev) {
+			tty_port_tty_set(&acm->port, NULL);
+			acm_tty_unregister(acm);
+			tty->driver_data = NULL;
+		}
+		mutex_unlock(&open_mutex);
+		return;
+	}
+	acm_port_down(acm);
+	tty_port_close_end(&acm->port, tty);
+	tty_port_tty_set(&acm->port, NULL);
+	mutex_unlock(&open_mutex);
 }
 
 static int acm_tty_write(struct tty_struct *tty,

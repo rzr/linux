@@ -696,6 +696,8 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 	 */
 	domain->hwirq_base = 32;
 	if (gic_nr == 0) {
+		gic_cpu_base_addr = cpu_base;
+
 		if ((irq_start & 31) > 0) {
 			domain->hwirq_base = 16;
 			if (irq_start != -1)

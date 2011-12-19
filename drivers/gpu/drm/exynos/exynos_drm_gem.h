@@ -60,16 +60,14 @@ struct exynos_drm_gem_buf {
  *	user can access the buffer through kms_bo.handle.
  */
 struct exynos_drm_gem_obj {
-	struct drm_gem_object		base;
-	struct exynos_drm_gem_buf	*buffer;
+	struct drm_gem_object base;
+	struct exynos_drm_gem_buf *buffer;
 };
 
-/* destroy a buffer with gem object */
-void exynos_drm_gem_destroy(struct exynos_drm_gem_obj *exynos_gem_obj);
-
-/* create a new buffer with gem object */
+/* create a new buffer and get a new gem handle. */
 struct exynos_drm_gem_obj *exynos_drm_gem_create(struct drm_device *dev,
-						 unsigned long size);
+		struct drm_file *file_priv,
+		unsigned int *handle, unsigned long size);
 
 /*
  * request gem object creation and buffer allocation as the size

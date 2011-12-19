@@ -241,11 +241,10 @@ static void ohci_at91_usb_set_power(struct at91_usbh_data *pdata, int port, int 
 	if (port < 0 || port >= 2)
 		return;
 
-	if (!gpio_is_valid(pdata->vbus_pin[port]))
+	if (pdata->vbus_pin[port] <= 0)
 		return;
 
-	gpio_set_value(pdata->vbus_pin[port],
-		       pdata->vbus_pin_active_low[port] ^ enable);
+	gpio_set_value(pdata->vbus_pin[port], !pdata->vbus_pin_inverted ^ enable);
 }
 
 static int ohci_at91_usb_get_power(struct at91_usbh_data *pdata, int port)
@@ -253,11 +252,10 @@ static int ohci_at91_usb_get_power(struct at91_usbh_data *pdata, int port)
 	if (port < 0 || port >= 2)
 		return -EINVAL;
 
-	if (!gpio_is_valid(pdata->vbus_pin[port]))
+	if (pdata->vbus_pin[port] <= 0)
 		return -EINVAL;
 
-	return gpio_get_value(pdata->vbus_pin[port]) ^
-		pdata->vbus_pin_active_low[port];
+	return gpio_get_value(pdata->vbus_pin[port]) ^ !pdata->vbus_pin_inverted;
 }
 
 /*
