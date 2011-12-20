@@ -1625,7 +1625,6 @@ int usbhs_mod_host_probe(struct usbhs_priv *priv)
 		dev_err(dev, "Failed to create hcd\n");
 		return -ENOMEM;
 	}
-	hcd->has_tt = 1; /* for low/full speed */
 
 	/*
 	 * CAUTION

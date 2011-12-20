@@ -260,10 +260,10 @@ static int btrfs_ioctl_setflags(struct file *file, void __user *arg)
 		goto out_drop;
 	}
 
-	btrfs_update_iflags(inode);
-	inode->i_ctime = CURRENT_TIME;
 	ret = btrfs_update_inode(trans, root, inode);
 
+	btrfs_update_iflags(inode);
+	inode->i_ctime = CURRENT_TIME;
 	btrfs_end_transaction(trans, root);
  out_drop:
 	if (ret) {

@@ -732,8 +732,8 @@ static struct rt6_info *rt6_alloc_cow(const struct rt6_info *ort,
 	if (rt) {
 		int attempts = !in_softirq();
 
-		if (!(rt->rt6i_flags & RTF_GATEWAY)) {
-			if (ort->rt6i_dst.plen != 128 &&
+		if (!(rt->rt6i_flags&RTF_GATEWAY)) {
+			if (rt->rt6i_dst.plen != 128 &&
 			    ipv6_addr_equal(&ort->rt6i_dst.addr, daddr))
 				rt->rt6i_flags |= RTF_ANYCAST;
 			rt->rt6i_gateway = *daddr;

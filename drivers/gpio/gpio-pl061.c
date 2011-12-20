@@ -222,6 +222,10 @@ static int pl061_probe(struct amba_device *dev, const struct amba_id *id)
 	struct pl061_gpio *chip;
 	int ret, irq, i;
 
+	pdata = dev->dev.platform_data;
+	if (pdata == NULL)
+		return -ENODEV;
+
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL)
 		return -ENOMEM;

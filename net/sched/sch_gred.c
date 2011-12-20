@@ -389,10 +389,9 @@ static inline int gred_change_vq(struct Qdisc *sch, int dp,
 	struct gred_sched *table = qdisc_priv(sch);
 	struct gred_sched_data *q = table->tab[dp];
 
-	if (!q) {
-		table->tab[dp] = q = *prealloc;
-		*prealloc = NULL;
-		if (!q)
+	if (table->tab[dp] == NULL) {
+		table->tab[dp] = kzalloc(sizeof(*q), GFP_KERNEL);
+		if (table->tab[dp] == NULL)
 			return -ENOMEM;
 	}
 
