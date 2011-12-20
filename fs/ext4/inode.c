@@ -2792,10 +2792,6 @@ out:
 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
 
 	/* queue the work to convert unwritten extents to written */
-<<<<<<< HEAD
-	iocb->private = NULL;
-=======
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 	queue_work(wq, &io_end->work);
 
 	/* XXX: probably should move into the real I/O completion handler */

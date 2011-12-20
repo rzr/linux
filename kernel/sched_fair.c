@@ -2351,7 +2351,6 @@ again:
 	for_each_domain(target, sd) {
 		if (!smt && (sd->flags & SD_SHARE_CPUPOWER))
 			continue;
-<<<<<<< HEAD
 
 		if (!(sd->flags & SD_SHARE_PKG_RESOURCES)) {
 			if (!smt) {
@@ -2372,39 +2371,12 @@ again:
 					goto next;
 			}
 
-=======
-
-		if (smt && !(sd->flags & SD_SHARE_CPUPOWER))
-			break;
-
-		if (!(sd->flags & SD_SHARE_PKG_RESOURCES))
-			break;
-
-		sg = sd->groups;
-		do {
-			if (!cpumask_intersects(sched_group_cpus(sg),
-						tsk_cpus_allowed(p)))
-				goto next;
-
-			for_each_cpu(i, sched_group_cpus(sg)) {
-				if (!idle_cpu(i))
-					goto next;
-			}
-
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 			target = cpumask_first_and(sched_group_cpus(sg),
 					tsk_cpus_allowed(p));
 			goto done;
 next:
 			sg = sg->next;
 		} while (sg != sd->groups);
-<<<<<<< HEAD
-=======
-	}
-	if (!smt) {
-		smt = 1;
-		goto again;
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 	}
 done:
 	rcu_read_unlock();

@@ -1147,8 +1147,6 @@ pause:
 		if (task_ratelimit)
 			break;
 
-<<<<<<< HEAD
-=======
 		/*
 		 * In the case of an unresponding NFS server and the NFS dirty
 		 * pages exceeds dirty_thresh, give the other good bdi's a pipe
@@ -1162,7 +1160,6 @@ pause:
 		if (bdi_dirty <= bdi_stat_error(bdi))
 			break;
 
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 		if (fatal_signal_pending(current))
 			break;
 	}

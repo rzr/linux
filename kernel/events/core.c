@@ -3558,19 +3558,9 @@ static void ring_buffer_wakeup(struct perf_event *event)
 
 	rcu_read_lock();
 	rb = rcu_dereference(event->rb);
-<<<<<<< HEAD
 	list_for_each_entry_rcu(event, &rb->event_list, rb_entry) {
 		wake_up_all(&event->waitq);
 	}
-=======
-	if (!rb)
-		goto unlock;
-
-	list_for_each_entry_rcu(event, &rb->event_list, rb_entry)
-		wake_up_all(&event->waitq);
-
-unlock:
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 	rcu_read_unlock();
 }
 

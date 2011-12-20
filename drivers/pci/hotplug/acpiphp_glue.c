@@ -132,18 +132,6 @@ register_slot(acpi_handle handle, u32 lvl, void *context, void **rv)
 	if (!acpi_pci_check_ejectable(pbus, handle) && !is_dock_device(handle))
 		return AE_OK;
 
-	pdev = pbus->self;
-	if (pdev && pci_is_pcie(pdev)) {
-		tmp = acpi_find_root_bridge_handle(pdev);
-		if (tmp) {
-			struct acpi_pci_root *root = acpi_pci_find_root(tmp);
-
-			if (root && (root->osc_control_set &
-					OSC_PCI_EXPRESS_NATIVE_HP_CONTROL))
-				return AE_OK;
-		}
-	}
-
 	acpi_evaluate_integer(handle, "_ADR", NULL, &adr);
 	device = (adr >> 16) & 0xffff;
 	function = adr & 0xffff;
@@ -225,6 +213,7 @@ register_slot(acpi_handle handle, u32 lvl, void *context, void **rv)
 
 	pdev = pci_get_slot(pbus, PCI_DEVFN(device, function));
 	if (pdev) {
+		pdev->current_state = PCI_D0;
 		slot->flags |= (SLOT_ENABLED | SLOT_POWEREDON);
 		pci_dev_put(pdev);
 	}
@@ -1402,7 +1391,6 @@ find_root_bridges(acpi_handle handle, u32 lvl, void *context, void **rv)
 	if (!acpi_is_root_bridge(handle))
 		return AE_OK;
 
-<<<<<<< HEAD
 	root = acpi_pci_find_root(handle);
 	if (!root)
 		return AE_OK;
@@ -1410,8 +1398,6 @@ find_root_bridges(acpi_handle handle, u32 lvl, void *context, void **rv)
 	if (root->osc_control_set & OSC_PCI_EXPRESS_NATIVE_HP_CONTROL)
 		return AE_OK;
 
-=======
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 	(*count)++;
 	acpi_install_notify_handler(handle, ACPI_SYSTEM_NOTIFY,
 				    handle_hotplug_event_bridge, NULL);

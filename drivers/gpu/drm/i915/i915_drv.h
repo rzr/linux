@@ -1006,11 +1006,7 @@ extern int i915_semaphores __read_mostly;
 extern unsigned int i915_lvds_downclock __read_mostly;
 extern int i915_panel_use_ssc __read_mostly;
 extern int i915_vbt_sdvo_panel_type __read_mostly;
-<<<<<<< HEAD
-extern unsigned int i915_enable_rc6 __read_mostly;
-=======
 extern int i915_enable_rc6 __read_mostly;
->>>>>>> 390f998509bf049019df0b078c0a6606e0d57fb4
 extern int i915_enable_fbc __read_mostly;
 extern bool i915_enable_hangcheck __read_mostly;
 

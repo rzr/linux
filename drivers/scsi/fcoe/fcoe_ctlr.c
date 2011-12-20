@@ -320,7 +320,6 @@ static void fcoe_ctlr_solicit(struct fcoe_ctlr *fip, struct fcoe_fcf *fcf)
 
 	skb_put(skb, sizeof(*sol));
 	skb->protocol = htons(ETH_P_FIP);
-	skb->priority = fip->priority;
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
 	fip->send(fip, skb);
@@ -475,7 +474,6 @@ static void fcoe_ctlr_send_keep_alive(struct fcoe_ctlr *fip,
 	}
 	skb_put(skb, len);
 	skb->protocol = htons(ETH_P_FIP);
-	skb->priority = fip->priority;
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
 	fip->send(fip, skb);
@@ -568,7 +566,6 @@ static int fcoe_ctlr_encaps(struct fcoe_ctlr *fip, struct fc_lport *lport,
 	cap->fip.fip_dl_len = htons(dlen / FIP_BPW);
 
 	skb->protocol = htons(ETH_P_FIP);
-	skb->priority = fip->priority;
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
 	return 0;
@@ -1914,7 +1911,6 @@ static void fcoe_ctlr_vn_send(struct fcoe_ctlr *fip,
 
 	skb_put(skb, len);
 	skb->protocol = htons(ETH_P_FIP);
-	skb->priority = fip->priority;
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
 
