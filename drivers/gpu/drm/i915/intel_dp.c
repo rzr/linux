@@ -840,10 +840,11 @@ intel_dp_mode_set(struct drm_encoder *encoder, struct drm_display_mode *mode,
 	}
 
 	/*
-	 * There are three kinds of DP registers:
+	 * There are four kinds of DP registers:
 	 *
 	 * 	IBX PCH
-	 * 	CPU
+	 * 	SNB CPU
+	 *	IVB CPU
 	 * 	CPT PCH
 	 *
 	 * IBX PCH and CPU are the same for almost everything,
@@ -896,7 +897,25 @@ intel_dp_mode_set(struct drm_encoder *encoder, struct drm_display_mode *mode,
 
 	/* Split out the IBX/CPU vs CPT settings */
 
-	if (!HAS_PCH_CPT(dev) || is_cpu_edp(intel_dp)) {
+	if (is_cpu_edp(intel_dp) && IS_GEN7(dev)) {
+		if (adjusted_mode->flags & DRM_MODE_FLAG_PHSYNC)
+			intel_dp->DP |= DP_SYNC_HS_HIGH;
+		if (adjusted_mode->flags & DRM_MODE_FLAG_PVSYNC)
+			intel_dp->DP |= DP_SYNC_VS_HIGH;
+		intel_dp->DP |= DP_LINK_TRAIN_OFF_CPT;
+
+		if (intel_dp->link_configuration[1] & DP_LANE_COUNT_ENHANCED_FRAME_EN)
+			intel_dp->DP |= DP_ENHANCED_FRAMING;
+
+		intel_dp->DP |= intel_crtc->pipe << 29;
+
+		/* don't miss out required setting for eDP */
+		intel_dp->DP |= DP_PLL_ENABLE;
+		if (adjusted_mode->clock < 200000)
+			intel_dp->DP |= DP_PLL_FREQ_160MHZ;
+		else
+			intel_dp->DP |= DP_PLL_FREQ_270MHZ;
+	} else if (!HAS_PCH_CPT(dev) || is_cpu_edp(intel_dp)) {
 		intel_dp->DP |= intel_dp->color_range;
 
 		if (adjusted_mode->flags & DRM_MODE_FLAG_PHSYNC)
@@ -1398,8 +1417,6 @@ static char	*link_train_names[] = {
  * These are source-specific values; current Intel hardware supports
  * a maximum voltage of 800mV and a maximum pre-emphasis of 6dB
  */
-#define I830_DP_VOLTAGE_MAX	    DP_TRAIN_VOLTAGE_SWING_800
-#define I830_DP_VOLTAGE_MAX_CPT	    DP_TRAIN_VOLTAGE_SWING_1200
 
 static uint8_t
 intel_dp_voltage_max(struct intel_dp *intel_dp)
@@ -1447,12 +1464,12 @@ intel_dp_pre_emphasis_max(struct intel_dp *intel_dp, uint8_t voltage_swing)
 static void
 intel_get_adjust_train(struct intel_dp *intel_dp, uint8_t link_status[DP_LINK_STATUS_SIZE])
 {
-	struct drm_device *dev = intel_dp->base.base.dev;
 	uint8_t v = 0;
 	uint8_t p = 0;
 	int lane;
 	uint8_t	*adjust_request = link_status + (DP_ADJUST_REQUEST_LANE0_1 - DP_LANE0_1_STATUS);
-	int voltage_max;
+	uint8_t voltage_max;
+	uint8_t preemph_max;
 
 	for (lane = 0; lane < intel_dp->lane_count; lane++) {
 		uint8_t this_v = intel_get_adjust_request_voltage(adjust_request, lane);
@@ -1464,10 +1481,7 @@ intel_get_adjust_train(struct intel_dp *intel_dp, uint8_t link_status[DP_LINK_ST
 			p = this_p;
 	}
 
-	if (HAS_PCH_CPT(dev) && !is_cpu_edp(intel_dp))
-		voltage_max = I830_DP_VOLTAGE_MAX_CPT;
-	else
-		voltage_max = I830_DP_VOLTAGE_MAX;
+	voltage_max = intel_dp_voltage_max(intel_dp);
 	if (v >= voltage_max)
 		v = voltage_max | DP_TRAIN_MAX_SWING_REACHED;
 
@@ -1696,7 +1710,11 @@ intel_dp_start_link_train(struct intel_dp *intel_dp)
 		uint8_t	    link_status[DP_LINK_STATUS_SIZE];
 		uint32_t    signal_levels;
 
-		if (IS_GEN6(dev) && is_cpu_edp(intel_dp)) {
+
+		if (IS_GEN7(dev) && is_cpu_edp(intel_dp)) {
+			signal_levels = intel_gen7_edp_signal_levels(intel_dp->train_set[0]);
+			DP = (DP & ~EDP_LINK_TRAIN_VOL_EMP_MASK_IVB) | signal_levels;
+		} else if (IS_GEN6(dev) && is_cpu_edp(intel_dp)) {
 			signal_levels = intel_gen6_edp_signal_levels(intel_dp->train_set[0]);
 			DP = (DP & ~EDP_LINK_TRAIN_VOL_EMP_MASK_SNB) | signal_levels;
 		} else {
@@ -1786,7 +1804,10 @@ intel_dp_complete_link_train(struct intel_dp *intel_dp)
 			break;
 		}
 
-		if (IS_GEN6(dev) && is_cpu_edp(intel_dp)) {
+		if (IS_GEN7(dev) && is_cpu_edp(intel_dp)) {
+			signal_levels = intel_gen7_edp_signal_levels(intel_dp->train_set[0]);
+			DP = (DP & ~EDP_LINK_TRAIN_VOL_EMP_MASK_IVB) | signal_levels;
+		} else if (IS_GEN6(dev) && is_cpu_edp(intel_dp)) {
 			signal_levels = intel_gen6_edp_signal_levels(intel_dp->train_set[0]);
 			DP = (DP & ~EDP_LINK_TRAIN_VOL_EMP_MASK_SNB) | signal_levels;
 		} else {
@@ -1877,7 +1898,7 @@ intel_dp_link_down(struct intel_dp *intel_dp)
 	msleep(17);
 
 	if (is_edp(intel_dp)) {
-		if (HAS_PCH_CPT(dev) && !is_cpu_edp(intel_dp))
+		if (HAS_PCH_CPT(dev) && (IS_GEN7(dev) || !is_cpu_edp(intel_dp)))
 			DP |= DP_LINK_TRAIN_OFF_CPT;
 		else
 			DP |= DP_LINK_TRAIN_OFF;
