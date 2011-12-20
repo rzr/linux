@@ -209,10 +209,9 @@ static int __devinit hx4700_audio_probe(struct platform_device *pdev)
 	snd_soc_card_hx4700.dev = &pdev->dev;
 	ret = snd_soc_register_card(&snd_soc_card_hx4700);
 	if (ret)
-		gpio_free_array(hx4700_audio_gpios,
-				ARRAY_SIZE(hx4700_audio_gpios));
+		return ret;
 
-	return ret;
+	return 0;
 }
 
 static int __devexit hx4700_audio_remove(struct platform_device *pdev)

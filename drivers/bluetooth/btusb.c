@@ -777,8 +777,9 @@ skip_waking:
 		usb_mark_last_busy(data->udev);
 	}
 
-done:
 	usb_free_urb(urb);
+
+done:
 	return err;
 }
 

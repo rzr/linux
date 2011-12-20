@@ -67,12 +67,14 @@ static struct cmtp_session *__cmtp_get_session(bdaddr_t *bdaddr)
 
 static void __cmtp_link_session(struct cmtp_session *session)
 {
+	__module_get(THIS_MODULE);
 	list_add(&session->list, &cmtp_session_list);
 }
 
 static void __cmtp_unlink_session(struct cmtp_session *session)
 {
 	list_del(&session->list);
+	module_put(THIS_MODULE);
 }
 
 static void __cmtp_copy_session(struct cmtp_session *session, struct cmtp_conninfo *ci)
@@ -325,7 +327,6 @@ static int cmtp_session(void *arg)
 	up_write(&cmtp_session_sem);
 
 	kfree(session);
-	module_put_and_exit(0);
 	return 0;
 }
 
@@ -375,11 +376,9 @@ int cmtp_add_connection(struct cmtp_connadd_req *req, struct socket *sock)
 
 	__cmtp_link_session(session);
 
-	__module_get(THIS_MODULE);
 	session->task = kthread_run(cmtp_session, session, "kcmtpd_ctr_%d",
 								session->num);
 	if (IS_ERR(session->task)) {
-		module_put(THIS_MODULE);
 		err = PTR_ERR(session->task);
 		goto unlink;
 	}

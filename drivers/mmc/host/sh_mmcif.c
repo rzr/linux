@@ -908,7 +908,7 @@ static void sh_mmcif_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		if (host->power) {
 			pm_runtime_put(&host->pd->dev);
 			host->power = false;
-			if (p->down_pwr && ios->power_mode == MMC_POWER_OFF)
+			if (p->down_pwr)
 				p->down_pwr(host->pd);
 		}
 		host->state = STATE_IDLE;

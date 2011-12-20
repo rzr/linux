@@ -349,7 +349,7 @@ void usbhs_irq_callback_update(struct usbhs_priv *priv, struct usbhs_mod *mod)
 		if (mod->irq_attch)
 			intenb1 |= ATTCHE;
 
-		if (mod->irq_dtch)
+		if (mod->irq_attch)
 			intenb1 |= DTCHE;
 
 		if (mod->irq_sign)

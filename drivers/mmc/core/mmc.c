@@ -876,21 +876,17 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * set the notification byte in the ext_csd register of device
 	 */
 	if ((host->caps2 & MMC_CAP2_POWEROFF_NOTIFY) &&
-	    (card->ext_csd.rev >= 6)) {
+	    (card->poweroff_notify_state == MMC_NO_POWER_NOTIFICATION)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_POWER_OFF_NOTIFICATION,
 				 EXT_CSD_POWER_ON,
 				 card->ext_csd.generic_cmd6_time);
 		if (err && err != -EBADMSG)
 			goto free_card;
-
-		/*
-		 * The err can be -EBADMSG or 0,
-		 * so check for success and update the flag
-		 */
-		if (!err)
-			card->poweroff_notify_state = MMC_POWERED_ON;
 	}
+
+	if (!err)
+		card->poweroff_notify_state = MMC_POWERED_ON;
 
 	/*
 	 * Activate high speed (if supported)

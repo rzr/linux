@@ -245,11 +245,9 @@ void tt_local_add(struct net_device *soft_iface, const uint8_t *addr,
 	if (tt_global_entry) {
 		/* This node is probably going to update its tt table */
 		tt_global_entry->orig_node->tt_poss_change = true;
-		/* The global entry has to be marked as ROAMING and has to be
+		/* The global entry has to be marked as PENDING and has to be
 		 * kept for consistency purpose */
-		tt_global_entry->flags |= TT_CLIENT_ROAM;
-		tt_global_entry->roam_at = jiffies;
-
+		tt_global_entry->flags |= TT_CLIENT_PENDING;
 		send_roam_adv(bat_priv, tt_global_entry->addr,
 			      tt_global_entry->orig_node);
 	}
@@ -696,7 +694,6 @@ void tt_global_del(struct bat_priv *bat_priv,
 		   const char *message, bool roaming)
 {
 	struct tt_global_entry *tt_global_entry = NULL;
-	struct tt_local_entry *tt_local_entry = NULL;
 
 	tt_global_entry = tt_global_hash_find(bat_priv, addr);
 	if (!tt_global_entry)
@@ -704,29 +701,15 @@ void tt_global_del(struct bat_priv *bat_priv,
 
 	if (tt_global_entry->orig_node == orig_node) {
 		if (roaming) {
-			/* if we are deleting a global entry due to a roam
-			 * event, there are two possibilities:
-			 * 1) the client roamed from node A to node B => we mark
-			 *    it with TT_CLIENT_ROAM, we start a timer and we
-			 *    wait for node B to claim it. In case of timeout
-			 *    the entry is purged.
-			 * 2) the client roamed to us => we can directly delete
-			 *    the global entry, since it is useless now. */
-			tt_local_entry = tt_local_hash_find(bat_priv,
-							tt_global_entry->addr);
-			if (!tt_local_entry) {
-				tt_global_entry->flags |= TT_CLIENT_ROAM;
-				tt_global_entry->roam_at = jiffies;
-				goto out;
-			}
+			tt_global_entry->flags |= TT_CLIENT_ROAM;
+			tt_global_entry->roam_at = jiffies;
+			goto out;
 		}
 		_tt_global_del(bat_priv, tt_global_entry, message);
 	}
 out:
 	if (tt_global_entry)
 		tt_global_entry_free_ref(tt_global_entry);
-	if (tt_local_entry)
-		tt_local_entry_free_ref(tt_local_entry);
 }
 
 void tt_global_del_orig(struct bat_priv *bat_priv,

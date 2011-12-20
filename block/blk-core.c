@@ -366,14 +366,7 @@ void blk_drain_queue(struct request_queue *q, bool drain_all)
 		if (drain_all)
 			blk_throtl_drain(q);
 
-		/*
-		 * This function might be called on a queue which failed
-		 * driver init after queue creation.  Some drivers
-		 * (e.g. fd) get unhappy in such cases.  Kick queue iff
-		 * dispatch queue has something on it.
-		 */
-		if (!list_empty(&q->queue_head))
-			__blk_run_queue(q);
+		__blk_run_queue(q);
 
 		if (drain_all)
 			nr_rqs = q->rq.count[0] + q->rq.count[1];
@@ -474,7 +467,6 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 	q->backing_dev_info.state = 0;
 	q->backing_dev_info.capabilities = BDI_CAP_MAP_COPY;
 	q->backing_dev_info.name = "block";
-	q->node = node_id;
 
 	err = bdi_init(&q->backing_dev_info);
 	if (err) {
@@ -559,7 +551,7 @@ blk_init_queue_node(request_fn_proc *rfn, spinlock_t *lock, int node_id)
 	if (!uninit_q)
 		return NULL;
 
-	q = blk_init_allocated_queue(uninit_q, rfn, lock);
+	q = blk_init_allocated_queue_node(uninit_q, rfn, lock, node_id);
 	if (!q)
 		blk_cleanup_queue(uninit_q);
 
@@ -571,9 +563,18 @@ struct request_queue *
 blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
 			 spinlock_t *lock)
 {
+	return blk_init_allocated_queue_node(q, rfn, lock, -1);
+}
+EXPORT_SYMBOL(blk_init_allocated_queue);
+
+struct request_queue *
+blk_init_allocated_queue_node(struct request_queue *q, request_fn_proc *rfn,
+			      spinlock_t *lock, int node_id)
+{
 	if (!q)
 		return NULL;
 
+	q->node = node_id;
 	if (blk_init_free_list(q))
 		return NULL;
 
@@ -603,7 +604,7 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
 
 	return NULL;
 }
-EXPORT_SYMBOL(blk_init_allocated_queue);
+EXPORT_SYMBOL(blk_init_allocated_queue_node);
 
 int blk_get_queue(struct request_queue *q)
 {

@@ -58,15 +58,15 @@ module_param_named(powersave, i915_powersave, int, 0600);
 MODULE_PARM_DESC(powersave,
 		"Enable powersavings, fbc, downclocking, etc. (default: true)");
 
-int i915_semaphores __read_mostly = -1;
+unsigned int i915_semaphores __read_mostly = 0;
 module_param_named(semaphores, i915_semaphores, int, 0600);
 MODULE_PARM_DESC(semaphores,
-		"Use semaphores for inter-ring sync (default: -1 (use per-chip defaults))");
+		"Use semaphores for inter-ring sync (default: false)");
 
-int i915_enable_rc6 __read_mostly = -1;
+unsigned int i915_enable_rc6 __read_mostly = 0;
 module_param_named(i915_enable_rc6, i915_enable_rc6, int, 0600);
 MODULE_PARM_DESC(i915_enable_rc6,
-		"Enable power-saving render C-state 6 (default: -1 (use per-chip default)");
+		"Enable power-saving render C-state 6 (default: true)");
 
 int i915_enable_fbc __read_mostly = -1;
 module_param_named(i915_enable_fbc, i915_enable_fbc, int, 0600);
@@ -328,7 +328,7 @@ void intel_detect_pch(struct drm_device *dev)
 	}
 }
 
-void __gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
+static void __gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
 {
 	int count;
 
@@ -344,22 +344,6 @@ void __gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
 		udelay(10);
 }
 
-void __gen6_gt_force_wake_mt_get(struct drm_i915_private *dev_priv)
-{
-	int count;
-
-	count = 0;
-	while (count++ < 50 && (I915_READ_NOTRACE(FORCEWAKE_MT_ACK) & 1))
-		udelay(10);
-
-	I915_WRITE_NOTRACE(FORCEWAKE_MT, (1<<16) | 1);
-	POSTING_READ(FORCEWAKE_MT);
-
-	count = 0;
-	while (count++ < 50 && (I915_READ_NOTRACE(FORCEWAKE_MT_ACK) & 1) == 0)
-		udelay(10);
-}
-
 /*
  * Generally this is called implicitly by the register read function. However,
  * if some sequence requires the GT to not power down then this function should
@@ -372,19 +356,13 @@ void gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
 
 	/* Forcewake is atomic in case we get in here without the lock */
 	if (atomic_add_return(1, &dev_priv->forcewake_count) == 1)
-		dev_priv->display.force_wake_get(dev_priv);
+		__gen6_gt_force_wake_get(dev_priv);
 }
 
-void __gen6_gt_force_wake_put(struct drm_i915_private *dev_priv)
+static void __gen6_gt_force_wake_put(struct drm_i915_private *dev_priv)
 {
 	I915_WRITE_NOTRACE(FORCEWAKE, 0);
 	POSTING_READ(FORCEWAKE);
-}
-
-void __gen6_gt_force_wake_mt_put(struct drm_i915_private *dev_priv)
-{
-	I915_WRITE_NOTRACE(FORCEWAKE_MT, (1<<16) | 0);
-	POSTING_READ(FORCEWAKE_MT);
 }
 
 /*
@@ -395,7 +373,7 @@ void gen6_gt_force_wake_put(struct drm_i915_private *dev_priv)
 	WARN_ON(!mutex_is_locked(&dev_priv->dev->struct_mutex));
 
 	if (atomic_dec_and_test(&dev_priv->forcewake_count))
-		dev_priv->display.force_wake_put(dev_priv);
+		__gen6_gt_force_wake_put(dev_priv);
 }
 
 void __gen6_gt_wait_for_fifo(struct drm_i915_private *dev_priv)
@@ -925,9 +903,8 @@ MODULE_LICENSE("GPL and additional rights");
 /* We give fast paths for the really cool registers */
 #define NEEDS_FORCE_WAKE(dev_priv, reg) \
 	(((dev_priv)->info->gen >= 6) && \
-	 ((reg) < 0x40000) &&		 \
-	 ((reg) != FORCEWAKE) &&	 \
-	 ((reg) != ECOBUS))
+	((reg) < 0x40000) && \
+	((reg) != FORCEWAKE))
 
 #define __i915_read(x, y) \
 u##x i915_read##x(struct drm_i915_private *dev_priv, u32 reg) { \
