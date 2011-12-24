@@ -916,8 +916,6 @@ void __init setup_arch(char **cmdline_p)
 {
 	struct machine_desc *mdesc;
 
-	unwind_init();
-
 	setup_processor();
 	mdesc = setup_machine_fdt(__atags_pointer);
 	if (!mdesc)
@@ -925,6 +923,12 @@ void __init setup_arch(char **cmdline_p)
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
 
+#ifdef CONFIG_ZONE_DMA
+	if (mdesc->dma_zone_size) {
+		extern unsigned long arm_dma_zone_size;
+		arm_dma_zone_size = mdesc->dma_zone_size;
+	}
+#endif
 	if (mdesc->soft_reboot)
 		reboot_setup("s");
 
@@ -959,12 +963,6 @@ void __init setup_arch(char **cmdline_p)
 
 	tcm_init();
 
-#ifdef CONFIG_ZONE_DMA
-	if (mdesc->dma_zone_size) {
-		extern unsigned long arm_dma_zone_size;
-		arm_dma_zone_size = mdesc->dma_zone_size;
-	}
-#endif
 #ifdef CONFIG_MULTI_IRQ_HANDLER
 	handle_arch_irq = mdesc->handle_irq;
 #endif

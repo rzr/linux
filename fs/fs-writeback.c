@@ -53,6 +53,14 @@ struct wb_writeback_work {
 };
 
 /*
+ * Include the creation of the trace points after defining the
+ * wb_writeback_work structure so that the definition remains local to this
+ * file.
+ */
+#define CREATE_TRACE_POINTS
+#include <trace/events/writeback.h>
+
+/*
  * We don't actually have pdflush, but this one is exported though /proc...
  */
 int nr_pdflush_threads;
@@ -150,6 +158,7 @@ __bdi_start_writeback(struct backing_dev_info *bdi, long nr_pages,
  * bdi_start_writeback - start writeback
  * @bdi: the backing device to write from
  * @nr_pages: the number of pages to write
+ * @reason: reason why some writeback work was initiated
  *
  * Description:
  *   This does WB_SYNC_NONE opportunistic writeback. The IO is only
@@ -1221,6 +1230,7 @@ static void wait_sb_inodes(struct super_block *sb)
  * writeback_inodes_sb_nr -	writeback dirty inodes from given super_block
  * @sb: the superblock
  * @nr: the number of pages to write
+ * @reason: reason why some writeback work initiated
  *
  * Start writeback on some inodes on this super_block. No guarantees are made
  * on how many (if any) will be written, and this function does not wait
@@ -1249,6 +1259,7 @@ EXPORT_SYMBOL(writeback_inodes_sb_nr);
 /**
  * writeback_inodes_sb	-	writeback dirty inodes from given super_block
  * @sb: the superblock
+ * @reason: reason why some writeback work was initiated
  *
  * Start writeback on some inodes on this super_block. No guarantees are made
  * on how many (if any) will be written, and this function does not wait
@@ -1263,6 +1274,7 @@ EXPORT_SYMBOL(writeback_inodes_sb);
 /**
  * writeback_inodes_sb_if_idle	-	start writeback if none underway
  * @sb: the superblock
+ * @reason: reason why some writeback work was initiated
  *
  * Invoke writeback_inodes_sb if no writeback is currently underway.
  * Returns 1 if writeback was started, 0 if not.
@@ -1283,6 +1295,7 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
  * writeback_inodes_sb_if_idle	-	start writeback if none underway
  * @sb: the superblock
  * @nr: the number of pages to write
+ * @reason: reason why some writeback work was initiated
  *
  * Invoke writeback_inodes_sb if no writeback is currently underway.
  * Returns 1 if writeback was started, 0 if not.

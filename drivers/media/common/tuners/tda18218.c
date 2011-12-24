@@ -141,8 +141,9 @@ static int tda18218_set_params(struct dvb_frontend *fe)
 	/* low-pass filter cut-off frequency */
 	if (bw <= 6000000) {
 		LP_Fc = 0;
-		priv->if_frequency = 3000000;
-	} else if (bw <= 7000000) {
+		LO_Frac = params->frequency + 3000000;
+		break;
+	case BANDWIDTH_7_MHZ:
 		LP_Fc = 1;
 		priv->if_frequency = 3500000;
 	} else {

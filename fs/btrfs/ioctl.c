@@ -260,10 +260,10 @@ static int btrfs_ioctl_setflags(struct file *file, void __user *arg)
 		goto out_drop;
 	}
 
-	ret = btrfs_update_inode(trans, root, inode);
-
 	btrfs_update_iflags(inode);
 	inode->i_ctime = CURRENT_TIME;
+	ret = btrfs_update_inode(trans, root, inode);
+
 	btrfs_end_transaction(trans, root);
  out_drop:
 	if (ret) {
@@ -868,8 +868,10 @@ static int cluster_pages_for_defrag(struct inode *inode,
 		return 0;
 	file_end = (isize - 1) >> PAGE_CACHE_SHIFT;
 
+	mutex_lock(&inode->i_mutex);
 	ret = btrfs_delalloc_reserve_space(inode,
 					   num_pages << PAGE_CACHE_SHIFT);
+	mutex_unlock(&inode->i_mutex);
 	if (ret)
 		return ret;
 	i_done = 0;

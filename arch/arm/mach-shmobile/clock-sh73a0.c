@@ -323,154 +323,26 @@ static struct clk *dsi_parent[8] = {
 };
 
 static struct clk div6_clks[DIV6_NR] = {
-	[DIV6_VCK1] = SH_CLK_DIV6_EXT(VCLKCR1, 0,
-			vck_parent, ARRAY_SIZE(vck_parent), 12, 3),
-	[DIV6_VCK2] = SH_CLK_DIV6_EXT(VCLKCR2, 0,
-			vck_parent, ARRAY_SIZE(vck_parent), 12, 3),
-	[DIV6_VCK3] = SH_CLK_DIV6_EXT(VCLKCR3, 0,
-			vck_parent, ARRAY_SIZE(vck_parent), 12, 3),
-	[DIV6_ZB1] = SH_CLK_DIV6_EXT(ZBCKCR, CLK_ENABLE_ON_INIT,
-			pll_parent, ARRAY_SIZE(pll_parent), 7, 1),
-	[DIV6_FLCTL] = SH_CLK_DIV6_EXT(FLCKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 7, 1),
-	[DIV6_SDHI0] = SH_CLK_DIV6_EXT(SD0CKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 6, 2),
-	[DIV6_SDHI1] = SH_CLK_DIV6_EXT(SD1CKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 6, 2),
-	[DIV6_SDHI2] = SH_CLK_DIV6_EXT(SD2CKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 6, 2),
-	[DIV6_FSIA] = SH_CLK_DIV6_EXT(FSIACKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 6, 1),
-	[DIV6_FSIB] = SH_CLK_DIV6_EXT(FSIBCKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 6, 1),
-	[DIV6_SUB] = SH_CLK_DIV6_EXT(SUBCKCR, 0,
-			pll_extal2_parent, ARRAY_SIZE(pll_extal2_parent), 6, 2),
-	[DIV6_SPUA] = SH_CLK_DIV6_EXT(SPUACKCR, 0,
-			pll_extal2_parent, ARRAY_SIZE(pll_extal2_parent), 6, 2),
-	[DIV6_SPUV] = SH_CLK_DIV6_EXT(SPUVCKCR, 0,
-			pll_extal2_parent, ARRAY_SIZE(pll_extal2_parent), 6, 2),
-	[DIV6_MSU] = SH_CLK_DIV6_EXT(MSUCKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 7, 1),
-	[DIV6_HSI] = SH_CLK_DIV6_EXT(HSICKCR, 0,
-			hsi_parent, ARRAY_SIZE(hsi_parent), 6, 2),
-	[DIV6_MFG1] = SH_CLK_DIV6_EXT(MFCK1CR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 7, 1),
-	[DIV6_MFG2] = SH_CLK_DIV6_EXT(MFCK2CR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 7, 1),
-	[DIV6_DSIT] = SH_CLK_DIV6_EXT(DSITCKCR, 0,
-			pll_parent, ARRAY_SIZE(pll_parent), 7, 1),
-	[DIV6_DSI0P] = SH_CLK_DIV6_EXT(DSI0PCKCR, 0,
-			dsi_parent, ARRAY_SIZE(dsi_parent), 12, 3),
-	[DIV6_DSI1P] = SH_CLK_DIV6_EXT(DSI1PCKCR, 0,
-			dsi_parent, ARRAY_SIZE(dsi_parent), 12, 3),
-};
-
-/* DSI DIV */
-static unsigned long dsiphy_recalc(struct clk *clk)
-{
-	u32 value;
-
-	value = __raw_readl(clk->mapping->base);
-
-	/* FIXME */
-	if (!(value & 0x000B8000))
-		return clk->parent->rate;
-
-	value &= 0x3f;
-	value += 1;
-
-	if ((value < 12) ||
-	    (value > 33)) {
-		pr_err("DSIPHY has wrong value (%d)", value);
-		return 0;
-	}
-
-	return clk->parent->rate / value;
-}
-
-static long dsiphy_round_rate(struct clk *clk, unsigned long rate)
-{
-	return clk_rate_mult_range_round(clk, 12, 33, rate);
-}
-
-static void dsiphy_disable(struct clk *clk)
-{
-	u32 value;
-
-	value = __raw_readl(clk->mapping->base);
-	value &= ~0x000B8000;
-
-	__raw_writel(value , clk->mapping->base);
-}
-
-static int dsiphy_enable(struct clk *clk)
-{
-	u32 value;
-	int multi;
-
-	value = __raw_readl(clk->mapping->base);
-	multi = (value & 0x3f) + 1;
-
-	if ((multi < 12) || (multi > 33))
-		return -EIO;
-
-	__raw_writel(value | 0x000B8000, clk->mapping->base);
-
-	return 0;
-}
-
-static int dsiphy_set_rate(struct clk *clk, unsigned long rate)
-{
-	u32 value;
-	int idx;
-
-	idx = rate / clk->parent->rate;
-	if ((idx < 12) || (idx > 33))
-		return -EINVAL;
-
-	idx += -1;
-
-	value = __raw_readl(clk->mapping->base);
-	value = (value & ~0x3f) + idx;
-
-	__raw_writel(value, clk->mapping->base);
-
-	return 0;
-}
-
-static struct clk_ops dsiphy_clk_ops = {
-	.recalc		= dsiphy_recalc,
-	.round_rate	= dsiphy_round_rate,
-	.set_rate	= dsiphy_set_rate,
-	.enable		= dsiphy_enable,
-	.disable	= dsiphy_disable,
-};
-
-static struct clk_mapping dsi0phy_clk_mapping = {
-	.phys	= DSI0PHYCR,
-	.len	= 4,
-};
-
-static struct clk_mapping dsi1phy_clk_mapping = {
-	.phys	= DSI1PHYCR,
-	.len	= 4,
-};
-
-static struct clk dsi0phy_clk = {
-	.ops		= &dsiphy_clk_ops,
-	.parent		= &div6_clks[DIV6_DSI0P], /* late install */
-	.mapping	= &dsi0phy_clk_mapping,
-};
-
-static struct clk dsi1phy_clk = {
-	.ops		= &dsiphy_clk_ops,
-	.parent		= &div6_clks[DIV6_DSI1P], /* late install */
-	.mapping	= &dsi1phy_clk_mapping,
-};
-
-static struct clk *late_main_clks[] = {
-	&dsi0phy_clk,
-	&dsi1phy_clk,
+	[DIV6_VCK1] = SH_CLK_DIV6(&pll1_div2_clk, VCLKCR1, 0),
+	[DIV6_VCK2] = SH_CLK_DIV6(&pll1_div2_clk, VCLKCR2, 0),
+	[DIV6_VCK3] = SH_CLK_DIV6(&pll1_div2_clk, VCLKCR3, 0),
+	[DIV6_ZB1] = SH_CLK_DIV6(&pll1_div2_clk, ZBCKCR, CLK_ENABLE_ON_INIT),
+	[DIV6_FLCTL] = SH_CLK_DIV6(&pll1_div2_clk, FLCKCR, 0),
+	[DIV6_SDHI0] = SH_CLK_DIV6(&pll1_div2_clk, SD0CKCR, 0),
+	[DIV6_SDHI1] = SH_CLK_DIV6(&pll1_div2_clk, SD1CKCR, 0),
+	[DIV6_SDHI2] = SH_CLK_DIV6(&pll1_div2_clk, SD2CKCR, 0),
+	[DIV6_FSIA] = SH_CLK_DIV6(&pll1_div2_clk, FSIACKCR, 0),
+	[DIV6_FSIB] = SH_CLK_DIV6(&pll1_div2_clk, FSIBCKCR, 0),
+	[DIV6_SUB] = SH_CLK_DIV6(&sh73a0_extal2_clk, SUBCKCR, 0),
+	[DIV6_SPUA] = SH_CLK_DIV6(&pll1_div2_clk, SPUACKCR, 0),
+	[DIV6_SPUV] = SH_CLK_DIV6(&pll1_div2_clk, SPUVCKCR, 0),
+	[DIV6_MSU] = SH_CLK_DIV6(&pll1_div2_clk, MSUCKCR, 0),
+	[DIV6_HSI] = SH_CLK_DIV6(&pll1_div2_clk, HSICKCR, 0),
+	[DIV6_MFG1] = SH_CLK_DIV6(&pll1_div2_clk, MFCK1CR, 0),
+	[DIV6_MFG2] = SH_CLK_DIV6(&pll1_div2_clk, MFCK2CR, 0),
+	[DIV6_DSIT] = SH_CLK_DIV6(&pll1_div2_clk, DSITCKCR, 0),
+	[DIV6_DSI0P] = SH_CLK_DIV6(&pll1_div2_clk, DSI0PCKCR, 0),
+	[DIV6_DSI1P] = SH_CLK_DIV6(&pll1_div2_clk, DSI1PCKCR, 0),
 };
 
 enum { MSTP001,

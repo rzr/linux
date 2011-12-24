@@ -156,8 +156,6 @@ int fimc_capture_config_update(struct fimc_ctx *ctx)
 		fimc_hw_set_rotation(ctx);
 		fimc_prepare_dma_offset(ctx, &ctx->d_frame);
 		fimc_hw_set_out_dma(ctx);
-		if (fimc->variant->has_alpha)
-			fimc_hw_set_rgb_alpha(ctx);
 		clear_bit(ST_CAPT_APPLY_CFG, &fimc->state);
 	}
 	spin_unlock(&ctx->slock);

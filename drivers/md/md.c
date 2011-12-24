@@ -7420,8 +7420,17 @@ static int remove_and_add_spares(struct mddev *mddev)
 				if (sysfs_link_rdev(mddev, rdev))
 					/* failure here is OK */;
 				spares++;
-				md_new_event(mddev);
-				set_bit(MD_CHANGE_DEVS, &mddev->flags);
+			if (rdev->raid_disk < 0
+			    && !test_bit(Faulty, &rdev->flags)) {
+				rdev->recovery_offset = 0;
+				if (mddev->pers->
+				    hot_add_disk(mddev, rdev) == 0) {
+					if (sysfs_link_rdev(mddev, rdev))
+						/* failure here is OK */;
+					spares++;
+					md_new_event(mddev);
+					set_bit(MD_CHANGE_DEVS, &mddev->flags);
+				}
 			}
 		}
 	}

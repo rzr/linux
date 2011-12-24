@@ -188,7 +188,6 @@ struct m5mols_info {
 	struct media_pad pad;
 	struct v4l2_mbus_framefmt ffmt[M5MOLS_RESTYPE_MAX];
 	int res_type;
-
 	wait_queue_head_t irq_waitq;
 	atomic_t irq_done;
 

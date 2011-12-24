@@ -982,8 +982,11 @@ static int sdhci_pci_suspend(struct device *dev)
 
 	if (chip->fixes && chip->fixes->suspend) {
 		ret = chip->fixes->suspend(chip);
-		if (ret)
-			goto err_pci_suspend;
+		if (ret) {
+			for (i = chip->num_slots - 1; i >= 0; i--)
+				sdhci_resume_host(chip->slots[i]->host);
+			return ret;
+		}
 	}
 
 	pci_save_state(pdev);
@@ -1076,8 +1079,11 @@ static int sdhci_pci_runtime_suspend(struct device *dev)
 
 	if (chip->fixes && chip->fixes->suspend) {
 		ret = chip->fixes->suspend(chip);
-		if (ret)
-			goto err_pci_runtime_suspend;
+		if (ret) {
+			for (i = chip->num_slots - 1; i >= 0; i--)
+				sdhci_runtime_resume_host(chip->slots[i]->host);
+			return ret;
+		}
 	}
 
 	return 0;
