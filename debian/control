@@ -6,8 +6,8 @@ Uploaders: Bastian Blank <waldi@debian.org>, Frederik Schüler <fs@debian.org>, 
 Standards-Version: 3.9.2
 Build-Depends: debhelper (>> 7), cpio, module-init-tools, python (>= 2.6.6-3~), lzma [armel], kernel-wedge (>= 2.83), gcc-4.4 [alpha hppa m68k], gcc-4.6 [amd64 armel armhf i386 ia64 mips mipsel powerpc ppc64 s390 s390x sh4 sparc sparc64], binutils-hppa64 [hppa], gcc-4.4-hppa64 [hppa]
 Build-Depends-Indep: bzip2, xmlto
-Vcs-Svn: svn://svn.debian.org/svn/kernel/dists/sid/linux-2.6/
-Vcs-Browser: http://svn.debian.org/wsvn/kernel/dists/sid/linux-2.6/?op=log
+Vcs-Svn: svn://svn.debian.org/svn/kernel/dists/trunk/linux-2.6/
+Vcs-Browser: http://anonscm.debian.org/viewvc/kernel/dists/trunk/linux-2.6/
 
 Package: linux-source-3.2
 Architecture: all
@@ -15,7 +15,7 @@ Section: kernel
 Provides: linux-source
 Depends: binutils, bzip2, ${misc:Depends}
 Recommends: libc6-dev | libc-dev, gcc, make
-Suggests: libncurses-dev | ncurses-dev, kernel-package, libqt4-dev
+Suggests: libncurses-dev | ncurses-dev, libqt4-dev
 Description: Linux kernel source for version 3.2 with Debian patches
  This package provides source code for the Linux kernel version 3.2. This
  source closely tracks official Linux kernel releases.  Debian's
@@ -84,7 +84,7 @@ Description: Linux support headers for userspace development
  This package provides userspaces headers from the Linux kernel.  These
  headers are used by the installed headers for GNU glibc and other system
  libraries.
-Multi-Arch: same
+Multi-Arch: ${linux-libc-dev:Multi-Arch}
 
 Package: linux-headers-3.2.0-1-all
 Architecture: alpha amd64 armel armhf hppa i386 ia64 m68k mips mipsel powerpc ppc64 s390 s390x sh4 sparc sparc64
