@@ -1,3 +1,11 @@
+linux-2.6 (3.2.1-2.0~rzr1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Support: lsproduo aka linkstation_produo or "LS-WTGL/R1 (3)"
+  * URL: http://rzr.online.fr/q/armv5
+
+ -- Philippe Coval <rzr@gna.org>  Thu, 26 Jan 2012 21:28:26 +0100
+
 linux-2.6 (3.2.1-2) unstable; urgency=high
 
   [ Stefan Lippers-Hollmann ]
@@ -10426,4 +10434,3 @@ linux-2.6 (2.6.12-1) unstable; urgency=low
       (Frederik Schüler)
 
  -- Andres Salomon <dilinger@debian.org>  Wed, 20 Jul 2005 17:16:04 -0400
-
