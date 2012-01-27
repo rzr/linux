@@ -1,0 +1,3 @@
+kernel/drivers/usb/wusbcore/wusbcore.ko
+kernel/drivers/usb/wusbcore/wusb-wa.ko
+kernel/drivers/usb/wusbcore/wusb-cbaf.ko

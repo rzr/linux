@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/pch_uart.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/pch_uart.ko drivers/tty/serial/pch_uart.o drivers/tty/serial/pch_uart.mod.o

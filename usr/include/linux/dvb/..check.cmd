@@ -1,0 +1,1 @@
+cmd_/usr/local/src/project/linux/linux/usr/include/linux/dvb/.check := for f in audio.h ca.h dmx.h frontend.h net.h osd.h version.h video.h  ; do echo "/usr/local/src/project/linux/linux/usr/include/linux/dvb/$${f}"; done | xargs perl scripts/headers_check.pl /usr/local/src/project/linux/linux/usr/include arm; touch /usr/local/src/project/linux/linux/usr/include/linux/dvb/.check

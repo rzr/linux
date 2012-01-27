@@ -1,0 +1,1 @@
+cmd_drivers/mtd/maps/plat-ram.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/maps/plat-ram.ko drivers/mtd/maps/plat-ram.o drivers/mtd/maps/plat-ram.mod.o

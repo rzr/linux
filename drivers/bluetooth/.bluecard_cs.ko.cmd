@@ -1,0 +1,1 @@
+cmd_drivers/bluetooth/bluecard_cs.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/bluetooth/bluecard_cs.ko drivers/bluetooth/bluecard_cs.o drivers/bluetooth/bluecard_cs.mod.o

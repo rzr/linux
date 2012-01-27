@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/pcf8574_keypad.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/pcf8574_keypad.ko drivers/input/misc/pcf8574_keypad.o drivers/input/misc/pcf8574_keypad.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/bluetooth/dtl1_cs.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/bluetooth/dtl1_cs.ko drivers/bluetooth/dtl1_cs.o drivers/bluetooth/dtl1_cs.mod.o

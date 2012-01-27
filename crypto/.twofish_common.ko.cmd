@@ -1,0 +1,1 @@
+cmd_crypto/twofish_common.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o crypto/twofish_common.ko crypto/twofish_common.o crypto/twofish_common.mod.o

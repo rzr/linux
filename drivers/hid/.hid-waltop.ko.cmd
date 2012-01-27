@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-waltop.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-waltop.ko drivers/hid/hid-waltop.o drivers/hid/hid-waltop.mod.o

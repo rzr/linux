@@ -1,0 +1,1 @@
+cmd_drivers/media/video/ir-kbd-i2c.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/video/ir-kbd-i2c.ko drivers/media/video/ir-kbd-i2c.o drivers/media/video/ir-kbd-i2c.mod.o

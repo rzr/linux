@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-manli.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-manli.ko drivers/media/rc/keymaps/rc-manli.o drivers/media/rc/keymaps/rc-manli.mod.o

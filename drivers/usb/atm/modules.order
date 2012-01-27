@@ -1,0 +1,5 @@
+kernel/drivers/usb/atm/cxacru.ko
+kernel/drivers/usb/atm/speedtch.ko
+kernel/drivers/usb/atm/ueagle-atm.ko
+kernel/drivers/usb/atm/usbatm.ko
+kernel/drivers/usb/atm/xusbatm.ko

@@ -1,0 +1,1 @@
+cmd_drivers/misc/ad525x_dpot.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/ad525x_dpot.ko drivers/misc/ad525x_dpot.o drivers/misc/ad525x_dpot.mod.o

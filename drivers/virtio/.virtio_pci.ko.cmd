@@ -1,0 +1,1 @@
+cmd_drivers/virtio/virtio_pci.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/virtio/virtio_pci.ko drivers/virtio/virtio_pci.o drivers/virtio/virtio_pci.mod.o

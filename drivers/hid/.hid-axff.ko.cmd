@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-axff.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-axff.ko drivers/hid/hid-axff.o drivers/hid/hid-axff.mod.o

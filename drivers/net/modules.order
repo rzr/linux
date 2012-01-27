@@ -1,0 +1,4 @@
+kernel/drivers/net/appletalk/ipddp.ko
+kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/irda/irtty-sir.ko
+kernel/drivers/net/irda/sir-dev.ko

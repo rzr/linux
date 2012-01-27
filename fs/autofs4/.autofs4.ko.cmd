@@ -1,0 +1,1 @@
+cmd_fs/autofs4/autofs4.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o fs/autofs4/autofs4.ko fs/autofs4/autofs4.o fs/autofs4/autofs4.mod.o

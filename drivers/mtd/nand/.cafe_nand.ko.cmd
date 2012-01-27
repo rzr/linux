@@ -1,0 +1,1 @@
+cmd_drivers/mtd/nand/cafe_nand.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/nand/cafe_nand.ko drivers/mtd/nand/cafe_nand.o drivers/mtd/nand/cafe_nand.mod.o

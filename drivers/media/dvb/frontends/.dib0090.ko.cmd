@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/dib0090.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/dib0090.ko drivers/media/dvb/frontends/dib0090.o drivers/media/dvb/frontends/dib0090.mod.o

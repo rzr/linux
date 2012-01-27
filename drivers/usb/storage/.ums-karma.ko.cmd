@@ -1,0 +1,1 @@
+cmd_drivers/usb/storage/ums-karma.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/storage/ums-karma.ko drivers/usb/storage/ums-karma.o drivers/usb/storage/ums-karma.mod.o

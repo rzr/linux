@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/dib7000p.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/dib7000p.ko drivers/media/dvb/frontends/dib7000p.o drivers/media/dvb/frontends/dib7000p.mod.o

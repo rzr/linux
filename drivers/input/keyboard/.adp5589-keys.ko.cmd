@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/adp5589-keys.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/adp5589-keys.ko drivers/input/keyboard/adp5589-keys.o drivers/input/keyboard/adp5589-keys.mod.o

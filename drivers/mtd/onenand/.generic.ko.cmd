@@ -1,0 +1,1 @@
+cmd_drivers/mtd/onenand/generic.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/onenand/generic.ko drivers/mtd/onenand/generic.o drivers/mtd/onenand/generic.mod.o

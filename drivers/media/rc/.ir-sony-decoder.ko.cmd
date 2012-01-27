@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/ir-sony-decoder.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/ir-sony-decoder.ko drivers/media/rc/ir-sony-decoder.o drivers/media/rc/ir-sony-decoder.mod.o

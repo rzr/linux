@@ -1,0 +1,1 @@
+cmd_drivers/tty/n_r3964.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/n_r3964.ko drivers/tty/n_r3964.o drivers/tty/n_r3964.mod.o

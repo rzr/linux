@@ -1,0 +1,1 @@
+cmd_drivers/media/video/cx2341x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/video/cx2341x.ko drivers/media/video/cx2341x.o drivers/media/video/cx2341x.mod.o

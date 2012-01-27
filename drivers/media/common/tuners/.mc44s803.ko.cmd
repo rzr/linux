@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/mc44s803.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/mc44s803.ko drivers/media/common/tuners/mc44s803.o drivers/media/common/tuners/mc44s803.mod.o

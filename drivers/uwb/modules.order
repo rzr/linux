@@ -1,0 +1,4 @@
+kernel/drivers/uwb/umc.ko
+kernel/drivers/uwb/whci.ko
+kernel/drivers/uwb/whc-rc.ko
+kernel/drivers/uwb/hwa-rc.ko

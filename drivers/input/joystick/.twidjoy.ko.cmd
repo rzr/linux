@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/twidjoy.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/twidjoy.ko drivers/input/joystick/twidjoy.o drivers/input/joystick/twidjoy.mod.o

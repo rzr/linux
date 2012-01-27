@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/usblcd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/usblcd.ko drivers/usb/misc/usblcd.o drivers/usb/misc/usblcd.mod.o

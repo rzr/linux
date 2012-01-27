@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-emsff.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-emsff.ko drivers/hid/hid-emsff.o drivers/hid/hid-emsff.mod.o

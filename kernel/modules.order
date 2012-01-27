@@ -1,0 +1,2 @@
+kernel/kernel/backtracetest.ko
+kernel/kernel/rcutorture.ko

@@ -1,0 +1,1 @@
+cmd_drivers/input/mouse/appletouch.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/mouse/appletouch.ko drivers/input/mouse/appletouch.o drivers/input/mouse/appletouch.mod.o

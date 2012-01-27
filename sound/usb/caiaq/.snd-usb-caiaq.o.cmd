@@ -1,0 +1,1 @@
+cmd_sound/usb/caiaq/snd-usb-caiaq.o := arm-linux-gnueabi-ld -EL    -r -o sound/usb/caiaq/snd-usb-caiaq.o sound/usb/caiaq/device.o sound/usb/caiaq/audio.o sound/usb/caiaq/midi.o sound/usb/caiaq/control.o 

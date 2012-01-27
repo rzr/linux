@@ -1,0 +1,1 @@
+cmd_drivers/misc/ds1682.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/ds1682.ko drivers/misc/ds1682.o drivers/misc/ds1682.mod.o

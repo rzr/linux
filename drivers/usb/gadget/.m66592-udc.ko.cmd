@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/m66592-udc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/m66592-udc.ko drivers/usb/gadget/m66592-udc.o drivers/usb/gadget/m66592-udc.mod.o

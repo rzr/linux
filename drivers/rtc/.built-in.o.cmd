@@ -1,0 +1,1 @@
+cmd_drivers/rtc/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o drivers/rtc/built-in.o drivers/rtc/rtc-lib.o drivers/rtc/hctosys.o drivers/rtc/rtc-core.o drivers/rtc/rtc-ds1307.o drivers/rtc/rtc-m41t80.o drivers/rtc/rtc-m48t86.o drivers/rtc/rtc-pcf8563.o drivers/rtc/rtc-rs5c372.o drivers/rtc/rtc-s35390a.o 

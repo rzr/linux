@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/lkkbd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/lkkbd.ko drivers/input/keyboard/lkkbd.o drivers/input/keyboard/lkkbd.mod.o

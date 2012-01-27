@@ -1,0 +1,1 @@
+cmd_drivers/isdn/hysdn/hysdn.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/isdn/hysdn/hysdn.ko drivers/isdn/hysdn/hysdn.o drivers/isdn/hysdn/hysdn.mod.o

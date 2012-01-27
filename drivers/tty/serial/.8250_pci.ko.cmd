@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/8250_pci.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/8250_pci.ko drivers/tty/serial/8250_pci.o drivers/tty/serial/8250_pci.mod.o

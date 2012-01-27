@@ -1,0 +1,1 @@
+cmd_arch/arm/mach-orion5x/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o arch/arm/mach-orion5x/built-in.o arch/arm/mach-orion5x/common.o arch/arm/mach-orion5x/addr-map.o arch/arm/mach-orion5x/pci.o arch/arm/mach-orion5x/irq.o arch/arm/mach-orion5x/mpp.o arch/arm/mach-orion5x/lsproduo-setup.o 

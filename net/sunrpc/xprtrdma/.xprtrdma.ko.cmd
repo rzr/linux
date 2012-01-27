@@ -1,0 +1,1 @@
+cmd_net/sunrpc/xprtrdma/xprtrdma.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/sunrpc/xprtrdma/xprtrdma.ko net/sunrpc/xprtrdma/xprtrdma.o net/sunrpc/xprtrdma/xprtrdma.mod.o

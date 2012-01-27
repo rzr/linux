@@ -1,0 +1,1 @@
+cmd_drivers/firewire/firewire-net.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/firewire/firewire-net.ko drivers/firewire/firewire-net.o drivers/firewire/firewire-net.mod.o

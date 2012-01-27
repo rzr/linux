@@ -1,0 +1,1 @@
+cmd_drivers/bluetooth/bt3c_cs.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/bluetooth/bt3c_cs.ko drivers/bluetooth/bt3c_cs.o drivers/bluetooth/bt3c_cs.mod.o

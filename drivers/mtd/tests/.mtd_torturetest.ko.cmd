@@ -1,0 +1,1 @@
+cmd_drivers/mtd/tests/mtd_torturetest.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/tests/mtd_torturetest.ko drivers/mtd/tests/mtd_torturetest.o drivers/mtd/tests/mtd_torturetest.mod.o

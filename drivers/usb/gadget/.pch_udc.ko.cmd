@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/pch_udc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/pch_udc.ko drivers/usb/gadget/pch_udc.o drivers/usb/gadget/pch_udc.mod.o

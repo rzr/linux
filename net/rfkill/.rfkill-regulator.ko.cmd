@@ -1,0 +1,1 @@
+cmd_net/rfkill/rfkill-regulator.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/rfkill/rfkill-regulator.ko net/rfkill/rfkill-regulator.o net/rfkill/rfkill-regulator.mod.o

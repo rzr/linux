@@ -1,0 +1,1 @@
+cmd_drivers/misc/cb710/cb710.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/cb710/cb710.ko drivers/misc/cb710/cb710.o drivers/misc/cb710/cb710.mod.o

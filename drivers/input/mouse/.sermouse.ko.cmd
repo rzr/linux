@@ -1,0 +1,1 @@
+cmd_drivers/input/mouse/sermouse.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/mouse/sermouse.ko drivers/input/mouse/sermouse.o drivers/input/mouse/sermouse.mod.o

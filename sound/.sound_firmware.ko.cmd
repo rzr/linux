@@ -1,0 +1,1 @@
+cmd_sound/sound_firmware.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o sound/sound_firmware.ko sound/sound_firmware.o sound/sound_firmware.mod.o

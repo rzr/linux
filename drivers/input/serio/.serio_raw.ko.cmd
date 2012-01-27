@@ -1,0 +1,1 @@
+cmd_drivers/input/serio/serio_raw.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/serio/serio_raw.ko drivers/input/serio/serio_raw.o drivers/input/serio/serio_raw.mod.o

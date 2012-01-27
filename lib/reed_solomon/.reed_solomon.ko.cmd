@@ -1,0 +1,1 @@
+cmd_lib/reed_solomon/reed_solomon.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o lib/reed_solomon/reed_solomon.ko lib/reed_solomon/reed_solomon.o lib/reed_solomon/reed_solomon.mod.o

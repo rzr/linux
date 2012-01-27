@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/idmouse.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/idmouse.ko drivers/usb/misc/idmouse.o drivers/usb/misc/idmouse.mod.o

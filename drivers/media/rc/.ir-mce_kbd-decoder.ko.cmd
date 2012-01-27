@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/ir-mce_kbd-decoder.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/ir-mce_kbd-decoder.ko drivers/media/rc/ir-mce_kbd-decoder.o drivers/media/rc/ir-mce_kbd-decoder.mod.o

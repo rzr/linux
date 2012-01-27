@@ -1,0 +1,1 @@
+cmd_drivers/char/virtio_console.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/char/virtio_console.ko drivers/char/virtio_console.o drivers/char/virtio_console.mod.o

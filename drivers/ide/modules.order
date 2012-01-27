@@ -1,0 +1,2 @@
+kernel/drivers/ide/ide-core.ko
+kernel/drivers/ide/ide-gd_mod.ko

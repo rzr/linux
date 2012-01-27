@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/db9.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/db9.ko drivers/input/joystick/db9.o drivers/input/joystick/db9.mod.o

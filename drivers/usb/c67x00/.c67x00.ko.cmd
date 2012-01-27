@@ -1,0 +1,1 @@
+cmd_drivers/usb/c67x00/c67x00.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/c67x00/c67x00.ko drivers/usb/c67x00/c67x00.o drivers/usb/c67x00/c67x00.mod.o

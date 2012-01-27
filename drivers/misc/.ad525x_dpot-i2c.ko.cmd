@@ -1,0 +1,1 @@
+cmd_drivers/misc/ad525x_dpot-i2c.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/ad525x_dpot-i2c.ko drivers/misc/ad525x_dpot-i2c.o drivers/misc/ad525x_dpot-i2c.mod.o

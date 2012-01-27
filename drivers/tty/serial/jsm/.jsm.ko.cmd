@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/jsm/jsm.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/jsm/jsm.ko drivers/tty/serial/jsm/jsm.o drivers/tty/serial/jsm/jsm.mod.o

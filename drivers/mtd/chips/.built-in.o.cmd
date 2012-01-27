@@ -1,0 +1,1 @@
+cmd_drivers/mtd/chips/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o drivers/mtd/chips/built-in.o drivers/mtd/chips/chipreg.o drivers/mtd/chips/cfi_probe.o drivers/mtd/chips/cfi_util.o drivers/mtd/chips/cfi_cmdset_0002.o drivers/mtd/chips/cfi_cmdset_0001.o drivers/mtd/chips/gen_probe.o drivers/mtd/chips/jedec_probe.o 

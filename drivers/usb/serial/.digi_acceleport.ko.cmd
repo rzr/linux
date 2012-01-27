@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/digi_acceleport.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/digi_acceleport.ko drivers/usb/serial/digi_acceleport.o drivers/usb/serial/digi_acceleport.mod.o

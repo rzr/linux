@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/mos7720.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/mos7720.ko drivers/usb/serial/mos7720.o drivers/usb/serial/mos7720.mod.o

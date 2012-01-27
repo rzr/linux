@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/ir-rc5-sz-decoder.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/ir-rc5-sz-decoder.ko drivers/media/rc/ir-rc5-sz-decoder.o drivers/media/rc/ir-rc5-sz-decoder.mod.o

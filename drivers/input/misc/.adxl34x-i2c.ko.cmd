@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/adxl34x-i2c.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/adxl34x-i2c.ko drivers/input/misc/adxl34x-i2c.o drivers/input/misc/adxl34x-i2c.mod.o

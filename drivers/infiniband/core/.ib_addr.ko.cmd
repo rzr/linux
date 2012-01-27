@@ -1,0 +1,1 @@
+cmd_drivers/infiniband/core/ib_addr.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/infiniband/core/ib_addr.ko drivers/infiniband/core/ib_addr.o drivers/infiniband/core/ib_addr.mod.o

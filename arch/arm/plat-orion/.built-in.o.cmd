@@ -1,0 +1,1 @@
+cmd_arch/arm/plat-orion/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o arch/arm/plat-orion/built-in.o arch/arm/plat-orion/irq.o arch/arm/plat-orion/pcie.o arch/arm/plat-orion/time.o arch/arm/plat-orion/common.o arch/arm/plat-orion/mpp.o arch/arm/plat-orion/gpio.o 

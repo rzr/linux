@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/dvb-pll.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/dvb-pll.ko drivers/media/dvb/frontends/dvb-pll.o drivers/media/dvb/frontends/dvb-pll.mod.o

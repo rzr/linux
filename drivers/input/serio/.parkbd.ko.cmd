@@ -1,0 +1,1 @@
+cmd_drivers/input/serio/parkbd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/serio/parkbd.ko drivers/input/serio/parkbd.o drivers/input/serio/parkbd.mod.o

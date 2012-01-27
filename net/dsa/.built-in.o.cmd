@@ -1,0 +1,1 @@
+cmd_net/dsa/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o net/dsa/built-in.o net/dsa/tag_dsa.o net/dsa/tag_edsa.o net/dsa/mv88e6xxx.o net/dsa/mv88e6123_61_65.o net/dsa/mv88e6131.o net/dsa/dsa.o net/dsa/slave.o 

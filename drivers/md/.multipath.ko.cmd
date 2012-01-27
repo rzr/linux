@@ -1,0 +1,1 @@
+cmd_drivers/md/multipath.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/md/multipath.ko drivers/md/multipath.o drivers/md/multipath.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/tda827x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/tda827x.ko drivers/media/common/tuners/tda827x.o drivers/media/common/tuners/tda827x.mod.o

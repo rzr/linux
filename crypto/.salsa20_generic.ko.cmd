@@ -1,0 +1,1 @@
+cmd_crypto/salsa20_generic.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o crypto/salsa20_generic.ko crypto/salsa20_generic.o crypto/salsa20_generic.mod.o

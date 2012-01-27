@@ -1,0 +1,1 @@
+cmd_drivers/infiniband/core/rdma_cm.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/infiniband/core/rdma_cm.ko drivers/infiniband/core/rdma_cm.o drivers/infiniband/core/rdma_cm.mod.o

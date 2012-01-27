@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/powermate.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/powermate.ko drivers/input/misc/powermate.o drivers/input/misc/powermate.mod.o

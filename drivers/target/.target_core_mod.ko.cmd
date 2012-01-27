@@ -1,0 +1,1 @@
+cmd_drivers/target/target_core_mod.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/target/target_core_mod.ko drivers/target/target_core_mod.o drivers/target/target_core_mod.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/mtd/devices/mtdram.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/devices/mtdram.ko drivers/mtd/devices/mtdram.o drivers/mtd/devices/mtdram.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/usb/atm/xusbatm.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/atm/xusbatm.ko drivers/usb/atm/xusbatm.o drivers/usb/atm/xusbatm.mod.o

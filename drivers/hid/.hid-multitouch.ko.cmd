@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-multitouch.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-multitouch.ko drivers/hid/hid-multitouch.o drivers/hid/hid-multitouch.mod.o

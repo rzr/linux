@@ -1,0 +1,1 @@
+cmd_net/decnet/decnet.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/decnet/decnet.ko net/decnet/decnet.o net/decnet/decnet.mod.o

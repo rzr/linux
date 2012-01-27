@@ -1,0 +1,1 @@
+cmd_drivers/usb/host/ohci-hcd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/host/ohci-hcd.ko drivers/usb/host/ohci-hcd.o drivers/usb/host/ohci-hcd.mod.o

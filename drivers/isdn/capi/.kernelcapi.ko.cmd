@@ -1,0 +1,1 @@
+cmd_drivers/isdn/capi/kernelcapi.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/isdn/capi/kernelcapi.ko drivers/isdn/capi/kernelcapi.o drivers/isdn/capi/kernelcapi.mod.o

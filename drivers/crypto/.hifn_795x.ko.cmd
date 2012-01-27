@@ -1,0 +1,1 @@
+cmd_drivers/crypto/hifn_795x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/crypto/hifn_795x.ko drivers/crypto/hifn_795x.o drivers/crypto/hifn_795x.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/ves1x93.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/ves1x93.ko drivers/media/dvb/frontends/ves1x93.o drivers/media/dvb/frontends/ves1x93.mod.o

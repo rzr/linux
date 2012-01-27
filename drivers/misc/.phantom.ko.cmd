@@ -1,0 +1,1 @@
+cmd_drivers/misc/phantom.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/phantom.ko drivers/misc/phantom.o drivers/misc/phantom.mod.o

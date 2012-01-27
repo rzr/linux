@@ -1,0 +1,1 @@
+cmd_drivers/md/dm-log-userspace.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/md/dm-log-userspace.ko drivers/md/dm-log-userspace.o drivers/md/dm-log-userspace.mod.o

@@ -1,0 +1,1 @@
+cmd_net/dns_resolver/dns_resolver.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/dns_resolver/dns_resolver.ko net/dns_resolver/dns_resolver.o net/dns_resolver/dns_resolver.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/isdn/gigaset/gigaset.o := arm-linux-gnueabi-ld -EL    -r -o drivers/isdn/gigaset/gigaset.o drivers/isdn/gigaset/common.o drivers/isdn/gigaset/interface.o drivers/isdn/gigaset/proc.o drivers/isdn/gigaset/ev-layer.o drivers/isdn/gigaset/asyncdata.o drivers/isdn/gigaset/i4l.o 

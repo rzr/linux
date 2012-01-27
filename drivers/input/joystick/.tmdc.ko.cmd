@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/tmdc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/tmdc.ko drivers/input/joystick/tmdc.o drivers/input/joystick/tmdc.mod.o

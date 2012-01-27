@@ -1,0 +1,1 @@
+cmd_drivers/uwb/whc-rc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/uwb/whc-rc.ko drivers/uwb/whc-rc.o drivers/uwb/whc-rc.mod.o

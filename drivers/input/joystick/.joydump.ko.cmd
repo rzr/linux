@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/joydump.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/joydump.ko drivers/input/joystick/joydump.o drivers/input/joystick/joydump.mod.o

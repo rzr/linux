@@ -1,0 +1,1 @@
+cmd_drivers/media/video/cx25840/cx25840.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/video/cx25840/cx25840.ko drivers/media/video/cx25840/cx25840.o drivers/media/video/cx25840/cx25840.mod.o

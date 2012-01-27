@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-quanta.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-quanta.ko drivers/hid/hid-quanta.o drivers/hid/hid-quanta.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/sp887x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/sp887x.ko drivers/media/dvb/frontends/sp887x.o drivers/media/dvb/frontends/sp887x.mod.o

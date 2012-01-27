@@ -1,0 +1,5 @@
+kernel/drivers/net/mii.ko
+kernel/drivers/net/netconsole.ko
+kernel/drivers/net/ethernet/marvell/mv643xx_eth.ko
+kernel/drivers/net/phy/libphy.ko
+kernel/drivers/net/phy/marvell.ko

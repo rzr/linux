@@ -1,0 +1,1 @@
+cmd_drivers/pci/pci-stub.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/pci/pci-stub.ko drivers/pci/pci-stub.o drivers/pci/pci-stub.mod.o

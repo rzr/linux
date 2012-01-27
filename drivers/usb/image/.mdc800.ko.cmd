@@ -1,0 +1,1 @@
+cmd_drivers/usb/image/mdc800.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/image/mdc800.ko drivers/usb/image/mdc800.o drivers/usb/image/mdc800.mod.o

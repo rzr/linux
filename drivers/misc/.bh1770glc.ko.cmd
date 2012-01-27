@@ -1,0 +1,1 @@
+cmd_drivers/misc/bh1770glc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/bh1770glc.ko drivers/misc/bh1770glc.o drivers/misc/bh1770glc.mod.o

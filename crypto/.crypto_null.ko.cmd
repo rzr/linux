@@ -1,0 +1,1 @@
+cmd_crypto/crypto_null.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o crypto/crypto_null.ko crypto/crypto_null.o crypto/crypto_null.mod.o

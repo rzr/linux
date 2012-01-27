@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/vivopay-serial.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/vivopay-serial.ko drivers/usb/serial/vivopay-serial.o drivers/usb/serial/vivopay-serial.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/scsi/device_handler/scsi_dh.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/scsi/device_handler/scsi_dh.ko drivers/scsi/device_handler/scsi_dh.o drivers/scsi/device_handler/scsi_dh.mod.o

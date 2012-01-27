@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-kensington.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-kensington.ko drivers/hid/hid-kensington.o drivers/hid/hid-kensington.mod.o

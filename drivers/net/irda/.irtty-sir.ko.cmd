@@ -1,0 +1,1 @@
+cmd_drivers/net/irda/irtty-sir.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/net/irda/irtty-sir.ko drivers/net/irda/irtty-sir.o drivers/net/irda/irtty-sir.mod.o

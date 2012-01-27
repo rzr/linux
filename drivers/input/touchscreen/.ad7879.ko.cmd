@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/ad7879.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/ad7879.ko drivers/input/touchscreen/ad7879.o drivers/input/touchscreen/ad7879.mod.o

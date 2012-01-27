@@ -1,0 +1,1 @@
+cmd_drivers/block/sx8.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/sx8.ko drivers/block/sx8.o drivers/block/sx8.mod.o

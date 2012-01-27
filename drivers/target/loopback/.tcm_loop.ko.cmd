@@ -1,0 +1,1 @@
+cmd_drivers/target/loopback/tcm_loop.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/target/loopback/tcm_loop.ko drivers/target/loopback/tcm_loop.o drivers/target/loopback/tcm_loop.mod.o

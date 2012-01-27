@@ -1,0 +1,1 @@
+cmd_net/9p/9pnet_rdma.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/9p/9pnet_rdma.ko net/9p/9pnet_rdma.o net/9p/9pnet_rdma.mod.o

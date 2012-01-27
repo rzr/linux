@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/cypress_m8.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/cypress_m8.ko drivers/usb/serial/cypress_m8.o drivers/usb/serial/cypress_m8.mod.o

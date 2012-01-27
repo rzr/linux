@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/turbografx.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/turbografx.ko drivers/input/joystick/turbografx.o drivers/input/joystick/turbografx.mod.o

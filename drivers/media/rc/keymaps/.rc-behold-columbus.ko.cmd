@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-behold-columbus.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-behold-columbus.ko drivers/media/rc/keymaps/rc-behold-columbus.o drivers/media/rc/keymaps/rc-behold-columbus.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-imon-mce.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-imon-mce.ko drivers/media/rc/keymaps/rc-imon-mce.o drivers/media/rc/keymaps/rc-imon-mce.mod.o

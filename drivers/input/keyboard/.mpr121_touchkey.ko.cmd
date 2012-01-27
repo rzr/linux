@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/mpr121_touchkey.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/mpr121_touchkey.ko drivers/input/keyboard/mpr121_touchkey.o drivers/input/keyboard/mpr121_touchkey.mod.o

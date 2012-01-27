@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-encore-enltv-fm53.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-encore-enltv-fm53.ko drivers/media/rc/keymaps/rc-encore-enltv-fm53.o drivers/media/rc/keymaps/rc-encore-enltv-fm53.mod.o

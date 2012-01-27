@@ -1,0 +1,14 @@
+Package: linux-headers-3.2.1lsproduo-00003-gcd60d85-dirty
+Source: linux-upstream
+Version: 3.2.1lsproduo-00003-gcd60d85-dirty-2
+Architecture: armel
+Maintainer: Philippe Coval <rzr@gna.org>
+Installed-Size: 35626
+Provides: linux-headers, linux-headers-2.6
+Section: kernel
+Priority: optional
+Homepage: http://www.kernel.org/
+Description: Linux kernel headers for 3.2.1lsproduo-00003-gcd60d85-dirty on armel
+ This package provides kernel header files for 3.2.1lsproduo-00003-gcd60d85-dirty on armel
+ .
+ This is useful for people who need to build external modules

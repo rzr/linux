@@ -1,0 +1,4 @@
+kernel/drivers/mtd/chips/cfi_cmdset_0020.ko
+kernel/drivers/mtd/chips/map_ram.ko
+kernel/drivers/mtd/chips/map_rom.ko
+kernel/drivers/mtd/chips/map_absent.ko

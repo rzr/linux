@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/stowaway.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/stowaway.ko drivers/input/keyboard/stowaway.o drivers/input/keyboard/stowaway.mod.o

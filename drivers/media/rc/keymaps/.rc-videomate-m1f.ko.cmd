@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-videomate-m1f.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-videomate-m1f.ko drivers/media/rc/keymaps/rc-videomate-m1f.o drivers/media/rc/keymaps/rc-videomate-m1f.mod.o

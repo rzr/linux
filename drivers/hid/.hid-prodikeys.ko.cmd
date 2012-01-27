@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-prodikeys.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-prodikeys.ko drivers/hid/hid-prodikeys.o drivers/hid/hid-prodikeys.mod.o

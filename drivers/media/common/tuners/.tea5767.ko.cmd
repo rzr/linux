@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/tea5767.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/tea5767.ko drivers/media/common/tuners/tea5767.o drivers/media/common/tuners/tea5767.mod.o

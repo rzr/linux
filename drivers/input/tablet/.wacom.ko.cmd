@@ -1,0 +1,1 @@
+cmd_drivers/input/tablet/wacom.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/tablet/wacom.ko drivers/input/tablet/wacom.o drivers/input/tablet/wacom.mod.o

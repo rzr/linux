@@ -1,0 +1,1 @@
+cmd_drivers/pcmcia/yenta_socket.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/pcmcia/yenta_socket.ko drivers/pcmcia/yenta_socket.o drivers/pcmcia/yenta_socket.mod.o

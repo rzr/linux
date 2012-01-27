@@ -1,0 +1,1 @@
+cmd_drivers/mtd/maps/impa7.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/maps/impa7.ko drivers/mtd/maps/impa7.o drivers/mtd/maps/impa7.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/si21xx.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/si21xx.ko drivers/media/dvb/frontends/si21xx.o drivers/media/dvb/frontends/si21xx.mod.o

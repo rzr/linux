@@ -1,0 +1,1 @@
+cmd_drivers/md/dm-log.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/md/dm-log.ko drivers/md/dm-log.o drivers/md/dm-log.mod.o

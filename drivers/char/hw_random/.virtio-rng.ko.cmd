@@ -1,0 +1,1 @@
+cmd_drivers/char/hw_random/virtio-rng.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/char/hw_random/virtio-rng.ko drivers/char/hw_random/virtio-rng.o drivers/char/hw_random/virtio-rng.mod.o

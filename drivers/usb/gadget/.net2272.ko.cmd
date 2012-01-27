@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/net2272.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/net2272.ko drivers/usb/gadget/net2272.o drivers/usb/gadget/net2272.mod.o

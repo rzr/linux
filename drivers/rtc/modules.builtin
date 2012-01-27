@@ -1,0 +1,6 @@
+kernel/drivers/rtc/rtc-ds1307.ko
+kernel/drivers/rtc/rtc-m41t80.ko
+kernel/drivers/rtc/rtc-m48t86.ko
+kernel/drivers/rtc/rtc-pcf8563.ko
+kernel/drivers/rtc/rtc-rs5c372.ko
+kernel/drivers/rtc/rtc-s35390a.ko

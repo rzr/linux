@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-twinhan.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-twinhan.ko drivers/hid/hid-twinhan.o drivers/hid/hid-twinhan.mod.o

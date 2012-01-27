@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/dummy_hcd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/dummy_hcd.ko drivers/usb/gadget/dummy_hcd.o drivers/usb/gadget/dummy_hcd.mod.o

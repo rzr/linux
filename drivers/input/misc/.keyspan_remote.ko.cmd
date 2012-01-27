@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/keyspan_remote.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/keyspan_remote.ko drivers/input/misc/keyspan_remote.o drivers/input/misc/keyspan_remote.mod.o

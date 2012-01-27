@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/as5011.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/as5011.ko drivers/input/joystick/as5011.o drivers/input/joystick/as5011.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/adutux.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/adutux.ko drivers/usb/misc/adutux.o drivers/usb/misc/adutux.mod.o

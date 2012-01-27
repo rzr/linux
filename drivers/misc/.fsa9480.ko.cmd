@@ -1,0 +1,1 @@
+cmd_drivers/misc/fsa9480.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/fsa9480.ko drivers/misc/fsa9480.o drivers/misc/fsa9480.mod.o

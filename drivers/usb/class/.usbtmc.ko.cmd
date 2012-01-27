@@ -1,0 +1,1 @@
+cmd_drivers/usb/class/usbtmc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/class/usbtmc.ko drivers/usb/class/usbtmc.o drivers/usb/class/usbtmc.mod.o

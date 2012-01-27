@@ -1,0 +1,1 @@
+cmd_drivers/usb/host/isp116x-hcd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/host/isp116x-hcd.ko drivers/usb/host/isp116x-hcd.o drivers/usb/host/isp116x-hcd.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-avertv-303.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-avertv-303.ko drivers/media/rc/keymaps/rc-avertv-303.o drivers/media/rc/keymaps/rc-avertv-303.mod.o

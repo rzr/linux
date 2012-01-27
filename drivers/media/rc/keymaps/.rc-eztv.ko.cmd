@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-eztv.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-eztv.ko drivers/media/rc/keymaps/rc-eztv.o drivers/media/rc/keymaps/rc-eztv.mod.o

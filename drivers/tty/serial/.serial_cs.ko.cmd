@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/serial_cs.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/serial_cs.ko drivers/tty/serial/serial_cs.o drivers/tty/serial/serial_cs.mod.o

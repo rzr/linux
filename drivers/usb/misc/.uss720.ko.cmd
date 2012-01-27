@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/uss720.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/uss720.ko drivers/usb/misc/uss720.o drivers/usb/misc/uss720.mod.o

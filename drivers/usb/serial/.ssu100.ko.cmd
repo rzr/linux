@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/ssu100.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/ssu100.ko drivers/usb/serial/ssu100.o drivers/usb/serial/ssu100.mod.o

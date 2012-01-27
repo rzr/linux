@@ -1,0 +1,1 @@
+cmd_drivers/mtd/nand/nandsim.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/nand/nandsim.ko drivers/mtd/nand/nandsim.o drivers/mtd/nand/nandsim.mod.o

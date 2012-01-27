@@ -1,0 +1,1 @@
+cmd_drivers/input/ff-memless.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/ff-memless.ko drivers/input/ff-memless.o drivers/input/ff-memless.mod.o

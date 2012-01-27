@@ -1,0 +1,1 @@
+cmd_/usr/local/src/project/linux/linux/usr/include/linux/can/.check := for f in bcm.h error.h gw.h netlink.h raw.h  ; do echo "/usr/local/src/project/linux/linux/usr/include/linux/can/$${f}"; done | xargs perl scripts/headers_check.pl /usr/local/src/project/linux/linux/usr/include arm; touch /usr/local/src/project/linux/linux/usr/include/linux/can/.check

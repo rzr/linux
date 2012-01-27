@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/usbtouchscreen.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/usbtouchscreen.ko drivers/input/touchscreen/usbtouchscreen.o drivers/input/touchscreen/usbtouchscreen.mod.o

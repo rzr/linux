@@ -1,0 +1,1 @@
+cmd_drivers/connector/cn.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/connector/cn.ko drivers/connector/cn.o drivers/connector/cn.mod.o

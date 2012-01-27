@@ -1,0 +1,1 @@
+cmd_drivers/misc/hpilo.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/hpilo.ko drivers/misc/hpilo.o drivers/misc/hpilo.mod.o

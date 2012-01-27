@@ -1,0 +1,1 @@
+cmd_drivers/video/backlight/generic_bl.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/video/backlight/generic_bl.ko drivers/video/backlight/generic_bl.o drivers/video/backlight/generic_bl.mod.o

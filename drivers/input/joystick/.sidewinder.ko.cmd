@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/sidewinder.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/sidewinder.ko drivers/input/joystick/sidewinder.o drivers/input/joystick/sidewinder.mod.o

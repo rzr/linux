@@ -1,0 +1,3 @@
+kernel/drivers/hid/hid.ko
+kernel/drivers/hid/hid-petalynx.ko
+kernel/drivers/hid/usbhid/usbhid.ko

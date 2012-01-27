@@ -1,0 +1,1 @@
+cmd_drivers/mtd/maps/intel_vr_nor.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/maps/intel_vr_nor.ko drivers/mtd/maps/intel_vr_nor.o drivers/mtd/maps/intel_vr_nor.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-avermedia-dvbt.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-avermedia-dvbt.ko drivers/media/rc/keymaps/rc-avermedia-dvbt.o drivers/media/rc/keymaps/rc-avermedia-dvbt.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/power/power_supply.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/power/power_supply.ko drivers/power/power_supply.o drivers/power/power_supply.mod.o

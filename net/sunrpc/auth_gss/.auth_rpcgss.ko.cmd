@@ -1,0 +1,1 @@
+cmd_net/sunrpc/auth_gss/auth_rpcgss.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/sunrpc/auth_gss/auth_rpcgss.ko net/sunrpc/auth_gss/auth_rpcgss.o net/sunrpc/auth_gss/auth_rpcgss.mod.o

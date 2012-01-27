@@ -1,0 +1,1 @@
+cmd_drivers/usb/host/isp1362-hcd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/host/isp1362-hcd.ko drivers/usb/host/isp1362-hcd.o drivers/usb/host/isp1362-hcd.mod.o

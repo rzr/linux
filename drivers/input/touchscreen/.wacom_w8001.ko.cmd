@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/wacom_w8001.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/wacom_w8001.ko drivers/input/touchscreen/wacom_w8001.o drivers/input/touchscreen/wacom_w8001.mod.o

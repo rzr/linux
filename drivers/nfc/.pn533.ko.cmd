@@ -1,0 +1,1 @@
+cmd_drivers/nfc/pn533.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/nfc/pn533.ko drivers/nfc/pn533.o drivers/nfc/pn533.mod.o

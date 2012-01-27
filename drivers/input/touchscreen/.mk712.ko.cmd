@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/mk712.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/mk712.ko drivers/input/touchscreen/mk712.o drivers/input/touchscreen/mk712.mod.o

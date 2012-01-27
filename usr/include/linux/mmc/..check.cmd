@@ -1,0 +1,1 @@
+cmd_/usr/local/src/project/linux/linux/usr/include/linux/mmc/.check := for f in ioctl.h  ; do echo "/usr/local/src/project/linux/linux/usr/include/linux/mmc/$${f}"; done | xargs perl scripts/headers_check.pl /usr/local/src/project/linux/linux/usr/include arm; touch /usr/local/src/project/linux/linux/usr/include/linux/mmc/.check

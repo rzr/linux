@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/iforce/iforce.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/iforce/iforce.ko drivers/input/joystick/iforce/iforce.o drivers/input/joystick/iforce/iforce.mod.o

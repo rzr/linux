@@ -1,0 +1,1 @@
+cmd_drivers/block/mg_disk.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/mg_disk.ko drivers/block/mg_disk.o drivers/block/mg_disk.mod.o

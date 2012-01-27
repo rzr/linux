@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/iowarrior.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/iowarrior.ko drivers/usb/misc/iowarrior.o drivers/usb/misc/iowarrior.mod.o

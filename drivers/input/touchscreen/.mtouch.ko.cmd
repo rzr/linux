@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/mtouch.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/mtouch.ko drivers/input/touchscreen/mtouch.o drivers/input/touchscreen/mtouch.mod.o

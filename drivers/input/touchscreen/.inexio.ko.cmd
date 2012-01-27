@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/inexio.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/inexio.ko drivers/input/touchscreen/inexio.o drivers/input/touchscreen/inexio.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/mtd/chips/map_rom.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/chips/map_rom.ko drivers/mtd/chips/map_rom.o drivers/mtd/chips/map_rom.mod.o

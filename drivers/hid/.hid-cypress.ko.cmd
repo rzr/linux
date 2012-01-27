@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-cypress.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-cypress.ko drivers/hid/hid-cypress.o drivers/hid/hid-cypress.mod.o

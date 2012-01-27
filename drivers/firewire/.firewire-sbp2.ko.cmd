@@ -1,0 +1,1 @@
+cmd_drivers/firewire/firewire-sbp2.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/firewire/firewire-sbp2.ko drivers/firewire/firewire-sbp2.o drivers/firewire/firewire-sbp2.mod.o

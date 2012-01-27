@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/touchwin.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/touchwin.ko drivers/input/touchscreen/touchwin.o drivers/input/touchscreen/touchwin.mod.o

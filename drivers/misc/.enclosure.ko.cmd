@@ -1,0 +1,1 @@
+cmd_drivers/misc/enclosure.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/enclosure.ko drivers/misc/enclosure.o drivers/misc/enclosure.mod.o

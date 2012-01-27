@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/warrior.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/warrior.ko drivers/input/joystick/warrior.o drivers/input/joystick/warrior.mod.o

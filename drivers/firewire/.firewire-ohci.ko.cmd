@@ -1,0 +1,1 @@
+cmd_drivers/firewire/firewire-ohci.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/firewire/firewire-ohci.ko drivers/firewire/firewire-ohci.o drivers/firewire/firewire-ohci.mod.o

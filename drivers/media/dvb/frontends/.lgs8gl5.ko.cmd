@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/lgs8gl5.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/lgs8gl5.ko drivers/media/dvb/frontends/lgs8gl5.o drivers/media/dvb/frontends/lgs8gl5.mod.o

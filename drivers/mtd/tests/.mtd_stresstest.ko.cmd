@@ -1,0 +1,1 @@
+cmd_drivers/mtd/tests/mtd_stresstest.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/tests/mtd_stresstest.ko drivers/mtd/tests/mtd_stresstest.o drivers/mtd/tests/mtd_stresstest.mod.o

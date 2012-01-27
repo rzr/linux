@@ -1,0 +1,1 @@
+cmd_drivers/block/umem.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/umem.ko drivers/block/umem.o drivers/block/umem.mod.o

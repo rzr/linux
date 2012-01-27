@@ -1,0 +1,1 @@
+cmd_drivers/mtd/devices/doc2001.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/devices/doc2001.ko drivers/mtd/devices/doc2001.o drivers/mtd/devices/doc2001.mod.o

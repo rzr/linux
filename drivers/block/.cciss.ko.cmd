@@ -1,0 +1,1 @@
+cmd_drivers/block/cciss.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/cciss.ko drivers/block/cciss.o drivers/block/cciss.mod.o

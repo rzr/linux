@@ -1,0 +1,1 @@
+cmd_drivers/media/video/videodev.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/video/videodev.ko drivers/media/video/videodev.o drivers/media/video/videodev.mod.o

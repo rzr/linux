@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_cdc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_cdc.ko drivers/usb/gadget/g_cdc.o drivers/usb/gadget/g_cdc.mod.o

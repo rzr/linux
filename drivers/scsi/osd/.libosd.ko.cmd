@@ -1,0 +1,1 @@
+cmd_drivers/scsi/osd/libosd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/scsi/osd/libosd.ko drivers/scsi/osd/libosd.o drivers/scsi/osd/libosd.mod.o

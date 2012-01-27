@@ -1,0 +1,1 @@
+cmd_drivers/block/virtio_blk.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/virtio_blk.ko drivers/block/virtio_blk.o drivers/block/virtio_blk.mod.o

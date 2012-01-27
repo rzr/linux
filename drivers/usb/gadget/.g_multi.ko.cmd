@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_multi.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_multi.ko drivers/usb/gadget/g_multi.o drivers/usb/gadget/g_multi.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/media/video/v4l2-common.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/video/v4l2-common.ko drivers/media/video/v4l2-common.o drivers/media/video/v4l2-common.mod.o

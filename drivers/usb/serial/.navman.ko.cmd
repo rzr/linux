@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/navman.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/navman.ko drivers/usb/serial/navman.o drivers/usb/serial/navman.mod.o

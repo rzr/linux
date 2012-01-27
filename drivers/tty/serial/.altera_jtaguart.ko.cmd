@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/altera_jtaguart.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/altera_jtaguart.ko drivers/tty/serial/altera_jtaguart.o drivers/tty/serial/altera_jtaguart.mod.o

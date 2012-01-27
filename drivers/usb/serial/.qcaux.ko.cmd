@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/qcaux.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/qcaux.ko drivers/usb/serial/qcaux.o drivers/usb/serial/qcaux.mod.o

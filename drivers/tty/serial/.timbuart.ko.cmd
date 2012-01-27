@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/timbuart.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/timbuart.ko drivers/tty/serial/timbuart.o drivers/tty/serial/timbuart.mod.o

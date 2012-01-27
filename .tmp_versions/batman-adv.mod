@@ -1,0 +1,2 @@
+net/batman-adv/batman-adv.ko
+net/batman-adv/bat_debugfs.o net/batman-adv/bat_iv_ogm.o net/batman-adv/bat_sysfs.o net/batman-adv/bitarray.o net/batman-adv/gateway_client.o net/batman-adv/gateway_common.o net/batman-adv/hard-interface.o net/batman-adv/hash.o net/batman-adv/icmp_socket.o net/batman-adv/main.o net/batman-adv/originator.o net/batman-adv/ring_buffer.o net/batman-adv/routing.o net/batman-adv/send.o net/batman-adv/soft-interface.o net/batman-adv/translation-table.o net/batman-adv/unicast.o net/batman-adv/vis.o

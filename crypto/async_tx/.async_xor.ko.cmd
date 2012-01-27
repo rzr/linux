@@ -1,0 +1,1 @@
+cmd_crypto/async_tx/async_xor.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o crypto/async_tx/async_xor.ko crypto/async_tx/async_xor.o crypto/async_tx/async_xor.mod.o

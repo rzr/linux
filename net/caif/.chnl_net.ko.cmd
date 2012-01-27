@@ -1,0 +1,1 @@
+cmd_net/caif/chnl_net.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/caif/chnl_net.ko net/caif/chnl_net.o net/caif/chnl_net.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/mcs5000_ts.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/mcs5000_ts.ko drivers/input/touchscreen/mcs5000_ts.o drivers/input/touchscreen/mcs5000_ts.mod.o

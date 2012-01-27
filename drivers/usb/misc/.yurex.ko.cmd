@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/yurex.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/yurex.ko drivers/usb/misc/yurex.o drivers/usb/misc/yurex.mod.o

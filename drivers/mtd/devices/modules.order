@@ -1,0 +1,10 @@
+kernel/drivers/mtd/devices/doc2000.ko
+kernel/drivers/mtd/devices/doc2001.ko
+kernel/drivers/mtd/devices/doc2001plus.ko
+kernel/drivers/mtd/devices/docprobe.ko
+kernel/drivers/mtd/devices/docecc.ko
+kernel/drivers/mtd/devices/slram.ko
+kernel/drivers/mtd/devices/phram.ko
+kernel/drivers/mtd/devices/pmc551.ko
+kernel/drivers/mtd/devices/mtdram.ko
+kernel/drivers/mtd/devices/block2mtd.ko

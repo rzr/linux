@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/tuner-simple.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/tuner-simple.ko drivers/media/common/tuners/tuner-simple.o drivers/media/common/tuners/tuner-simple.mod.o

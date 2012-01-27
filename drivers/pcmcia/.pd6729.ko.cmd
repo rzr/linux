@@ -1,0 +1,1 @@
+cmd_drivers/pcmcia/pd6729.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/pcmcia/pd6729.ko drivers/pcmcia/pd6729.o drivers/pcmcia/pd6729.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/spaceball.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/spaceball.ko drivers/input/joystick/spaceball.o drivers/input/joystick/spaceball.mod.o

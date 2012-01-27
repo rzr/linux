@@ -1,0 +1,1 @@
+cmd_drivers/misc/c2port/core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/c2port/core.ko drivers/misc/c2port/core.o drivers/misc/c2port/core.mod.o

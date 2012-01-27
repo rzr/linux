@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/qt1010.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/qt1010.ko drivers/media/common/tuners/qt1010.o drivers/media/common/tuners/qt1010.mod.o

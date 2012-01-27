@@ -1,0 +1,1 @@
+cmd_drivers/usb/storage/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o drivers/usb/storage/built-in.o drivers/usb/storage/usb-storage.o drivers/usb/storage/ums-datafab.o drivers/usb/storage/ums-freecom.o drivers/usb/storage/ums-jumpshot.o drivers/usb/storage/ums-sddr09.o drivers/usb/storage/ums-sddr55.o 

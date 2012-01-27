@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/matrix_keypad.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/matrix_keypad.ko drivers/input/keyboard/matrix_keypad.o drivers/input/keyboard/matrix_keypad.mod.o

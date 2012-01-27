@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/penmount.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/penmount.ko drivers/input/touchscreen/penmount.o drivers/input/touchscreen/penmount.mod.o

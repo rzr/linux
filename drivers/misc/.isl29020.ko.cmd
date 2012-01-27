@@ -1,0 +1,1 @@
+cmd_drivers/misc/isl29020.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/isl29020.ko drivers/misc/isl29020.o drivers/misc/isl29020.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/message/i2o/i2o_core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/message/i2o/i2o_core.ko drivers/message/i2o/i2o_core.o drivers/message/i2o/i2o_core.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/misc/ics932s401.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/ics932s401.ko drivers/misc/ics932s401.o drivers/misc/ics932s401.mod.o

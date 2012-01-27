@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/lm8323.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/lm8323.ko drivers/input/keyboard/lm8323.o drivers/input/keyboard/lm8323.mod.o

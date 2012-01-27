@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/gamecon.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/gamecon.ko drivers/input/joystick/gamecon.o drivers/input/joystick/gamecon.mod.o

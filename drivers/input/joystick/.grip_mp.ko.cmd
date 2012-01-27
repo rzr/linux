@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/grip_mp.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/grip_mp.ko drivers/input/joystick/grip_mp.o drivers/input/joystick/grip_mp.mod.o

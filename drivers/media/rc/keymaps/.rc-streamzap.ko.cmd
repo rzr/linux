@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-streamzap.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-streamzap.ko drivers/media/rc/keymaps/rc-streamzap.o drivers/media/rc/keymaps/rc-streamzap.mod.o

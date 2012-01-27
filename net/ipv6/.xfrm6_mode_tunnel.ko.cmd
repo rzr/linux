@@ -1,0 +1,1 @@
+cmd_net/ipv6/xfrm6_mode_tunnel.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/ipv6/xfrm6_mode_tunnel.ko net/ipv6/xfrm6_mode_tunnel.o net/ipv6/xfrm6_mode_tunnel.mod.o

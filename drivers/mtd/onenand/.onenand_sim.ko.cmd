@@ -1,0 +1,1 @@
+cmd_drivers/mtd/onenand/onenand_sim.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/onenand/onenand_sim.ko drivers/mtd/onenand/onenand_sim.o drivers/mtd/onenand/onenand_sim.mod.o

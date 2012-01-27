@@ -1,0 +1,1 @@
+cmd_drivers/char/hw_random/timeriomem-rng.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/char/hw_random/timeriomem-rng.ko drivers/char/hw_random/timeriomem-rng.o drivers/char/hw_random/timeriomem-rng.mod.o

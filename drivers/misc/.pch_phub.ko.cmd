@@ -1,0 +1,1 @@
+cmd_drivers/misc/pch_phub.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/pch_phub.ko drivers/misc/pch_phub.o drivers/misc/pch_phub.mod.o

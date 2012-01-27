@@ -1,0 +1,9 @@
+kernel/drivers/usb/usb-common.ko
+kernel/drivers/usb/class/usblp.ko
+kernel/drivers/usb/core/usbcore.ko
+kernel/drivers/usb/storage/usb-storage.ko
+kernel/drivers/usb/storage/ums-datafab.ko
+kernel/drivers/usb/storage/ums-freecom.ko
+kernel/drivers/usb/storage/ums-jumpshot.ko
+kernel/drivers/usb/storage/ums-sddr09.ko
+kernel/drivers/usb/storage/ums-sddr55.ko

@@ -1,0 +1,1 @@
+cmd_drivers/char/ramoops.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/char/ramoops.ko drivers/char/ramoops.o drivers/char/ramoops.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/mpu3050.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/mpu3050.ko drivers/input/misc/mpu3050.o drivers/input/misc/mpu3050.mod.o

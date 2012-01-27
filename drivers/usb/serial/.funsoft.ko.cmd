@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/funsoft.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/funsoft.ko drivers/usb/serial/funsoft.o drivers/usb/serial/funsoft.mod.o

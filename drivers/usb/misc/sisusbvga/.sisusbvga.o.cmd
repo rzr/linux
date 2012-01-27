@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/sisusbvga/sisusbvga.o := arm-linux-gnueabi-ld -EL    -r -o drivers/usb/misc/sisusbvga/sisusbvga.o drivers/usb/misc/sisusbvga/sisusb.o drivers/usb/misc/sisusbvga/sisusb_init.o drivers/usb/misc/sisusbvga/sisusb_con.o 

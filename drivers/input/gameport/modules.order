@@ -1,0 +1,5 @@
+kernel/drivers/input/gameport/gameport.ko
+kernel/drivers/input/gameport/emu10k1-gp.ko
+kernel/drivers/input/gameport/fm801-gp.ko
+kernel/drivers/input/gameport/lightning.ko
+kernel/drivers/input/gameport/ns558.ko

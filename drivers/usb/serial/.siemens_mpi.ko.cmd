@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/siemens_mpi.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/siemens_mpi.ko drivers/usb/serial/siemens_mpi.o drivers/usb/serial/siemens_mpi.mod.o

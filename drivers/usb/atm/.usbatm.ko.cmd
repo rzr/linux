@@ -1,0 +1,1 @@
+cmd_drivers/usb/atm/usbatm.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/atm/usbatm.ko drivers/usb/atm/usbatm.o drivers/usb/atm/usbatm.mod.o

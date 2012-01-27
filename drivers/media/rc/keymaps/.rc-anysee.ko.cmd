@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-anysee.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-anysee.ko drivers/media/rc/keymaps/rc-anysee.o drivers/media/rc/keymaps/rc-anysee.mod.o

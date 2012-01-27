@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/mfd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/mfd.ko drivers/tty/serial/mfd.o drivers/tty/serial/mfd.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_printer.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_printer.ko drivers/usb/gadget/g_printer.o drivers/usb/gadget/g_printer.mod.o

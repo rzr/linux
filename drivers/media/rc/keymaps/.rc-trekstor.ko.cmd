@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-trekstor.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-trekstor.ko drivers/media/rc/keymaps/rc-trekstor.o drivers/media/rc/keymaps/rc-trekstor.mod.o

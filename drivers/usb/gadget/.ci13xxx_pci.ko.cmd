@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/ci13xxx_pci.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/ci13xxx_pci.ko drivers/usb/gadget/ci13xxx_pci.o drivers/usb/gadget/ci13xxx_pci.mod.o

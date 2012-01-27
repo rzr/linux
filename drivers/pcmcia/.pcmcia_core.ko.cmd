@@ -1,0 +1,1 @@
+cmd_drivers/pcmcia/pcmcia_core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/pcmcia/pcmcia_core.ko drivers/pcmcia/pcmcia_core.o drivers/pcmcia/pcmcia_core.mod.o

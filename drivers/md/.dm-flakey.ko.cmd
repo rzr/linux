@@ -1,0 +1,1 @@
+cmd_drivers/md/dm-flakey.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/md/dm-flakey.ko drivers/md/dm-flakey.o drivers/md/dm-flakey.mod.o

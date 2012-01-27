@@ -1,0 +1,1 @@
+cmd_drivers/block/brd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/brd.ko drivers/block/brd.o drivers/block/brd.mod.o

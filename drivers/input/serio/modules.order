@@ -1,0 +1,5 @@
+kernel/drivers/input/serio/parkbd.ko
+kernel/drivers/input/serio/pcips2.ko
+kernel/drivers/input/serio/ps2mult.ko
+kernel/drivers/input/serio/serio_raw.ko
+kernel/drivers/input/serio/altera_ps2.ko

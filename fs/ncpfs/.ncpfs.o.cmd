@@ -1,0 +1,1 @@
+cmd_fs/ncpfs/ncpfs.o := arm-linux-gnueabi-ld -EL    -r -o fs/ncpfs/ncpfs.o fs/ncpfs/dir.o fs/ncpfs/file.o fs/ncpfs/inode.o fs/ncpfs/ioctl.o fs/ncpfs/mmap.o fs/ncpfs/ncplib_kernel.o fs/ncpfs/sock.o fs/ncpfs/ncpsign_kernel.o fs/ncpfs/getopt.o 

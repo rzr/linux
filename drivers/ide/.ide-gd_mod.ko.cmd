@@ -1,0 +1,1 @@
+cmd_drivers/ide/ide-gd_mod.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/ide/ide-gd_mod.ko drivers/ide/ide-gd_mod.o drivers/ide/ide-gd_mod.mod.o

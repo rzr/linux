@@ -1,0 +1,1 @@
+cmd_drivers/telephony/phonedev.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/telephony/phonedev.ko drivers/telephony/phonedev.o drivers/telephony/phonedev.mod.o

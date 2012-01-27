@@ -1,0 +1,1 @@
+cmd_net/phonet/pn_pep.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/phonet/pn_pep.ko net/phonet/pn_pep.o net/phonet/pn_pep.mod.o

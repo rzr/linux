@@ -1,0 +1,1 @@
+cmd_/usr/local/src/project/linux/linux/usr/include/xen/.check := for f in evtchn.h privcmd.h  ; do echo "/usr/local/src/project/linux/linux/usr/include/xen/$${f}"; done | xargs perl scripts/headers_check.pl /usr/local/src/project/linux/linux/usr/include arm; touch /usr/local/src/project/linux/linux/usr/include/xen/.check

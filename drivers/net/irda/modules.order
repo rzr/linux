@@ -1,0 +1,2 @@
+kernel/drivers/net/irda/irtty-sir.ko
+kernel/drivers/net/irda/sir-dev.ko

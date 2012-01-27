@@ -1,0 +1,1 @@
+cmd_/usr/local/src/project/linux/linux/usr/include/.check := for f in   ; do echo "/usr/local/src/project/linux/linux/usr/include/$${f}"; done | xargs perl scripts/headers_check.pl /usr/local/src/project/linux/linux/usr/include arm; touch /usr/local/src/project/linux/linux/usr/include/.check

@@ -1,0 +1,1 @@
+cmd_drivers/base/regmap/regmap-i2c.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/base/regmap/regmap-i2c.ko drivers/base/regmap/regmap-i2c.o drivers/base/regmap/regmap-i2c.mod.o

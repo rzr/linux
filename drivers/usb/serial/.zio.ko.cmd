@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/zio.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/zio.ko drivers/usb/serial/zio.o drivers/usb/serial/zio.mod.o

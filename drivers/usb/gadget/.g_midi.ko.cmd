@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_midi.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_midi.ko drivers/usb/gadget/g_midi.o drivers/usb/gadget/g_midi.mod.o

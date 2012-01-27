@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/isight_firmware.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/isight_firmware.ko drivers/usb/misc/isight_firmware.o drivers/usb/misc/isight_firmware.mod.o

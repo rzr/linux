@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_ether.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_ether.ko drivers/usb/gadget/g_ether.o drivers/usb/gadget/g_ether.mod.o

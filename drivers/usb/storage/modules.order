@@ -1,0 +1,9 @@
+kernel/drivers/usb/storage/uas.ko
+kernel/drivers/usb/storage/ums-alauda.ko
+kernel/drivers/usb/storage/ums-cypress.ko
+kernel/drivers/usb/storage/ums-eneub6250.ko
+kernel/drivers/usb/storage/ums-isd200.ko
+kernel/drivers/usb/storage/ums-karma.ko
+kernel/drivers/usb/storage/ums-onetouch.ko
+kernel/drivers/usb/storage/ums-realtek.ko
+kernel/drivers/usb/storage/ums-usbat.ko

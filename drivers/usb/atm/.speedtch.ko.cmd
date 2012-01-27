@@ -1,0 +1,1 @@
+cmd_drivers/usb/atm/speedtch.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/atm/speedtch.ko drivers/usb/atm/speedtch.o drivers/usb/atm/speedtch.mod.o

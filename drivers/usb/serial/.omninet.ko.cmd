@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/omninet.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/omninet.ko drivers/usb/serial/omninet.o drivers/usb/serial/omninet.mod.o

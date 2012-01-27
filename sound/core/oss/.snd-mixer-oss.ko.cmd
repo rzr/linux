@@ -1,0 +1,1 @@
+cmd_sound/core/oss/snd-mixer-oss.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o sound/core/oss/snd-mixer-oss.ko sound/core/oss/snd-mixer-oss.o sound/core/oss/snd-mixer-oss.mod.o

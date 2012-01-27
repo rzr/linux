@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/lgdt330x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/lgdt330x.ko drivers/media/dvb/frontends/lgdt330x.o drivers/media/dvb/frontends/lgdt330x.mod.o

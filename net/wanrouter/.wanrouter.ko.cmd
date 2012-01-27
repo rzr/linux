@@ -1,0 +1,1 @@
+cmd_net/wanrouter/wanrouter.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/wanrouter/wanrouter.ko net/wanrouter/wanrouter.o net/wanrouter/wanrouter.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_audio.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_audio.ko drivers/usb/gadget/g_audio.o drivers/usb/gadget/g_audio.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/misc/iwmc3200top/iwmc3200top.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/iwmc3200top/iwmc3200top.ko drivers/misc/iwmc3200top/iwmc3200top.o drivers/misc/iwmc3200top/iwmc3200top.mod.o

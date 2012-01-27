@@ -1,0 +1,1 @@
+cmd_drivers/char/applicom.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/char/applicom.ko drivers/char/applicom.o drivers/char/applicom.mod.o

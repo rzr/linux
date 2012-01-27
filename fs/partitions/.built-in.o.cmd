@@ -1,0 +1,1 @@
+cmd_fs/partitions/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o fs/partitions/built-in.o fs/partitions/check.o fs/partitions/amiga.o fs/partitions/mac.o fs/partitions/ldm.o fs/partitions/msdos.o fs/partitions/efi.o 

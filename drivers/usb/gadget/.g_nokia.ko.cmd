@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_nokia.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_nokia.ko drivers/usb/gadget/g_nokia.o drivers/usb/gadget/g_nokia.mod.o

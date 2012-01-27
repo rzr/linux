@@ -1,0 +1,1 @@
+cmd_drivers/misc/ioc4.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/ioc4.ko drivers/misc/ioc4.o drivers/misc/ioc4.mod.o

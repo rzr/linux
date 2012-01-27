@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/amd5536udc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/amd5536udc.ko drivers/usb/gadget/amd5536udc.o drivers/usb/gadget/amd5536udc.mod.o

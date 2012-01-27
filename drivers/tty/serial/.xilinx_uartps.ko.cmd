@@ -1,0 +1,1 @@
+cmd_drivers/tty/serial/xilinx_uartps.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/tty/serial/xilinx_uartps.ko drivers/tty/serial/xilinx_uartps.o drivers/tty/serial/xilinx_uartps.mod.o

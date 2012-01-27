@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-roccat-common.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-roccat-common.ko drivers/hid/hid-roccat-common.o drivers/hid/hid-roccat-common.mod.o

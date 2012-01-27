@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/gf2k.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/gf2k.ko drivers/input/joystick/gf2k.o drivers/input/joystick/gf2k.mod.o

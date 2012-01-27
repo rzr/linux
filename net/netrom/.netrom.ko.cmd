@@ -1,0 +1,1 @@
+cmd_net/netrom/netrom.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/netrom/netrom.ko net/netrom/netrom.o net/netrom/netrom.mod.o

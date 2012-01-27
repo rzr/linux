@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-uclogic.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-uclogic.ko drivers/hid/hid-uclogic.o drivers/hid/hid-uclogic.mod.o

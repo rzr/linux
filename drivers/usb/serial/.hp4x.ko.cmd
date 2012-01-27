@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/hp4x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/hp4x.ko drivers/usb/serial/hp4x.o drivers/usb/serial/hp4x.mod.o

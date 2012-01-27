@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/cypress_cy7c63.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/cypress_cy7c63.ko drivers/usb/misc/cypress_cy7c63.o drivers/usb/misc/cypress_cy7c63.mod.o

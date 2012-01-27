@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/max11801_ts.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/max11801_ts.ko drivers/input/touchscreen/max11801_ts.o drivers/input/touchscreen/max11801_ts.mod.o

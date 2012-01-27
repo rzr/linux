@@ -1,0 +1,1 @@
+cmd_drivers/misc/altera-stapl/altera-stapl.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/altera-stapl/altera-stapl.ko drivers/misc/altera-stapl/altera-stapl.o drivers/misc/altera-stapl/altera-stapl.mod.o

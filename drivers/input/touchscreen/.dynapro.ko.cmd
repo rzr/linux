@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/dynapro.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/dynapro.ko drivers/input/touchscreen/dynapro.o drivers/input/touchscreen/dynapro.mod.o

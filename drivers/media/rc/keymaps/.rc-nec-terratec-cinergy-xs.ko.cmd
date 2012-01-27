@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-nec-terratec-cinergy-xs.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-nec-terratec-cinergy-xs.ko drivers/media/rc/keymaps/rc-nec-terratec-cinergy-xs.o drivers/media/rc/keymaps/rc-nec-terratec-cinergy-xs.mod.o

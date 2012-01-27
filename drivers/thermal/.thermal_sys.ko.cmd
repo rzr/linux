@@ -1,0 +1,1 @@
+cmd_drivers/thermal/thermal_sys.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/thermal/thermal_sys.ko drivers/thermal/thermal_sys.o drivers/thermal/thermal_sys.mod.o

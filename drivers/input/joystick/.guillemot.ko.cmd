@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/guillemot.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/guillemot.ko drivers/input/joystick/guillemot.o drivers/input/joystick/guillemot.mod.o

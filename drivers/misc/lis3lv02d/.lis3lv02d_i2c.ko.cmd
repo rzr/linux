@@ -1,0 +1,1 @@
+cmd_drivers/misc/lis3lv02d/lis3lv02d_i2c.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/lis3lv02d/lis3lv02d_i2c.ko drivers/misc/lis3lv02d/lis3lv02d_i2c.o drivers/misc/lis3lv02d/lis3lv02d_i2c.mod.o

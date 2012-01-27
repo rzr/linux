@@ -1,0 +1,1 @@
+cmd_drivers/block/aoe/aoe.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/aoe/aoe.ko drivers/block/aoe/aoe.o drivers/block/aoe/aoe.mod.o

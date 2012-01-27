@@ -1,0 +1,1 @@
+cmd_drivers/char/ipmi/ipmi_msghandler.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/char/ipmi/ipmi_msghandler.ko drivers/char/ipmi/ipmi_msghandler.o drivers/char/ipmi/ipmi_msghandler.mod.o

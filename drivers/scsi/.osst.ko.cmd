@@ -1,0 +1,1 @@
+cmd_drivers/scsi/osst.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/scsi/osst.ko drivers/scsi/osst.o drivers/scsi/osst.mod.o

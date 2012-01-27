@@ -1,0 +1,1 @@
+cmd_/usr/local/src/project/linux/linux/usr/include/linux/caif/.check := for f in caif_socket.h if_caif.h  ; do echo "/usr/local/src/project/linux/linux/usr/include/linux/caif/$${f}"; done | xargs perl scripts/headers_check.pl /usr/local/src/project/linux/linux/usr/include arm; touch /usr/local/src/project/linux/linux/usr/include/linux/caif/.check

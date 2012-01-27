@@ -1,0 +1,1 @@
+cmd_drivers/usb/otg/gpio_vbus.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/otg/gpio_vbus.ko drivers/usb/otg/gpio_vbus.o drivers/usb/otg/gpio_vbus.mod.o

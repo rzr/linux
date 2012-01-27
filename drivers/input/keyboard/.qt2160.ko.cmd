@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/qt2160.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/qt2160.ko drivers/input/keyboard/qt2160.o drivers/input/keyboard/qt2160.mod.o

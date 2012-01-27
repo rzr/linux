@@ -1,0 +1,1 @@
+cmd_drivers/usb/atm/cxacru.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/atm/cxacru.ko drivers/usb/atm/cxacru.o drivers/usb/atm/cxacru.mod.o

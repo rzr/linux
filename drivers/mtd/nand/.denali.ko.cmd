@@ -1,0 +1,1 @@
+cmd_drivers/mtd/nand/denali.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/nand/denali.ko drivers/mtd/nand/denali.o drivers/mtd/nand/denali.mod.o

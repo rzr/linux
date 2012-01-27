@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/safe_serial.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/safe_serial.ko drivers/usb/serial/safe_serial.o drivers/usb/serial/safe_serial.mod.o

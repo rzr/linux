@@ -1,0 +1,1 @@
+cmd_drivers/hid/hid-logitech.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/hid/hid-logitech.ko drivers/hid/hid-logitech.o drivers/hid/hid-logitech.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/mtd/devices/docprobe.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/devices/docprobe.ko drivers/mtd/devices/docprobe.o drivers/mtd/devices/docprobe.mod.o

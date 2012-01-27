@@ -1,0 +1,1 @@
+cmd_drivers/block/drbd/drbd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/drbd/drbd.ko drivers/block/drbd/drbd.o drivers/block/drbd/drbd.mod.o

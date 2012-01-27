@@ -1,0 +1,9 @@
+kernel/drivers/tty/serial/8250_pci.ko
+kernel/drivers/tty/serial/serial_cs.ko
+kernel/drivers/tty/serial/jsm/jsm.ko
+kernel/drivers/tty/serial/timbuart.ko
+kernel/drivers/tty/serial/altera_jtaguart.ko
+kernel/drivers/tty/serial/altera_uart.ko
+kernel/drivers/tty/serial/mfd.ko
+kernel/drivers/tty/serial/pch_uart.ko
+kernel/drivers/tty/serial/xilinx_uartps.ko

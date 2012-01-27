@@ -1,0 +1,2 @@
+kernel/drivers/ata/libata.ko
+kernel/drivers/ata/sata_mv.ko

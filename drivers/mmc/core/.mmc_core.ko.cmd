@@ -1,0 +1,1 @@
+cmd_drivers/mmc/core/mmc_core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mmc/core/mmc_core.ko drivers/mmc/core/mmc_core.o drivers/mmc/core/mmc_core.mod.o

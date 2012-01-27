@@ -1,0 +1,22 @@
+md5sum --check debian/control.md5sum --status || \
+		/usr/bin/make -f debian/rules debian/control-real
+dh_testdir
+rm -rf debian/build debian/stamps debian/lib/python/debian_linux/*.pyc debian/linux-headers-* debian/linux-image-* debian/linux-support-* debian/linux-source-* debian/linux-doc-* debian/linux-manual-* debian/linux-patch-debian-* debian/xen-linux-system-* debian/*-modules-*-di*
+dh_clean
+ dpkg-buildpackage -rfakeroot -d -us -uc -i -I -S
+dpkg-buildpackage: source package linux-2.6
+dpkg-buildpackage: source version 3.2.1-2.0~rzr3
+dpkg-buildpackage: source changed by Philippe Coval <rzr@gna.org>
+ dpkg-source -i -I --before-build linux
+ fakeroot debian/rules clean
+md5sum --check debian/control.md5sum --status || \
+		/usr/bin/make -f debian/rules debian/control-real
+dh_testdir
+rm -rf debian/build debian/stamps debian/lib/python/debian_linux/*.pyc debian/linux-headers-* debian/linux-image-* debian/linux-support-* debian/linux-source-* debian/linux-doc-* debian/linux-manual-* debian/linux-patch-debian-* debian/xen-linux-system-* debian/*-modules-*-di*
+dh_clean
+ dpkg-source -i -I -b linux
+dpkg-source: warning: source directory 'linux' is not <sourcepackage>-<upstreamversion> 'linux-2.6-3.2.1'
+dpkg-source: warning: .orig directory name linux.orig is not <package>-<upstreamversion> (wanted linux-2.6-3.2.1.orig)
+dpkg-source: info: using source format `1.0'
+dpkg-source: info: building linux-2.6 using existing linux-2.6_3.2.1.orig.tar.gz
+dpkg-source: info: building linux-2.6 in linux-2.6_3.2.1-2.0~rzr3.diff.gz

@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/ati_remote2.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/ati_remote2.ko drivers/input/misc/ati_remote2.o drivers/input/misc/ati_remote2.mod.o

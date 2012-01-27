@@ -1,0 +1,1 @@
+cmd_net/9p/9pnet_virtio.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/9p/9pnet_virtio.ko net/9p/9pnet_virtio.o net/9p/9pnet_virtio.mod.o

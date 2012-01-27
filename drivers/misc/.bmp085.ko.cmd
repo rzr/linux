@@ -1,0 +1,1 @@
+cmd_drivers/misc/bmp085.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/bmp085.ko drivers/misc/bmp085.o drivers/misc/bmp085.mod.o

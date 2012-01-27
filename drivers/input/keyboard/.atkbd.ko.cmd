@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/atkbd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/atkbd.ko drivers/input/keyboard/atkbd.o drivers/input/keyboard/atkbd.mod.o

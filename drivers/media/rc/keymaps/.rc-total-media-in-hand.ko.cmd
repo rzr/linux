@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-total-media-in-hand.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-total-media-in-hand.ko drivers/media/rc/keymaps/rc-total-media-in-hand.o drivers/media/rc/keymaps/rc-total-media-in-hand.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/usb/serial/usb_debug.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/serial/usb_debug.ko drivers/usb/serial/usb_debug.o drivers/usb/serial/usb_debug.mod.o

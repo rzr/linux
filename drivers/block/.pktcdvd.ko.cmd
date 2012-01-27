@@ -1,0 +1,1 @@
+cmd_drivers/block/pktcdvd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/pktcdvd.ko drivers/block/pktcdvd.o drivers/block/pktcdvd.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/misc/bh1780gli.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/bh1780gli.ko drivers/misc/bh1780gli.o drivers/misc/bh1780gli.mod.o

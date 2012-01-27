@@ -1,0 +1,1 @@
+cmd_drivers/input/misc/ad714x-i2c.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/misc/ad714x-i2c.ko drivers/input/misc/ad714x-i2c.o drivers/input/misc/ad714x-i2c.mod.o

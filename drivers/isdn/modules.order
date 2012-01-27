@@ -1,0 +1,5 @@
+kernel/drivers/isdn/i4l/isdn.ko
+kernel/drivers/isdn/capi/kernelcapi.ko
+kernel/drivers/isdn/mISDN/mISDN_core.ko
+kernel/drivers/isdn/hysdn/hysdn.ko
+kernel/drivers/isdn/gigaset/gigaset.ko

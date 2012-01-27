@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/opencores-kbd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/opencores-kbd.ko drivers/input/keyboard/opencores-kbd.o drivers/input/keyboard/opencores-kbd.mod.o

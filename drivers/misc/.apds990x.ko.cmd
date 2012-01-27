@@ -1,0 +1,1 @@
+cmd_drivers/misc/apds990x.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/apds990x.ko drivers/misc/apds990x.o drivers/misc/apds990x.mod.o

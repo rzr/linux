@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/dvb-core/dvb-core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/dvb-core/dvb-core.ko drivers/media/dvb/dvb-core/dvb-core.o drivers/media/dvb/dvb-core/dvb-core.mod.o

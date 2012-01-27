@@ -1,0 +1,1 @@
+cmd_drivers/mtd/chips/map_absent.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/chips/map_absent.ko drivers/mtd/chips/map_absent.o drivers/mtd/chips/map_absent.mod.o

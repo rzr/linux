@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/stinger.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/stinger.ko drivers/input/joystick/stinger.o drivers/input/joystick/stinger.mod.o

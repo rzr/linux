@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/a3d.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/a3d.ko drivers/input/joystick/a3d.o drivers/input/joystick/a3d.mod.o

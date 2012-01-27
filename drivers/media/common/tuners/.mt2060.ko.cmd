@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/mt2060.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/mt2060.ko drivers/media/common/tuners/mt2060.o drivers/media/common/tuners/mt2060.mod.o

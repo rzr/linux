@@ -1,0 +1,1 @@
+cmd_drivers/media/common/tuners/mxl5005s.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/common/tuners/mxl5005s.ko drivers/media/common/tuners/mxl5005s.o drivers/media/common/tuners/mxl5005s.mod.o

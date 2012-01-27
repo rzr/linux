@@ -1,0 +1,1 @@
+cmd_drivers/video/backlight/backlight.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/video/backlight/backlight.ko drivers/video/backlight/backlight.o drivers/video/backlight/backlight.mod.o

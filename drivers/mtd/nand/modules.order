@@ -1,0 +1,8 @@
+kernel/drivers/mtd/nand/sm_common.ko
+kernel/drivers/mtd/nand/cafe_nand.ko
+kernel/drivers/mtd/nand/denali.ko
+kernel/drivers/mtd/nand/diskonchip.ko
+kernel/drivers/mtd/nand/nandsim.ko
+kernel/drivers/mtd/nand/gpio.ko
+kernel/drivers/mtd/nand/alauda.ko
+kernel/drivers/mtd/nand/r852.ko

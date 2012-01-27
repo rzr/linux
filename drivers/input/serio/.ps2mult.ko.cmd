@@ -1,0 +1,1 @@
+cmd_drivers/input/serio/ps2mult.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/serio/ps2mult.ko drivers/input/serio/ps2mult.o drivers/input/serio/ps2mult.mod.o

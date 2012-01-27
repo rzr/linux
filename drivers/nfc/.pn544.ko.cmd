@@ -1,0 +1,1 @@
+cmd_drivers/nfc/pn544.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/nfc/pn544.ko drivers/nfc/pn544.o drivers/nfc/pn544.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/mtd/mtdswap.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/mtdswap.ko drivers/mtd/mtdswap.o drivers/mtd/mtdswap.mod.o

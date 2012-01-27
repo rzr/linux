@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/gpio_keys_polled.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/gpio_keys_polled.ko drivers/input/keyboard/gpio_keys_polled.o drivers/input/keyboard/gpio_keys_polled.mod.o

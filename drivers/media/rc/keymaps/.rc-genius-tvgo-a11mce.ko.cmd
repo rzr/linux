@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-genius-tvgo-a11mce.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-genius-tvgo-a11mce.ko drivers/media/rc/keymaps/rc-genius-tvgo-a11mce.o drivers/media/rc/keymaps/rc-genius-tvgo-a11mce.mod.o

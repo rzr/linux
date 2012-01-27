@@ -1,0 +1,1 @@
+cmd_crypto/async_tx/async_raid6_recov.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o crypto/async_tx/async_raid6_recov.ko crypto/async_tx/async_raid6_recov.o crypto/async_tx/async_raid6_recov.mod.o

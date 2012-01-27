@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/touchright.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/touchright.ko drivers/input/touchscreen/touchright.o drivers/input/touchscreen/touchright.mod.o

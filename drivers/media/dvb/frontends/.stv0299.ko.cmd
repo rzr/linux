@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/stv0299.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/stv0299.ko drivers/media/dvb/frontends/stv0299.o drivers/media/dvb/frontends/stv0299.mod.o

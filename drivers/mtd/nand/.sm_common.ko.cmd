@@ -1,0 +1,1 @@
+cmd_drivers/mtd/nand/sm_common.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/nand/sm_common.ko drivers/mtd/nand/sm_common.o drivers/mtd/nand/sm_common.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/input/mouse/vsxxxaa.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/mouse/vsxxxaa.ko drivers/input/mouse/vsxxxaa.o drivers/input/mouse/vsxxxaa.mod.o

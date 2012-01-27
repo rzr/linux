@@ -1,0 +1,1 @@
+cmd_drivers/block/cpqarray.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/cpqarray.ko drivers/block/cpqarray.o drivers/block/cpqarray.mod.o

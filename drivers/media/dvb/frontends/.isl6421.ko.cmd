@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/isl6421.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/isl6421.ko drivers/media/dvb/frontends/isl6421.o drivers/media/dvb/frontends/isl6421.mod.o

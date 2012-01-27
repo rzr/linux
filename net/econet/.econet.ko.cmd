@@ -1,0 +1,1 @@
+cmd_net/econet/econet.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/econet/econet.ko net/econet/econet.o net/econet/econet.mod.o

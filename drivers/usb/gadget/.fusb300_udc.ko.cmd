@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/fusb300_udc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/fusb300_udc.ko drivers/usb/gadget/fusb300_udc.o drivers/usb/gadget/fusb300_udc.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/block/osdblk.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/osdblk.ko drivers/block/osdblk.o drivers/block/osdblk.mod.o

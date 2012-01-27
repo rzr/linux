@@ -1,0 +1,1 @@
+cmd_crypto/blowfish_generic.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o crypto/blowfish_generic.ko crypto/blowfish_generic.o crypto/blowfish_generic.mod.o

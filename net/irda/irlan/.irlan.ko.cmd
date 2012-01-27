@@ -1,0 +1,1 @@
+cmd_net/irda/irlan/irlan.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/irda/irlan/irlan.ko net/irda/irlan/irlan.o net/irda/irlan/irlan.mod.o

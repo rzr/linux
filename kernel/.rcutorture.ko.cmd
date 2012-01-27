@@ -1,0 +1,1 @@
+cmd_kernel/rcutorture.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o kernel/rcutorture.ko kernel/rcutorture.o kernel/rcutorture.mod.o

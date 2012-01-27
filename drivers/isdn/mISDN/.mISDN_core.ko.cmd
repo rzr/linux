@@ -1,0 +1,1 @@
+cmd_drivers/isdn/mISDN/mISDN_core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/isdn/mISDN/mISDN_core.ko drivers/isdn/mISDN/mISDN_core.o drivers/isdn/mISDN/mISDN_core.mod.o

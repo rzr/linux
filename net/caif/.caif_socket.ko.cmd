@@ -1,0 +1,1 @@
+cmd_net/caif/caif_socket.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/caif/caif_socket.ko net/caif/caif_socket.o net/caif/caif_socket.mod.o

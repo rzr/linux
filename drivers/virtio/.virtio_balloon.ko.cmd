@@ -1,0 +1,1 @@
+cmd_drivers/virtio/virtio_balloon.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/virtio/virtio_balloon.ko drivers/virtio/virtio_balloon.o drivers/virtio/virtio_balloon.mod.o

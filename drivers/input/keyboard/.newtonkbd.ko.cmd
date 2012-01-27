@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/newtonkbd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/keyboard/newtonkbd.ko drivers/input/keyboard/newtonkbd.o drivers/input/keyboard/newtonkbd.mod.o

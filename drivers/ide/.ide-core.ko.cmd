@@ -1,0 +1,1 @@
+cmd_drivers/ide/ide-core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/ide/ide-core.ko drivers/ide/ide-core.o drivers/ide/ide-core.mod.o

@@ -1,3 +1,17 @@
+linux-2.6 (3.2.1-2.0~rzr3) UNRELEASED; urgency=low
+
+  * Fix: port to linux-3.2.1
+  * workaround cross compilation
+  * Add: caches
+
+ -- Philippe Coval <rzr@gna.org>  Fri, 27 Jan 2012 01:35:11 +0100
+
+linux-2.6 (3.2.1-2.0~rzr2) UNRELEASED; urgency=low
+
+  * Fix: port to linux-3.2.1
+
+ -- Philippe Coval <rzr@gna.org>  Fri, 27 Jan 2012 01:35:09 +0100
+
 linux-2.6 (3.2.1-2.0~rzr1) unstable; urgency=low
 
   * Non-maintainer upload.

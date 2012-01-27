@@ -1,0 +1,1 @@
+cmd_drivers/usb/host/hwa-hc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/host/hwa-hc.ko drivers/usb/host/hwa-hc.o drivers/usb/host/hwa-hc.mod.o

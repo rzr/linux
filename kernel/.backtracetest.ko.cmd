@@ -1,0 +1,1 @@
+cmd_kernel/backtracetest.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o kernel/backtracetest.ko kernel/backtracetest.o kernel/backtracetest.mod.o

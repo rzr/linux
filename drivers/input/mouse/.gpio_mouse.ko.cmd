@@ -1,0 +1,1 @@
+cmd_drivers/input/mouse/gpio_mouse.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/mouse/gpio_mouse.ko drivers/input/mouse/gpio_mouse.o drivers/input/mouse/gpio_mouse.mod.o

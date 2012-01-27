@@ -1,0 +1,1 @@
+cmd_drivers/isdn/capi/kernelcapi.o := arm-linux-gnueabi-ld -EL    -r -o drivers/isdn/capi/kernelcapi.o drivers/isdn/capi/kcapi.o drivers/isdn/capi/capiutil.o drivers/isdn/capi/capilib.o drivers/isdn/capi/kcapi_proc.o 

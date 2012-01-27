@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/g_webcam.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/g_webcam.ko drivers/usb/gadget/g_webcam.o drivers/usb/gadget/g_webcam.mod.o

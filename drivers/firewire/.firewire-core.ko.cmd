@@ -1,0 +1,1 @@
+cmd_drivers/firewire/firewire-core.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/firewire/firewire-core.ko drivers/firewire/firewire-core.o drivers/firewire/firewire-core.mod.o

@@ -1,0 +1,11 @@
+kernel/lib/test-kstrtox.ko
+kernel/lib/crc-ccitt.ko
+kernel/lib/crc-itu-t.ko
+kernel/lib/crc7.ko
+kernel/lib/libcrc32c.ko
+kernel/lib/crc8.ko
+kernel/lib/reed_solomon/reed_solomon.ko
+kernel/lib/xz/xz_dec.ko
+kernel/lib/raid6/raid6_pq.ko
+kernel/lib/lru_cache.ko
+kernel/lib/cordic.ko

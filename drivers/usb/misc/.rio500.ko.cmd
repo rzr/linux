@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/rio500.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/rio500.ko drivers/usb/misc/rio500.o drivers/usb/misc/rio500.mod.o

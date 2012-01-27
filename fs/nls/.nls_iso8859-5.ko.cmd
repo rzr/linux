@@ -1,0 +1,1 @@
+cmd_fs/nls/nls_iso8859-5.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o fs/nls/nls_iso8859-5.ko fs/nls/nls_iso8859-5.o fs/nls/nls_iso8859-5.mod.o

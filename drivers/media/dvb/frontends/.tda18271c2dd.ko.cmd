@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/tda18271c2dd.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/tda18271c2dd.ko drivers/media/dvb/frontends/tda18271c2dd.o drivers/media/dvb/frontends/tda18271c2dd.mod.o

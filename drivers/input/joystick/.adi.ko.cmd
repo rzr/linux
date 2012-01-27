@@ -1,0 +1,1 @@
+cmd_drivers/input/joystick/adi.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/joystick/adi.ko drivers/input/joystick/adi.o drivers/input/joystick/adi.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/misc/apds9802als.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/apds9802als.ko drivers/misc/apds9802als.o drivers/misc/apds9802als.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/usb/gadget/langwell_udc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/gadget/langwell_udc.ko drivers/usb/gadget/langwell_udc.o drivers/usb/gadget/langwell_udc.mod.o

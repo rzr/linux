@@ -1,0 +1,1 @@
+cmd_drivers/usb/misc/trancevibrator.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/usb/misc/trancevibrator.ko drivers/usb/misc/trancevibrator.o drivers/usb/misc/trancevibrator.mod.o

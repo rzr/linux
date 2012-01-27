@@ -1,0 +1,1 @@
+cmd_drivers/mtd/devices/slram.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/devices/slram.ko drivers/mtd/devices/slram.o drivers/mtd/devices/slram.mod.o

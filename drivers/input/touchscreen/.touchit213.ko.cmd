@@ -1,0 +1,1 @@
+cmd_drivers/input/touchscreen/touchit213.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/touchscreen/touchit213.ko drivers/input/touchscreen/touchit213.o drivers/input/touchscreen/touchit213.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/block/DAC960.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/block/DAC960.ko drivers/block/DAC960.o drivers/block/DAC960.mod.o

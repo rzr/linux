@@ -1,0 +1,1 @@
+cmd_net/rxrpc/af-rxrpc.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o net/rxrpc/af-rxrpc.ko net/rxrpc/af-rxrpc.o net/rxrpc/af-rxrpc.mod.o

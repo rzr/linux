@@ -1,0 +1,1 @@
+cmd_drivers/misc/eeprom/max6875.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/eeprom/max6875.ko drivers/misc/eeprom/max6875.o drivers/misc/eeprom/max6875.mod.o

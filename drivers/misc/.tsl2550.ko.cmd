@@ -1,0 +1,1 @@
+cmd_drivers/misc/tsl2550.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/tsl2550.ko drivers/misc/tsl2550.o drivers/misc/tsl2550.mod.o

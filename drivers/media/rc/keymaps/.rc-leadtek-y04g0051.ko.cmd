@@ -1,0 +1,1 @@
+cmd_drivers/media/rc/keymaps/rc-leadtek-y04g0051.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/rc/keymaps/rc-leadtek-y04g0051.ko drivers/media/rc/keymaps/rc-leadtek-y04g0051.o drivers/media/rc/keymaps/rc-leadtek-y04g0051.mod.o

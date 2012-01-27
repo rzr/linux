@@ -1,0 +1,1 @@
+cmd_drivers/misc/hmc6352.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/misc/hmc6352.ko drivers/misc/hmc6352.o drivers/misc/hmc6352.mod.o

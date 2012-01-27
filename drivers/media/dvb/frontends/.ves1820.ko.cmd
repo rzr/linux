@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/ves1820.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/media/dvb/frontends/ves1820.ko drivers/media/dvb/frontends/ves1820.o drivers/media/dvb/frontends/ves1820.mod.o

@@ -1,0 +1,1 @@
+cmd_drivers/mtd/tests/mtd_readtest.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/tests/mtd_readtest.ko drivers/mtd/tests/mtd_readtest.o drivers/mtd/tests/mtd_readtest.mod.o

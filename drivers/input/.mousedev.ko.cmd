@@ -1,0 +1,1 @@
+cmd_drivers/input/mousedev.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/input/mousedev.ko drivers/input/mousedev.o drivers/input/mousedev.mod.o

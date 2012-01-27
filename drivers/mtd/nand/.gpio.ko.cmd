@@ -1,0 +1,1 @@
+cmd_drivers/mtd/nand/gpio.ko := arm-linux-gnueabi-ld -EL -r  -T /usr/local/src/project/linux/linux/scripts/module-common.lds --build-id  -o drivers/mtd/nand/gpio.ko drivers/mtd/nand/gpio.o drivers/mtd/nand/gpio.mod.o

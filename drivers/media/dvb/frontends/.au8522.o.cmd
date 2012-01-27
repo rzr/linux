@@ -1,0 +1,1 @@
+cmd_drivers/media/dvb/frontends/au8522.o := arm-linux-gnueabi-ld -EL    -r -o drivers/media/dvb/frontends/au8522.o drivers/media/dvb/frontends/au8522_dig.o drivers/media/dvb/frontends/au8522_decoder.o 

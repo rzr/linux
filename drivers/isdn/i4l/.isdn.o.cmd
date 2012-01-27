@@ -1,0 +1,1 @@
+cmd_drivers/isdn/i4l/isdn.o := arm-linux-gnueabi-ld -EL    -r -o drivers/isdn/i4l/isdn.o drivers/isdn/i4l/isdn_net.o drivers/isdn/i4l/isdn_tty.o drivers/isdn/i4l/isdn_v110.o drivers/isdn/i4l/isdn_common.o 
