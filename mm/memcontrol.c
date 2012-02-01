@@ -3329,7 +3329,9 @@ void mem_cgroup_replace_page_cache(struct page *oldpage,
 {
 	struct mem_cgroup *memcg;
 	struct page_cgroup *pc;
+	struct zone *zone;
 	enum charge_type type = MEM_CGROUP_CHARGE_TYPE_CACHE;
+	unsigned long flags;
 
 	if (mem_cgroup_disabled())
 		return;
@@ -3345,13 +3347,20 @@ void mem_cgroup_replace_page_cache(struct page *oldpage,
 	if (PageSwapBacked(oldpage))
 		type = MEM_CGROUP_CHARGE_TYPE_SHMEM;
 
+	zone = page_zone(newpage);
+	pc = lookup_page_cgroup(newpage);
 	/*
 	 * Even if newpage->mapping was NULL before starting replacement,
 	 * the newpage may be on LRU(or pagevec for LRU) already. We lock
 	 * LRU while we overwrite pc->mem_cgroup.
 	 */
-	pc = lookup_page_cgroup(newpage);
-	__mem_cgroup_commit_charge(memcg, newpage, 1, pc, type, true);
+	spin_lock_irqsave(&zone->lru_lock, flags);
+	if (PageLRU(newpage))
+		del_page_from_lru_list(zone, newpage, page_lru(newpage));
+	__mem_cgroup_commit_charge(memcg, newpage, 1, pc, type);
+	if (PageLRU(newpage))
+		add_page_to_lru_list(zone, newpage, page_lru(newpage));
+	spin_unlock_irqrestore(&zone->lru_lock, flags);
 }
 
 #ifdef CONFIG_DEBUG_VM

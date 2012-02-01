@@ -3828,10 +3828,12 @@ static struct nfs4_lockowner *
 find_lockowner_str(struct inode *inode, clientid_t *clid,
 		struct xdr_netobj *owner)
 {
-	unsigned int hashval = lockowner_ino_hashval(inode, clid->cl_id, owner);
+	unsigned int hashval = lock_ownerstr_hashval(inode, clid->cl_id, owner);
 	struct nfs4_lockowner *lo;
+	struct nfs4_stateowner *op;
 
-	list_for_each_entry(lo, &lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
+	list_for_each_entry(op, &lock_ownerstr_hashtbl[hashval], so_strhash) {
+		lo = lockowner(op);
 		if (same_lockowner_ino(lo, inode, clid, owner))
 			return lo;
 	}

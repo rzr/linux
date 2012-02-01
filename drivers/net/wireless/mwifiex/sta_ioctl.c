@@ -54,7 +54,7 @@ int mwifiex_copy_mcast_addr(struct mwifiex_multicast_list *mlist,
 int mwifiex_wait_queue_complete(struct mwifiex_adapter *adapter)
 {
 	bool cancel_flag = false;
-	int status;
+	int status = adapter->cmd_wait_q.status;
 	struct cmd_ctrl_node *cmd_queued;
 
 	if (!adapter->cmd_queued)

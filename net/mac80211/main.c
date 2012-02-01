@@ -102,9 +102,8 @@ int ieee80211_hw_config(struct ieee80211_local *local, u32 changed)
 
 	might_sleep();
 
-	/* If this off-channel logic ever changes,  ieee80211_on_oper_channel
-	 * may need to change as well.
-	 */
+	scan_chan = local->scan_channel;
+
 	offchannel_flag = local->hw.conf.flags & IEEE80211_CONF_OFFCHANNEL;
 	if (local->scan_channel) {
 		chan = local->scan_channel;
@@ -115,19 +114,17 @@ int ieee80211_hw_config(struct ieee80211_local *local, u32 changed)
 			channel_type = local->_oper_channel_type;
 		else
 			channel_type = NL80211_CHAN_NO_HT;
-	} else if (local->tmp_channel) {
-		chan = local->tmp_channel;
+		local->hw.conf.flags |= IEEE80211_CONF_OFFCHANNEL;
+	} else if (local->tmp_channel &&
+		   local->oper_channel != local->tmp_channel) {
+		chan = scan_chan = local->tmp_channel;
 		channel_type = local->tmp_channel_type;
+		local->hw.conf.flags |= IEEE80211_CONF_OFFCHANNEL;
 	} else {
 		chan = local->oper_channel;
 		channel_type = local->_oper_channel_type;
-	}
-
-	if (chan != local->oper_channel ||
-	    channel_type != local->_oper_channel_type)
-		local->hw.conf.flags |= IEEE80211_CONF_OFFCHANNEL;
-	else
 		local->hw.conf.flags &= ~IEEE80211_CONF_OFFCHANNEL;
+	}
 
 	offchannel_flag ^= local->hw.conf.flags & IEEE80211_CONF_OFFCHANNEL;
 
@@ -236,7 +233,7 @@ void ieee80211_bss_info_change_notify(struct ieee80211_sub_if_data *sdata,
 
 	if (changed & BSS_CHANGED_BEACON_ENABLED) {
 		if (local->quiescing || !ieee80211_sdata_running(sdata) ||
-		    test_bit(SDATA_STATE_OFFCHANNEL, &sdata->state)) {
+		    test_bit(SCAN_SW_SCANNING, &local->scanning)) {
 			sdata->vif.bss_conf.enable_beacon = false;
 		} else {
 			/*

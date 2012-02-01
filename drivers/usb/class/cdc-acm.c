@@ -624,11 +624,18 @@ static void acm_port_shutdown(struct tty_port *port)
 
 static void acm_tty_hangup(struct tty_struct *tty)
 {
-	struct acm *acm = tty->driver_data;
-	dev_dbg(&acm->control->dev, "%s\n", __func__);
-	tty_port_hangup(&acm->port);
+	struct acm *acm;
+
 	mutex_lock(&open_mutex);
+	acm = tty->driver_data;
+
+	if (!acm)
+		goto out;
+
+	tty_port_hangup(&acm->port);
 	acm_port_down(acm);
+
+out:
 	mutex_unlock(&open_mutex);
 }
 
