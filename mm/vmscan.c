@@ -3526,7 +3526,6 @@ int page_evictable(struct page *page, struct vm_area_struct *vma)
  */
 void check_move_unevictable_pages(struct page **pages, int nr_pages)
 {
-	struct lruvec *lruvec;
 	struct zone *zone = NULL;
 	int pgscanned = 0;
 	int pgrescued = 0;
@@ -3554,9 +3553,8 @@ void check_move_unevictable_pages(struct page **pages, int nr_pages)
 			VM_BUG_ON(PageActive(page));
 			ClearPageUnevictable(page);
 			__dec_zone_state(zone, NR_UNEVICTABLE);
-			lruvec = mem_cgroup_lru_move_lists(zone, page,
-						LRU_UNEVICTABLE, lru);
-			list_move(&page->lru, &lruvec->lists[lru]);
+			list_move(&page->lru, &zone->lru[lru].list);
+			mem_cgroup_move_lists(page, LRU_UNEVICTABLE, lru);
 			__inc_zone_state(zone, NR_INACTIVE_ANON + lru);
 			pgrescued++;
 		}

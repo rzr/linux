@@ -862,6 +862,24 @@ static void ieee80211_work_rx_queued_mgmt(struct ieee80211_local *local,
 	kfree_skb(skb);
 }
 
+static bool ieee80211_work_ct_coexists(enum nl80211_channel_type wk_ct,
+				       enum nl80211_channel_type oper_ct)
+{
+	switch (wk_ct) {
+	case NL80211_CHAN_NO_HT:
+		return true;
+	case NL80211_CHAN_HT20:
+		if (oper_ct != NL80211_CHAN_NO_HT)
+			return true;
+		return false;
+	case NL80211_CHAN_HT40MINUS:
+	case NL80211_CHAN_HT40PLUS:
+		return (wk_ct == oper_ct);
+	}
+	WARN_ON(1); /* shouldn't get here */
+	return false;
+}
+
 static void ieee80211_work_timer(unsigned long data)
 {
 	struct ieee80211_local *local = (void *) data;
@@ -912,13 +930,18 @@ static void ieee80211_work_work(struct work_struct *work)
 		}
 
 		if (!started && !local->tmp_channel) {
-			ieee80211_offchannel_stop_vifs(local, true);
+			/*
+			 * TODO: could optimize this by leaving the
+			 *	 station vifs in awake mode if they
+			 *	 happen to be on the same channel as
+			 *	 the requested channel
+			 */
+			ieee80211_offchannel_stop_beaconing(local);
+			ieee80211_offchannel_stop_station(local);
 
 			local->tmp_channel = wk->chan;
 			local->tmp_channel_type = wk->chan_type;
-
 			ieee80211_hw_config(local, 0);
-
 			started = true;
 			wk->timeout = jiffies;
 		}
@@ -994,8 +1017,22 @@ static void ieee80211_work_work(struct work_struct *work)
 
 	if (!remain_off_channel && local->tmp_channel) {
 		local->tmp_channel = NULL;
+		/* If tmp_channel wasn't operating channel, then
+		 * we need to go back on-channel.
+		 * NOTE:  If we can ever be here while scannning,
+		 * or if the hw_config() channel config logic changes,
+		 * then we may need to do a more thorough check to see if
+		 * we still need to do a hardware config.  Currently,
+		 * we cannot be here while scanning, however.
+		 */
 		ieee80211_hw_config(local, 0);
 
+		/* At the least, we need to disable offchannel_ps,
+		 * so just go ahead and run the entire offchannel
+		 * return logic here.  We *could* skip enabling
+		 * beaconing if we were already on-oper-channel
+		 * as a future optimization.
+		 */
 		ieee80211_offchannel_return(local, true);
 
 		/* give connection some time to breathe */

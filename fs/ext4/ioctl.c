@@ -213,7 +213,8 @@ setversion_out:
 		}
 		if (err == 0)
 			err = err2;
-		mnt_drop_write_file(filp);
+
+		mnt_drop_write(filp->f_path.mnt);
 group_extend_out:
 		ext4_resize_end(sb);
 		return err;
@@ -300,7 +301,8 @@ mext_out:
 		}
 		if (err == 0)
 			err = err2;
-		mnt_drop_write_file(filp);
+
+		mnt_drop_write(filp->f_path.mnt);
 group_add_out:
 		ext4_resize_end(sb);
 		return err;

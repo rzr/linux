@@ -213,9 +213,6 @@ ieee80211_scan_rx(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb)
 	if (bss)
 		ieee80211_rx_bss_put(sdata->local, bss);
 
-	if (channel == sdata->local->oper_channel)
-		return RX_CONTINUE;
-
 	dev_kfree_skb(skb);
 	return RX_QUEUED;
 }
@@ -291,9 +288,7 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted,
 	local->scanning = 0;
 	local->scan_channel = NULL;
 
-	/* Set power back to normal operating levels. */
-	ieee80211_hw_config(local, 0);
-
+	ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_CHANNEL);
 	if (!was_hw_scan) {
 		ieee80211_configure_filter(local);
 		drv_sw_scan_complete(local);
@@ -338,11 +333,13 @@ static int ieee80211_start_sw_scan(struct ieee80211_local *local)
 	 */
 	drv_sw_scan_start(local);
 
+	ieee80211_offchannel_stop_beaconing(local);
+
 	local->leave_oper_channel_time = 0;
 	local->next_scan_state = SCAN_DECISION;
 	local->scan_channel_idx = 0;
 
-	ieee80211_offchannel_stop_vifs(local, true);
+	drv_flush(local, false);
 
 	ieee80211_configure_filter(local);
 
@@ -484,7 +481,57 @@ static void ieee80211_scan_state_decision(struct ieee80211_local *local,
 	}
 	mutex_unlock(&local->iflist_mtx);
 
-	next_chan = local->scan_req->channels[local->scan_channel_idx];
+	if (local->scan_channel) {
+		/*
+		 * we're currently scanning a different channel, let's
+		 * see if we can scan another channel without interfering
+		 * with the current traffic situation.
+		 *
+		 * Since we don't know if the AP has pending frames for us
+		 * we can only check for our tx queues and use the current
+		 * pm_qos requirements for rx. Hence, if no tx traffic occurs
+		 * at all we will scan as many channels in a row as the pm_qos
+		 * latency allows us to. Additionally we also check for the
+		 * currently negotiated listen interval to prevent losing
+		 * frames unnecessarily.
+		 *
+		 * Otherwise switch back to the operating channel.
+		 */
+		next_chan = local->scan_req->channels[local->scan_channel_idx];
+
+		bad_latency = time_after(jiffies +
+				ieee80211_scan_get_channel_time(next_chan),
+				local->leave_oper_channel_time +
+				usecs_to_jiffies(pm_qos_request(PM_QOS_NETWORK_LATENCY)));
+
+		listen_int_exceeded = time_after(jiffies +
+				ieee80211_scan_get_channel_time(next_chan),
+				local->leave_oper_channel_time +
+				usecs_to_jiffies(min_beacon_int * 1024) *
+				local->hw.conf.listen_interval);
+
+		if (associated && ( !tx_empty || bad_latency ||
+		    listen_int_exceeded))
+			local->next_scan_state = SCAN_ENTER_OPER_CHANNEL;
+		else
+			local->next_scan_state = SCAN_SET_CHANNEL;
+	} else {
+		/*
+		 * we're on the operating channel currently, let's
+		 * leave that channel now to scan another one
+		 */
+		local->next_scan_state = SCAN_LEAVE_OPER_CHANNEL;
+	}
+
+	*next_delay = 0;
+}
+
+static void ieee80211_scan_state_leave_oper_channel(struct ieee80211_local *local,
+						    unsigned long *next_delay)
+{
+	ieee80211_offchannel_stop_station(local);
+
+	__set_bit(SCAN_OFF_CHANNEL, &local->scanning);
 
 	/*
 	 * we're currently scanning a different channel, let's
@@ -507,16 +554,24 @@ static void ieee80211_scan_state_decision(struct ieee80211_local *local,
 			local->leave_oper_channel_time +
 			usecs_to_jiffies(pm_qos_request(PM_QOS_NETWORK_LATENCY)));
 
-	listen_int_exceeded = time_after(jiffies +
-			ieee80211_scan_get_channel_time(next_chan),
-			local->leave_oper_channel_time +
-			usecs_to_jiffies(min_beacon_int * 1024) *
-			local->hw.conf.listen_interval);
+	/* advance to the next channel to be scanned */
+	local->next_scan_state = SCAN_SET_CHANNEL;
+}
 
-	if (associated && (!tx_empty || bad_latency || listen_int_exceeded))
-		local->next_scan_state = SCAN_SUSPEND;
-	else
-		local->next_scan_state = SCAN_SET_CHANNEL;
+static void ieee80211_scan_state_enter_oper_channel(struct ieee80211_local *local,
+						    unsigned long *next_delay)
+{
+	/* switch back to the operating channel */
+	local->scan_channel = NULL;
+	ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_CHANNEL);
+
+	/*
+	 * Only re-enable station mode interface now; beaconing will be
+	 * re-enabled once the full scan has been completed.
+	 */
+	ieee80211_offchannel_return(local, false);
+
+	__clear_bit(SCAN_OFF_CHANNEL, &local->scanning);
 
 	*next_delay = 0;
 }

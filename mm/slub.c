@@ -2207,6 +2207,24 @@ redo:
 
 	stat(s, ALLOC_SLOWPATH);
 
+	do {
+		object = c->page->freelist;
+		counters = c->page->counters;
+		new.counters = counters;
+		VM_BUG_ON(!new.frozen);
+
+		/*
+		 * If there is no object left then we use this loop to
+		 * deactivate the slab which is simple since no objects
+		 * are left in the slab and therefore we do not need to
+		 * put the page back onto the partial list.
+		 *
+		 * If there are objects left then we retrieve them
+		 * and use them to refill the per cpu queue.
+		 */
+
+	stat(s, ALLOC_SLOWPATH);
+
 	object = get_freelist(s, c->page);
 
 	if (!object) {

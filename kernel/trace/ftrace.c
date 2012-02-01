@@ -949,6 +949,13 @@ struct ftrace_func_probe {
 	struct rcu_head		rcu;
 };
 
+enum {
+	FTRACE_UPDATE_CALLS		= (1 << 0),
+	FTRACE_DISABLE_CALLS		= (1 << 1),
+	FTRACE_UPDATE_TRACE_FUNC	= (1 << 2),
+	FTRACE_START_FUNC_RET		= (1 << 3),
+	FTRACE_STOP_FUNC_RET		= (1 << 4),
+};
 struct ftrace_func_entry {
 	struct hlist_node hlist;
 	unsigned long ip;
@@ -1539,7 +1546,9 @@ int ftrace_text_reserved(void *start, void *end)
 	return 0;
 }
 
-static int ftrace_check_record(struct dyn_ftrace *rec, int enable, int update)
+
+static int
+__ftrace_replace_code(struct dyn_ftrace *rec, int update)
 {
 	unsigned long flag = 0UL;
 
@@ -1554,7 +1563,7 @@ static int ftrace_check_record(struct dyn_ftrace *rec, int enable, int update)
 	 * If we are disabling calls, then disable all records that
 	 * are enabled.
 	 */
-	if (enable && (rec->flags & ~FTRACE_FL_MASK))
+	if (update && (rec->flags & ~FTRACE_FL_MASK))
 		flag = FTRACE_FL_ENABLED;
 
 	/* If the state of this record hasn't changed, then do nothing */
@@ -1634,6 +1643,10 @@ static void ftrace_replace_code(int update)
 		return;
 
 	do_for_each_ftrace_rec(pg, rec) {
+		/* Skip over free records */
+		if (rec->flags & FTRACE_FL_FREE)
+			continue;
+
 		failed = __ftrace_replace_code(rec, update);
 		if (failed) {
 			ftrace_bug(failed, rec->ip);
@@ -1755,6 +1768,12 @@ int __weak ftrace_arch_code_modify_post_process(void)
 static int __ftrace_modify_code(void *data)
 {
 	int *command = data;
+
+	/*
+	 * Do not call function tracer while we update the code.
+	 * We are in stop machine, no worrying about races.
+	 */
+	function_trace_stop++;
 
 	if (*command & FTRACE_UPDATE_CALLS)
 		ftrace_replace_code(1);

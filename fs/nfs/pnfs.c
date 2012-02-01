@@ -1212,7 +1212,6 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
 				  &NFS_I(data->inode)->flags);
 			pnfs_return_layout(data->inode);
 		}
-		data->task.tk_status = pnfs_write_done_resend_to_mds(data->inode, &data->pages);
 	}
 	data->mds_ops->rpc_release(data);
 }
