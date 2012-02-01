@@ -1,5 +1,5 @@
 7c23086621bb20d18e40c95c74eeca6d  debian/bin/gencontrol.py
-75f32cf439b7e07f0c85b4d40284419b  debian/changelog
+57b5dcf486fe1060d38cbc699dfb2c9e  debian/changelog
 d253b8a3cc1ffc2054b1d485facc490a  debian/templates/control.headers.arch.in
 d60e1ee86882c530ea74bfbb684a506e  debian/templates/control.headers.featureset.in
 3a8040742dfc77adae08116a336e98c3  debian/templates/control.headers.in
@@ -12,8 +12,8 @@ f761df96b8e36c92b762059bf8ddffd6  debian/templates/control.main.in
 31cc31e0230f04e49e295615cec48c3d  debian/templates/control.xen-linux-system.in
 83a58c446d8027f8a660c39bdf4beab0  debian/templates/image-dbg.lintian-override.in
 50a0145f8117be52f6786acf0aa1f4db  debian/templates/patch.apply.in
-1c7bb4ba62a16684b204a9bc6e0c81a4  debian/config/defines
-dae5071be3e3eb696062e8dcc6244223  debian/config/alpha/defines
+77aa675ba74a24cb0bce2db12960cc0a  debian/config/defines
+2aadec33687e2fb0e60f8bd776344625  debian/config/alpha/defines
 473f2df6677e7420a7e04c7f54684775  debian/config/amd64/defines
 56159d7b3f3807abc43f3c89f03587bd  debian/config/armel/defines
 6933ffdfbfbc4010573e13fce958b391  debian/config/armhf/defines
@@ -21,7 +21,7 @@ dae5071be3e3eb696062e8dcc6244223  debian/config/alpha/defines
 7663688e373ff5b5857c15e69a7c1d3e  debian/config/hppa/defines
 59cfe72ce3ed59865263efdb5807b8e9  debian/config/i386/defines
 c09a67bf367bfa1120f274496667bfa2  debian/config/ia64/defines
-c1831448c49e579a14d9c1b1ed9097ef  debian/config/m68k/defines
+32dd112acc5e7ba6bd39baf6a49aee83  debian/config/m68k/defines
 7a4302200c744edabddb13806f96348d  debian/config/mips/defines
 868ce415d9aa9ad94327bd1170243101  debian/config/mipsel/defines
 bb45d54589d72a396db94210bac6d021  debian/config/powerpc/defines
@@ -62,4 +62,4 @@ da034b45eccddd471686fe3f39823493  debian/installer/mipsel/package-list
 d3a3baac1c35b61b4bb863ce0425d64f  debian/installer/sh4/package-list
 ac3e9c8e4889fcd253b459d52ffb5139  debian/installer/sparc64/package-list
 ac3e9c8e4889fcd253b459d52ffb5139  debian/installer/sparc/package-list
-054b109a0082cabb9aaf12b036253fbc  debian/installer/package-list
+fc0ac9fa3ff381e14a2444e5301848e2  debian/installer/package-list

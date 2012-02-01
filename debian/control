@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Kernel Team <debian-kernel@lists.debian.org>
 Uploaders: Bastian Blank <waldi@debian.org>, Frederik Schüler <fs@debian.org>, maximilian attems <maks@debian.org>, Ben Hutchings <ben@decadent.org.uk>
 Standards-Version: 3.9.2
-Build-Depends: debhelper (>> 7), cpio, module-init-tools, python (>= 2.6.6-3~), lzma [armel], kernel-wedge (>= 2.83), gcc-4.4 [alpha hppa m68k], gcc-4.6 [amd64 armel armhf i386 ia64 mips mipsel powerpc ppc64 s390 s390x sh4 sparc sparc64], binutils-hppa64 [hppa], gcc-4.4-hppa64 [hppa]
+Build-Depends: debhelper (>> 7), cpio, module-init-tools, python (>= 2.6.6-3~), lzma [armel], kernel-wedge (>= 2.83), gcc-4.5 [alpha], gcc-4.6 [amd64 armel armhf i386 ia64 m68k mips mipsel powerpc ppc64 s390 s390x sh4 sparc sparc64], gcc-4.4 [hppa], binutils-hppa64 [hppa], gcc-4.4-hppa64 [hppa]
 Build-Depends-Indep: bzip2, xmlto
 Vcs-Svn: svn://svn.debian.org/svn/kernel/dists/trunk/linux-2.6/
 Vcs-Browser: http://anonscm.debian.org/viewvc/kernel/dists/trunk/linux-2.6/
@@ -61,7 +61,7 @@ Description: Debian patches to version 3.2 of the Linux kernel
  linux-source-3.2 package, as well as architecture-specific patches.
  .
  Note that these patches do NOT apply against a pristine Linux 3.2 kernel
- but only against the kernel tarball linux-2.6_3.2.1.orig.tar.gz from the
+ but only against the kernel tarball linux-2.6_3.2.2.orig.tar.gz from the
  Debian archive.
 
 Package: linux-support-3.2.0-1
@@ -127,7 +127,7 @@ Description: Linux 3.2 for Alpha
 Package: linux-headers-3.2.0-1-alpha-generic
 Architecture: alpha
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.5
 Description: Header files for Linux 3.2.0-1-alpha-generic
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-alpha-generic, generally used for building
@@ -151,7 +151,7 @@ Description: Linux 3.2 for Alpha SMP
 Package: linux-headers-3.2.0-1-alpha-smp
 Architecture: alpha
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.5
 Description: Header files for Linux 3.2.0-1-alpha-smp
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-alpha-smp, generally used for building out-of-tree
@@ -175,7 +175,7 @@ Description: Linux 3.2 for Alpha Legacy
 Package: linux-headers-3.2.0-1-alpha-legacy
 Architecture: alpha
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.5
 Description: Header files for Linux 3.2.0-1-alpha-legacy
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-alpha-legacy, generally used for building out-of-tree
@@ -1116,7 +1116,7 @@ Architecture: armel
 Section: debian-installer
 Priority: extra
 Provides: btrfs-modules
-Depends: kernel-image-3.2.0-1-iop32x-di, core-modules-3.2.0-1-iop32x-di, crc-modules-3.2.0-1-iop32x-di, zlib-modules-3.2.0-1-iop32x-di, lzo-modules-3.2.0-1-iop32x-di
+Depends: kernel-image-3.2.0-1-iop32x-di, core-modules-3.2.0-1-iop32x-di, crc-modules-3.2.0-1-iop32x-di, zlib-modules-3.2.0-1-iop32x-di
 Description: BTRFS filesystem support
  This package contains the BTRFS filesystem module for the kernel.
 XC-Package-Type: udeb
@@ -1171,7 +1171,7 @@ Architecture: armel
 Section: debian-installer
 Priority: extra
 Provides: jffs2-modules
-Depends: kernel-image-3.2.0-1-iop32x-di, zlib-modules-3.2.0-1-iop32x-di, lzo-modules-3.2.0-1-iop32x-di
+Depends: kernel-image-3.2.0-1-iop32x-di, zlib-modules-3.2.0-1-iop32x-di
 Description: JFFS2 filesystem support
  This package contains the JFFS2 filesystem module for the kernel.
 XC-Package-Type: udeb
@@ -1375,17 +1375,6 @@ Provides: zlib-modules
 Depends: kernel-image-3.2.0-1-iop32x-di
 Description: zlib modules
  This package contains zlib modules.
-XC-Package-Type: udeb
-XB-Kernel-Version: 3.2.0-1-iop32x
-
-Package: lzo-modules-3.2.0-1-iop32x-di
-Architecture: armel
-Section: debian-installer
-Priority: extra
-Provides: lzo-modules
-Depends: kernel-image-3.2.0-1-iop32x-di
-Description: lzo modules
- This package contains lzo modules.
 XC-Package-Type: udeb
 XB-Kernel-Version: 3.2.0-1-iop32x
 
@@ -1874,7 +1863,7 @@ Architecture: armel
 Section: debian-installer
 Priority: extra
 Provides: btrfs-modules
-Depends: kernel-image-3.2.0-1-orion5x-di, core-modules-3.2.0-1-orion5x-di, crc-modules-3.2.0-1-orion5x-di, zlib-modules-3.2.0-1-orion5x-di, lzo-modules-3.2.0-1-orion5x-di
+Depends: kernel-image-3.2.0-1-orion5x-di, core-modules-3.2.0-1-orion5x-di, crc-modules-3.2.0-1-orion5x-di, zlib-modules-3.2.0-1-orion5x-di
 Description: BTRFS filesystem support
  This package contains the BTRFS filesystem module for the kernel.
 XC-Package-Type: udeb
@@ -1929,7 +1918,7 @@ Architecture: armel
 Section: debian-installer
 Priority: extra
 Provides: jffs2-modules
-Depends: kernel-image-3.2.0-1-orion5x-di, zlib-modules-3.2.0-1-orion5x-di, lzo-modules-3.2.0-1-orion5x-di
+Depends: kernel-image-3.2.0-1-orion5x-di, zlib-modules-3.2.0-1-orion5x-di
 Description: JFFS2 filesystem support
  This package contains the JFFS2 filesystem module for the kernel.
 XC-Package-Type: udeb
@@ -2135,17 +2124,6 @@ Description: zlib modules
 XC-Package-Type: udeb
 XB-Kernel-Version: 3.2.0-1-orion5x
 
-Package: lzo-modules-3.2.0-1-orion5x-di
-Architecture: armel
-Section: debian-installer
-Priority: extra
-Provides: lzo-modules
-Depends: kernel-image-3.2.0-1-orion5x-di
-Description: lzo modules
- This package contains lzo modules.
-XC-Package-Type: udeb
-XB-Kernel-Version: 3.2.0-1-orion5x
-
 Package: kernel-image-3.2.0-1-versatile-di
 Architecture: armel
 Section: debian-installer
@@ -2252,7 +2230,7 @@ Architecture: armel
 Section: debian-installer
 Priority: extra
 Provides: btrfs-modules
-Depends: kernel-image-3.2.0-1-versatile-di, core-modules-3.2.0-1-versatile-di, crc-modules-3.2.0-1-versatile-di, zlib-modules-3.2.0-1-versatile-di, lzo-modules-3.2.0-1-versatile-di
+Depends: kernel-image-3.2.0-1-versatile-di, core-modules-3.2.0-1-versatile-di, crc-modules-3.2.0-1-versatile-di, zlib-modules-3.2.0-1-versatile-di
 Description: BTRFS filesystem support
  This package contains the BTRFS filesystem module for the kernel.
 XC-Package-Type: udeb
@@ -2477,17 +2455,6 @@ Provides: zlib-modules
 Depends: kernel-image-3.2.0-1-versatile-di
 Description: zlib modules
  This package contains zlib modules.
-XC-Package-Type: udeb
-XB-Kernel-Version: 3.2.0-1-versatile
-
-Package: lzo-modules-3.2.0-1-versatile-di
-Architecture: armel
-Section: debian-installer
-Priority: extra
-Provides: lzo-modules
-Depends: kernel-image-3.2.0-1-versatile-di
-Description: lzo modules
- This package contains lzo modules.
 XC-Package-Type: udeb
 XB-Kernel-Version: 3.2.0-1-versatile
 
@@ -6218,7 +6185,7 @@ Description: Linux 3.2 for Amiga
 Package: linux-headers-3.2.0-1-amiga
 Architecture: m68k
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
 Description: Header files for Linux 3.2.0-1-amiga
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-amiga, generally used for building out-of-tree kernel
@@ -6240,7 +6207,7 @@ Description: Linux 3.2 for Atari
 Package: linux-headers-3.2.0-1-atari
 Architecture: m68k
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
 Description: Header files for Linux 3.2.0-1-atari
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-atari, generally used for building out-of-tree kernel
@@ -6262,7 +6229,7 @@ Description: Linux 3.2 for BVM BVME4000 and BVME6000
 Package: linux-headers-3.2.0-1-bvme6000
 Architecture: m68k
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
 Description: Header files for Linux 3.2.0-1-bvme6000
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-bvme6000, generally used for building out-of-tree
@@ -6284,7 +6251,7 @@ Description: Linux 3.2 for Macintosh
 Package: linux-headers-3.2.0-1-mac
 Architecture: m68k
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
 Description: Header files for Linux 3.2.0-1-mac
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-mac, generally used for building out-of-tree kernel
@@ -6305,7 +6272,7 @@ Description: Linux 3.2 for Motorola MVME147
 Package: linux-headers-3.2.0-1-mvme147
 Architecture: m68k
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
 Description: Header files for Linux 3.2.0-1-mvme147
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-mvme147, generally used for building out-of-tree
@@ -6328,7 +6295,7 @@ Description: Linux 3.2 for Motorola MVME162/6/7, MVME172/7
 Package: linux-headers-3.2.0-1-mvme16x
 Architecture: m68k
 Provides: linux-headers
-Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.4
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
 Description: Header files for Linux 3.2.0-1-mvme16x
  This package provides the architecture-specific kernel header files for
  Linux kernel 3.2.0-1-mvme16x, generally used for building out-of-tree
