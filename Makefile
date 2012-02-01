@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 2
-SUBLEVEL = 0
-EXTRAVERSION = -rc7
+SUBLEVEL = 2
+EXTRAVERSION =
 NAME = Saber-toothed Squirrel
 
 # *DOCUMENTATION*
@@ -507,7 +507,7 @@ scripts: scripts_basic include/config/auto.conf include/config/tristate.conf
 
 # Objects we will link into vmlinux / subdirs we need to visit
 init-y		:= init/
-drivers-y	:= drivers/ sound/ firmware/
+drivers-y	:= drivers/ sound/
 net-y		:= net/
 libs-y		:= lib/
 core-y		:= usr/
