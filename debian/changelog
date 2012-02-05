@@ -1,3 +1,27 @@
+linux-2.6 (3.2.4-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.3
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.4
+    - eCryptfs: Sanitize write counts of /dev/ecryptfs
+    - eCryptfs: Make truncate path killable
+    - eCryptfs: Check inode changes in setattr
+    - drm/i915: paper over missed irq issues with force wake voodoo
+    - tpm_tis: add delay after aborting command (Closes: #649033)
+    - USB: ftdi_sio: fix initial baud rate (Closes: #658164)
+    - USB: Realtek cr: fix autopm scheduling while atomic (Closes: #656724)
+
+  [ Ben Hutchings ]
+  * [armel] Add mv78xx0 flavour; thanks to Steve McIntyre for the config
+  * net: Disable FIXED_PHY; this driver only causes trouble
+  * PCI: Rework ASPM disable code (fixes power usage regression on some
+    systems)
+
+  [ Bastian Blank ]
+  * Remove unneeded scmversion workaround.
+
+ -- Bastian Blank <waldi@debian.org>  Sun, 05 Feb 2012 15:42:21 +0100
+
 linux-2.6 (3.2.2-1) unstable; urgency=low
 
   * New upstream stable update:

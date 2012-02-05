@@ -61,7 +61,7 @@ Description: Debian patches to version 3.2 of the Linux kernel
  linux-source-3.2 package, as well as architecture-specific patches.
  .
  Note that these patches do NOT apply against a pristine Linux 3.2 kernel
- but only against the kernel tarball linux-2.6_3.2.2.orig.tar.gz from the
+ but only against the kernel tarball linux-2.6_3.2.4.orig.tar.gz from the
  Debian archive.
 
 Package: linux-support-3.2.0-1
@@ -1004,7 +1004,7 @@ Description: Xen system with Linux 3.2 on 64-bit PCs (meta-package)
 
 Package: linux-headers-3.2.0-1-all-armel
 Architecture: armel
-Depends: ${misc:Depends}, linux-headers-3.2.0-1-iop32x (= ${binary:Version}), linux-headers-3.2.0-1-ixp4xx (= ${binary:Version}), linux-headers-3.2.0-1-kirkwood (= ${binary:Version}), linux-headers-3.2.0-1-orion5x (= ${binary:Version}), linux-headers-3.2.0-1-versatile (= ${binary:Version})
+Depends: ${misc:Depends}, linux-headers-3.2.0-1-iop32x (= ${binary:Version}), linux-headers-3.2.0-1-ixp4xx (= ${binary:Version}), linux-headers-3.2.0-1-kirkwood (= ${binary:Version}), linux-headers-3.2.0-1-mv78xx0 (= ${binary:Version}), linux-headers-3.2.0-1-orion5x (= ${binary:Version}), linux-headers-3.2.0-1-versatile (= ${binary:Version})
 Description: All header files for Linux 3.2 (meta-package)
  This package depends against all architecture-specific kernel header files
  for Linux kernel version 3.2, generally used for building out-of-tree
@@ -2529,6 +2529,30 @@ Description: Header files for Linux 3.2.0-1-kirkwood
  /usr/src/linux-headers-3.2.0-1-kirkwood, and can be used for building
  modules that load into the kernel provided by the
  linux-image-3.2.0-1-kirkwood package.
+
+Package: linux-image-3.2.0-1-mv78xx0
+Architecture: armel
+Provides: linux-image, linux-modules-3.2.0-1-mv78xx0
+Pre-Depends: debconf | debconf-2.0
+Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Recommends: firmware-linux-free (>= 3~)
+Suggests: linux-doc-3.2, fdutils [armel]
+Breaks: initramfs-tools (<< 0.99~)
+Description: Linux 3.2 for Marvell 78xx0
+ The Linux kernel 3.2 and modules for use on Marvell DB-78xx0-BP
+ Development Board.
+
+Package: linux-headers-3.2.0-1-mv78xx0
+Architecture: armel
+Provides: linux-headers
+Depends: linux-headers-3.2.0-1-common (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
+Description: Header files for Linux 3.2.0-1-mv78xx0
+ This package provides the architecture-specific kernel header files for
+ Linux kernel 3.2.0-1-mv78xx0, generally used for building out-of-tree
+ kernel modules.  These files are going to be installed into
+ /usr/src/linux-headers-3.2.0-1-mv78xx0, and can be used for building
+ modules that load into the kernel provided by the
+ linux-image-3.2.0-1-mv78xx0 package.
 
 Package: linux-image-3.2.0-1-orion5x
 Architecture: armel
