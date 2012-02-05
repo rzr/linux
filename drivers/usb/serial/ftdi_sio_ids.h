@@ -537,14 +537,10 @@
 #define ADI_GNICEPLUS_PID	0xF001
 
 /*
- * Microchip Technology, Inc.
- *
- * MICROCHIP_VID (0x04D8) and MICROCHIP_USB_BOARD_PID (0x000A) are also used by:
- * Hornby Elite - Digital Command Control Console
- * http://www.hornby.com/hornby-dcc/controllers/
+ * Hornby Elite
  */
-#define MICROCHIP_VID		0x04D8
-#define MICROCHIP_USB_BOARD_PID	0x000A /* CDC RS-232 Emulation Demo */
+#define HORNBY_VID		0x04D8
+#define HORNBY_ELITE_PID	0x000A
 
 /*
  * RATOC REX-USB60F
@@ -1200,10 +1196,3 @@
  */
 /* ZigBee controller */
 #define FTDI_RF_R106		0x8A28
-
-/*
- * Product: HCP HIT GPRS modem
- * Manufacturer: HCP d.o.o.
- * ATI command output: Cinterion MC55i
- */
-#define FTDI_CINTERION_MC55I_PID	0xA951

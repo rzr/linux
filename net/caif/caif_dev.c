@@ -495,6 +495,7 @@ static struct notifier_block caif_device_notifier = {
 static int caif_init_net(struct net *net)
 {
 	struct caif_net *caifn = net_generic(net, caif_net_id);
+
 	INIT_LIST_HEAD(&caifn->caifdevs.list);
 	mutex_init(&caifn->caifdevs.lock);
 

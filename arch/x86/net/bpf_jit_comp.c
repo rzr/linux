@@ -491,8 +491,14 @@ common_load:			seen |= SEEN_DATAREF;
 				goto common_load;
 			case BPF_S_LDX_B_MSH:
 				if ((int)K < 0) {
-					/* Abort the JIT because __load_pointer() is needed. */
-					goto out;
+					if (pc_ret0 > 0) {
+						/* addrs[pc_ret0 - 1] is the start address */
+						EMIT_JMP(addrs[pc_ret0 - 1] - addrs[i]);
+						break;
+					}
+					CLEAR_A();
+					EMIT_JMP(cleanup_addr - addrs[i]);
+					break;
 				}
 				seen |= SEEN_DATAREF | SEEN_XREG;
 				t_offset = sk_load_byte_msh - (image + addrs[i]);

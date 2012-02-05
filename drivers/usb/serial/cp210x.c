@@ -418,15 +418,12 @@ static unsigned int cp210x_quantise_baudrate(unsigned int baud) {
 
 static int cp210x_open(struct tty_struct *tty, struct usb_serial_port *port)
 {
-	int result;
-
 	dbg("%s - port %d", __func__, port->number);
 
-	result = cp210x_set_config_single(port, CP210X_IFC_ENABLE,
-								UART_ENABLE);
-	if (result) {
-		dev_err(&port->dev, "%s - Unable to enable UART\n", __func__);
-		return result;
+	if (cp210x_set_config_single(port, CP210X_IFC_ENABLE, UART_ENABLE)) {
+		dev_err(&port->dev, "%s - Unable to enable UART\n",
+				__func__);
+		return -EPROTO;
 	}
 
 	/* Configure the termios structure */
