@@ -1,3 +1,39 @@
+linux-2.6 (3.2.6-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.5
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.6
+    - ALSA: hda - Apply 0x0f-VREF fix to all ASUS laptops with ALC861/660
+      (Closes: #657302)
+    - [armhf] vfp: flush thread hwstate before restoring context from sigframe
+    - proc: mem_release() should check mm != NULL
+    - proc: make sure mem_open() doesnt pin the targets memory
+    - [arm] sched/rt: Fix task stack corruption under
+      __ARCH_WANT_INTERRUPTS_ON_CTXSW
+    - eCryptfs: Infinite loop due to overflow in ecryptfs_write()
+    - iscsi-target: Fix reject release handling in iscsit_free_cmd()
+    - iscsi-target: Fix double list_add with iscsit_alloc_buffs reject
+    - pcmcia: fix socket refcount decrementing on each resume
+
+  [ Aurelien Jarno ]
+  * hwmon: backport IT8728F support for linux 3.3. 
+
+  [ Uwe Kleine-König ]
+  * [amd64] Update rt featureset to 3.2.5-rt12
+  * [i386] enable rt featureset for 686-pae
+
+  [ Arnaud Patard ]
+  * Merge ixp4xx oops fix when probing mtd.
+
+  [ Ben Hutchings ]
+  * Change linux-image dependencies to allow kmod as an alternative to
+    module-init-tools
+  * relay: prevent integer overflow in relay_open()
+  * builddeb: Don't create files in /tmp with predictable names
+  * ath9k: fix a WEP crypto related regression (Closes: #659484)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Thu, 16 Feb 2012 02:38:38 +0000
+
 linux-2.6 (3.2.4-1) unstable; urgency=low
 
   * New upstream stable update:

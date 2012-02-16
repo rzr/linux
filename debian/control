@@ -61,7 +61,7 @@ Description: Debian patches to version 3.2 of the Linux kernel
  linux-source-3.2 package, as well as architecture-specific patches.
  .
  Note that these patches do NOT apply against a pristine Linux 3.2 kernel
- but only against the kernel tarball linux-2.6_3.2.4.orig.tar.gz from the
+ but only against the kernel tarball linux-2.6_3.2.6.orig.tar.gz from the
  Debian archive.
 
 Package: linux-support-3.2.0-1
@@ -116,7 +116,7 @@ Package: linux-image-3.2.0-1-alpha-generic
 Architecture: alpha
 Provides: linux-image, linux-modules-3.2.0-1-alpha-generic
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [alpha] | linux-initramfs-tool [alpha]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [alpha] | linux-initramfs-tool [alpha]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, aboot [alpha], fdutils [alpha]
 Breaks: initramfs-tools (<< 0.99~)
@@ -140,7 +140,7 @@ Package: linux-image-3.2.0-1-alpha-smp
 Architecture: alpha
 Provides: linux-image, linux-modules-3.2.0-1-alpha-smp
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [alpha] | linux-initramfs-tool [alpha]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [alpha] | linux-initramfs-tool [alpha]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, aboot [alpha], fdutils [alpha]
 Breaks: initramfs-tools (<< 0.99~)
@@ -164,7 +164,7 @@ Package: linux-image-3.2.0-1-alpha-legacy
 Architecture: alpha
 Provides: linux-image, linux-modules-3.2.0-1-alpha-legacy
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [alpha] | linux-initramfs-tool [alpha]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [alpha] | linux-initramfs-tool [alpha]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, aboot [alpha], fdutils [alpha]
 Breaks: initramfs-tools (<< 0.99~)
@@ -908,7 +908,7 @@ Package: linux-image-3.2.0-1-amd64
 Architecture: amd64 i386
 Provides: linux-image, linux-modules-3.2.0-1-amd64
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [amd64 i386] | linux-initramfs-tool [amd64 i386]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [amd64 i386] | linux-initramfs-tool [amd64 i386]
 Recommends: firmware-linux-free (>= 3~), libc6-i686 [i386]
 Suggests: linux-doc-3.2, grub-pc [amd64 i386] | extlinux [amd64 i386] | lilo (>= 22.8-8.2~) [amd64 i386]
 Breaks: initramfs-tools (<< 0.99~), lilo (<< 22.8-8.2~)
@@ -948,7 +948,7 @@ Description: Xen system with Linux 3.2 on 64-bit PCs (meta-package)
  This package depends on the binary Linux image and hypervisors.
 
 Package: linux-headers-3.2.0-1-common-rt
-Architecture: amd64
+Architecture: amd64 i386
 Depends: ${misc:Depends}
 Description: Common header files for Linux 3.2.0-1-rt
  This package provides the architecture-specific common kernel header files
@@ -961,7 +961,7 @@ Package: linux-image-3.2.0-1-rt-amd64
 Architecture: amd64
 Provides: linux-image, linux-modules-3.2.0-1-rt-amd64
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [amd64] | linux-initramfs-tool [amd64]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [amd64] | linux-initramfs-tool [amd64]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, grub-pc [amd64] | extlinux [amd64] | lilo (>= 22.8-8.2~) [amd64]
 Breaks: initramfs-tools (<< 0.99~), lilo (<< 22.8-8.2~)
@@ -2462,7 +2462,7 @@ Package: linux-image-3.2.0-1-iop32x
 Architecture: armel
 Provides: linux-image, linux-modules-3.2.0-1-iop32x
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [armel]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2486,7 +2486,7 @@ Package: linux-image-3.2.0-1-ixp4xx
 Architecture: armel
 Provides: linux-image, linux-modules-3.2.0-1-ixp4xx
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [armel]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2510,7 +2510,7 @@ Package: linux-image-3.2.0-1-kirkwood
 Architecture: armel
 Provides: linux-image, linux-modules-3.2.0-1-kirkwood
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
 Recommends: firmware-linux-free (>= 3~), uboot-mkimage [armel]
 Suggests: linux-doc-3.2, fdutils [armel]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2534,7 +2534,7 @@ Package: linux-image-3.2.0-1-mv78xx0
 Architecture: armel
 Provides: linux-image, linux-modules-3.2.0-1-mv78xx0
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [armel]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2558,7 +2558,7 @@ Package: linux-image-3.2.0-1-orion5x
 Architecture: armel
 Provides: linux-image, linux-modules-3.2.0-1-orion5x
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
 Recommends: firmware-linux-free (>= 3~), uboot-mkimage [armel]
 Suggests: linux-doc-3.2, fdutils [armel]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2582,7 +2582,7 @@ Package: linux-image-3.2.0-1-versatile
 Architecture: armel
 Provides: linux-image, linux-modules-3.2.0-1-versatile
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armel] | linux-initramfs-tool [armel]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [armel]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2916,7 +2916,7 @@ Package: linux-image-3.2.0-1-mx5
 Architecture: armhf
 Provides: linux-image, linux-modules-3.2.0-1-mx5
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armhf] | linux-initramfs-tool [armhf]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armhf] | linux-initramfs-tool [armhf]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [armhf]
 Breaks: initramfs-tools (<< 0.99~)
@@ -2939,7 +2939,7 @@ Package: linux-image-3.2.0-1-omap
 Architecture: armhf
 Provides: linux-image, linux-modules-3.2.0-1-omap
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armhf] | linux-initramfs-tool [armhf]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [armhf] | linux-initramfs-tool [armhf]
 Recommends: firmware-linux-free (>= 3~), uboot-mkimage [armhf]
 Suggests: linux-doc-3.2, fdutils [armhf]
 Breaks: initramfs-tools (<< 0.99~)
@@ -3481,7 +3481,7 @@ Package: linux-image-3.2.0-1-parisc
 Architecture: hppa
 Provides: linux-image, linux-modules-3.2.0-1-parisc
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, palo [hppa]
 Breaks: initramfs-tools (<< 0.99~)
@@ -3504,7 +3504,7 @@ Package: linux-image-3.2.0-1-parisc-smp
 Architecture: hppa
 Provides: linux-image, linux-modules-3.2.0-1-parisc-smp
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, palo [hppa]
 Breaks: initramfs-tools (<< 0.99~)
@@ -3527,7 +3527,7 @@ Package: linux-image-3.2.0-1-parisc64
 Architecture: hppa
 Provides: linux-image, linux-modules-3.2.0-1-parisc64
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, palo [hppa]
 Breaks: initramfs-tools (<< 0.99~)
@@ -3550,7 +3550,7 @@ Package: linux-image-3.2.0-1-parisc64-smp
 Architecture: hppa
 Provides: linux-image, linux-modules-3.2.0-1-parisc64-smp
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [hppa] | linux-initramfs-tool [hppa]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, palo [hppa]
 Breaks: initramfs-tools (<< 0.99~)
@@ -3571,7 +3571,7 @@ Description: Header files for Linux 3.2.0-1-parisc64-smp
 
 Package: linux-headers-3.2.0-1-all-i386
 Architecture: i386
-Depends: ${misc:Depends}, linux-headers-3.2.0-1-486 (= ${binary:Version}), linux-headers-3.2.0-1-686-pae (= ${binary:Version}), linux-headers-3.2.0-1-amd64 (= ${binary:Version})
+Depends: ${misc:Depends}, linux-headers-3.2.0-1-486 (= ${binary:Version}), linux-headers-3.2.0-1-686-pae (= ${binary:Version}), linux-headers-3.2.0-1-amd64 (= ${binary:Version}), linux-headers-3.2.0-1-rt-686-pae (= ${binary:Version})
 Description: All header files for Linux 3.2 (meta-package)
  This package depends against all architecture-specific kernel header files
  for Linux kernel version 3.2, generally used for building out-of-tree
@@ -5005,7 +5005,7 @@ Package: linux-image-3.2.0-1-486
 Architecture: i386
 Provides: linux-image, linux-modules-3.2.0-1-486
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [i386] | linux-initramfs-tool [i386]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [i386] | linux-initramfs-tool [i386]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, grub-pc [i386] | extlinux [i386] | lilo (>= 22.8-8.2~) [i386]
 Breaks: initramfs-tools (<< 0.99~), lilo (<< 22.8-8.2~)
@@ -5031,7 +5031,7 @@ Package: linux-image-3.2.0-1-686-pae
 Architecture: i386
 Provides: linux-image, linux-modules-3.2.0-1-686-pae
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [i386] | linux-initramfs-tool [i386]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [i386] | linux-initramfs-tool [i386]
 Recommends: firmware-linux-free (>= 3~), libc6-i686 [i386]
 Suggests: linux-doc-3.2, grub-pc [i386] | extlinux [i386] | lilo (>= 22.8-8.2~) [i386]
 Breaks: initramfs-tools (<< 0.99~), lilo (<< 22.8-8.2~)
@@ -5072,6 +5072,56 @@ Description: Debugging infos for Linux 3.2.0-1-686-pae
 Package: xen-linux-system-3.2.0-1-686-pae
 Architecture: i386
 Depends: linux-image-3.2.0-1-686-pae (= ${binary:Version}), ${misc:Depends}, xen-hypervisor-i386 | xen-hypervisor-amd64
+Description: Xen system with Linux 3.2 on modern PCs (meta-package)
+ This package depends on the binary Linux image and hypervisors.
+
+Package: linux-image-3.2.0-1-rt-686-pae
+Architecture: i386
+Provides: linux-image, linux-modules-3.2.0-1-rt-686-pae
+Pre-Depends: debconf | debconf-2.0
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [i386] | linux-initramfs-tool [i386]
+Recommends: firmware-linux-free (>= 3~), libc6-i686 [i386]
+Suggests: linux-doc-3.2, grub-pc [i386] | extlinux [i386] | lilo (>= 22.8-8.2~) [i386]
+Breaks: initramfs-tools (<< 0.99~), lilo (<< 22.8-8.2~)
+Description: Linux 3.2 for modern PCs, PREEMPT_RT
+ The Linux kernel 3.2 and modules for use on PCs with one or more
+ processors supporting PAE.
+ .
+ This kernel requires PAE (Physical Address Extension). This feature is
+ supported by the Intel Pentium Pro/II/III/4/4M/D, Xeon, Core and Atom; AMD
+ Geode NX, Athlon (K7), Duron, Opteron, Sempron, Turion or Phenom;
+ Transmeta Efficeon; VIA C7; and some other processors.
+ .
+ This kernel includes the PREEMPT_RT realtime patch set.
+ .
+ This kernel also runs on a Xen hypervisor.  It supports both privileged
+ (dom0) and unprivileged (domU) operation.
+
+Package: linux-headers-3.2.0-1-rt-686-pae
+Architecture: i386
+Provides: linux-headers
+Depends: linux-headers-3.2.0-1-common-rt (= ${binary:Version}), linux-kbuild-3.2, ${misc:Depends}, gcc-4.6
+Description: Header files for Linux 3.2.0-1-rt-686-pae
+ This package provides the architecture-specific kernel header files for
+ Linux kernel 3.2.0-1-rt-686-pae, generally used for building out-of-tree
+ kernel modules.  These files are going to be installed into
+ /usr/src/linux-headers-3.2.0-1-rt-686-pae, and can be used for building
+ modules that load into the kernel provided by the
+ linux-image-3.2.0-1-rt-686-pae package.
+
+Package: linux-image-3.2.0-1-rt-686-pae-dbg
+Architecture: i386
+Section: debug
+Priority: extra
+Depends: linux-image-3.2.0-1-rt-686-pae, ${misc:Depends}
+Description: Debugging infos for Linux 3.2.0-1-rt-686-pae
+ This package provides the binary debug image and pre-built debug loadable
+ modules for Linux kernel 3.2 on PCs with one or more processors supporting
+ PAE machines.
+
+Package: xen-linux-system-3.2.0-1-rt-686-pae
+Architecture: i386
+Depends: linux-image-3.2.0-1-rt-686-pae (= ${binary:Version}), ${misc:Depends}, xen-hypervisor-i386 | xen-hypervisor-amd64
 Description: Xen system with Linux 3.2 on modern PCs (meta-package)
  This package depends on the binary Linux image and hypervisors.
 
@@ -5642,7 +5692,7 @@ Package: linux-image-3.2.0-1-itanium
 Architecture: ia64
 Provides: linux-image, linux-modules-3.2.0-1-itanium
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [ia64] | linux-initramfs-tool [ia64]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [ia64] | linux-initramfs-tool [ia64]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [ia64], elilo (>= 3.12-3.1~) [ia64]
 Breaks: initramfs-tools (<< 0.99~), elilo (<< 3.12-3.1~)
@@ -5665,7 +5715,7 @@ Package: linux-image-3.2.0-1-mckinley
 Architecture: ia64
 Provides: linux-image, linux-modules-3.2.0-1-mckinley
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [ia64] | linux-initramfs-tool [ia64]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [ia64] | linux-initramfs-tool [ia64]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [ia64], elilo (>= 3.12-3.1~) [ia64]
 Breaks: initramfs-tools (<< 0.99~), elilo (<< 3.12-3.1~)
@@ -6200,7 +6250,7 @@ Package: linux-image-3.2.0-1-amiga
 Architecture: m68k
 Provides: linux-image, linux-modules-3.2.0-1-amiga
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, vmelilo [m68k], fdutils [m68k]
 Description: Linux 3.2 for Amiga
@@ -6222,7 +6272,7 @@ Package: linux-image-3.2.0-1-atari
 Architecture: m68k
 Provides: linux-image, linux-modules-3.2.0-1-atari
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, vmelilo [m68k], fdutils [m68k]
 Description: Linux 3.2 for Atari
@@ -6244,7 +6294,7 @@ Package: linux-image-3.2.0-1-bvme6000
 Architecture: m68k
 Provides: linux-image, linux-modules-3.2.0-1-bvme6000
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, vmelilo [m68k], fdutils [m68k]
 Description: Linux 3.2 for BVM BVME4000 and BVME6000
@@ -6266,7 +6316,7 @@ Package: linux-image-3.2.0-1-mac
 Architecture: m68k
 Provides: linux-image, linux-modules-3.2.0-1-mac
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, vmelilo [m68k], fdutils [m68k]
 Description: Linux 3.2 for Macintosh
@@ -6287,7 +6337,7 @@ Package: linux-image-3.2.0-1-mvme147
 Architecture: m68k
 Provides: linux-image, linux-modules-3.2.0-1-mvme147
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, vmelilo [m68k], fdutils [m68k]
 Description: Linux 3.2 for Motorola MVME147
@@ -6309,7 +6359,7 @@ Package: linux-image-3.2.0-1-mvme16x
 Architecture: m68k
 Provides: linux-image, linux-modules-3.2.0-1-mvme16x
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, vmelilo [m68k], fdutils [m68k]
 Description: Linux 3.2 for Motorola MVME162/6/7, MVME172/7
@@ -7308,7 +7358,7 @@ Package: linux-image-3.2.0-1-r4k-ip22
 Architecture: mips
 Provides: linux-image, linux-modules-3.2.0-1-r4k-ip22
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for SGI IP22
@@ -7331,7 +7381,7 @@ Package: linux-image-3.2.0-1-r5k-ip32
 Architecture: mips
 Provides: linux-image, linux-modules-3.2.0-1-r5k-ip32
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for SGI IP32
@@ -7353,7 +7403,7 @@ Package: linux-image-3.2.0-1-sb1-bcm91250a
 Architecture: mips mipsel
 Provides: linux-image, linux-modules-3.2.0-1-sb1-bcm91250a
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for BCM91250A
@@ -7376,7 +7426,7 @@ Package: linux-image-3.2.0-1-sb1a-bcm91480b
 Architecture: mips mipsel
 Provides: linux-image, linux-modules-3.2.0-1-sb1a-bcm91480b
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for BCM91480B
@@ -7399,7 +7449,7 @@ Package: linux-image-3.2.0-1-4kc-malta
 Architecture: mips mipsel
 Provides: linux-image, linux-modules-3.2.0-1-4kc-malta
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for MIPS Malta
@@ -7421,7 +7471,7 @@ Package: linux-image-3.2.0-1-5kc-malta
 Architecture: mips mipsel
 Provides: linux-image, linux-modules-3.2.0-1-5kc-malta
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for MIPS Malta (64-bit)
@@ -7443,7 +7493,7 @@ Package: linux-image-3.2.0-1-octeon
 Architecture: mips
 Provides: linux-image, linux-modules-3.2.0-1-octeon
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for Octeon
@@ -7985,7 +8035,7 @@ Package: linux-image-3.2.0-1-r5k-cobalt
 Architecture: mipsel
 Provides: linux-image, linux-modules-3.2.0-1-r5k-cobalt
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for Cobalt
@@ -8008,7 +8058,7 @@ Package: linux-image-3.2.0-1-loongson-2f
 Architecture: mipsel
 Provides: linux-image, linux-modules-3.2.0-1-loongson-2f
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2
 Description: Linux 3.2 for Loongson 2F
@@ -9208,7 +9258,7 @@ Package: linux-image-3.2.0-1-powerpc
 Architecture: powerpc
 Provides: linux-image, linux-modules-3.2.0-1-powerpc
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [powerpc] | linux-initramfs-tool [powerpc]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [powerpc] | linux-initramfs-tool [powerpc]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, mkvmlinuz [powerpc]
 Breaks: initramfs-tools (<< 0.99~)
@@ -9231,7 +9281,7 @@ Package: linux-image-3.2.0-1-powerpc-smp
 Architecture: powerpc
 Provides: linux-image, linux-modules-3.2.0-1-powerpc-smp
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [powerpc] | linux-initramfs-tool [powerpc]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [powerpc] | linux-initramfs-tool [powerpc]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, mkvmlinuz [powerpc]
 Breaks: initramfs-tools (<< 0.99~)
@@ -9254,7 +9304,7 @@ Package: linux-image-3.2.0-1-powerpc64
 Architecture: powerpc ppc64
 Provides: linux-image, linux-modules-3.2.0-1-powerpc64
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [powerpc ppc64] | linux-initramfs-tool [powerpc ppc64]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [powerpc ppc64] | linux-initramfs-tool [powerpc ppc64]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, mkvmlinuz [powerpc ppc64]
 Breaks: initramfs-tools (<< 0.99~)
@@ -9508,7 +9558,7 @@ Package: linux-image-3.2.0-1-s390x
 Architecture: s390 s390x
 Provides: linux-image, linux-modules-3.2.0-1-s390x
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [s390 s390x] | linux-initramfs-tool [s390 s390x]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [s390 s390x] | linux-initramfs-tool [s390 s390x]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, s390-tools (>= 1.8.3-2~) [s390 s390x]
 Breaks: initramfs-tools (<< 0.99~), s390-tools (<< 1.8.3-2~)
@@ -10301,7 +10351,7 @@ Package: linux-image-3.2.0-1-sh7751r
 Architecture: sh4
 Provides: linux-image, linux-modules-3.2.0-1-sh7751r
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sh4] | linux-initramfs-tool [sh4]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sh4] | linux-initramfs-tool [sh4]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, fdutils [sh4]
 Breaks: initramfs-tools (<< 0.99~)
@@ -10325,7 +10375,7 @@ Package: linux-image-3.2.0-1-sh7785lcr
 Architecture: sh4
 Provides: linux-image, linux-modules-3.2.0-1-sh7785lcr
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sh4] | linux-initramfs-tool [sh4]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sh4] | linux-initramfs-tool [sh4]
 Recommends: firmware-linux-free (>= 3~), uboot-mkimage [sh4]
 Suggests: linux-doc-3.2, fdutils [sh4]
 Breaks: initramfs-tools (<< 0.99~)
@@ -10718,7 +10768,7 @@ Package: linux-image-3.2.0-1-sparc64
 Architecture: sparc sparc64
 Provides: linux-image, linux-modules-3.2.0-1-sparc64
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sparc sparc64] | linux-initramfs-tool [sparc sparc64]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sparc sparc64] | linux-initramfs-tool [sparc sparc64]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, silo [sparc sparc64], fdutils [sparc sparc64]
 Breaks: initramfs-tools (<< 0.99~)
@@ -10742,7 +10792,7 @@ Package: linux-image-3.2.0-1-sparc64-smp
 Architecture: sparc sparc64
 Provides: linux-image, linux-modules-3.2.0-1-sparc64-smp
 Pre-Depends: debconf | debconf-2.0
-Depends: module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sparc sparc64] | linux-initramfs-tool [sparc sparc64]
+Depends: kmod | module-init-tools, linux-base (>= 3~), ${shlibs:Depends}, ${misc:Depends}, initramfs-tools (>= 0.99~) [sparc sparc64] | linux-initramfs-tool [sparc sparc64]
 Recommends: firmware-linux-free (>= 3~)
 Suggests: linux-doc-3.2, silo [sparc sparc64], fdutils [sparc sparc64]
 Breaks: initramfs-tools (<< 0.99~)
