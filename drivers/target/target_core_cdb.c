@@ -607,7 +607,18 @@ int target_emulate_inquiry(struct se_task *task)
 	unsigned char *cdb = cmd->t_task_cdb;
 	int p, ret;
 
-	map_buf = transport_kmap_data_sg(cmd);
+	if (!(cdb[1] & 0x1)) {
+		if (cdb[2]) {
+			pr_err("INQUIRY with EVPD==0 but PAGE CODE=%02x\n",
+			       cdb[2]);
+			cmd->scsi_sense_reason = TCM_INVALID_CDB_FIELD;
+			return -EINVAL;
+		}
+
+		ret = target_emulate_inquiry_std(cmd);
+		goto out;
+	}
+
 	/*
 	 * If SCF_PASSTHROUGH_SG_TO_MEM_NOALLOC is not set, then we
 	 * know we actually allocated a full page.  Otherwise, if the
