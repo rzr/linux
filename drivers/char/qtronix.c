@@ -535,8 +535,7 @@ repeat:
 		i--;
 	}
 	if (count-i) {
-		struct inode *inode = file->f_dentry->d_inode;
-		inode->i_atime = current_fs_time(inode->i_sb);
+		file->f_dentry->d_inode->i_atime = get_seconds();
 		return count-i;
 	}
 	if (signal_pending(current))
@@ -591,6 +590,11 @@ static int __init psaux_init(void)
 		return retval;
 
 	queue = (struct aux_queue *) kmalloc(sizeof(*queue), GFP_KERNEL);
+	if (!queue) {
+		misc_deregister(&psaux_mouse);
+		return -ENOMEM;
+	}
+		
 	memset(queue, 0, sizeof(*queue));
 	queue->head = queue->tail = 0;
 	init_waitqueue_head(&queue->proc_list);

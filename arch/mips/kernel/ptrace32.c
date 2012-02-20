@@ -24,9 +24,9 @@
 #include <linux/smp_lock.h>
 #include <linux/user.h>
 #include <linux/security.h>
-#include <linux/signal.h>
 
 #include <asm/cpu.h>
+#include <asm/dsp.h>
 #include <asm/fpu.h>
 #include <asm/mipsregs.h>
 #include <asm/pgtable.h>
@@ -162,6 +162,27 @@ asmlinkage int sys32_ptrace(int request, int pid, int addr, int data)
 			write_c0_status(flags);
 			break;
 		}
+		case DSP_BASE ... DSP_BASE + 5:
+			if (!cpu_has_dsp) {
+				tmp = 0;
+				ret = -EIO;
+				goto out_tsk;
+			}
+			if (child->thread.dsp.used_dsp) {
+				dspreg_t *dregs = __get_dsp_regs(child);
+				tmp = (unsigned long) (dregs[addr - DSP_BASE]);
+			} else {
+				tmp = -1;	/* DSP registers yet used  */
+			}
+			break;
+		case DSP_CONTROL:
+			if (!cpu_has_dsp) {
+				tmp = 0;
+				ret = -EIO;
+				goto out_tsk;
+			}
+			tmp = child->thread.dsp.dspcontrol;
+			break;
 		default:
 			tmp = 0;
 			ret = -EIO;
@@ -231,6 +252,22 @@ asmlinkage int sys32_ptrace(int request, int pid, int addr, int data)
 			else
 				child->thread.fpu.soft.fcr31 = data;
 			break;
+		case DSP_BASE ... DSP_BASE + 5:
+			if (!cpu_has_dsp) {
+				ret = -EIO;
+				break;
+			}
+
+			dspreg_t *dregs = __get_dsp_regs(child);
+			dregs[addr - DSP_BASE] = data;
+			break;
+		case DSP_CONTROL:
+			if (!cpu_has_dsp) {
+				ret = -EIO;
+				break;
+			}
+			child->thread.dsp.dspcontrol = data;
+			break;
 		default:
 			/* The rest are not allowed. */
 			ret = -EIO;
@@ -269,8 +306,18 @@ asmlinkage int sys32_ptrace(int request, int pid, int addr, int data)
 		wake_up_process(child);
 		break;
 
+	case PTRACE_GET_THREAD_AREA:
+		ret = put_user(child->thread_info->tp_value,
+				(unsigned int __user *) (unsigned long) data);
+		break;
+
 	case PTRACE_DETACH: /* detach a process that was attached. */
 		ret = ptrace_detach(child, data);
+		break;
+
+	case PTRACE_GETEVENTMSG:
+		ret = put_user(child->ptrace_message,
+			       (unsigned int __user *) (unsigned long) data);
 		break;
 
 	default:

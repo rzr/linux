@@ -23,14 +23,18 @@ void (*__flush_cache_all)(void);
 void (*flush_cache_mm)(struct mm_struct *mm);
 void (*flush_cache_range)(struct vm_area_struct *vma, unsigned long start,
 	unsigned long end);
-void (*flush_cache_page)(struct vm_area_struct *vma, unsigned long page, unsigned long pfn);
-void (*flush_icache_range)(unsigned long start, unsigned long end);
+void (*flush_cache_page)(struct vm_area_struct *vma, unsigned long page,
+	unsigned long pfn);
+void (*flush_icache_range)(unsigned long __user start,
+	unsigned long __user end);
 void (*flush_icache_page)(struct vm_area_struct *vma, struct page *page);
 
 /* MIPS specific cache operations */
 void (*flush_cache_sigtramp)(unsigned long addr);
 void (*flush_data_cache_page)(unsigned long addr);
 void (*flush_icache_all)(void);
+
+EXPORT_SYMBOL(flush_data_cache_page);
 
 #ifdef CONFIG_DMA_NONCOHERENT
 
@@ -49,10 +53,10 @@ EXPORT_SYMBOL(_dma_cache_inv);
  * We could optimize the case where the cache argument is not BCACHE but
  * that seems very atypical use ...
  */
-asmlinkage int sys_cacheflush(unsigned long addr, unsigned long int bytes,
-	unsigned int cache)
+asmlinkage int sys_cacheflush(unsigned long __user addr,
+	unsigned long bytes, unsigned int cache)
 {
-	if (!access_ok(VERIFY_WRITE, (void *) addr, bytes))
+	if (!access_ok(VERIFY_WRITE, (void __user *) addr, bytes))
 		return -EFAULT;
 
 	flush_icache_range(addr, addr + bytes);
@@ -114,8 +118,8 @@ void __init cpu_cache_init(void)
 #if defined(CONFIG_CPU_R4X00)  || defined(CONFIG_CPU_VR41XX) || \
     defined(CONFIG_CPU_R4300)  || defined(CONFIG_CPU_R5000)  || \
     defined(CONFIG_CPU_NEVADA) || defined(CONFIG_CPU_R5432)  || \
-    defined(CONFIG_CPU_R5500)  || defined(CONFIG_CPU_MIPS32) || \
-    defined(CONFIG_CPU_MIPS64) || defined(CONFIG_CPU_TX49XX) || \
+    defined(CONFIG_CPU_R5500)  || defined(CONFIG_CPU_MIPS32_R1) || \
+    defined(CONFIG_CPU_MIPS64_R1) || defined(CONFIG_CPU_TX49XX) || \
     defined(CONFIG_CPU_RM7000) || defined(CONFIG_CPU_RM9000)
 		ld_mmu_r4xx0();
 #endif

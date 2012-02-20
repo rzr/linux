@@ -176,7 +176,7 @@ int kgdb_enabled;
 /*
  * spin locks for smp case
  */
-static spinlock_t kgdb_lock = SPIN_LOCK_UNLOCKED;
+static DEFINE_SPINLOCK(kgdb_lock);
 static spinlock_t kgdb_cpulock[NR_CPUS] = { [0 ... NR_CPUS-1] = SPIN_LOCK_UNLOCKED};
 
 /*
@@ -637,15 +637,18 @@ static struct gdb_bp_save async_bp;
  * and only one can be active at a time.
  */
 extern spinlock_t smp_call_lock;
+
 void set_async_breakpoint(unsigned long *epc)
 {
 	/* skip breaking into userland */
 	if ((*epc & 0x80000000) == 0)
 		return;
 
+#ifdef CONFIG_SMP
 	/* avoid deadlock if someone is make IPC */
 	if (spin_is_locked(&smp_call_lock))
 		return;
+#endif
 
 	async_bp.addr = *epc;
 	*epc = (unsigned long)async_breakpoint;
@@ -687,8 +690,8 @@ void handle_exception (struct gdb_regs *regs)
 	 * acquire the big kgdb spinlock
 	 */
 	if (!spin_trylock(&kgdb_lock)) {
-		/* 
-		 * some other CPU has the lock, we should go back to 
+		/*
+		 * some other CPU has the lock, we should go back to
 		 * receive the gdb_wait IPC
 		 */
 		return;
@@ -703,7 +706,7 @@ void handle_exception (struct gdb_regs *regs)
 		async_bp.addr = 0;
 	}
 
-	/* 
+	/*
 	 * acquire the CPU spinlocks
 	 */
 	for (i = num_online_cpus()-1; i >= 0; i--)
@@ -894,7 +897,7 @@ void handle_exception (struct gdb_regs *regs)
 			ptr = &input_buffer[1];
 			if (hexToLong(&ptr, &addr))
 				regs->cp0_epc = addr;
-	  
+
 			goto exit_kgdb_exception;
 			break;
 
@@ -1001,7 +1004,7 @@ void breakpoint(void)
 		return;
 
 	__asm__ __volatile__(
-			".globl	breakinst\n\t" 
+			".globl	breakinst\n\t"
 			".set\tnoreorder\n\t"
 			"nop\n"
 			"breakinst:\tbreak\n\t"
@@ -1014,7 +1017,7 @@ void breakpoint(void)
 void async_breakpoint(void)
 {
 	__asm__ __volatile__(
-			".globl	async_breakinst\n\t" 
+			".globl	async_breakinst\n\t"
 			".set\tnoreorder\n\t"
 			"nop\n"
 			"async_breakinst:\tbreak\n\t"

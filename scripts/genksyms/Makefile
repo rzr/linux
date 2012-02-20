@@ -47,3 +47,5 @@ clean-files	+= parse.output
 endif
 
 targets += keywords.c lex.c parse.c parse.h
+
+clean-files := keywords.c lex.c parse.c parse.h

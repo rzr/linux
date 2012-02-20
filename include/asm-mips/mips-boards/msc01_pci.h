@@ -1,8 +1,9 @@
 /*
  * PCI Register definitions for the MIPS System Controller.
  *
- * Carsten Langgaard, carstenl@mips.com
- * Copyright (C) 2002 MIPS Technologies, Inc.  All rights reserved.
+ * Copyright (C) 2002, 2005  MIPS Technologies, Inc.  All rights reserved.
+ *	Authors: Carsten Langgaard <carstenl@mips.com>
+ *		 Maciej W. Rozycki <macro@mips.com>
  *
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file "COPYING" in the main directory of this archive
@@ -167,29 +168,29 @@
 #define MSC01_PCI_CFGDATA_DATA_MSK	0xffffffff
 
 /* The defines below are ONLY valid for a MEM bar! */
-#define MSC01_PCI_BAR0_SIZE_SHF	        4
-#define MSC01_PCI_BAR0_SIZE_MSK	        0xfffffff0
-#define MSC01_PCI_BAR0_P_SHF	        3
-#define MSC01_PCI_BAR0_P_MSK	        0x00000008
-#define MSC01_PCI_BAR0_P_BIT	        MSC01_PCI_BAR0_P_MSK
-#define MSC01_PCI_BAR0_D_SHF	        1
-#define MSC01_PCI_BAR0_D_MSK	        0x00000006
-#define MSC01_PCI_BAR0_T_SHF	        0
-#define MSC01_PCI_BAR0_T_MSK	        0x00000001
-#define MSC01_PCI_BAR0_T_BIT	        MSC01_PCI_BAR0_T_MSK
+#define MSC01_PCI_BAR0_SIZE_SHF		4
+#define MSC01_PCI_BAR0_SIZE_MSK		0xfffffff0
+#define MSC01_PCI_BAR0_P_SHF		3
+#define MSC01_PCI_BAR0_P_MSK		0x00000008
+#define MSC01_PCI_BAR0_P_BIT		MSC01_PCI_BAR0_P_MSK
+#define MSC01_PCI_BAR0_D_SHF		1
+#define MSC01_PCI_BAR0_D_MSK		0x00000006
+#define MSC01_PCI_BAR0_T_SHF		0
+#define MSC01_PCI_BAR0_T_MSK		0x00000001
+#define MSC01_PCI_BAR0_T_BIT		MSC01_PCI_BAR0_T_MSK
 
 
-#define MSC01_PCI_CFG_RA_SHF	        17
-#define MSC01_PCI_CFG_RA_MSK	        0x00020000
-#define MSC01_PCI_CFG_RA_BIT	        MSC01_PCI_CFG_RA_MSK
-#define MSC01_PCI_CFG_G_SHF	        16
-#define MSC01_PCI_CFG_G_MSK	        0x00010000
-#define MSC01_PCI_CFG_G_BIT	        MSC01_PCI_CFG_G_MSK
-#define MSC01_PCI_CFG_EN_SHF	        15
-#define MSC01_PCI_CFG_EN_MSK	        0x00008000
-#define MSC01_PCI_CFG_EN_BIT	        MSC01_PCI_CFG_EN_MSK
-#define MSC01_PCI_CFG_MAXRTRY_SHF       0
-#define MSC01_PCI_CFG_MAXRTRY_MSK       0x000000ff
+#define MSC01_PCI_CFG_RA_SHF		17
+#define MSC01_PCI_CFG_RA_MSK		0x00020000
+#define MSC01_PCI_CFG_RA_BIT		MSC01_PCI_CFG_RA_MSK
+#define MSC01_PCI_CFG_G_SHF		16
+#define MSC01_PCI_CFG_G_MSK		0x00010000
+#define MSC01_PCI_CFG_G_BIT		MSC01_PCI_CFG_G_MSK
+#define MSC01_PCI_CFG_EN_SHF		15
+#define MSC01_PCI_CFG_EN_MSK		0x00008000
+#define MSC01_PCI_CFG_EN_BIT		MSC01_PCI_CFG_EN_MSK
+#define MSC01_PCI_CFG_MAXRTRY_SHF	0
+#define MSC01_PCI_CFG_MAXRTRY_MSK	0x00000fff
 
 #define MSC01_PCI_SWAP_IO_SHF		18
 #define MSC01_PCI_SWAP_IO_MSK		0x000c0000

@@ -52,6 +52,16 @@ ifdef CONFIG_CROSSCOMPILE
 CROSS_COMPILE		:= $(tool-prefix)
 endif
 
+CHECKFLAGS-y				+= -D__linux__ -D__mips__
+CHECKFLAGS-$(CONFIG_MIPS32)		+= -D_MIPS_SZLONG=32 \
+					   -D__PTRDIFF_TYPE__=int
+CHECKFLAGS-$(CONFIG_MIPS64)		+= -D_MIPS_SZLONG=64 \
+					   -D__PTRDIFF_TYPE__="long int"
+CHECKFLAGS-$(CONFIG_CPU_BIG_ENDIAN)	+= -D__MIPSEB__
+CHECKFLAGS-$(CONFIG_CPU_LITTLE_ENDIAN)	+= -D__MIPSEL__
+
+CHECKFLAGS				= $(CHECKFLAGS-y)
+
 ifdef CONFIG_BUILD_ELF64
 gas-abi			= 64
 ld-emul			= $(64bit-emul)
@@ -79,10 +89,20 @@ endif
 cflags-y			+= -I $(TOPDIR)/include/asm/gcc
 cflags-y			+= -G 0 -mno-abicalls -fno-pic -pipe
 cflags-y			+= $(call cc-option, -finline-limit=100000)
-LDFLAGS_vmlinux			+= -G 0 -static -n
+LDFLAGS_vmlinux			+= -G 0 -static -n -nostdlib
 MODFLAGS			+= -mlong-calls
 
-cflags-$(CONFIG_SB1XXX_CORELIS)	+= -mno-sched-prolog -fno-omit-frame-pointer
+#
+# We explicitly add the endianness specifier if needed, this allows
+# to compile kernels with a toolchain for the other endianness. We
+# carefully avoid to add it redundantly because gcc 3.3/3.4 complains
+# when fed the toolchain default!
+#
+cflags-$(CONFIG_CPU_BIG_ENDIAN)		+= $(shell $(CC) -dumpmachine |grep -q 'mips.*el-.*' && echo -EB)
+cflags-$(CONFIG_CPU_LITTLE_ENDIAN)	+= $(shell $(CC) -dumpmachine |grep -q 'mips.*el-.*' || echo -EL)
+
+cflags-$(CONFIG_SB1XXX_CORELIS)	+= $(call cc-option,-mno-sched-prolog) \
+				   -fno-omit-frame-pointer
 
 #
 # Use: $(call set_gccflags,<cpu0>,<isa0>,<cpu1>,<isa1>,<isa2>)
@@ -167,17 +187,21 @@ cflags-$(CONFIG_CPU_TX49XX)	+= \
 			$(call set_gccflags,r4600,mips3,r4600,mips3,mips2)  \
 			-Wa,--trap
 
-cflags-$(CONFIG_CPU_MIPS32)	+= \
+cflags-$(CONFIG_CPU_MIPS32_R1)	+= \
 			$(call set_gccflags,mips32,mips32,r4600,mips3,mips2) \
 			-Wa,--trap
 
-cflags-$(CONFIG_CPU_MIPS64)	+= \
+cflags-$(CONFIG_CPU_MIPS32_R2)	+= \
+			$(call set_gccflags,mips32r2,mips32r2,r4600,mips3,mips2) \
+			-Wa,--trap
+
+cflags-$(CONFIG_CPU_MIPS64_R1)	+= \
 			$(call set_gccflags,mips64,mips64,r4600,mips3,mips2) \
 			-Wa,--trap
 
 cflags-$(CONFIG_CPU_R5000)	+= \
 			$(call set_gccflags,r5000,mips4,r5000,mips4,mips2) \
-			-Wa,--trap 
+			-Wa,--trap
 
 cflags-$(CONFIG_CPU_R5432)	+= \
 			$(call set_gccflags,r5400,mips4,r5000,mips4,mips2) \
@@ -266,6 +290,13 @@ cflags-$(CONFIG_MIPS_PB1550)	+= -Iinclude/asm-mips/mach-pb1x00
 load-$(CONFIG_MIPS_PB1550)	+= 0xffffffff80100000
 
 #
+# AMD Alchemy Pb1200 eval board
+#
+libs-$(CONFIG_MIPS_PB1200)	+= arch/mips/au1000/pb1200/
+cflags-$(CONFIG_MIPS_PB1200)	+= -Iinclude/asm-mips/mach-pb1x00
+load-$(CONFIG_MIPS_PB1200)	+= 0xffffffff80100000
+
+#
 # AMD Alchemy Db1000 eval board
 #
 libs-$(CONFIG_MIPS_DB1000)	+= arch/mips/au1000/db1x00/
@@ -292,6 +323,13 @@ load-$(CONFIG_MIPS_DB1500)	+= 0xffffffff80100000
 libs-$(CONFIG_MIPS_DB1550)	+= arch/mips/au1000/db1x00/
 cflags-$(CONFIG_MIPS_DB1550)	+= -Iinclude/asm-mips/mach-db1x00
 load-$(CONFIG_MIPS_DB1550)	+= 0xffffffff80100000
+
+#
+# AMD Alchemy Db1200 eval board
+#
+libs-$(CONFIG_MIPS_DB1200)	+= arch/mips/au1000/pb1200/
+cflags-$(CONFIG_MIPS_DB1200)	+= -Iinclude/asm-mips/mach-db1x00
+load-$(CONFIG_MIPS_DB1200)	+= 0xffffffff80100000
 
 #
 # AMD Alchemy Bosporus eval board
@@ -323,6 +361,7 @@ load-$(CONFIG_MIPS_XXS1500)	+= 0xffffffff80100000
 # Cobalt Server
 #
 core-$(CONFIG_MIPS_COBALT)	+= arch/mips/cobalt/
+cflags-$(CONFIG_MIPS_COBALT)	+= -Iinclude/asm-mips/cobalt
 load-$(CONFIG_MIPS_COBALT)	+= 0xffffffff80080000
 
 #
@@ -389,6 +428,19 @@ core-$(CONFIG_MIPS_SEAD)	+= arch/mips/mips-boards/sead/
 load-$(CONFIG_MIPS_SEAD)	+= 0xffffffff80100000
 
 #
+# For all REALTEK, Inc. boards
+#
+core-$(CONFIG_REALTEK_BOARDS_GEN)       += arch/mips/realtek-boards/generic/
+
+#
+# Realtek Venus board
+#
+core-$(CONFIG_REALTEK_VENUS)    += arch/mips/realtek-boards/venus/
+core-$(CONFIG_REALTEK_VENUS)    += arch/mips/realtek-boards/drivers/
+cflags-$(CONFIG_REALTEK_VENUS)  += -Iinclude/asm-mips/mach-venus
+load-$(CONFIG_REALTEK_VENUS)    += 0xffffffff80100000
+
+#
 # Momentum Ocelot board
 #
 # The Ocelot setup.o must be linked early - it does the ioremap() for the
@@ -422,6 +474,13 @@ load-$(CONFIG_MOMENCO_OCELOT_C)	+= 0xffffffff80100000
 core-$(CONFIG_PMC_YOSEMITE)	+= arch/mips/pmc-sierra/yosemite/
 cflags-$(CONFIG_PMC_YOSEMITE)	+= -Iinclude/asm-mips/mach-yosemite
 load-$(CONFIG_PMC_YOSEMITE)	+= 0xffffffff80100000
+
+#
+# Qemu simulating MIPS32 4Kc
+#
+core-$(CONFIG_QEMU)		+= arch/mips/qemu/
+cflags-$(CONFIG_QEMU)		+= -Iinclude/asm-mips/mach-qemu
+load-$(CONFIG_QEMU)		+= 0xffffffff80010000
 
 #
 # Momentum Ocelot-3
@@ -467,13 +526,6 @@ load-$(CONFIG_DDB5477)		+= 0xffffffff80100000
 core-$(CONFIG_LASAT)		+= arch/mips/lasat/
 cflags-$(CONFIG_LASAT)		+= -Iinclude/asm-mips/mach-lasat
 load-$(CONFIG_LASAT)		+= 0xffffffff80000000
-
-#
-# NEC Osprey (vr4181) board
-#
-core-$(CONFIG_NEC_OSPREY)	+= arch/mips/vr4181/common/ \
-				   arch/mips/vr4181/osprey/
-load-$(CONFIG_NEC_OSPREY)	+= 0xffffffff80002000
 
 #
 # Common VR41xx
@@ -711,9 +763,28 @@ ifdef CONFIG_BOOT_ELF64
 all:	$(vmlinux-64)
 endif
 
+ifdef CONFIG_MIPS_ATLAS
+all:	vmlinux.srec
+endif
+
+ifdef CONFIG_MIPS_MALTA
+all:	vmlinux.srec
+endif
+
+ifdef CONFIG_MIPS_SEAD
+all:	vmlinux.srec
+endif
+
+ifdef CONFIG_QEMU
+all:	vmlinux.bin
+endif
+
 ifdef CONFIG_SNI_RM200_PCI
 all:	vmlinux.ecoff
 endif
+
+vmlinux.bin: $(vmlinux-32)
+	+@$(call makeboot,$@)
 
 vmlinux.ecoff vmlinux.rm200: $(vmlinux-32)
 	+@$(call makeboot,$@)
@@ -730,7 +801,7 @@ archclean:
 	@$(MAKE) $(clean)=arch/mips/boot
 	@$(MAKE) $(clean)=arch/mips/lasat
 
-# Generate <asm/offset.h 
+# Generate <asm/offset.h
 #
 # The default rule is suffering from funny problems on MIPS so we using our
 # own ...

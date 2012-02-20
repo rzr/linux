@@ -15,7 +15,7 @@ SECTIONS
   /* This is the value for an Origin kernel, taken from an IRIX kernel.  */
   /* . = 0xc00000000001c000; */
 
-  /* Set the vaddr for the text segment to a value 
+  /* Set the vaddr for the text segment to a value
         >= 0xa800 0000 0001 9000 if no symmon is going to configured
         >= 0xa800 0000 0030 0000 otherwise  */
 
@@ -27,6 +27,7 @@ SECTIONS
   /* read-only */
   _text = .;			/* Text and read-only data */
   .text : {
+    arch/mips/kernel/head.o(.init.text)
     *(.text)
     SCHED_TEXT
     LOCK_TEXT
@@ -34,6 +35,11 @@ SECTIONS
     *(.gnu.warning)
   } =0
 
+  .sleep.text : {
+    _sleeptext = .;
+    *(.sleep.text)
+    _esleeptext = .;
+  } =0
   _etext = .;			/* End of text section */
 
   . = ALIGN(16);		/* Exception table */
@@ -54,15 +60,15 @@ SECTIONS
 
     *(.data)
 
-   /* Align the initial ramdisk image (INITRD) on page boundaries. */
-   . = ALIGN(4096);
-   __rd_start = .;
-   *(.initrd)
-   . = ALIGN(4096);
-   __rd_end = .;
-
     CONSTRUCTORS
   }
+  
+  .sleepdata : {			/* Data */
+    _sleepdata = .;
+    *(.sleep.data)
+    _esleepdata = .;
+  }
+  
   _gp = . + 0x8000;
   .lit8 : { *(.lit8) }
   .lit4 : { *(.lit4) }
@@ -95,12 +101,6 @@ SECTIONS
   __setup_start = .;
   .init.setup : { *(.init.setup) }
   __setup_end = .;
-
-  .early_initcall.init : {
-  __earlyinitcall_start = .;
-	*(.initcall.early1.init)
-  }
-  __earlyinitcall_end = .;
 
   __initcall_start = .;
   .initcall.init : {

@@ -21,14 +21,16 @@
 #include <linux/mm.h>
 #include <linux/errno.h>
 #include <linux/ptrace.h>
-#include <linux/audit.h>
 #include <linux/smp.h>
 #include <linux/smp_lock.h>
 #include <linux/user.h>
 #include <linux/security.h>
-#include <linux/signal.h>
+#include <linux/audit.h>
+#include <linux/seccomp.h>
 
+#include <asm/byteorder.h>
 #include <asm/cpu.h>
+#include <asm/dsp.h>
 #include <asm/fpu.h>
 #include <asm/mipsregs.h>
 #include <asm/pgtable.h>
@@ -103,7 +105,7 @@ asmlinkage int sys_ptrace(long request, long pid, long addr, long data)
 		ret = -EIO;
 		if (copied != sizeof(tmp))
 			break;
-		ret = put_user(tmp,(unsigned long *) data);
+		ret = put_user(tmp,(unsigned long __user *) data);
 		break;
 	}
 
@@ -175,12 +177,36 @@ asmlinkage int sys_ptrace(long request, long pid, long addr, long data)
 			write_c0_status(flags);
 			break;
 		}
+		case DSP_BASE ... DSP_BASE + 5: {
+			dspreg_t *dregs;
+
+			if (!cpu_has_dsp) {
+				tmp = 0;
+				ret = -EIO;
+				goto out_tsk;
+			}
+			if (child->thread.dsp.used_dsp) {
+				dregs = __get_dsp_regs(child);
+				tmp = (unsigned long) (dregs[addr - DSP_BASE]);
+			} else {
+				tmp = -1;	/* DSP registers yet used  */
+			}
+			break;
+		}
+		case DSP_CONTROL:
+			if (!cpu_has_dsp) {
+				tmp = 0;
+				ret = -EIO;
+				goto out_tsk;
+			}
+			tmp = child->thread.dsp.dspcontrol;
+			break;
 		default:
 			tmp = 0;
 			ret = -EIO;
 			goto out_tsk;
 		}
-		ret = put_user(tmp, (unsigned long *) data);
+		ret = put_user(tmp, (unsigned long __user *) data);
 		break;
 	}
 
@@ -247,6 +273,25 @@ asmlinkage int sys_ptrace(long request, long pid, long addr, long data)
 			else
 				child->thread.fpu.soft.fcr31 = data;
 			break;
+		case DSP_BASE ... DSP_BASE + 5: {
+			dspreg_t *dregs;
+
+			if (!cpu_has_dsp) {
+				ret = -EIO;
+				break;
+			}
+
+			dregs = __get_dsp_regs(child);
+			dregs[addr - DSP_BASE] = data;
+			break;
+		}
+		case DSP_CONTROL:
+			if (!cpu_has_dsp) {
+				ret = -EIO;
+				break;
+			}
+			child->thread.dsp.dspcontrol = data;
+			break;
 		default:
 			/* The rest are not allowed. */
 			ret = -EIO;
@@ -289,6 +334,11 @@ asmlinkage int sys_ptrace(long request, long pid, long addr, long data)
 		ret = ptrace_detach(child, data);
 		break;
 
+	case PTRACE_GET_THREAD_AREA:
+		ret = put_user(child->thread_info->tp_value,
+				(unsigned long __user *) data);
+		break;
+
 	default:
 		ret = ptrace_request(child, request, addr, data);
 		break;
@@ -303,21 +353,14 @@ out:
 
 static inline int audit_arch(void)
 {
-#ifdef CONFIG_CPU_LITTLE_ENDIAN
+	int arch = EM_MIPS;
 #ifdef CONFIG_MIPS64
-	if (!(current->thread.mflags & MF_32BIT_REGS))
-		return AUDIT_ARCH_MIPSEL64;
-#endif /* MIPS64 */
-	return AUDIT_ARCH_MIPSEL;
-
-#else /* big endian... */
-#ifdef CONFIG_MIPS64
-	if (!(current->thread.mflags & MF_32BIT_REGS))
-		return AUDIT_ARCH_MIPS64;
-#endif /* MIPS64 */
-	return AUDIT_ARCH_MIPS;
-
-#endif /* endian */
+	arch |=  __AUDIT_ARCH_64BIT;
+#endif
+#if defined(__LITTLE_ENDIAN)
+	arch |=  __AUDIT_ARCH_LE;
+#endif
+	return arch;
 }
 
 /*
@@ -326,12 +369,17 @@ static inline int audit_arch(void)
  */
 asmlinkage void do_syscall_trace(struct pt_regs *regs, int entryexit)
 {
+	/* do the secure computing check first */
+	secure_computing(regs->orig_eax);
+
 	if (unlikely(current->audit_context) && entryexit)
-		audit_syscall_exit(current, AUDITSC_RESULT(regs->regs[2]), regs->regs[2]);
+		audit_syscall_exit(current, AUDITSC_RESULT(regs->regs[2]),
+		                   regs->regs[2]);
+
+	if (!(current->ptrace & PT_PTRACED))
+		goto out;
 
 	if (!test_thread_flag(TIF_SYSCALL_TRACE))
-		goto out;
-	if (!(current->ptrace & PT_PTRACED))
 		goto out;
 
 	/* The 0x80 provides a way for the tracing parent to distinguish
@@ -348,9 +396,14 @@ asmlinkage void do_syscall_trace(struct pt_regs *regs, int entryexit)
 		send_sig(current->exit_code, current, 1);
 		current->exit_code = 0;
 	}
- out:
+
+out:
+	/* There is no ->orig_eax and that's quite intensional for now making
+	   this work will require some work in various other place before it's
+	   more than a placebo.  */
+
 	if (unlikely(current->audit_context) && !entryexit)
-		audit_syscall_entry(current, audit_arch(), regs->regs[2],
-				    regs->regs[4], regs->regs[5],
-				    regs->regs[6], regs->regs[7]);
+		audit_syscall_entry(current, audit_arch(), regs->orig_eax,
+		                    regs->regs[4], regs->regs[5],
+		                    regs->regs[6], regs->regs[7]);
 }

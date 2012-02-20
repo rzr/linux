@@ -314,9 +314,19 @@
 #define	writew_b2l	__raw_writew
 #define	writel_b2l	__raw_writel
 #define	readw_raw	__raw_readw
-#define	readl_raw	__raw_readl
+#define	readl_raw(a)	__raw_readl((unsigned long)(a))
 #define	writew_raw	__raw_writew
-#define	writel_raw	__raw_writel
+#define	writel_raw(v,a)	__raw_writel(v,(unsigned long)(a))
+#else /* Other big-endian */
+#elif defined(__mips__)
+#define readw_l2b	readw
+#define readl_l2b	readl
+#define writew_b2l	writew
+#define writel_b2l	writel
+#define inw_l2b 	inw
+#define inl_l2b 	inl
+#define outw_b2l	outw
+#define outl_b2l	outl
 #else	/* Other big-endian */
 #define	readw_l2b	readw
 #define	readl_l2b	readl

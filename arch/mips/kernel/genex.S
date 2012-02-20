@@ -82,7 +82,7 @@ NESTED(except_vec3_r4000, 0, sp)
 	 li	k0, 14<<2
 	beq	k1, k0, handle_vcei
 #ifdef CONFIG_MIPS64
-	dsll	k1, k1, 1
+	 dsll	k1, k1, 1
 #endif
 	.set	pop
 	PTR_L	k0, exception_handlers(k1)
@@ -90,17 +90,17 @@ NESTED(except_vec3_r4000, 0, sp)
 
 	/*
 	 * Big shit, we now may have two dirty primary cache lines for the same
-	 * physical address.  We can savely invalidate the line pointed to by
+	 * physical address.  We can safely invalidate the line pointed to by
 	 * c0_badvaddr because after return from this exception handler the
 	 * load / store will be re-executed.
 	 */
 handle_vced:
-	DMFC0	k0, CP0_BADVADDR
+	MFC0	k0, CP0_BADVADDR
 	li	k1, -4					# Is this ...
 	and	k0, k1					# ... really needed?
 	mtc0	zero, CP0_TAGLO
-	cache	Index_Store_Tag_D,(k0)
-	cache	Hit_Writeback_Inv_SD,(k0)
+	cache	Index_Store_Tag_D, (k0)
+	cache	Hit_Writeback_Inv_SD, (k0)
 #ifdef CONFIG_PROC_FS
 	PTR_LA	k0, vced_count
 	lw	k1, (k0)
@@ -246,10 +246,10 @@ NESTED(nmi_handler, PT_SIZE, sp)
 	LONG_L	a1, PT_EPC(sp)
 #if CONFIG_MIPS32
 	PRINT("Got \nexception at %08lx\012")
-#endif	
+#endif
 #if CONFIG_MIPS64
 	PRINT("Got \nexception at %016lx\012")
-#endif	
+#endif
 	.endm
 
 	.macro	__BUILD_count exception
@@ -289,8 +289,10 @@ NESTED(nmi_handler, PT_SIZE, sp)
 	BUILD_HANDLER tr tr sti silent			/* #13 */
 	BUILD_HANDLER fpe fpe fpe silent		/* #15 */
 	BUILD_HANDLER mdmx mdmx sti silent		/* #22 */
-	BUILD_HANDLER watch watch sti verbose		/* #23 */
+/*	BUILD_HANDLER watch watch sti verbose*/		/* #23 */
+	BUILD_HANDLER watch watch sti silent		/* #23 */
 	BUILD_HANDLER mcheck mcheck cli verbose		/* #24 */
+	BUILD_HANDLER dsp dsp sti silent		/* #26 */
 	BUILD_HANDLER reserved reserved sti verbose	/* others */
 
 #ifdef CONFIG_MIPS64

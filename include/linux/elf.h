@@ -66,7 +66,7 @@ typedef __s64	Elf64_Sxword;
 
 #define EM_MIPS		8	/* MIPS R3000 (officially, big-endian only) */
 
-#define EM_MIPS_RS4_BE 10	/* MIPS R4000 big-endian */
+#define EM_MIPS_RS3_LE 10	/* MIPS R3000 little-endian */
 
 #define EM_PARISC      15	/* HPPA */
 

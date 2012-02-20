@@ -123,10 +123,8 @@ static int __init vr41xx_pciu_init(void)
 		return -EBUSY;
 
 	pciu_base = ioremap(PCIU_BASE, PCIU_SIZE);
-	if (pciu_base == NULL) {
-		release_mem_region(PCIU_BASE, PCIU_SIZE);
+	if (pciu_base == NULL)
 		return -EBUSY;
-	}
 
 	/* Disable PCI interrupt */
 	vr41xx_disable_pciint();

@@ -3,8 +3,7 @@
  *
  *  Copyright (C) 2002 MontaVista Software Inc.
  *    Author: Yoichi Yuasa <yyuasa@mvista.com or source@mvista.com>
- *  Copyright (C) 2003-2004  Yoichi Yuasa <yuasa@hh.iij4u.or.jp>
- *  Copyright (C) 2005 Ralf Baechle (ralf@linux-mips.org)
+ *  Copyright (C) 2003-2005  Yoichi Yuasa <yuasa@hh.iij4u.or.jp>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,12 +61,6 @@
 #define GIUREDGEINHH	0x26
 
 static uint32_t giu_base;
-
-static struct irqaction giu_cascade = {
-	.handler	= no_action,
-	.mask		= CPU_MASK_NONE,
-	.name		= "cascade",
-};
 
 #define read_giuint(offset)		readw(giu_base + (offset))
 #define write_giuint(val, offset)	writew((val), giu_base + (offset))
@@ -192,18 +185,20 @@ static struct hw_interrupt_type giuint_high_irq_type = {
 	.end		= end_giuint_high_irq,
 };
 
-void __init init_vr41xx_giuint_irq(void)
+void vr41xx_enable_giuint(unsigned int pin)
 {
-	int i;
+	if (pin < GIUINT_HIGH_OFFSET)
+		enable_giuint_low_irq(GIU_IRQ(pin));
+	else
+		enable_giuint_high_irq(GIU_IRQ(pin));
+}
 
-	for (i = GIU_IRQ_BASE; i <= GIU_IRQ_LAST; i++) {
-		if (i < (GIU_IRQ_BASE + GIUINT_HIGH_OFFSET))
-			irq_desc[i].handler = &giuint_low_irq_type;
-		else
-			irq_desc[i].handler = &giuint_high_irq_type;
-	}
-
-	setup_irq(GIUINT_CASCADE_IRQ, &giu_cascade);
+void vr41xx_disable_giuint(unsigned int pin)
+{
+	if (pin < GIUINT_HIGH_OFFSET)
+		disable_giuint_low_irq(GIU_IRQ(pin));
+	else
+		disable_giuint_high_irq(GIU_IRQ(pin));
 }
 
 void vr41xx_set_irq_trigger(int pin, int trigger, int hold)
@@ -296,52 +291,7 @@ void vr41xx_set_irq_level(int pin, int level)
 
 EXPORT_SYMBOL(vr41xx_set_irq_level);
 
-#define GIUINT_NR_IRQS		32
-
-enum {
-	GIUINT_NO_CASCADE,
-	GIUINT_CASCADE
-};
-
-struct vr41xx_giuint_cascade {
-	unsigned int flag;
-	int (*get_irq_number)(int irq);
-};
-
-static struct vr41xx_giuint_cascade giuint_cascade[GIUINT_NR_IRQS];
-
-static int no_irq_number(int irq)
-{
-	return -EINVAL;
-}
-
-int vr41xx_cascade_irq(unsigned int irq, int (*get_irq_number)(int irq))
-{
-	unsigned int pin;
-	int retval;
-
-	if (irq < GIU_IRQ(0) || irq > GIU_IRQ(31))
-		return -EINVAL;
-
-	if(!get_irq_number)
-		return -EINVAL;
-
-	pin = GIU_IRQ_TO_PIN(irq);
-	giuint_cascade[pin].flag = GIUINT_CASCADE;
-	giuint_cascade[pin].get_irq_number = get_irq_number;
-
-	retval = setup_irq(irq, &giu_cascade);
-	if (retval != 0) {
-		giuint_cascade[pin].flag = GIUINT_NO_CASCADE;
-		giuint_cascade[pin].get_irq_number = no_irq_number;
-	}
-
-	return retval;
-}
-
-EXPORT_SYMBOL(vr41xx_cascade_irq);
-
-static inline int get_irq_pin_number(void)
+static int giu_get_irq(unsigned int irq, struct pt_regs *regs)
 {
 	uint16_t pendl, pendh, maskl, maskh;
 	int i;
@@ -357,12 +307,12 @@ static inline int get_irq_pin_number(void)
 	if (maskl) {
 		for (i = 0; i < 16; i++) {
 			if (maskl & ((uint16_t)1 << i))
-				return i;
+				return GIU_IRQ(i);
 		}
 	} else if (maskh) {
 		for (i = 0; i < 16; i++) {
 			if (maskh & ((uint16_t)1 << i))
-				return i + GIUINT_HIGH_OFFSET;
+				return GIU_IRQ(i + GIUINT_HIGH_OFFSET);
 		}
 	}
 
@@ -374,54 +324,7 @@ static inline int get_irq_pin_number(void)
 	return -1;
 }
 
-static inline void ack_giuint_irq(int pin)
-{
-	if (pin < GIUINT_HIGH_OFFSET) {
-		clear_giuint(GIUINTENL, (uint16_t)1 << pin);
-		write_giuint((uint16_t)1 << pin, GIUINTSTATL);
-	} else {
-		pin -= GIUINT_HIGH_OFFSET;
-		clear_giuint(GIUINTENH, (uint16_t)1 << pin);
-		write_giuint((uint16_t)1 << pin, GIUINTSTATH);
-	}
-}
-
-static inline void end_giuint_irq(int pin)
-{
-	if (pin < GIUINT_HIGH_OFFSET)
-		set_giuint(GIUINTENL, (uint16_t)1 << pin);
-	else
-		set_giuint(GIUINTENH, (uint16_t)1 << (pin - GIUINT_HIGH_OFFSET));
-}
-
-void giuint_irq_dispatch(struct pt_regs *regs)
-{
-	struct vr41xx_giuint_cascade *cascade;
-	unsigned int giuint_irq;
-	int pin;
-
-	pin = get_irq_pin_number();
-	if (pin < 0)
-		return;
-
-	disable_irq(GIUINT_CASCADE_IRQ);
-
-	cascade = &giuint_cascade[pin];
-	giuint_irq = GIU_IRQ(pin);
-	if (cascade->flag == GIUINT_CASCADE) {
-		int irq = cascade->get_irq_number(giuint_irq);
-		ack_giuint_irq(pin);
-		if (irq >= 0)
-			do_IRQ(irq, regs);
-		end_giuint_irq(pin);
-	} else {
-		do_IRQ(giuint_irq, regs);
-	}
-
-	enable_irq(GIUINT_CASCADE_IRQ);
-}
-
-static int __init vr41xx_giu_init(void)
+static int  __init vr41xx_giu_init(void)
 {
 	int i;
 
@@ -437,19 +340,24 @@ static int __init vr41xx_giu_init(void)
 		break;
 	default:
 		printk(KERN_ERR "GIU: Unexpected CPU of NEC VR4100 series\n");
-		return -EINVAL;
+		return -ENODEV;
 	}
 
-	for (i = 0; i < GIUINT_NR_IRQS; i++) {
+	for (i = 0; i < 32; i++) {
 		if (i < GIUINT_HIGH_OFFSET)
 			clear_giuint(GIUINTENL, (uint16_t)1 << i);
 		else
 			clear_giuint(GIUINTENH, (uint16_t)1 << (i - GIUINT_HIGH_OFFSET));
-		giuint_cascade[i].flag = GIUINT_NO_CASCADE;
-		giuint_cascade[i].get_irq_number = no_irq_number;
 	}
 
-	return 0;
+	for (i = GIU_IRQ_BASE; i <= GIU_IRQ_LAST; i++) {
+		if (i < (GIU_IRQ_BASE + GIUINT_HIGH_OFFSET))
+			irq_desc[i].handler = &giuint_low_irq_type;
+		else
+			irq_desc[i].handler = &giuint_high_irq_type;
+	}
+
+	return cascade_irq(GIUINT_IRQ, giu_get_irq);
 }
 
-early_initcall(vr41xx_giu_init);
+postcore_initcall(vr41xx_giu_init);

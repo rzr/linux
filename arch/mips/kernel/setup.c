@@ -507,32 +507,6 @@ static inline void resource_init(void)
 #undef MAXMEM
 #undef MAXMEM_PFN
 
-static int __initdata earlyinit_debug;
-
-static int __init earlyinit_debug_setup(char *str)
-{
-	earlyinit_debug = 1;
-	return 1;
-}
-__setup("earlyinit_debug", earlyinit_debug_setup);
-
-extern initcall_t __earlyinitcall_start, __earlyinitcall_end;
-
-static void __init do_earlyinitcalls(void)
-{
-	initcall_t *call, *start, *end;
-
-	start = &__earlyinitcall_start;
-	end = &__earlyinitcall_end;
-
-	for (call = start; call < end; call++) {
-		if (earlyinit_debug)
-			printk("calling earlyinitcall 0x%p\n", *call);
-
-		(*call)();
-	}
-}
-
 void __init setup_arch(char **cmdline_p)
 {
 	cpu_probe();
@@ -548,10 +522,20 @@ void __init setup_arch(char **cmdline_p)
 #endif
 
 	/* call board setup routine */
-	do_earlyinitcalls();
+	plat_setup();
 
 	strlcpy(command_line, arcs_cmdline, sizeof(command_line));
 	strlcpy(saved_command_line, command_line, COMMAND_LINE_SIZE);
+
+	if(!strstr(saved_command_line, "ip=")) {
+		strlcat(saved_command_line, " ip=", COMMAND_LINE_SIZE);
+		strlcat(saved_command_line, prom_getenv("ipaddr"), COMMAND_LINE_SIZE);
+		strlcat(saved_command_line, "::", COMMAND_LINE_SIZE);
+		strlcat(saved_command_line, prom_getenv("gateway"), COMMAND_LINE_SIZE);
+		strlcat(saved_command_line, ":", COMMAND_LINE_SIZE);
+		strlcat(saved_command_line, prom_getenv("subnetmask"), COMMAND_LINE_SIZE);
+		strlcat(saved_command_line, ":::", COMMAND_LINE_SIZE);
+	}
 
 	*cmdline_p = command_line;
 
@@ -569,3 +553,12 @@ int __init fpu_disable(char *s)
 }
 
 __setup("nofpu", fpu_disable);
+
+int __init dsp_disable(char *s)
+{
+	cpu_data[0].options &= ~MIPS_ASE_DSP;
+
+	return 1;
+}
+
+__setup("nodsp", dsp_disable);

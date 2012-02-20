@@ -31,7 +31,7 @@ void disable_8259A_irq(unsigned int irq);
  * moves to arch independent land
  */
 
-spinlock_t i8259A_lock = SPIN_LOCK_UNLOCKED;
+DEFINE_SPINLOCK(i8259A_lock);
 
 static void end_8259A_irq (unsigned int irq)
 {
@@ -52,14 +52,13 @@ static unsigned int startup_8259A_irq(unsigned int irq)
 }
 
 static struct hw_interrupt_type i8259A_irq_type = {
-	"XT-PIC",
-	startup_8259A_irq,
-	shutdown_8259A_irq,
-	enable_8259A_irq,
-	disable_8259A_irq,
-	mask_and_ack_8259A,
-	end_8259A_irq,
-	NULL
+	.typename = "XT-PIC",
+	.startup = startup_8259A_irq,
+	.shutdown = shutdown_8259A_irq,
+	.enable = enable_8259A_irq,
+	.disable = disable_8259A_irq,
+	.ack = mask_and_ack_8259A,
+	.end = end_8259A_irq,
 };
 
 /*
@@ -322,7 +321,7 @@ void __init init_i8259_irqs (void)
 
 	for (i = 0; i < 16; i++) {
 		irq_desc[i].status = IRQ_DISABLED;
-		irq_desc[i].action = 0;
+		irq_desc[i].action = NULL;
 		irq_desc[i].depth = 1;
 		irq_desc[i].handler = &i8259A_irq_type;
 	}

@@ -1,0 +1,8 @@
+.*.o
+.*.o.d
+.*.cmd
+*.ko
+*.mod.c
+docproc
+fixdep
+split-include

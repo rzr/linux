@@ -578,7 +578,7 @@ einval:	li	v0, -EINVAL
 	sys	sys_fremovexattr	2	/* 4235 */
 	sys	sys_tkill		2
 	sys	sys_sendfile64		5
-	sys	sys_futex		2
+	sys	sys_futex		6
 	sys	sys_sched_setaffinity	3
 	sys	sys_sched_getaffinity	3	/* 4240 */
 	sys	sys_io_setup		2
@@ -618,11 +618,12 @@ einval:	li	v0, -EINVAL
 	sys	sys_mq_notify		2	/* 4275 */
 	sys	sys_mq_getsetattr	3
 	sys	sys_ni_syscall		0	/* sys_vserver */
-	sys	sys_waitid		4
+	sys	sys_waitid		5
 	sys	sys_ni_syscall		0	/* available, was setaltroot */
-	sys	sys_add_key		5
+	sys	sys_add_key		5	/* 4280 */
 	sys	sys_request_key		4
 	sys	sys_keyctl		5
+	sys	sys_set_thread_area	1
 
 	.endm
 

@@ -57,8 +57,14 @@ typedef unsigned long old_sigset_t;		/* at least 32 bits */
 #define SIGXCPU		30	/* CPU limit exceeded (4.2 BSD).  */
 #define SIGXFSZ		31	/* File size limit exceeded (4.2 BSD).  */
 
+#define SIGUSR_HOTPLUG_ADD	46	/* When a usb device is added, hotplug will use this to signal Dvdplayer. */
+#define SIGUSR_HOTPLUG_REMOVE	47	/* When a usb device is removed, hotplug will use this to signal Dvdplayer. */
+#define SIGUSR_BLOCK_ADD	48	/* When a block device is added, hotplug will use this to signal Dvdplayer. */
+#define SIGUSR_BLOCK_REMOVE	49	/* When a block device is removed, hotplug will use this to signal Dvdplayer. */
+#define SIGUSR_RTC_ALARM	50	/* The system is woken up by RTC alarm when in power saving mode. This will be sent to RootApp */
+
 /* These should not be considered constants from userland.  */
-#define SIGRTMIN	32
+#define SIGRTMIN	51
 #define SIGRTMAX	_NSIG
 
 /*
@@ -98,12 +104,39 @@ typedef unsigned long old_sigset_t;		/* at least 32 bits */
 #define MINSIGSTKSZ    2048
 #define SIGSTKSZ       8192
 
+#ifdef __KERNEL__
+
+/*
+ * These values of sa_flags are used only by the kernel as part of the
+ * irq handling routines.
+ *
+ * SA_INTERRUPT is also used by the irq handling routines.
+ * SA_SHIRQ flag is for shared interrupt support on PCI and EISA.
+ */
+#define SA_SAMPLE_RANDOM	SA_RESTART
+
+#ifdef CONFIG_TRAD_SIGNALS
+#define sig_uses_siginfo(ka)	((ka)->sa.sa_flags & SA_SIGINFO)
+#else
+#define sig_uses_siginfo(ka)	(1)
+#endif
+
+#endif /* __KERNEL__ */
+
 #define SIG_BLOCK	1	/* for blocking signals */
 #define SIG_UNBLOCK	2	/* for unblocking signals */
 #define SIG_SETMASK	3	/* for setting the signal mask */
 #define SIG_SETMASK32	256	/* Goodie from SGI for BSD compatibility:
 				   set only the low 32 bit of the sigset.  */
-#include <asm-generic/signal.h>
+
+/* Type of a signal handler.  */
+typedef void __signalfn_t(int);
+typedef __signalfn_t __user *__sighandler_t;
+
+/* Fake signal functions */
+#define SIG_DFL	((__sighandler_t)0)	/* default signal handling */
+#define SIG_IGN	((__sighandler_t)1)	/* ignore signal */
+#define SIG_ERR	((__sighandler_t)-1)	/* error return from signal */
 
 struct sigaction {
 	unsigned int	sa_flags;

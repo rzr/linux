@@ -35,6 +35,9 @@
 #include <asm/pgalloc.h>
 #include <asm/tlb.h>
 
+#define DMA_ZONE_SIZE_32 16 
+#define DVR_ZONE_SIZE_64 32 
+
 DEFINE_PER_CPU(struct mmu_gather, mmu_gathers);
 
 unsigned long highstart_pfn, highend_pfn;
@@ -83,7 +86,7 @@ pte_t *kmap_pte;
 pgprot_t kmap_prot;
 
 #define kmap_get_fixmap_pte(vaddr)					\
-	pte_offset_kernel(pmd_offset(pgd_offset_k(vaddr), (vaddr)), (vaddr))
+	pte_offset_kernel(pmd_offset(pud_offset(pgd_offset_k(vaddr), (vaddr)), (vaddr)), (vaddr))
 
 static void __init kmap_init(void)
 {
@@ -96,36 +99,42 @@ static void __init kmap_init(void)
 	kmap_prot = PAGE_KERNEL;
 }
 
-#ifdef CONFIG_MIPS64
-static void __init fixrange_init(unsigned long start, unsigned long end,
+#ifdef CONFIG_MIPS32
+void __init fixrange_init(unsigned long start, unsigned long end,
 	pgd_t *pgd_base)
 {
 	pgd_t *pgd;
+	pud_t *pud;
 	pmd_t *pmd;
 	pte_t *pte;
-	int i, j;
+	int i, j, k;
 	unsigned long vaddr;
 
 	vaddr = start;
 	i = __pgd_offset(vaddr);
-	j = __pmd_offset(vaddr);
+	j = __pud_offset(vaddr);
+	k = __pmd_offset(vaddr);
 	pgd = pgd_base + i;
 
 	for ( ; (i < PTRS_PER_PGD) && (vaddr != end); pgd++, i++) {
-		pmd = (pmd_t *)pgd;
-		for (; (j < PTRS_PER_PMD) && (vaddr != end); pmd++, j++) {
-			if (pmd_none(*pmd)) {
-				pte = (pte_t *) alloc_bootmem_low_pages(PAGE_SIZE);
-				set_pmd(pmd, __pmd(pte));
-				if (pte != pte_offset_kernel(pmd, 0))
-					BUG();
+		pud = (pud_t *)pgd;
+		for ( ; (j < PTRS_PER_PUD) && (vaddr != end); pud++, j++) {
+			pmd = (pmd_t *)pud;
+			for (; (k < PTRS_PER_PMD) && (vaddr != end); pmd++, k++) {
+				if (pmd_none(*pmd)) {
+					pte = (pte_t *) alloc_bootmem_low_pages(PAGE_SIZE);
+					set_pmd(pmd, __pmd(pte));
+					if (pte != pte_offset_kernel(pmd, 0))
+						BUG();
+				}
+				vaddr += PMD_SIZE;
 			}
-			vaddr += PMD_SIZE;
+			k = 0;
 		}
 		j = 0;
 	}
 }
-#endif /* CONFIG_MIPS64 */
+#endif /* CONFIG_MIPS32 */
 #endif /* CONFIG_HIGHMEM */
 
 #ifndef CONFIG_DISCONTIGMEM
@@ -133,7 +142,7 @@ extern void pagetable_init(void);
 
 void __init paging_init(void)
 {
-	unsigned long zones_size[MAX_NR_ZONES] = {0, 0, 0};
+	unsigned long zones_size[MAX_NR_ZONES] = {0, 0, 0, 0};
 	unsigned long max_dma, high, low;
 
 	pagetable_init();
@@ -146,6 +155,9 @@ void __init paging_init(void)
 	low = max_low_pfn;
 	high = highend_pfn;
 
+	printk("  show info: max_low_pfn:%d\n", max_low_pfn);
+	printk("  show info: min_low_pfn:%d\n", min_low_pfn);
+
 #ifdef CONFIG_ISA
 	if (low < max_dma)
 		zones_size[ZONE_DMA] = low;
@@ -153,8 +165,15 @@ void __init paging_init(void)
 		zones_size[ZONE_DMA] = max_dma;
 		zones_size[ZONE_NORMAL] = low - max_dma;
 	}
-#else
-	zones_size[ZONE_DMA] = low;
+#else 
+//	zones_size[ZONE_DMA] = low;
+	if (low > 32*256) {
+		zones_size[ZONE_DMA] = low-(DVR_ZONE_SIZE_64*256);
+		zones_size[ZONE_DVR] = DVR_ZONE_SIZE_64*256;
+	} else {
+		zones_size[ZONE_DMA] = DMA_ZONE_SIZE_32*256;
+		zones_size[ZONE_DVR] = low-(DMA_ZONE_SIZE_32*256);
+	}
 #endif
 #ifdef CONFIG_HIGHMEM
 	if (cpu_has_dc_aliases) {

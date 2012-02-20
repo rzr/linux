@@ -1,0 +1,8 @@
+.*.o
+.*.o.d
+.*.cmd
+genksyms
+keywords.c
+lex.c
+parse.c
+parse.h

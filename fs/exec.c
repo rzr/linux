@@ -234,7 +234,7 @@ static int copy_strings(int argc, char __user * __user * argv,
 			page = bprm->page[i];
 			new = 0;
 			if (!page) {
-				page = alloc_page(GFP_HIGHUSER);
+				page = alloc_page(GFP_DVRUSER);
 				bprm->page[i] = page;
 				if (!page) {
 					ret = -ENOMEM;

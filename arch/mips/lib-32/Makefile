@@ -2,10 +2,10 @@
 # Makefile for MIPS-specific library files..
 #
 
-lib-y	+= csum_partial.o memset.o watch.o 
+lib-y	+= csum_partial.o memset.o watch.o
 
-obj-$(CONFIG_CPU_MIPS32)	+= dump_tlb.o
-obj-$(CONFIG_CPU_MIPS64)	+= dump_tlb.o
+obj-$(CONFIG_CPU_MIPS32_R1)	+= dump_tlb.o
+obj-$(CONFIG_CPU_MIPS64_R1)	+= dump_tlb.o
 obj-$(CONFIG_CPU_NEVADA)	+= dump_tlb.o
 obj-$(CONFIG_CPU_R10000)	+= dump_tlb.o
 obj-$(CONFIG_CPU_R3000)		+= r3k_dump_tlb.o

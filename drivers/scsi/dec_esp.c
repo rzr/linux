@@ -18,7 +18,7 @@
  * 20001005	- Initialization fixes for 2.4.0-test9
  * 			  Florian Lohoff <flo@rfc822.org>
  *
- *	Copyright (C) 2002, 2003  Maciej W. Rozycki
+ *	Copyright (C) 2002, 2003, 2005  Maciej W. Rozycki
  */
 
 #include <linux/kernel.h>
@@ -41,6 +41,7 @@
 #include <asm/dec/ioasic_addrs.h>
 #include <asm/dec/ioasic_ints.h>
 #include <asm/dec/machtype.h>
+#include <asm/dec/system.h>
 #include <asm/dec/tc.h>
 
 #define DEC_SCSI_SREG 0
@@ -54,7 +55,7 @@
 
 static int  dma_bytes_sent(struct NCR_ESP *esp, int fifo_count);
 static void dma_drain(struct NCR_ESP *esp);
-static int  dma_can_transfer(struct NCR_ESP *esp, struct scsi_cmnd *sp);
+static int  dma_can_transfer(struct NCR_ESP *esp, Scsi_Cmnd * sp);
 static void dma_dump_state(struct NCR_ESP *esp);
 static void dma_init_read(struct NCR_ESP *esp, u32 vaddress, int length);
 static void dma_init_write(struct NCR_ESP *esp, u32 vaddress, int length);
@@ -63,9 +64,9 @@ static void dma_ints_on(struct NCR_ESP *esp);
 static int  dma_irq_p(struct NCR_ESP *esp);
 static int  dma_ports_p(struct NCR_ESP *esp);
 static void dma_setup(struct NCR_ESP *esp, u32 addr, int count, int write);
-static void dma_mmu_get_scsi_one(struct NCR_ESP *esp, struct scsi_cmnd * sp);
-static void dma_mmu_get_scsi_sgl(struct NCR_ESP *esp, struct scsi_cmnd * sp);
-static void dma_advance_sg(struct scsi_cmnd * sp);
+static void dma_mmu_get_scsi_one(struct NCR_ESP *esp, Scsi_Cmnd * sp);
+static void dma_mmu_get_scsi_sgl(struct NCR_ESP *esp, Scsi_Cmnd * sp);
+static void dma_advance_sg(Scsi_Cmnd * sp);
 
 static void pmaz_dma_drain(struct NCR_ESP *esp);
 static void pmaz_dma_init_read(struct NCR_ESP *esp, u32 vaddress, int length);
@@ -73,7 +74,7 @@ static void pmaz_dma_init_write(struct NCR_ESP *esp, u32 vaddress, int length);
 static void pmaz_dma_ints_off(struct NCR_ESP *esp);
 static void pmaz_dma_ints_on(struct NCR_ESP *esp);
 static void pmaz_dma_setup(struct NCR_ESP *esp, u32 addr, int count, int write);
-static void pmaz_dma_mmu_get_scsi_one(struct NCR_ESP *esp, struct scsi_cmnd * sp);
+static void pmaz_dma_mmu_get_scsi_one(struct NCR_ESP *esp, Scsi_Cmnd * sp);
 
 #define TC_ESP_RAM_SIZE 0x20000
 #define ESP_TGT_DMA_SIZE ((TC_ESP_RAM_SIZE/7) & ~(sizeof(int)-1))
@@ -97,7 +98,7 @@ static irqreturn_t scsi_dma_merr_int(int, void *, struct pt_regs *);
 static irqreturn_t scsi_dma_err_int(int, void *, struct pt_regs *);
 static irqreturn_t scsi_dma_int(int, void *, struct pt_regs *);
 
-static int dec_esp_detect(struct scsi_host_template * tpnt);
+int dec_esp_detect(Scsi_Host_Template * tpnt);
 
 static int dec_esp_release(struct Scsi_Host *shost)
 {
@@ -109,9 +110,9 @@ static int dec_esp_release(struct Scsi_Host *shost)
 	return 0;
 }
 
-static struct scsi_host_template driver_template = {
+static Scsi_Host_Template driver_template = {
 	.proc_name		= "dec_esp",
-	.proc_info		= esp_proc_info,
+	.proc_info		= &esp_proc_info,
 	.name			= "NCR53C94",
 	.detect			= dec_esp_detect,
 	.slave_alloc		= esp_slave_alloc,
@@ -132,7 +133,7 @@ static struct scsi_host_template driver_template = {
 #include "scsi_module.c"
 
 /***************************************************************** Detection */
-static int dec_esp_detect(Scsi_Host_Template * tpnt)
+int dec_esp_detect(Scsi_Host_Template * tpnt)
 {
 	struct NCR_ESP *esp;
 	struct ConfigDev *esp_dev;
@@ -183,7 +184,8 @@ static int dec_esp_detect(Scsi_Host_Template * tpnt)
 		esp->dregs = 0;
 
 		/* ESP register base */
-		esp->eregs = (struct ESP_regs *) (system_base + IOASIC_SCSI);
+		esp->eregs = (void *)CKSEG1ADDR(dec_kn_slot_base +
+						IOASIC_SCSI);
 
 		/* Set the command buffer */
 		esp->esp_command = (volatile unsigned char *) cmd_buffer;
@@ -228,10 +230,11 @@ static int dec_esp_detect(Scsi_Host_Template * tpnt)
 			mem_start = get_tc_base_addr(slot);
 
 			/* Store base addr into esp struct */
-			esp->slot = PHYSADDR(mem_start);
+			esp->slot = mem_start;
 
 			esp->dregs = 0;
-			esp->eregs = (struct ESP_regs *) (mem_start + DEC_SCSI_SREG);
+			esp->eregs = (void *)CKSEG1ADDR(mem_start +
+							DEC_SCSI_SREG);
 			esp->do_pio_cmds = 1;
 
 			/* Set the command buffer */
@@ -376,7 +379,7 @@ static void dma_drain(struct NCR_ESP *esp)
 	}
 }
 
-static int dma_can_transfer(struct NCR_ESP *esp, struct scsi_cmnd * sp)
+static int dma_can_transfer(struct NCR_ESP *esp, Scsi_Cmnd * sp)
 {
 	return sp->SCp.this_residual;
 }
@@ -488,12 +491,12 @@ static void dma_setup(struct NCR_ESP *esp, u32 addr, int count, int write)
 		dma_init_write(esp, addr, count);
 }
 
-static void dma_mmu_get_scsi_one(struct NCR_ESP *esp, struct scsi_cmnd * sp)
+static void dma_mmu_get_scsi_one(struct NCR_ESP *esp, Scsi_Cmnd * sp)
 {
 	sp->SCp.ptr = (char *)virt_to_phys(sp->request_buffer);
 }
 
-static void dma_mmu_get_scsi_sgl(struct NCR_ESP *esp, struct scsi_cmnd * sp)
+static void dma_mmu_get_scsi_sgl(struct NCR_ESP *esp, Scsi_Cmnd * sp)
 {
 	int sz = sp->SCp.buffers_residual;
 	struct scatterlist *sg = sp->SCp.buffer;
@@ -505,7 +508,7 @@ static void dma_mmu_get_scsi_sgl(struct NCR_ESP *esp, struct scsi_cmnd * sp)
 	sp->SCp.ptr = (char *)(sp->SCp.buffer->dma_address);
 }
 
-static void dma_advance_sg(struct scsi_cmnd * sp)
+static void dma_advance_sg(Scsi_Cmnd * sp)
 {
 	sp->SCp.ptr = (char *)(sp->SCp.buffer->dma_address);
 }
@@ -513,14 +516,15 @@ static void dma_advance_sg(struct scsi_cmnd * sp)
 static void pmaz_dma_drain(struct NCR_ESP *esp)
 {
 	memcpy(phys_to_virt(esp_virt_buffer),
-		(void *)KSEG1ADDR(esp->slot + DEC_SCSI_SRAM + ESP_TGT_DMA_SIZE),
-		scsi_current_length);
+	       (void *)CKSEG1ADDR(esp->slot + DEC_SCSI_SRAM +
+				  ESP_TGT_DMA_SIZE),
+	       scsi_current_length);
 }
 
 static void pmaz_dma_init_read(struct NCR_ESP *esp, u32 vaddress, int length)
 {
 	volatile u32 *dmareg =
-		(volatile u32 *)KSEG1ADDR(esp->slot + DEC_SCSI_DMAREG);
+		(volatile u32 *)CKSEG1ADDR(esp->slot + DEC_SCSI_DMAREG);
 
 	if (length > ESP_TGT_DMA_SIZE)
 		length = ESP_TGT_DMA_SIZE;
@@ -536,9 +540,10 @@ static void pmaz_dma_init_read(struct NCR_ESP *esp, u32 vaddress, int length)
 static void pmaz_dma_init_write(struct NCR_ESP *esp, u32 vaddress, int length)
 {
 	volatile u32 *dmareg =
-		(volatile u32 *)KSEG1ADDR(esp->slot + DEC_SCSI_DMAREG);
+		(volatile u32 *)CKSEG1ADDR(esp->slot + DEC_SCSI_DMAREG);
 
-	memcpy((void *)KSEG1ADDR(esp->slot + DEC_SCSI_SRAM + ESP_TGT_DMA_SIZE),
+	memcpy((void *)CKSEG1ADDR(esp->slot + DEC_SCSI_SRAM +
+				  ESP_TGT_DMA_SIZE),
 	       phys_to_virt(vaddress), length);
 
 	wmb();
@@ -567,7 +572,7 @@ static void pmaz_dma_setup(struct NCR_ESP *esp, u32 addr, int count, int write)
 		pmaz_dma_init_write(esp, addr, count);
 }
 
-static void pmaz_dma_mmu_get_scsi_one(struct NCR_ESP *esp, struct scsi_cmnd * sp)
+static void pmaz_dma_mmu_get_scsi_one(struct NCR_ESP *esp, Scsi_Cmnd * sp)
 {
 	sp->SCp.ptr = (char *)virt_to_phys(sp->request_buffer);
 }

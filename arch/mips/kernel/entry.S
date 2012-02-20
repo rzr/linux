@@ -19,35 +19,91 @@
 #include <asm/war.h>
 
 #ifdef CONFIG_PREEMPT
-	.macro	preempt_stop reg=t0
+	.macro	preempt_stop
 	.endm
 #else
-	.macro	preempt_stop reg=t0
-	local_irq_disable \reg
+	.macro	preempt_stop
+	local_irq_disable
 	.endm
 #define resume_kernel	restore_all
 #endif
 
 	.text
 	.align	5
+#ifdef CONFIG_REALTEK_USE_FAST_INTERRUPT
+FEXPORT(fast_ret_from_irq)
+/*
+ *       LONG_L  t0, PT_STATUS(sp)               # returning to kernel mode?
+ *       andi    t0, t0, KU_USER
+ *       beqz    t0, resume_kernel
+ */
+	local_irq_disable
+        .set    noat
+        FAST_RESTORE_ALL
+        .set    at
+#endif
+
+#ifdef CONFIG_REALTEK_USE_SHADOW_REGISTERS
+FEXPORT(ret_from_irq)
+        LONG_L  t0, PT_STATUS(sp)               # returning to kernel mode?
+        andi    t0, t0, KU_USER
+        beqz    t0, resume_kernel
+
+my_resume_userspace:
+        local_irq_disable               # make sure we dont miss an
+                                        # interrupt setting need_resched
+                                        # between sampling and return
+        LONG_L  a2, TI_FLAGS($28)       # current->work
+        andi    t0, a2, _TIF_WORK_MASK  # (ignoring syscall_trace)
+        bnez    t0, my_work_pending
+        j       my_restore_all
+
+my_work_pending:
+        MY_SAVE_ON_DEMAND
+        andi    t0, a2, _TIF_NEED_RESCHED # a2 is preloaded with TI_FLAGS
+        beqz    t0, my_work_notifysig
+my_work_resched:
+        jal     schedule
+
+        local_irq_disable               # make sure need_resched and
+                                        # signals dont change between
+                                        # sampling and return
+        LONG_L  a2, TI_FLAGS($28)
+        andi    t0, a2, _TIF_WORK_MASK  # is there any work to be done
+                                        # other than syscall tracing?
+        beqz    t0, restore_all
+        andi    t0, a2, _TIF_NEED_RESCHED
+        bnez    t0, my_work_resched
+
+my_work_notifysig:                      # deal with pending signals and
+                                        # notify-resume requests
+        move    a0, sp
+        li      a1, 0
+        jal     do_notify_resume        # a2 already loaded
+        j       restore_all
+#endif
+
 FEXPORT(ret_from_exception)
 	preempt_stop
+#ifndef CONFIG_REALTEK_USE_SHADOW_REGISTERS
 FEXPORT(ret_from_irq)
+#endif
 	LONG_L	t0, PT_STATUS(sp)		# returning to kernel mode?
 	andi	t0, t0, KU_USER
 	beqz	t0, resume_kernel
 
-FEXPORT(resume_userspace)
-	local_irq_disable	t0	# make sure we dont miss an
+resume_userspace:
+	local_irq_disable		# make sure we dont miss an
 					# interrupt setting need_resched
 					# between sampling and return
 	LONG_L	a2, TI_FLAGS($28)	# current->work
-	andi	a2, _TIF_WORK_MASK	# (ignoring syscall_trace)
-	bnez	a2, work_pending
+	andi	t0, a2, _TIF_WORK_MASK	# (ignoring syscall_trace)
+	bnez	t0, work_pending
 	j	restore_all
 
 #ifdef CONFIG_PREEMPT
-ENTRY(resume_kernel)
+resume_kernel:
+	local_irq_disable
 	lw	t0, TI_PRE_COUNT($28)
 	bnez	t0, restore_all
 need_resched:
@@ -57,12 +113,7 @@ need_resched:
 	LONG_L	t0, PT_STATUS(sp)		# Interrupts off?
 	andi	t0, 1
 	beqz	t0, restore_all
-	li	t0, PREEMPT_ACTIVE
-	sw	t0, TI_PRE_COUNT($28)
-	local_irq_enable t0
-	jal	schedule
-	sw	zero, TI_PRE_COUNT($28)
-	local_irq_disable t0
+	jal	preempt_schedule_irq
 	b	need_resched
 #endif
 
@@ -88,13 +139,20 @@ FEXPORT(restore_partial)		# restore partial frame
 	RESTORE_SP_AND_RET
 	.set	at
 
-FEXPORT(work_pending)
-	andi	t0, a2, _TIF_NEED_RESCHED
+#ifdef CONFIG_REALTEK_USE_SHADOW_REGISTERS
+FEXPORT(my_restore_all)                 # restore full frame
+        .set    noat
+        MY_RESTORE_ALL
+        .set    at
+#endif
+
+work_pending:
+	andi	t0, a2, _TIF_NEED_RESCHED # a2 is preloaded with TI_FLAGS
 	beqz	t0, work_notifysig
 work_resched:
 	jal	schedule
 
-	local_irq_disable t0		# make sure need_resched and
+	local_irq_disable		# make sure need_resched and
 					# signals dont change between
 					# sampling and return
 	LONG_L	a2, TI_FLAGS($28)
@@ -113,11 +171,10 @@ work_notifysig:				# deal with pending signals and
 
 FEXPORT(syscall_exit_work_partial)
 	SAVE_STATIC
-FEXPORT(syscall_exit_work)
-	LONG_L	t0, TI_FLAGS($28)
-	li	t1, _TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT
-	and	t0, t1
-	beqz	t0, work_pending	# trace bit is set
+syscall_exit_work:
+	li	t0, _TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT
+	and	t0, a2			# a2 is preloaded with TI_FLAGS
+	beqz	t0, work_pending	# trace bit set?
 	local_irq_enable		# could let do_syscall_trace()
 					# call schedule() instead
 	move	a0, sp
@@ -128,28 +185,25 @@ FEXPORT(syscall_exit_work)
 /*
  * Common spurious interrupt handler.
  */
-	.text
-	.align  5
 LEAF(spurious_interrupt)
 	/*
 	 * Someone tried to fool us by sending an interrupt but we
 	 * couldn't find a cause for it.
 	 */
+	PTR_LA	t1, irq_err_count
 #ifdef CONFIG_SMP
-	lui     t1, %hi(irq_err_count)
-1:	ll      t0, %lo(irq_err_count)(t1)
+1:	ll      t0, (t1)
 	addiu   t0, 1
-	sc      t0, %lo(irq_err_count)(t1)
+	sc      t0, (t1)
 #if R10000_LLSC_WAR
 	beqzl	t0, 1b
 #else
 	beqz	t0, 1b
 #endif
 #else
-	lui     t1, %hi(irq_err_count)
-	lw      t0, %lo(irq_err_count)(t1)
+	lw      t0, (t1)
 	addiu   t0, 1
-	sw      t0, %lo(irq_err_count)(t1)
+	sw      t0, (t1)
 #endif
 	j	ret_from_irq
 	END(spurious_interrupt)

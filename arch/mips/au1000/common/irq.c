@@ -253,52 +253,70 @@ void restore_local_and_enable(int controller, unsigned long mask)
 
 
 static struct hw_interrupt_type rise_edge_irq_type = {
-	"Au1000 Rise Edge",
-	startup_irq,
-	shutdown_irq,
-	local_enable_irq,
-	local_disable_irq,
-	mask_and_ack_rise_edge_irq,
-	end_irq,
-	NULL
+	.typename = "Au1000 Rise Edge",
+	.startup = startup_irq,
+	.shutdown = shutdown_irq,
+	.enable = local_enable_irq,
+	.disable = local_disable_irq,
+	.ack = mask_and_ack_rise_edge_irq,
+	.end = end_irq,
 };
 
 static struct hw_interrupt_type fall_edge_irq_type = {
-	"Au1000 Fall Edge",
-	startup_irq,
-	shutdown_irq,
-	local_enable_irq,
-	local_disable_irq,
-	mask_and_ack_fall_edge_irq,
-	end_irq,
-	NULL
+	.typename = "Au1000 Fall Edge",
+	.startup = startup_irq,
+	.shutdown = shutdown_irq,
+	.enable = local_enable_irq,
+	.disable = local_disable_irq,
+	.ack = mask_and_ack_fall_edge_irq,
+	.end = end_irq,
 };
 
 static struct hw_interrupt_type either_edge_irq_type = {
-	"Au1000 Rise or Fall Edge",
-	startup_irq,
-	shutdown_irq,
-	local_enable_irq,
-	local_disable_irq,
-	mask_and_ack_either_edge_irq,
-	end_irq,
-	NULL
+	.typename = "Au1000 Rise or Fall Edge",
+	.startup = startup_irq,
+	.shutdown = shutdown_irq,
+	.enable = local_enable_irq,
+	.disable = local_disable_irq,
+	.ack = mask_and_ack_either_edge_irq,
+	.end = end_irq,
 };
 
 static struct hw_interrupt_type level_irq_type = {
-	"Au1000 Level",
-	startup_irq,
-	shutdown_irq,
-	local_enable_irq,
-	local_disable_irq,
-	mask_and_ack_level_irq,
-	end_irq,
-	NULL
+	.typename = "Au1000 Level",
+	.startup = startup_irq,
+	.shutdown = shutdown_irq,
+	.enable = local_enable_irq,
+	.disable = local_disable_irq,
+	.ack = mask_and_ack_level_irq,
+	.end = end_irq,
 };
 
 #ifdef CONFIG_PM
-void startup_match20_interrupt(void)
+void startup_match20_interrupt(void (*handler)(int, void *, struct pt_regs *))
 {
+	static struct irqaction action;
+	/* This is a big problem.... since we didn't use request_irq
+	   when kernel/irq.c calls probe_irq_xxx this interrupt will
+	   be probed for usage. This will end up disabling the device :(
+
+       Give it a bogus "action" pointer -- this will keep it from
+	   getting auto-probed!
+
+       By setting the status to match that of request_irq() we
+       can avoid it.  --cgray
+	*/
+	action.dev_id = handler;
+	action.flags = 0;
+	action.mask = 0;
+	action.name = "Au1xxx TOY";
+	action.handler = handler;
+	action.next = NULL;
+
+	irq_desc[AU1000_TOY_MATCH2_INT].action = &action;
+	irq_desc[AU1000_TOY_MATCH2_INT].status
+		 &= ~(IRQ_DISABLED | IRQ_AUTODETECT | IRQ_WAITING | IRQ_INPROGRESS);
+
 	local_enable_irq(AU1000_TOY_MATCH2_INT);
 }
 #endif
@@ -492,7 +510,7 @@ void intc0_req0_irqdispatch(struct pt_regs *regs)
 	intc0_req0 |= au_readl(IC0_REQ0INT);
 
 	if (!intc0_req0) return;
-
+#ifdef AU1000_USB_DEV_REQ_INT
 	/*
 	 * Because of the tight timing of SETUP token to reply
 	 * transactions, the USB devices-side packet complete
@@ -503,7 +521,7 @@ void intc0_req0_irqdispatch(struct pt_regs *regs)
 		do_IRQ(AU1000_USB_DEV_REQ_INT, regs);
 		return;
 	}
-
+#endif
 	irq = au_ffs(intc0_req0) - 1;
 	intc0_req0 &= ~(1<<irq);
 	do_IRQ(irq, regs);
@@ -521,17 +539,7 @@ void intc0_req1_irqdispatch(struct pt_regs *regs)
 
 	irq = au_ffs(intc0_req1) - 1;
 	intc0_req1 &= ~(1<<irq);
-#ifdef CONFIG_PM
-	if (irq == AU1000_TOY_MATCH2_INT) {
-		mask_and_ack_rise_edge_irq(irq);
-		counter0_irq(irq, NULL, regs);
-		local_enable_irq(irq);
-	}
-	else
-#endif
-	{
-		do_IRQ(irq, regs);
-	}
+	do_IRQ(irq, regs);
 }
 
 

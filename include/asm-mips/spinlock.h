@@ -140,6 +140,18 @@ typedef struct {
 
 #define rwlock_init(x)  do { *(x) = RW_LOCK_UNLOCKED; } while(0)
 
+/*
+ * read_can_lock - would read_trylock() succeed?
+ * @lock: the rwlock in question.
+ */
+#define read_can_lock(rw)	((rw)->lock >= 0)
+
+/*
+ * write_can_lock - would write_trylock() succeed?
+ * @lock: the rwlock in question.
+ */
+#define write_can_lock(rw)	(!(rw)->lock)
+
 static inline void _raw_read_lock(rwlock_t *rw)
 {
 	unsigned int tmp;
@@ -218,8 +230,7 @@ static inline void _raw_write_lock(rwlock_t *rw)
 		"	 lui	%1, 0x8000				\n"
 		"	sc	%1, %0					\n"
 		"	beqzl	%1, 1b					\n"
-		"	 nop						\n"
-		"	sync						\n"
+		"	 sync						\n"
 		"	.set	reorder					\n"
 		: "=m" (rw->lock), "=&r" (tmp)
 		: "m" (rw->lock)
@@ -232,8 +243,7 @@ static inline void _raw_write_lock(rwlock_t *rw)
 		"	 lui	%1, 0x8000				\n"
 		"	sc	%1, %0					\n"
 		"	beqz	%1, 1b					\n"
-		"	 nop						\n"
-		"	sync						\n"
+		"	 sync						\n"
 		"	.set	reorder					\n"
 		: "=m" (rw->lock), "=&r" (tmp)
 		: "m" (rw->lock)
@@ -267,8 +277,7 @@ static inline int _raw_write_trylock(rwlock_t *rw)
 		"	 lui	%1, 0x8000				\n"
 		"	sc	%1, %0					\n"
 		"	beqzl	%1, 1b					\n"
-		"	 nop						\n"
-		"	sync						\n"
+		"	 sync						\n"
 		"	li	%2, 1					\n"
 		"	.set	reorder					\n"
 		"2:							\n"

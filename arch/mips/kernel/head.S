@@ -131,7 +131,9 @@
 EXPORT(stext)					# used for profiling
 EXPORT(_stext)
 
+#ifndef CONFIG_QEMU
 	__INIT
+#endif
 
 NESTED(kernel_entry, 16, sp)			# kernel entry point
 	setup_c0_status_pri
@@ -157,6 +159,7 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 	LONG_S		a2, fw_arg2
 	LONG_S		a3, fw_arg3
 
+	MTC0		zero, CP0_CONTEXT	# clear context register
 	PTR_LA		$28, init_thread_union
 	PTR_ADDIU	sp, $28, _THREAD_SIZE - 32
 	set_saved_sp	sp, t0, t1
@@ -164,6 +167,10 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 
 	j		start_kernel
 	END(kernel_entry)
+
+#ifdef CONFIG_QEMU
+	__INIT
+#endif
 
 #ifdef CONFIG_SMP
 /*
@@ -200,19 +207,13 @@ NESTED(smp_bootstrap, 16, sp)
 	.comm	fw_arg2, SZREG, SZREG
 	.comm	fw_arg3, SZREG, SZREG
 
-	.macro	page name, order=0
-	.globl	\name
-\name:	.size	\name, (_PAGE_SIZE << \order)
-	.org	. + (_PAGE_SIZE << \order)
-	.type	\name, @object
+	.macro page name, order
+	.comm	\name, (_PAGE_SIZE << \order), (_PAGE_SIZE << \order)
 	.endm
 
-	.data
-	.align	PAGE_SHIFT
-
 	/*
-	 * ... but on 64-bit we've got three-level pagetables with a
-	 * slightly different layout ...
+	 * On 64-bit we've got three-level pagetables with a slightly
+	 * different layout ...
 	 */
 	page	swapper_pg_dir, _PGD_ORDER
 #ifdef CONFIG_MIPS64

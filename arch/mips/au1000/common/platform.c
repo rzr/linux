@@ -7,6 +7,7 @@
  * License version 2.  This program is licensed "as is" without any
  * warranty of any kind, whether express or implied.
  */
+#include <linux/config.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -41,8 +42,42 @@ static struct platform_device au1xxx_usb_ohci_device = {
 	.resource	= au1xxx_usb_ohci_resources,
 };
 
+/*** AU1100 LCD controller ***/
+
+#ifdef CONFIG_FB_AU1100
+static struct resource au1100_lcd_resources[] = {
+	[0] = {
+		.start          = LCD_PHYS_ADDR,
+		.end            = LCD_PHYS_ADDR + 0x800 - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start          = AU1100_LCD_INT,
+		.end            = AU1100_LCD_INT,
+		.flags          = IORESOURCE_IRQ,
+	}
+};
+
+static u64 au1100_lcd_dmamask = ~(u32)0;
+
+static struct platform_device au1100_lcd_device = {
+	.name           = "au1100-lcd",
+	.id             = 0,
+	.dev = {
+		.dma_mask               = &au1100_lcd_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(au1100_lcd_resources),
+	.resource       = au1100_lcd_resources,
+};
+#endif
+
+
 static struct platform_device *au1xxx_platform_devices[] __initdata = {
 	&au1xxx_usb_ohci_device,
+#ifdef CONFIG_FB_AU1100
+	&au1100_lcd_device,
+#endif
 };
 
 int au1xxx_platform_init(void)

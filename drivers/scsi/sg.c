@@ -1027,8 +1027,7 @@ sg_ioctl(struct inode *inode, struct file *filp,
 		if (sdp->detached)
 			return -ENODEV;
 		if (filp->f_flags & O_NONBLOCK) {
-			if (test_bit(SHOST_RECOVERY,
-				     &sdp->device->host->shost_state))
+			if (scsi_host_in_recovery(sdp->device->host))
 				return -EBUSY;
 		} else if (!scsi_block_when_processing_errors(sdp->device))
 			return -EBUSY;
@@ -1514,7 +1513,8 @@ sg_add(struct class_device *cl_dev)
 	Sg_device *sdp = NULL;
 	struct cdev * cdev = NULL;
 	int error, k;
-
+	char sgname[64], symlink[16];
+	
 	disk = alloc_disk(1);
 	if (!disk) {
 		printk(KERN_WARNING "alloc_disk failed\n");
@@ -1566,6 +1566,11 @@ sg_add(struct class_device *cl_dev)
 					"'generic' back to sg%d\n", k);
 	} else
 		printk(KERN_WARNING "sg_add: sg_sys INvalid\n");
+
+	sprintf(symlink, "sg%d", k);
+	sprintf(sgname, "%s/generic", scsidp->devfs_name);
+
+	devfs_mk_symlink(symlink, sgname);
 
 	printk(KERN_NOTICE
 	       "Attached scsi generic sg%d at scsi%d, channel"
@@ -1635,6 +1640,7 @@ sg_remove(struct class_device *cl_dev)
 	write_unlock_irqrestore(&sg_dev_arr_lock, iflags);
 
 	if (sdp) {
+		devfs_remove("sg%d", k);
 		sysfs_remove_link(&scsidp->sdev_gendev.kobj, "generic");
 		class_simple_device_remove(MKDEV(SCSI_GENERIC_MAJOR, k));
 		cdev_del(sdp->cdev);

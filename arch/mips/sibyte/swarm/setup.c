@@ -84,7 +84,7 @@ int swarm_be_handler(struct pt_regs *regs, int is_fixup)
 	return (is_fixup ? MIPS_BE_FIXUP : MIPS_BE_FATAL);
 }
 
-static int __init swarm_setup(void)
+void __init plat_setup(void)
 {
 	sb1250_setup();
 
@@ -98,7 +98,7 @@ static int __init swarm_setup(void)
 		rtc_get_time = xicor_get_time;
 		rtc_set_time = xicor_set_time;
 	}
- 
+
 	if (m41t81_probe()) {
 		printk("swarm setup: M41T81 RTC detected.\n");
 		rtc_get_time = m41t81_get_time;
@@ -133,11 +133,7 @@ static int __init swarm_setup(void)
        };
        /* XXXKW for CFE, get lines/cols from environment */
 #endif
-
-	return 0;
 }
-
-early_initcall(swarm_setup);
 
 #ifdef LEDS_PHYS
 

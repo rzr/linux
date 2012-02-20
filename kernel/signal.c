@@ -910,6 +910,10 @@ force_sig_info(int sig, struct siginfo *info, struct task_struct *t)
 	unsigned long int flags;
 	int ret;
 
+	if ((sig == SIGKILL) || (sig == SIGSEGV)) {
+		printk("sending signal: %d \n", sig);
+		dump_stack();
+	}
 	spin_lock_irqsave(&t->sighand->siglock, flags);
 	if (sigismember(&t->blocked, sig) || t->sighand->action[sig-1].sa.sa_handler == SIG_IGN) {
 		t->sighand->action[sig-1].sa.sa_handler = SIG_DFL;

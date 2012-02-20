@@ -3,6 +3,8 @@
  * Author: Jun Sun, jsun@mvista.com or jsun@junsun.net
  *
  * Copyright (C) 2001 Ralf Baechle
+ * Copyright (C) 2005  MIPS Technologies, Inc.  All rights reserved.
+ *      Author: Maciej W. Rozycki <macro@mips.com>
  *
  * This file define the irq handler for MIPS CPU interrupts.
  *
@@ -37,13 +39,14 @@ static int mips_cpu_irq_base;
 
 static inline void unmask_mips_irq(unsigned int irq)
 {
-	clear_c0_cause(0x100 << (irq - mips_cpu_irq_base));
 	set_c0_status(0x100 << (irq - mips_cpu_irq_base));
+	irq_enable_hazard();
 }
 
 static inline void mask_mips_irq(unsigned int irq)
 {
 	clear_c0_status(0x100 << (irq - mips_cpu_irq_base));
+	irq_disable_hazard();
 }
 
 static inline void mips_cpu_irq_enable(unsigned int irq)
@@ -92,20 +95,23 @@ static void mips_cpu_irq_end(unsigned int irq)
 }
 
 static hw_irq_controller mips_cpu_irq_controller = {
-	"MIPS",
-	mips_cpu_irq_startup,
-	mips_cpu_irq_shutdown,
-	mips_cpu_irq_enable,
-	mips_cpu_irq_disable,
-	mips_cpu_irq_ack,
-	mips_cpu_irq_end,
-	NULL			/* no affinity stuff for UP */
+	.typename = "MIPS",
+	.startup = mips_cpu_irq_startup,
+	.shutdown = mips_cpu_irq_shutdown,
+	.enable = mips_cpu_irq_enable,
+	.disable = mips_cpu_irq_disable,
+	.ack = mips_cpu_irq_ack,
+	.end = mips_cpu_irq_end,
 };
 
 
 void __init mips_cpu_irq_init(int irq_base)
 {
 	int i;
+
+	/* Mask interrupts. */
+	clear_c0_status(ST0_IM);
+	clear_c0_cause(CAUSEF_IP);
 
 	for (i = irq_base; i < irq_base + 8; i++) {
 		irq_desc[i].status = IRQ_DISABLED;

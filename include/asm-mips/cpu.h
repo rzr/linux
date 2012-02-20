@@ -3,6 +3,7 @@
  *        various MIPS cpu types.
  *
  * Copyright (C) 1996 David S. Miller (dm@engr.sgi.com)
+ * Copyright (C) 2004  Maciej W. Rozycki
  */
 #ifndef _ASM_CPU_H
 #define _ASM_CPU_H
@@ -22,12 +23,17 @@
    spec.
 */
 
-#define PRID_COMP_LEGACY       0x000000
-#define PRID_COMP_MIPS         0x010000
-#define PRID_COMP_BROADCOM     0x020000
-#define PRID_COMP_ALCHEMY      0x030000
-#define PRID_COMP_SIBYTE       0x040000
-#define PRID_COMP_SANDCRAFT    0x050000
+#define PRID_COMP_LEGACY	0x000000
+#define PRID_COMP_MIPS		0x010000
+#define PRID_COMP_BROADCOM	0x020000
+#define PRID_COMP_ALCHEMY	0x030000
+#define PRID_COMP_SIBYTE	0x040000
+#define PRID_COMP_SANDCRAFT	0x050000
+#define PRID_COMP_PHILIPS	0x060000
+#define PRID_COMP_TOSHIBA	0x070000
+#define PRID_COMP_LSI		0x080000
+#define PRID_COMP_LEXRA		0x0b0000
+
 
 /*
  * Assigned values for the product ID register.  In order to detect a
@@ -71,6 +77,7 @@
 #define PRID_IMP_4KEMPR2	0x9100
 #define PRID_IMP_4KSD		0x9200
 #define PRID_IMP_24K		0x9300
+#define PRID_IMP_24KE		0x9600
 
 #define PRID_IMP_UNKNOWN	0xff00
 
@@ -177,7 +184,8 @@
 #define CPU_VR4133		56
 #define CPU_AU1550		57
 #define CPU_24K			58
-#define CPU_LAST		58
+#define CPU_AU1200		59
+#define CPU_LAST		59
 
 /*
  * ISA Level encodings
@@ -207,7 +215,6 @@
 #define MIPS_CPU_32FPR		0x00000020 /* 32 dbl. prec. FP registers */
 #define MIPS_CPU_COUNTER	0x00000040 /* Cycle count/compare */
 #define MIPS_CPU_WATCH		0x00000080 /* watchpoint registers */
-#define MIPS_CPU_MIPS16		0x00000100 /* code compression */
 #define MIPS_CPU_DIVEC		0x00000200 /* dedicated interrupt vector */
 #define MIPS_CPU_VCE		0x00000400 /* virt. coherence conflict possible */
 #define MIPS_CPU_CACHE_CDEX_P	0x00000800 /* Create_Dirty_Exclusive CACHE op */
@@ -218,5 +225,14 @@
 #define MIPS_CPU_LLSC		0x00010000 /* CPU has ll/sc instructions */
 #define MIPS_CPU_SUBSET_CACHES	0x00020000 /* P-cache subset enforced */
 #define MIPS_CPU_PREFETCH	0x00040000 /* CPU has usable prefetch */
+
+/*
+ * CPU ASE encodings
+ */
+#define MIPS_ASE_MIPS16		0x00000001 /* code compression */
+#define MIPS_ASE_MDMX		0x00000002 /* MIPS digital media extension */
+#define MIPS_ASE_MIPS3D		0x00000004 /* MIPS-3D */
+#define MIPS_ASE_SMARTMIPS	0x00000008 /* SmartMIPS */
+#define MIPS_ASE_DSP		0x00000010 /* Signal Processing ASE */
 
 #endif /* _ASM_CPU_H */
