@@ -1,9 +1,5 @@
 [abi]
-abiname: 1
-ignore-changes:
- module:arch/x86/kvm/*
- fixed_phy_add
- fixed_phy_set_link_update
+abiname: trunk
 
 [base]
 arches:
@@ -29,6 +25,9 @@ featuresets:
  none
  rt
 
+[featureset-rt_base]
+enabled: true
+
 [description]
 part-long-up: This kernel is not suitable for SMP (multi-processor,
  multi-core or hyper-threaded) systems.
@@ -53,6 +52,3 @@ initramfs-tools: initramfs-tools (>= 0.99~)
 elilo: elilo (>= 3.12-3.1~)
 lilo: lilo (>= 22.8-8.2~)
 s390-tools: s390-tools (>= 1.8.3-2~)
-
-[featureset-rt]
-enabled: true
