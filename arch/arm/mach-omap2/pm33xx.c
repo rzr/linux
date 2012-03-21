@@ -615,6 +615,11 @@ static int __init am33xx_pm_init(void)
 	pr_info("Power Management for AM33XX family\n");
 
 #ifdef CONFIG_SUSPEND
+
+#ifdef CONFIG_TI_PM_DISABLE_VT_SWITCH
+	pm_set_vt_switch(0);
+#endif
+
 /* Read SDRAM_CONFIG register to determine Memory Type */
 	base = am33xx_get_ram_base();
 	reg = readl(base + EMIF4_0_SDRAM_CONFIG);
