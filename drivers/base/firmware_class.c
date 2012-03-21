@@ -535,21 +535,13 @@ static int _request_firmware_prepare(const struct firmware **firmware_p,
 		return 0;
 	}
 
-	return 1;
-}
+	read_lock_usermodehelper();
 
-static void _request_firmware_cleanup(const struct firmware **firmware_p)
-{
-	release_firmware(*firmware_p);
-	*firmware_p = NULL;
-}
-
-static int _request_firmware(const struct firmware *firmware,
-			     const char *name, struct device *device,
-			     bool uevent, bool nowait, long timeout)
-{
-	struct firmware_priv *fw_priv;
-	int retval = 0;
+	if (WARN_ON(usermodehelper_is_disabled())) {
+		dev_err(device, "firmware: %s will not be loaded\n", name);
+		retval = -EBUSY;
+		goto out;
+	}
 
 	if (uevent)
 		dev_dbg(device, "firmware: requesting %s\n", name);
@@ -578,6 +570,15 @@ static int _request_firmware(const struct firmware *firmware,
 	mutex_unlock(&fw_lock);
 
 	fw_destroy_instance(fw_priv);
+
+out:
+	read_unlock_usermodehelper();
+
+	if (retval) {
+		release_firmware(firmware);
+		*firmware_p = NULL;
+	}
+
 	return retval;
 }
 

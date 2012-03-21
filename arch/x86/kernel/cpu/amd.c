@@ -352,11 +352,10 @@ static void __cpuinit srat_detect_node(struct cpuinfo_x86 *c)
 		node = per_cpu(cpu_llc_id, cpu);
 
 	/*
-	 * On multi-fabric platform (e.g. Numascale NumaChip) a
-	 * platform-specific handler needs to be called to fixup some
-	 * IDs of the CPU.
+	 * If core numbers are inconsistent, it's likely a multi-fabric platform,
+	 * so invoke platform-specific handler
 	 */
-	if (x86_cpuinit.fixup_cpu_id)
+	if (c->phys_proc_id != node)
 		x86_cpuinit.fixup_cpu_id(c, node);
 
 	if (!node_online(node)) {

@@ -157,10 +157,10 @@ static int _preload_range(struct pnfs_inval_markings *marks,
 			goto out_cleanup;
 	}
 
-	spin_lock(&marks->im_lock);
+	spin_lock_bh(&marks->im_lock);
 	for (s = start; s < end; s += tree->mtt_step_size)
 		used += _add_entry(tree, s, INTERNAL_EXISTS, storage[used]);
-	spin_unlock(&marks->im_lock);
+	spin_unlock_bh(&marks->im_lock);
 
 	status = 0;
 

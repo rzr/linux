@@ -86,7 +86,7 @@ again:
 		id = -ENOMEM;
 	}
 
-	return id;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(dwc3_get_device_id);
 

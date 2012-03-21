@@ -422,10 +422,6 @@ static void mtip_init_port(struct mtip_port *port)
 	/* Clear any pending interrupts for this port */
 	writel(readl(port->mmio + PORT_IRQ_STAT), port->mmio + PORT_IRQ_STAT);
 
-	/* Clear any pending interrupts on the HBA. */
-	writel(readl(port->dd->mmio + HOST_IRQ_STAT),
-					port->dd->mmio + HOST_IRQ_STAT);
-
 	/* Enable port interrupts */
 	writel(DEF_PORT_IRQ, port->mmio + PORT_IRQ_MASK);
 }
@@ -494,9 +490,11 @@ static void mtip_restart_port(struct mtip_port *port)
 		dev_warn(&port->dd->pdev->dev,
 			"COM reset failed\n");
 
-	mtip_init_port(port);
-	mtip_start_port(port);
+	/* Clear SError, the PxSERR.DIAG.x should be set so clear it */
+	writel(readl(port->mmio + PORT_SCR_ERR), port->mmio + PORT_SCR_ERR);
 
+	/* Enable the DMA engine */
+	mtip_enable_engine(port, 1);
 }
 
 /*
@@ -3361,6 +3359,9 @@ static int mtip_pci_probe(struct pci_dev *pdev,
 		return -ENOMEM;
 	}
 
+	/* Set the atomic variable as 1 in case of SRSI */
+	atomic_set(&dd->drv_cleanup_done, true);
+
 	atomic_set(&dd->resumeflag, false);
 
 	/* Attach the private data to this PCI device.  */
@@ -3433,8 +3434,8 @@ iomap_err:
 	pci_set_drvdata(pdev, NULL);
 	return rv;
 done:
-	/* Set the atomic variable as 0 */
-	atomic_set(&dd->drv_cleanup_done, false);
+	/* Set the atomic variable as 0 in case of SRSI */
+	atomic_set(&dd->drv_cleanup_done, true);
 
 	return rv;
 }
@@ -3462,6 +3463,8 @@ static void mtip_pci_remove(struct pci_dev *pdev)
 			}
 		}
 	}
+	/* Set the atomic variable as 1 in case of SRSI */
+	atomic_set(&dd->drv_cleanup_done, true);
 
 	/* Clean up the block layer. */
 	mtip_block_remove(dd);
@@ -3605,25 +3608,18 @@ MODULE_DEVICE_TABLE(pci, mtip_pci_tbl);
  */
 static int __init mtip_init(void)
 {
-	int error;
-
 	printk(KERN_INFO MTIP_DRV_NAME " Version " MTIP_DRV_VERSION "\n");
 
 	/* Allocate a major block device number to use with this driver. */
-	error = register_blkdev(0, MTIP_DRV_NAME);
-	if (error <= 0) {
+	mtip_major = register_blkdev(0, MTIP_DRV_NAME);
+	if (mtip_major < 0) {
 		printk(KERN_ERR "Unable to register block device (%d)\n",
-		error);
+		mtip_major);
 		return -EBUSY;
 	}
-	mtip_major = error;
 
 	/* Register our PCI operations. */
-	error = pci_register_driver(&mtip_pci_driver);
-	if (error)
-		unregister_blkdev(mtip_major, MTIP_DRV_NAME);
-
-	return error;
+	return pci_register_driver(&mtip_pci_driver);
 }
 
 /*

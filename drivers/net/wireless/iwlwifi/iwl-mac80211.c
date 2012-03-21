@@ -1226,7 +1226,6 @@ static int iwlagn_mac_add_interface(struct ieee80211_hw *hw,
 	struct iwl_rxon_context *tmp, *ctx = NULL;
 	int err;
 	enum nl80211_iftype viftype = ieee80211_vif_type_p2p(vif);
-	bool reset = false;
 
 	IWL_DEBUG_MAC80211(priv, "enter: type %d, addr %pM\n",
 			   viftype, vif->addr);
@@ -1248,13 +1247,6 @@ static int iwlagn_mac_add_interface(struct ieee80211_hw *hw,
 			tmp->interface_modes | tmp->exclusive_interface_modes;
 
 		if (tmp->vif) {
-			/* On reset we need to add the same interface again */
-			if (tmp->vif == vif) {
-				reset = true;
-				ctx = tmp;
-				break;
-			}
-
 			/* check if this busy context is exclusive */
 			if (tmp->exclusive_interface_modes &
 						BIT(tmp->vif->type)) {
@@ -1281,7 +1273,7 @@ static int iwlagn_mac_add_interface(struct ieee80211_hw *hw,
 	ctx->vif = vif;
 
 	err = iwl_setup_interface(priv, ctx);
-	if (!err || reset)
+	if (!err)
 		goto out;
 
 	ctx->vif = NULL;

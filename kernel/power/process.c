@@ -123,10 +123,6 @@ int freeze_processes(void)
 {
 	int error;
 
-	error = __usermodehelper_disable(UMH_FREEZING);
-	if (error)
-		return error;
-
 	if (!pm_freezing)
 		atomic_inc(&system_freezing_cnt);
 
@@ -193,8 +189,6 @@ void thaw_processes(void)
 	} while_each_thread(g, p);
 	read_unlock(&tasklist_lock);
 
-	usermodehelper_enable();
-
 	schedule();
 	printk("done.\n");
 }
@@ -218,13 +212,3 @@ void thaw_kernel_threads(void)
 	schedule();
 	printk("done.\n");
 }
-
-void thaw_kernel_threads(void)
-{
-	printk("Restarting kernel threads ... ");
-	thaw_workqueues();
-	thaw_tasks(true);
-	schedule();
-	printk("done.\n");
-}
-

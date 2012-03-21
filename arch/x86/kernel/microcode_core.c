@@ -418,7 +418,8 @@ static int mc_device_add(struct device *dev, struct subsys_interface *sif)
 	if (err)
 		return err;
 
-	if (microcode_init_cpu(cpu) == UCODE_ERROR)
+	if (microcode_init_cpu(cpu) == UCODE_ERROR) {
+		sysfs_remove_group(&dev->kobj, &mc_attr_group);
 		return -EINVAL;
 
 	return err;

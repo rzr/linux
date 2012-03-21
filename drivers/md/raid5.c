@@ -3277,14 +3277,12 @@ static void analyse_stripe(struct stripe_head *sh, struct stripe_head_state *s)
 		/* If there is a failed device being replaced,
 		 *     we must be recovering.
 		 * else if we are after recovery_cp, we must be syncing
-		 * else if MD_RECOVERY_REQUESTED is set, we also are syncing.
 		 * else we can only be replacing
 		 * sync and recovery both need to read all devices, and so
 		 * use the same flag.
 		 */
 		if (do_recovery ||
-		    sh->sector >= conf->mddev->recovery_cp ||
-		    test_bit(MD_RECOVERY_REQUESTED, &(conf->mddev->recovery)))
+		    sh->sector >= conf->mddev->recovery_cp)
 			s->syncing = 1;
 		else
 			s->replacing = 1;
