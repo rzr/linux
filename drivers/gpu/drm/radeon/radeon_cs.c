@@ -150,7 +150,9 @@ int radeon_cs_parser_init(struct radeon_cs_parser *p, void *data)
 {
 	struct drm_radeon_cs *cs = data;
 	uint64_t *chunk_array_ptr;
-	unsigned size, i, flags = 0;
+	unsigned size, i;
+	u32 ring = RADEON_CS_RING_GFX;
+	s32 priority = 0;
 
 	if (!cs->num_chunks) {
 		return 0;
@@ -199,9 +201,11 @@ int radeon_cs_parser_init(struct radeon_cs_parser *p, void *data)
 			if (p->chunks[i].length_dw == 0)
 				return -EINVAL;
 		}
-		if (p->chunks[i].chunk_id == RADEON_CHUNK_ID_FLAGS &&
-		    !p->chunks[i].length_dw) {
-			return -EINVAL;
+		if (p->chunks[i].chunk_id == RADEON_CHUNK_ID_FLAGS) {
+			p->chunk_flags_idx = i;
+			/* zero length flags aren't useful */
+			if (p->chunks[i].length_dw == 0)
+				return -EINVAL;
 		}
 
 		p->chunks[i].length_dw = user_chunk.length_dw;
@@ -220,15 +224,11 @@ int radeon_cs_parser_init(struct radeon_cs_parser *p, void *data)
 				return -EFAULT;
 			}
 			if (p->chunks[i].chunk_id == RADEON_CHUNK_ID_FLAGS) {
-				flags = p->chunks[i].kdata[0];
-			}
-		} else {
-			p->chunks[i].kpage[0] = kmalloc(PAGE_SIZE, GFP_KERNEL);
-			p->chunks[i].kpage[1] = kmalloc(PAGE_SIZE, GFP_KERNEL);
-			if (p->chunks[i].kpage[0] == NULL || p->chunks[i].kpage[1] == NULL) {
-				kfree(p->chunks[i].kpage[0]);
-				kfree(p->chunks[i].kpage[1]);
-				return -ENOMEM;
+				p->cs_flags = p->chunks[i].kdata[0];
+				if (p->chunks[i].length_dw > 1)
+					ring = p->chunks[i].kdata[1];
+				if (p->chunks[i].length_dw > 2)
+					priority = (s32)p->chunks[i].kdata[2];
 			}
 		}
 	}
@@ -251,7 +251,31 @@ int radeon_cs_parser_init(struct radeon_cs_parser *p, void *data)
 		return -EINVAL;
 	}
 
-	p->keep_tiling_flags = (flags & RADEON_CS_KEEP_TILING_FLAGS) != 0;
+
+	/* deal with non-vm */
+	if ((p->chunk_ib_idx != -1) &&
+	    ((p->cs_flags & RADEON_CS_USE_VM) == 0) &&
+	    (p->chunks[p->chunk_ib_idx].chunk_id == RADEON_CHUNK_ID_IB)) {
+		if (p->chunks[p->chunk_ib_idx].length_dw > (16 * 1024)) {
+			DRM_ERROR("cs IB too big: %d\n",
+				  p->chunks[p->chunk_ib_idx].length_dw);
+			return -EINVAL;
+		}
+		p->chunks[p->chunk_ib_idx].kpage[0] = kmalloc(PAGE_SIZE, GFP_KERNEL);
+		p->chunks[p->chunk_ib_idx].kpage[1] = kmalloc(PAGE_SIZE, GFP_KERNEL);
+		if (p->chunks[p->chunk_ib_idx].kpage[0] == NULL ||
+		    p->chunks[p->chunk_ib_idx].kpage[1] == NULL) {
+			kfree(p->chunks[p->chunk_ib_idx].kpage[0]);
+			kfree(p->chunks[p->chunk_ib_idx].kpage[1]);
+			return -ENOMEM;
+		}
+		p->chunks[p->chunk_ib_idx].kpage_idx[0] = -1;
+		p->chunks[p->chunk_ib_idx].kpage_idx[1] = -1;
+		p->chunks[p->chunk_ib_idx].last_copied_page = -1;
+		p->chunks[p->chunk_ib_idx].last_page_index =
+			((p->chunks[p->chunk_ib_idx].length_dw * 4) - 1) / PAGE_SIZE;
+	}
+
 	return 0;
 }
 

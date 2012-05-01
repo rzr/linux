@@ -397,7 +397,7 @@ void rtl_lps_enter(struct ieee80211_hw *hw)
 	if (mac->link_state != MAC80211_LINKED)
 		return;
 
-	spin_lock_irq(&rtlpriv->locks.lps_lock);
+	mutex_lock(&rtlpriv->locks.ps_mutex);
 
 	/* Idle for a while if we connect to AP a while ago. */
 	if (mac->cnt_after_linked >= 2) {
@@ -409,7 +409,7 @@ void rtl_lps_enter(struct ieee80211_hw *hw)
 		}
 	}
 
-	spin_unlock_irq(&rtlpriv->locks.lps_lock);
+	mutex_unlock(&rtlpriv->locks.ps_mutex);
 }
 
 /*Leave the leisure power save mode.*/
@@ -418,9 +418,8 @@ void rtl_lps_leave(struct ieee80211_hw *hw)
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_ps_ctl *ppsc = rtl_psc(rtl_priv(hw));
 	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	unsigned long flags;
 
-	spin_lock_irqsave(&rtlpriv->locks.lps_lock, flags);
+	mutex_lock(&rtlpriv->locks.ps_mutex);
 
 	if (ppsc->fwctrl_lps) {
 		if (ppsc->dot11_psmode != EACTIVE) {
@@ -441,7 +440,7 @@ void rtl_lps_leave(struct ieee80211_hw *hw)
 			rtl_lps_set_psmode(hw, EACTIVE);
 		}
 	}
-	spin_unlock_irqrestore(&rtlpriv->locks.lps_lock, flags);
+	mutex_unlock(&rtlpriv->locks.ps_mutex);
 }
 
 /* For sw LPS*/
@@ -542,9 +541,9 @@ void rtl_swlps_rf_awake(struct ieee80211_hw *hw)
 		RT_CLEAR_PS_LEVEL(ppsc, RT_PS_LEVEL_ASPM);
 	}
 
-	spin_lock_irq(&rtlpriv->locks.lps_lock);
+	mutex_lock(&rtlpriv->locks.ps_mutex);
 	rtl_ps_set_rf_state(hw, ERFON, RF_CHANGE_BY_PS);
-	spin_unlock_irq(&rtlpriv->locks.lps_lock);
+	mutex_unlock(&rtlpriv->locks.ps_mutex);
 }
 
 void rtl_swlps_rfon_wq_callback(void *data)
@@ -577,9 +576,9 @@ void rtl_swlps_rf_sleep(struct ieee80211_hw *hw)
 	if (rtlpriv->link_info.busytraffic)
 		return;
 
-	spin_lock_irq(&rtlpriv->locks.lps_lock);
+	mutex_lock(&rtlpriv->locks.ps_mutex);
 	rtl_ps_set_rf_state(hw, ERFSLEEP, RF_CHANGE_BY_PS);
-	spin_unlock_irq(&rtlpriv->locks.lps_lock);
+	mutex_unlock(&rtlpriv->locks.ps_mutex);
 
 	if (ppsc->reg_rfps_level & RT_RF_OFF_LEVL_ASPM &&
 		!RT_IN_PS_LEVEL(ppsc, RT_PS_LEVEL_ASPM)) {

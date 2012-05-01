@@ -222,7 +222,9 @@ static long snapshot_ioctl(struct file *filp, unsigned int cmd,
 		printk("done.\n");
 
 		error = freeze_processes();
-		if (!error)
+		if (error)
+			usermodehelper_enable();
+		else
 			data->frozen = 1;
 		break;
 

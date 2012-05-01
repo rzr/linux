@@ -52,7 +52,7 @@ enum {
 
 static int hibernation_mode = HIBERNATION_SHUTDOWN;
 
-static bool freezer_test_done;
+bool freezer_test_done;
 
 static const struct platform_hibernation_ops *hibernation_ops;
 
@@ -335,8 +335,7 @@ int hibernation_snapshot(int platform_mode)
 	if (error)
 		goto Cleanup;
 
-	if (hibernation_test(TEST_FREEZER) ||
-		hibernation_testmode(HIBERNATION_TESTPROC)) {
+	if (hibernation_test(TEST_FREEZER)) {
 
 		/*
 		 * Indicate to the caller that we are returning due to a
@@ -348,7 +347,7 @@ int hibernation_snapshot(int platform_mode)
 
 	error = dpm_prepare(PMSG_FREEZE);
 	if (error) {
-		dpm_complete(msg);
+		dpm_complete(PMSG_RECOVER);
 		goto Cleanup;
 	}
 
@@ -384,10 +383,6 @@ int hibernation_snapshot(int platform_mode)
  Close:
 	platform_end(platform_mode);
 	return error;
-
- Recover_platform:
-	platform_recover(platform_mode);
-	goto Resume_devices;
 
  Cleanup:
 	swsusp_free();
@@ -774,8 +769,10 @@ static int software_resume(void)
 		goto close_finish;
 
 	error = create_basic_memory_bitmaps();
-	if (error)
+	if (error) {
+		usermodehelper_enable();
 		goto close_finish;
+	}
 
 	pr_debug("PM: Preparing processes for restore.\n");
 	error = freeze_processes();

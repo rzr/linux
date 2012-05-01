@@ -71,9 +71,7 @@ target_emulate_inquiry_std(struct se_cmd *cmd, char *buf)
 	struct se_lun *lun = cmd->se_lun;
 	struct se_device *dev = cmd->se_dev;
 
-	/* Set RMB (removable media) for tape devices */
-	if (dev->transport->get_device_type(dev) == TYPE_TAPE)
-		buf[1] = 0x80;
+	buf = transport_kmap_data_sg(cmd);
 
 	buf[2] = dev->transport->get_device_rev(dev);
 
@@ -97,11 +95,24 @@ target_emulate_inquiry_std(struct se_cmd *cmd, char *buf)
 
 	buf[7] = 0x2; /* CmdQue=1 */
 
+	buf[7] = 0x32; /* Sync=1 and CmdQue=1 */
+
+	/*
+	 * Do not include vendor, product, reversion info in INQUIRY
+	 * response payload for cdbs with a small allocation length.
+	 */
+	if (cmd->data_length < 36) {
+		buf[4] = 3; /* Set additional length to 3 */
+		goto out;
+	}
+
 	snprintf(&buf[8], 8, "LIO-ORG");
 	snprintf(&buf[16], 16, "%s", dev->se_sub_dev->t10_wwn.model);
 	snprintf(&buf[32], 4, "%s", dev->se_sub_dev->t10_wwn.revision);
 	buf[4] = 31; /* Set additional length to 31 */
 
+out:
+	transport_kunmap_data_sg(cmd);
 	return 0;
 }
 
@@ -119,6 +130,12 @@ target_emulate_evpd_80(struct se_cmd *cmd, unsigned char *buf)
 		unit_serial_len = strlen(dev->se_sub_dev->t10_wwn.unit_serial);
 		unit_serial_len++; /* For NULL Terminator */
 
+		if (((len + 4) + unit_serial_len) > cmd->data_length) {
+			len += unit_serial_len;
+			buf[2] = ((len >> 8) & 0xff);
+			buf[3] = (len & 0xff);
+			return 0;
+		}
 		len += sprintf(&buf[4], "%s",
 			dev->se_sub_dev->t10_wwn.unit_serial);
 		len++; /* Extra Byte for NULL Terminator */
@@ -241,6 +258,12 @@ check_t10_vend_desc:
 			strlen(&dev->se_sub_dev->t10_wwn.unit_serial[0]);
 		unit_serial_len++; /* For NULL Terminator */
 
+		if ((len + (id_len + 4) +
+		    (prod_len + unit_serial_len)) >
+				cmd->data_length) {
+			len += (prod_len + unit_serial_len);
+			goto check_port;
+		}
 		id_len += sprintf(&buf[off+12], "%s:%s", prod,
 				&dev->se_sub_dev->t10_wwn.unit_serial[0]);
 	}
@@ -610,7 +633,18 @@ int target_emulate_inquiry(struct se_task *task)
 	unsigned char *cdb = cmd->t_task_cdb;
 	int p, ret;
 
-	map_buf = transport_kmap_data_sg(cmd);
+	if (!(cdb[1] & 0x1)) {
+		if (cdb[2]) {
+			pr_err("INQUIRY with EVPD==0 but PAGE CODE=%02x\n",
+			       cdb[2]);
+			cmd->scsi_sense_reason = TCM_INVALID_CDB_FIELD;
+			return -EINVAL;
+		}
+
+		ret = target_emulate_inquiry_std(cmd);
+		goto out;
+	}
+
 	/*
 	 * If SCF_PASSTHROUGH_SG_TO_MEM_NOALLOC is not set, then we
 	 * know we actually allocated a full page.  Otherwise, if the
@@ -625,10 +659,7 @@ int target_emulate_inquiry(struct se_task *task)
 		return -EINVAL;
 	}
 
-	if (dev == tpg->tpg_virt_lun0.lun_se_dev)
-		buf[0] = 0x3f; /* Not connected */
-	else
-		buf[0] = dev->transport->get_device_type(dev);
+	buf = transport_kmap_data_sg(cmd);
 
 	if (!(cdb[1] & 0x1)) {
 		if (cdb[2]) {
@@ -652,9 +683,11 @@ int target_emulate_inquiry(struct se_task *task)
 	}
 
 	pr_err("Unknown VPD Code: 0x%02x\n", cdb[2]);
-	cmd->scsi_sense_reason = TCM_UNSUPPORTED_SCSI_OPCODE;
+	cmd->scsi_sense_reason = TCM_INVALID_CDB_FIELD;
 	ret = -EINVAL;
 
+out_unmap:
+	transport_kunmap_data_sg(cmd);
 out:
 	if (buf != map_buf) {
 		memcpy(map_buf, buf, cmd->data_length);

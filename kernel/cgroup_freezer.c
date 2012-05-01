@@ -159,13 +159,6 @@ static bool is_task_frozen_enough(struct task_struct *task)
 		(task_is_stopped_or_traced(task) && freezing(task));
 }
 
-/* task is frozen or will freeze immediately when next it gets woken */
-static bool is_task_frozen_enough(struct task_struct *task)
-{
-	return frozen(task) ||
-		(task_is_stopped_or_traced(task) && freezing(task));
-}
-
 /*
  * The call to cgroup_lock() in the freezer.state write method prevents
  * a write to that file racing against an attach, and hence the
@@ -237,7 +230,7 @@ static void update_if_frozen(struct cgroup *cgroup,
 	cgroup_iter_start(cgroup, &it);
 	while ((task = cgroup_iter_next(cgroup, &it))) {
 		ntotal++;
-		if (is_task_frozen_enough(task))
+		if (freezing(task) && is_task_frozen_enough(task))
 			nfrozen++;
 	}
 

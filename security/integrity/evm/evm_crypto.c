@@ -30,32 +30,41 @@ struct crypto_shash *hash_tfm;
 
 static DEFINE_MUTEX(mutex);
 
-static struct shash_desc *init_desc(void)
+static struct shash_desc *init_desc(char type)
 {
 	long rc;
 	char *algo;
 	struct crypto_shash **tfm;
 	struct shash_desc *desc;
 
-	if (hmac_tfm == NULL) {
+	if (type == EVM_XATTR_HMAC) {
+		tfm = &hmac_tfm;
+		algo = evm_hmac;
+	} else {
+		tfm = &hash_tfm;
+		algo = evm_hash;
+	}
+
+	if (*tfm == NULL) {
 		mutex_lock(&mutex);
-		if (hmac_tfm)
+		if (*tfm)
 			goto out;
-		hmac_tfm = crypto_alloc_shash(evm_hmac, 0, CRYPTO_ALG_ASYNC);
-		if (IS_ERR(hmac_tfm)) {
-			pr_err("Can not allocate %s (reason: %ld)\n",
-			       evm_hmac, PTR_ERR(hmac_tfm));
-			rc = PTR_ERR(hmac_tfm);
-			hmac_tfm = NULL;
+		*tfm = crypto_alloc_shash(algo, 0, CRYPTO_ALG_ASYNC);
+		if (IS_ERR(*tfm)) {
+			rc = PTR_ERR(*tfm);
+			pr_err("Can not allocate %s (reason: %ld)\n", algo, rc);
+			*tfm = NULL;
 			mutex_unlock(&mutex);
 			return ERR_PTR(rc);
 		}
-		rc = crypto_shash_setkey(hmac_tfm, evmkey, evmkey_len);
-		if (rc) {
-			crypto_free_shash(hmac_tfm);
-			hmac_tfm = NULL;
-			mutex_unlock(&mutex);
-			return ERR_PTR(rc);
+		if (type == EVM_XATTR_HMAC) {
+			rc = crypto_shash_setkey(*tfm, evmkey, evmkey_len);
+			if (rc) {
+				crypto_free_shash(*tfm);
+				*tfm = NULL;
+				mutex_unlock(&mutex);
+				return ERR_PTR(rc);
+			}
 		}
 out:
 		mutex_unlock(&mutex);

@@ -395,9 +395,6 @@ xfs_quiesce_data(
 	 */
 	xfs_inode_ag_iterator(mp, xfs_log_dirty_inode, 0);
 
-	xfs_qm_sync(mp, SYNC_TRYLOCK);
-	xfs_qm_sync(mp, SYNC_WAIT);
-
 	/* force out the log */
 	xfs_log_force(mp, XFS_LOG_SYNC);
 

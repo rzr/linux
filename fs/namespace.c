@@ -437,6 +437,13 @@ static int mnt_make_readonly(struct mount *mnt)
 
 static void __mnt_unmake_readonly(struct mount *mnt)
 {
+	struct mount *mnt;
+	int err = 0;
+
+	/* Racy optimization.  Recheck the counter under MNT_WRITE_HOLD */
+	if (atomic_long_read(&sb->s_remove_count))
+		return -EBUSY;
+
 	br_write_lock(vfsmount_lock);
 	mnt->mnt.mnt_flags &= ~MNT_READONLY;
 	br_write_unlock(vfsmount_lock);
@@ -967,120 +974,7 @@ const struct seq_operations mounts_op = {
 	.start	= m_start,
 	.next	= m_next,
 	.stop	= m_stop,
-	.show	= show_vfsmnt
-};
-
-static int show_mountinfo(struct seq_file *m, void *v)
-{
-	struct proc_mounts *p = m->private;
-	struct vfsmount *mnt = list_entry(v, struct vfsmount, mnt_list);
-	struct super_block *sb = mnt->mnt_sb;
-	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
-	struct path root = p->root;
-	int err = 0;
-
-	seq_printf(m, "%i %i %u:%u ", mnt->mnt_id, mnt->mnt_parent->mnt_id,
-		   MAJOR(sb->s_dev), MINOR(sb->s_dev));
-	if (sb->s_op->show_path)
-		err = sb->s_op->show_path(m, mnt);
-	else
-		seq_dentry(m, mnt->mnt_root, " \t\n\\");
-	if (err)
-		goto out;
-	seq_putc(m, ' ');
-
-	/* mountpoints outside of chroot jail will give SEQ_SKIP on this */
-	err = seq_path_root(m, &mnt_path, &root, " \t\n\\");
-	if (err)
-		goto out;
-
-	seq_puts(m, mnt->mnt_flags & MNT_READONLY ? " ro" : " rw");
-	show_mnt_opts(m, mnt);
-
-	/* Tagged fields ("foo:X" or "bar") */
-	if (IS_MNT_SHARED(mnt))
-		seq_printf(m, " shared:%i", mnt->mnt_group_id);
-	if (IS_MNT_SLAVE(mnt)) {
-		int master = mnt->mnt_master->mnt_group_id;
-		int dom = get_dominating_id(mnt, &p->root);
-		seq_printf(m, " master:%i", master);
-		if (dom && dom != master)
-			seq_printf(m, " propagate_from:%i", dom);
-	}
-	if (IS_MNT_UNBINDABLE(mnt))
-		seq_puts(m, " unbindable");
-
-	/* Filesystem specific data */
-	seq_puts(m, " - ");
-	show_type(m, sb);
-	seq_putc(m, ' ');
-	if (sb->s_op->show_devname)
-		err = sb->s_op->show_devname(m, mnt);
-	else
-		mangle(m, mnt->mnt_devname ? mnt->mnt_devname : "none");
-	if (err)
-		goto out;
-	seq_puts(m, sb->s_flags & MS_RDONLY ? " ro" : " rw");
-	err = show_sb_opts(m, sb);
-	if (err)
-		goto out;
-	if (sb->s_op->show_options)
-		err = sb->s_op->show_options(m, mnt);
-	seq_putc(m, '\n');
-out:
-	return err;
-}
-
-const struct seq_operations mountinfo_op = {
-	.start	= m_start,
-	.next	= m_next,
-	.stop	= m_stop,
-	.show	= show_mountinfo,
-};
-
-static int show_vfsstat(struct seq_file *m, void *v)
-{
-	struct vfsmount *mnt = list_entry(v, struct vfsmount, mnt_list);
-	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
-	int err = 0;
-
-	/* device */
-	if (mnt->mnt_sb->s_op->show_devname) {
-		seq_puts(m, "device ");
-		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
-	} else {
-		if (mnt->mnt_devname) {
-			seq_puts(m, "device ");
-			mangle(m, mnt->mnt_devname);
-		} else
-			seq_puts(m, "no device");
-	}
-
-	/* mount point */
-	seq_puts(m, " mounted on ");
-	seq_path(m, &mnt_path, " \t\n\\");
-	seq_putc(m, ' ');
-
-	/* file system type */
-	seq_puts(m, "with fstype ");
-	show_type(m, mnt->mnt_sb);
-
-	/* optional statistics */
-	if (mnt->mnt_sb->s_op->show_stats) {
-		seq_putc(m, ' ');
-		if (!err)
-			err = mnt->mnt_sb->s_op->show_stats(m, mnt);
-	}
-
-	seq_putc(m, '\n');
-	return err;
-}
-
-const struct seq_operations mountstats_op = {
-	.start	= m_start,
-	.next	= m_next,
-	.stop	= m_stop,
-	.show	= show_vfsstat,
+	.show	= m_show,
 };
 #endif  /* CONFIG_PROC_FS */
 
@@ -2744,5 +2638,5 @@ EXPORT_SYMBOL(kern_unmount);
 
 bool our_mnt(struct vfsmount *mnt)
 {
-	return check_mnt(mnt);
+	return check_mnt(real_mount(mnt));
 }

@@ -21,26 +21,7 @@ nouveau_sgdma_destroy(struct ttm_tt *ttm)
 {
 	struct nouveau_sgdma_be *nvbe = (struct nouveau_sgdma_be *)ttm;
 
-	if (nvbe->bound)
-		be->func->unbind(be);
-
-	if (nvbe->unmap_pages) {
-		while (nvbe->nr_pages--) {
-			pci_unmap_page(dev->pdev, nvbe->pages[nvbe->nr_pages],
-				       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
-		}
-		nvbe->unmap_pages = false;
-	}
-
-	nvbe->pages = NULL;
-}
-
-static void
-nouveau_sgdma_destroy(struct ttm_backend *be)
-{
-	struct nouveau_sgdma_be *nvbe = (struct nouveau_sgdma_be *)be;
-
-	if (be) {
+	if (ttm) {
 		NV_DEBUG(nvbe->dev, "\n");
 		ttm_dma_tt_fini(&nvbe->ttm);
 		kfree(nvbe);

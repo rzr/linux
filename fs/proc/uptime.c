@@ -11,7 +11,7 @@ static int uptime_proc_show(struct seq_file *m, void *v)
 {
 	struct timespec uptime;
 	struct timespec idle;
-	cputime64_t idletime;
+	u64 idletime;
 	u64 nsec;
 	u32 rem;
 	int i;

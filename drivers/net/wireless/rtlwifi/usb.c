@@ -141,9 +141,9 @@ static u32 _usb_read_sync(struct rtl_priv *rtlpriv, u32 addr, u16 len)
 
 	wvalue = (u16)addr;
 	_usbctrl_vendorreq_sync_read(udev, request, wvalue, index, data, len);
-	if (++rtlpriv->usb_data_index >= RTL_USB_MAX_RX_COUNT)
-		rtlpriv->usb_data_index = 0;
-	return le32_to_cpu(*data);
+	ret = le32_to_cpu(*data);
+	kfree(data);
+	return ret;
 }
 
 static u8 _usb_read8_sync(struct rtl_priv *rtlpriv, u32 addr)

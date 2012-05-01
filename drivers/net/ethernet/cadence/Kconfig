@@ -5,8 +5,8 @@
 config HAVE_NET_MACB
 	bool
 
-config NET_ATMEL
-	bool "Atmel devices"
+config NET_CADENCE
+	bool "Cadence devices"
 	default y
 	depends on HAVE_NET_MACB || (ARM && ARCH_AT91RM9200)
 	---help---

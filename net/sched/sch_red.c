@@ -222,8 +222,12 @@ static int red_change(struct Qdisc *sch, struct nlattr *opt)
 		      max_P);
 	red_set_vars(&q->vars);
 
+	del_timer(&q->adapt_timer);
+	if (ctl->flags & TC_RED_ADAPTATIVE)
+		mod_timer(&q->adapt_timer, jiffies + HZ/2);
+
 	if (!q->qdisc->q.qlen)
-		red_start_of_idle_period(&q->parms);
+		red_start_of_idle_period(&q->vars);
 
 	sch_tree_unlock(sch);
 	return 0;

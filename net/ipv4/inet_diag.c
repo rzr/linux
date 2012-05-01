@@ -96,17 +96,6 @@ int inet_sk_diag_fill(struct sock *sk, struct inet_connection_sock *icsk,
 	if (ext & (1 << (INET_DIAG_MEMINFO - 1)))
 		minfo = INET_DIAG_PUT(skb, INET_DIAG_MEMINFO, sizeof(*minfo));
 
-	if (ext & (1 << (INET_DIAG_INFO - 1)))
-		info = INET_DIAG_PUT(skb, INET_DIAG_INFO,
-				     handler->idiag_info_size);
-
-	if ((ext & (1 << (INET_DIAG_CONG - 1))) && icsk->icsk_ca_ops) {
-		const size_t len = strlen(icsk->icsk_ca_ops->name);
-
-		strcpy(INET_DIAG_PUT(skb, INET_DIAG_CONG, len + 1),
-		       icsk->icsk_ca_ops->name);
-	}
-
 	r->idiag_family = sk->sk_family;
 	r->idiag_state = sk->sk_state;
 	r->idiag_timer = 0;
@@ -126,17 +115,14 @@ int inet_sk_diag_fill(struct sock *sk, struct inet_connection_sock *icsk,
 	if (ext & (1 << (INET_DIAG_TOS - 1)))
 		RTA_PUT_U8(skb, INET_DIAG_TOS, inet->tos);
 
-#if defined(CONFIG_IPV6) || defined (CONFIG_IPV6_MODULE)
+#if IS_ENABLED(CONFIG_IPV6)
 	if (r->idiag_family == AF_INET6) {
 		const struct ipv6_pinfo *np = inet6_sk(sk);
 
+		*(struct in6_addr *)r->id.idiag_src = np->rcv_saddr;
+		*(struct in6_addr *)r->id.idiag_dst = np->daddr;
 		if (ext & (1 << (INET_DIAG_TCLASS - 1)))
 			RTA_PUT_U8(skb, INET_DIAG_TCLASS, np->tclass);
-
-		ipv6_addr_copy((struct in6_addr *)r->id.idiag_src,
-			       &np->rcv_saddr);
-		ipv6_addr_copy((struct in6_addr *)r->id.idiag_dst,
-			       &np->daddr);
 	}
 #endif
 

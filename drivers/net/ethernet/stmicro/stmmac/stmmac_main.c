@@ -772,7 +772,7 @@ static void stmmac_mmc_setup(struct stmmac_priv *priv)
 		dwmac_mmc_ctrl(priv->ioaddr, mode);
 		memset(&priv->mmc, 0, sizeof(struct stmmac_counters));
 	} else
-		pr_info(" No MAC Management Counters available");
+		pr_info(" No MAC Management Counters available\n");
 }
 
 static u32 stmmac_get_synopsys_id(struct stmmac_priv *priv)
@@ -932,44 +932,6 @@ static int stmmac_open(struct net_device *dev)
 		goto open_error;
 	}
 
-	stmmac_get_synopsys_id(priv);
-
-	priv->hw_cap_support = stmmac_get_hw_features(priv);
-
-	if (priv->hw_cap_support) {
-		pr_info(" Support DMA HW capability register");
-
-		/* We can override some gmac/dma configuration fields: e.g.
-		 * enh_desc, tx_coe (e.g. that are passed through the
-		 * platform) with the values from the HW capability
-		 * register (if supported).
-		 */
-		priv->plat->enh_desc = priv->dma_cap.enh_desc;
-		priv->plat->tx_coe = priv->dma_cap.tx_coe;
-		priv->plat->pmt = priv->dma_cap.pmt_remote_wake_up;
-
-		/* By default disable wol on magic frame if not supported */
-		if (!priv->dma_cap.pmt_magic_frame)
-			priv->wolopts &= ~WAKE_MAGIC;
-
-	} else
-		pr_info(" No HW DMA feature register supported");
-
-	/* Select the enhnaced/normal descriptor structures */
-	stmmac_selec_desc_mode(priv);
-
-	/* PMT module is not integrated in all the MAC devices. */
-	if (priv->plat->pmt) {
-		pr_info(" Remote wake-up capable\n");
-		device_set_wakeup_capable(priv->device, 1);
-	}
-
-	priv->rx_coe = priv->hw->mac->rx_coe(priv->ioaddr);
-	if (priv->rx_coe)
-		pr_info(" Checksum Offload Engine supported\n");
-	if (priv->plat->tx_coe)
-		pr_info(" Checksum insertion supported\n");
-
 	/* Create and initialize the TX/RX descriptors chains. */
 	priv->dma_tx_size = STMMAC_ALIGN(dma_txsize);
 	priv->dma_rx_size = STMMAC_ALIGN(dma_rxsize);
@@ -993,8 +955,6 @@ static int stmmac_open(struct net_device *dev)
 
 	/* Initialize the MAC Core */
 	priv->hw->mac->core_init(priv->ioaddr);
-
-	netdev_update_features(dev);
 
 	/* Request the IRQ lines */
 	ret = request_irq(dev->irq, stmmac_interrupt,
@@ -1827,38 +1787,6 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 }
 
 /**
- * stmmac_mac_device_setup
- * @dev : device pointer
- * Description: select and initialise the mac device (mac100 or Gmac).
- */
-static int stmmac_mac_device_setup(struct net_device *dev)
-{
-	struct stmmac_priv *priv = netdev_priv(dev);
-
-	struct mac_device_info *device;
-
-	if (priv->plat->has_gmac) {
-		dev->priv_flags |= IFF_UNICAST_FLT;
-		device = dwmac1000_setup(priv->ioaddr);
-	} else {
-		device = dwmac100_setup(priv->ioaddr);
-	}
-
-	if (!device)
-		return -ENOMEM;
-
-	priv->hw = device;
-	priv->hw->ring = &ring_mode_ops;
-
-	if (device_can_wakeup(priv->device)) {
-		priv->wolopts = WAKE_MAGIC; /* Magic Frame as default */
-		enable_irq_wake(priv->wol_irq);
-	}
-
-	return 0;
-}
-
-/**
  * stmmac_dvr_probe
  * @device: device pointer
  * Description: this is the main probe function used to
@@ -1892,39 +1820,8 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 	priv->ioaddr = addr;
 	priv->dev->base_addr = (unsigned long)addr;
 
-	/*
-	 * On some platforms e.g. SPEAr the wake up irq differs from the mac irq
-	 * The external wake up irq can be passed through the platform code
-	 * named as "eth_wake_irq"
-	 *
-	 * In case the wake up interrupt is not passed from the platform
-	 * so the driver will continue to use the mac irq (ndev->irq)
-	 */
-	priv->wol_irq = platform_get_irq_byname(pdev, "eth_wake_irq");
-	if (priv->wol_irq == -ENXIO)
-		priv->wol_irq = ndev->irq;
-
-	platform_set_drvdata(pdev, ndev);
-
-	/* Set the I/O base addr */
-	ndev->base_addr = (unsigned long)addr;
-
-	/* Custom initialisation */
-	if (priv->plat->init) {
-		ret = priv->plat->init(pdev);
-		if (unlikely(ret))
-			goto out_free_ndev;
-	}
-
-	/* MAC HW device detection */
-	ret = stmmac_mac_device_setup(ndev);
-	if (ret < 0)
-		goto out_plat_exit;
-
-	/* Network Device Registration */
-	ret = stmmac_probe(ndev);
-	if (ret < 0)
-		goto out_plat_exit;
+	/* Verify driver arguments */
+	stmmac_verify_args();
 
 	/* Override with kernel parameters if supplied XXX CRS XXX
 	 * this needs to have multiple instances */

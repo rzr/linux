@@ -1771,30 +1771,33 @@ nv_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *storage)
 	} while (u64_stats_fetch_retry_bh(&np->swstats_tx_syncp, syncp_start));
 
 	/* If the nic supports hw counters then retrieve latest values */
-	if (np->driver_data & (DEV_HAS_STATISTICS_V1|DEV_HAS_STATISTICS_V2|DEV_HAS_STATISTICS_V3)) {
-		nv_get_hw_stats(dev);
+	if (np->driver_data & DEV_HAS_STATISTICS_V123) {
+		spin_lock_bh(&np->hwstats_lock);
 
-		/*
-		 * Note: because HW stats are not always available and
-		 * for consistency reasons, the following ifconfig
-		 * stats are managed by software: rx_bytes, tx_bytes,
-		 * rx_packets and tx_packets. The related hardware
-		 * stats reported by ethtool should be equivalent to
-		 * these ifconfig stats, with 4 additional bytes per
-		 * packet (Ethernet FCS CRC).
-		 */
+		nv_update_stats(dev);
 
-		/* copy to net_device stats */
-		dev->stats.tx_fifo_errors = np->estats.tx_fifo_errors;
-		dev->stats.tx_carrier_errors = np->estats.tx_carrier_errors;
-		dev->stats.rx_crc_errors = np->estats.rx_crc_errors;
-		dev->stats.rx_over_errors = np->estats.rx_over_errors;
-		dev->stats.rx_fifo_errors = np->estats.rx_drop_frame;
-		dev->stats.rx_errors = np->estats.rx_errors_total;
-		dev->stats.tx_errors = np->estats.tx_errors_total;
+		/* generic stats */
+		storage->rx_errors = np->estats.rx_errors_total;
+		storage->tx_errors = np->estats.tx_errors_total;
+
+		/* meaningful only when NIC supports stats v3 */
+		storage->multicast = np->estats.rx_multicast;
+
+		/* detailed rx_errors */
+		storage->rx_length_errors = np->estats.rx_length_error;
+		storage->rx_over_errors   = np->estats.rx_over_errors;
+		storage->rx_crc_errors    = np->estats.rx_crc_errors;
+		storage->rx_frame_errors  = np->estats.rx_frame_align_error;
+		storage->rx_fifo_errors   = np->estats.rx_drop_frame;
+
+		/* detailed tx_errors */
+		storage->tx_carrier_errors = np->estats.tx_carrier_errors;
+		storage->tx_fifo_errors    = np->estats.tx_fifo_errors;
+
+		spin_unlock_bh(&np->hwstats_lock);
 	}
 
-	return &dev->stats;
+	return storage;
 }
 
 /*
@@ -2476,8 +2479,10 @@ static int nv_tx_done(struct net_device *dev, int limit)
 					    && !(flags & NV_TX_RETRYCOUNT_MASK))
 						nv_legacybackoff_reseed(dev);
 				} else {
-					dev->stats.tx_packets++;
-					dev->stats.tx_bytes += np->get_tx_ctx->skb->len;
+					u64_stats_update_begin(&np->swstats_tx_syncp);
+					np->stat_tx_packets++;
+					np->stat_tx_bytes += np->get_tx_ctx->skb->len;
+					u64_stats_update_end(&np->swstats_tx_syncp);
 				}
 				bytes_compl += np->get_tx_ctx->skb->len;
 				dev_kfree_skb_any(np->get_tx_ctx->skb);
@@ -2491,8 +2496,10 @@ static int nv_tx_done(struct net_device *dev, int limit)
 					    && !(flags & NV_TX2_RETRYCOUNT_MASK))
 						nv_legacybackoff_reseed(dev);
 				} else {
-					dev->stats.tx_packets++;
-					dev->stats.tx_bytes += np->get_tx_ctx->skb->len;
+					u64_stats_update_begin(&np->swstats_tx_syncp);
+					np->stat_tx_packets++;
+					np->stat_tx_bytes += np->get_tx_ctx->skb->len;
+					u64_stats_update_end(&np->swstats_tx_syncp);
 				}
 				bytes_compl += np->get_tx_ctx->skb->len;
 				dev_kfree_skb_any(np->get_tx_ctx->skb);
@@ -2539,8 +2546,10 @@ static int nv_tx_done_optimized(struct net_device *dev, int limit)
 						nv_legacybackoff_reseed(dev);
 				}
 			} else {
-				dev->stats.tx_packets++;
-				dev->stats.tx_bytes += np->get_tx_ctx->skb->len;
+				u64_stats_update_begin(&np->swstats_tx_syncp);
+				np->stat_tx_packets++;
+				np->stat_tx_bytes += np->get_tx_ctx->skb->len;
+				u64_stats_update_end(&np->swstats_tx_syncp);
 			}
 
 			bytes_cleaned += np->get_tx_ctx->skb->len;
@@ -2805,8 +2814,10 @@ static int nv_rx_process(struct net_device *dev, int limit)
 		skb_put(skb, len);
 		skb->protocol = eth_type_trans(skb, dev);
 		napi_gro_receive(&np->napi, skb);
-		dev->stats.rx_packets++;
-		dev->stats.rx_bytes += len;
+		u64_stats_update_begin(&np->swstats_rx_syncp);
+		np->stat_rx_packets++;
+		np->stat_rx_bytes += len;
+		u64_stats_update_end(&np->swstats_rx_syncp);
 next_pkt:
 		if (unlikely(np->get_rx.orig++ == np->last_rx.orig))
 			np->get_rx.orig = np->first_rx.orig;
@@ -2889,8 +2900,10 @@ static int nv_rx_process_optimized(struct net_device *dev, int limit)
 				__vlan_hwaccel_put_tag(skb, vid);
 			}
 			napi_gro_receive(&np->napi, skb);
-			dev->stats.rx_packets++;
-			dev->stats.rx_bytes += len;
+			u64_stats_update_begin(&np->swstats_rx_syncp);
+			np->stat_rx_packets++;
+			np->stat_rx_bytes += len;
+			u64_stats_update_end(&np->swstats_rx_syncp);
 		} else {
 			dev_kfree_skb(skb);
 		}

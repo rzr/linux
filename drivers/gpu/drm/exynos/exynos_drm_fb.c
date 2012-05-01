@@ -41,15 +41,11 @@
  * exynos specific framebuffer structure.
  *
  * @fb: drm framebuffer obejct.
- * @exynos_gem_obj: exynos specific gem object containing a gem object.
- * @buffer: pointer to exynos_drm_gem_buffer object.
- *	- contain the memory information to memory region allocated
- *	at default framebuffer creation.
+ * @exynos_gem_obj: array of exynos specific gem object containing a gem object.
  */
 struct exynos_drm_fb {
 	struct drm_framebuffer		fb;
-	struct exynos_drm_gem_obj	*exynos_gem_obj;
-	struct exynos_drm_gem_buf	*buffer;
+	struct exynos_drm_gem_obj	*exynos_gem_obj[MAX_FB_BUFFER];
 };
 
 static void exynos_drm_fb_destroy(struct drm_framebuffer *fb)
@@ -59,13 +55,6 @@ static void exynos_drm_fb_destroy(struct drm_framebuffer *fb)
 	DRM_DEBUG_KMS("%s\n", __FILE__);
 
 	drm_framebuffer_cleanup(fb);
-
-	/*
-	 * default framebuffer has no gem object so
-	 * a buffer of the default framebuffer should be released at here.
-	 */
-	if (!exynos_fb->exynos_gem_obj && exynos_fb->buffer)
-		exynos_drm_buf_destroy(fb->dev, exynos_fb->buffer);
 
 	kfree(exynos_fb);
 	exynos_fb = NULL;
@@ -127,47 +116,15 @@ exynos_drm_framebuffer_init(struct drm_device *dev,
 	return &exynos_fb->fb;
 }
 
-	/*
-	 * mode_cmd->handle could be NULL at booting time or
-	 * with user request. if NULL, a new buffer or a gem object
-	 * would be allocated.
-	 */
-	if (!mode_cmd->handle) {
-		if (!file_priv) {
-			struct exynos_drm_gem_buf *buffer;
-
-			/*
-			 * in case that file_priv is NULL, it allocates
-			 * only buffer and this buffer would be used
-			 * for default framebuffer.
-			 */
-			buffer = exynos_drm_buf_create(dev, size);
-			if (IS_ERR(buffer)) {
-				ret = PTR_ERR(buffer);
-				goto err_buffer;
-			}
-
-			exynos_fb->buffer = buffer;
-
-			DRM_LOG_KMS("default: dma_addr = 0x%lx, size = 0x%x\n",
-					(unsigned long)buffer->dma_addr, size);
-
-			goto out;
-		} else {
-			exynos_gem_obj = exynos_drm_gem_create(dev, file_priv,
-							&mode_cmd->handle,
-							size);
-			if (IS_ERR(exynos_gem_obj)) {
-				ret = PTR_ERR(exynos_gem_obj);
-				goto err_buffer;
-			}
-		}
-	} else {
-		obj = drm_gem_object_lookup(dev, file_priv, mode_cmd->handle);
-		if (!obj) {
-			DRM_ERROR("failed to lookup gem object.\n");
-			goto err_buffer;
-		}
+static struct drm_framebuffer *
+exynos_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
+		      struct drm_mode_fb_cmd2 *mode_cmd)
+{
+	struct drm_gem_object *obj;
+	struct drm_framebuffer *fb;
+	struct exynos_drm_fb *exynos_fb;
+	int nr;
+	int i;
 
 	DRM_DEBUG_KMS("%s\n", __FILE__);
 
@@ -177,17 +134,7 @@ exynos_drm_framebuffer_init(struct drm_device *dev,
 		return ERR_PTR(-ENOENT);
 	}
 
-	/*
-	 * if got a exynos_gem_obj from either a handle or
-	 * a new creation then exynos_fb->exynos_gem_obj is NULL
-	 * so that default framebuffer has no its own gem object,
-	 * only its own buffer object.
-	 */
-	exynos_fb->buffer = exynos_gem_obj->buffer;
-
-	DRM_LOG_KMS("dma_addr = 0x%lx, size = 0x%x, gem object = 0x%x\n",
-			(unsigned long)exynos_fb->buffer->dma_addr, size,
-			(unsigned int)&exynos_gem_obj->base);
+	drm_gem_object_unreference_unlocked(obj);
 
 	fb = exynos_drm_framebuffer_init(dev, mode_cmd, obj);
 	if (IS_ERR(fb))
@@ -213,14 +160,18 @@ exynos_drm_framebuffer_init(struct drm_device *dev,
 	return fb;
 }
 
-struct exynos_drm_gem_buf *exynos_drm_fb_get_buf(struct drm_framebuffer *fb)
+struct exynos_drm_gem_buf *exynos_drm_fb_buffer(struct drm_framebuffer *fb,
+						int index)
 {
 	struct exynos_drm_fb *exynos_fb = to_exynos_fb(fb);
 	struct exynos_drm_gem_buf *buffer;
 
 	DRM_DEBUG_KMS("%s\n", __FILE__);
 
-	buffer = exynos_fb->buffer;
+	if (index >= MAX_FB_BUFFER)
+		return NULL;
+
+	buffer = exynos_fb->exynos_gem_obj[index]->buffer;
 	if (!buffer)
 		return NULL;
 
@@ -241,7 +192,7 @@ static void exynos_drm_output_poll_changed(struct drm_device *dev)
 }
 
 static struct drm_mode_config_funcs exynos_drm_mode_config_funcs = {
-	.fb_create = exynos_drm_fb_create,
+	.fb_create = exynos_user_fb_create,
 	.output_poll_changed = exynos_drm_output_poll_changed,
 };
 

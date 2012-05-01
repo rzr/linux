@@ -99,19 +99,7 @@ static struct notifier_block __refdata oprofile_cpu_notifier = {
 
 static int oprofile_hrtimer_setup(void)
 {
-	int rc;
-
-	rc = register_hotcpu_notifier(&oprofile_cpu_notifier);
-	if (rc)
-		return rc;
-	ops->create_files = NULL;
-	ops->setup = NULL;
-	ops->shutdown = NULL;
-	ops->start = oprofile_hrtimer_start;
-	ops->stop = oprofile_hrtimer_stop;
-	ops->cpu_type = "timer";
-	printk(KERN_INFO "oprofile: using timer interrupt.\n");
-	return 0;
+	return register_hotcpu_notifier(&oprofile_cpu_notifier);
 }
 
 static void oprofile_hrtimer_shutdown(void)

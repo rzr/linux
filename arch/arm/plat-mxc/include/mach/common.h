@@ -135,5 +135,8 @@ extern void imx6q_clock_map_io(void);
 
 #ifdef CONFIG_PM
 extern void imx6q_pm_init(void);
-extern void imx6q_clock_map_io(void);
+#else
+static inline void imx6q_pm_init(void) {}
+#endif
+
 #endif

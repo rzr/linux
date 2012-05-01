@@ -536,7 +536,7 @@ static int __init microcode_init(void)
 
 	error = microcode_dev_init();
 	if (error)
-		goto out_sysdev_driver;
+		goto out_driver;
 
 	register_syscore_ops(&mc_syscore_ops);
 	register_hotcpu_notifier(&mc_cpu_notifier);
@@ -546,11 +546,11 @@ static int __init microcode_init(void)
 
 	return 0;
 
-out_sysdev_driver:
+out_driver:
 	get_online_cpus();
 	mutex_lock(&microcode_mutex);
 
-	sysdev_driver_unregister(&cpu_sysdev_class, &mc_sysdev_driver);
+	subsys_interface_unregister(&mc_cpu_interface);
 
 	mutex_unlock(&microcode_mutex);
 	put_online_cpus();

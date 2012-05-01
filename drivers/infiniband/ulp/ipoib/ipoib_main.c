@@ -556,7 +556,7 @@ static int path_rec_start(struct net_device *dev,
 }
 
 /* called with rcu_read_lock */
-static void neigh_add_path(struct sk_buff *skb, struct net_device *dev)
+static void neigh_add_path(struct sk_buff *skb, struct neighbour *n, struct net_device *dev)
 {
 	struct ipoib_dev_priv *priv = netdev_priv(dev);
 	struct ipoib_path *path;
@@ -636,7 +636,7 @@ err_drop:
 }
 
 /* called with rcu_read_lock */
-static void ipoib_path_lookup(struct sk_buff *skb, struct net_device *dev)
+static void ipoib_path_lookup(struct sk_buff *skb, struct neighbour *n, struct net_device *dev)
 {
 	struct ipoib_dev_priv *priv = netdev_priv(skb->dev);
 
@@ -714,12 +714,17 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	unsigned long flags;
 
 	rcu_read_lock();
-	if (likely(skb_dst(skb)))
-		n = dst_get_neighbour(skb_dst(skb));
-
+	if (likely(skb_dst(skb))) {
+		n = dst_get_neighbour_noref(skb_dst(skb));
+		if (!n) {
+			++dev->stats.tx_dropped;
+			dev_kfree_skb_any(skb);
+			goto unlock;
+		}
+	}
 	if (likely(n)) {
 		if (unlikely(!*to_ipoib_neigh(n))) {
-			ipoib_path_lookup(skb, dev);
+			ipoib_path_lookup(skb, n, dev);
 			goto unlock;
 		}
 
@@ -742,7 +747,7 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
 			list_del(&neigh->list);
 			ipoib_neigh_free(dev, neigh);
 			spin_unlock_irqrestore(&priv->lock, flags);
-			ipoib_path_lookup(skb, dev);
+			ipoib_path_lookup(skb, n, dev);
 			goto unlock;
 		}
 
@@ -825,14 +830,9 @@ static int ipoib_hard_header(struct sk_buff *skb,
 	 * destination address into skb->cb so we can figure out where
 	 * to send the packet later.
 	 */
-	dst = skb_dst(skb);
-	n = NULL;
-	if (dst)
-		n = dst_get_neighbour_raw(dst);
-	if ((!dst || !n) && daddr) {
-		struct ipoib_pseudoheader *phdr =
-			(struct ipoib_pseudoheader *) skb_push(skb, sizeof *phdr);
-		memcpy(phdr->hwaddr, daddr, INFINIBAND_ALEN);
+	if (!skb_dst(skb)) {
+		struct ipoib_cb *cb = (struct ipoib_cb *) skb->cb;
+		memcpy(cb->hwaddr, daddr, INFINIBAND_ALEN);
 	}
 
 	return 0;

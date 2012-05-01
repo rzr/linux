@@ -1542,11 +1542,52 @@ static __init void intel_clovertown_quirk(void)
 	x86_pmu.pebs_constraints = NULL;
 }
 
-static void intel_sandybridge_quirks(void)
+static __init void intel_sandybridge_quirk(void)
 {
 	printk(KERN_WARNING "PEBS disabled due to CPU errata.\n");
 	x86_pmu.pebs = 0;
 	x86_pmu.pebs_constraints = NULL;
+}
+
+static const struct { int id; char *name; } intel_arch_events_map[] __initconst = {
+	{ PERF_COUNT_HW_CPU_CYCLES, "cpu cycles" },
+	{ PERF_COUNT_HW_INSTRUCTIONS, "instructions" },
+	{ PERF_COUNT_HW_BUS_CYCLES, "bus cycles" },
+	{ PERF_COUNT_HW_CACHE_REFERENCES, "cache references" },
+	{ PERF_COUNT_HW_CACHE_MISSES, "cache misses" },
+	{ PERF_COUNT_HW_BRANCH_INSTRUCTIONS, "branch instructions" },
+	{ PERF_COUNT_HW_BRANCH_MISSES, "branch misses" },
+};
+
+static __init void intel_arch_events_quirk(void)
+{
+	int bit;
+
+	/* disable event that reported as not presend by cpuid */
+	for_each_set_bit(bit, x86_pmu.events_mask, ARRAY_SIZE(intel_arch_events_map)) {
+		intel_perfmon_event_map[intel_arch_events_map[bit].id] = 0;
+		printk(KERN_WARNING "CPUID marked event: \'%s\' unavailable\n",
+				intel_arch_events_map[bit].name);
+	}
+}
+
+static __init void intel_nehalem_quirk(void)
+{
+	union cpuid10_ebx ebx;
+
+	ebx.full = x86_pmu.events_maskl;
+	if (ebx.split.no_branch_misses_retired) {
+		/*
+		 * Erratum AAJ80 detected, we work it around by using
+		 * the BR_MISP_EXEC.ANY event. This will over-count
+		 * branch-misses, but it's still much better than the
+		 * architectural event which is often completely bogus:
+		 */
+		intel_perfmon_event_map[PERF_COUNT_HW_BRANCH_MISSES] = 0x7f89;
+		ebx.split.no_branch_misses_retired = 0;
+		x86_pmu.events_maskl = ebx.full;
+		printk(KERN_INFO "CPU erratum AAJ80 worked around\n");
+	}
 }
 
 __init int intel_pmu_init(void)
@@ -1694,7 +1735,7 @@ __init int intel_pmu_init(void)
 		break;
 
 	case 42: /* SandyBridge */
-		x86_pmu.quirks = intel_sandybridge_quirks;
+		x86_add_quirk(intel_sandybridge_quirk);
 	case 45: /* SandyBridge, "Romely-EP" */
 		memcpy(hw_cache_event_ids, snb_hw_cache_event_ids,
 		       sizeof(hw_cache_event_ids));

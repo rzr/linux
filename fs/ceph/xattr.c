@@ -836,6 +836,7 @@ int ceph_removexattr(struct dentry *dentry, const char *name)
 			return -EOPNOTSUPP;
 	}
 
+	err = -ENOMEM;
 	spin_lock(&ci->i_ceph_lock);
 	__build_xattrs(inode);
 retry:

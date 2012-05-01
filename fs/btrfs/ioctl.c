@@ -868,10 +868,8 @@ static int cluster_pages_for_defrag(struct inode *inode,
 		return 0;
 	file_end = (isize - 1) >> PAGE_CACHE_SHIFT;
 
-	mutex_lock(&inode->i_mutex);
 	ret = btrfs_delalloc_reserve_space(inode,
 					   num_pages << PAGE_CACHE_SHIFT);
-	mutex_unlock(&inode->i_mutex);
 	if (ret)
 		return ret;
 	i_done = 0;
@@ -3068,8 +3066,8 @@ static long btrfs_ioctl_logical_to_ino(struct btrfs_root *root,
 		goto out;
 
 	extent_item_pos = loi->logical - key.objectid;
-	ret = iterate_extent_inodes(root->fs_info, key.objectid,
-					extent_item_pos, 0, build_ino_list,
+	ret = iterate_extent_inodes(root->fs_info, path, key.objectid,
+					extent_item_pos, build_ino_list,
 					inodes);
 
 	if (ret < 0)

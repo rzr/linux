@@ -3169,7 +3169,21 @@ static void analyse_stripe(struct stripe_head *sh, struct stripe_head_state *s)
 		}
 		if (dev->written)
 			s->written++;
-		rdev = rcu_dereference(conf->disks[i].rdev);
+		/* Prefer to use the replacement for reads, but only
+		 * if it is recovered enough and has no bad blocks.
+		 */
+		rdev = rcu_dereference(conf->disks[i].replacement);
+		if (rdev && !test_bit(Faulty, &rdev->flags) &&
+		    rdev->recovery_offset >= sh->sector + STRIPE_SECTORS &&
+		    !is_badblock(rdev, sh->sector, STRIPE_SECTORS,
+				 &first_bad, &bad_sectors))
+			set_bit(R5_ReadRepl, &dev->flags);
+		else {
+			if (rdev)
+				set_bit(R5_NeedReplace, &dev->flags);
+			rdev = rcu_dereference(conf->disks[i].rdev);
+			clear_bit(R5_ReadRepl, &dev->flags);
+		}
 		if (rdev && test_bit(Faulty, &rdev->flags))
 			rdev = NULL;
 		if (rdev) {
@@ -3211,15 +3225,24 @@ static void analyse_stripe(struct stripe_head *sh, struct stripe_head_state *s)
 			set_bit(R5_Insync, &dev->flags);
 
 		if (rdev && test_bit(R5_WriteError, &dev->flags)) {
-			clear_bit(R5_Insync, &dev->flags);
-			if (!test_bit(Faulty, &rdev->flags)) {
+			/* This flag does not apply to '.replacement'
+			 * only to .rdev, so make sure to check that*/
+			struct md_rdev *rdev2 = rcu_dereference(
+				conf->disks[i].rdev);
+			if (rdev2 == rdev)
+				clear_bit(R5_Insync, &dev->flags);
+			if (rdev2 && !test_bit(Faulty, &rdev2->flags)) {
 				s->handle_bad_blocks = 1;
 				atomic_inc(&rdev2->nr_pending);
 			} else
 				clear_bit(R5_WriteError, &dev->flags);
 		}
 		if (rdev && test_bit(R5_MadeGood, &dev->flags)) {
-			if (!test_bit(Faulty, &rdev->flags)) {
+			/* This flag does not apply to '.replacement'
+			 * only to .rdev, so make sure to check that*/
+			struct md_rdev *rdev2 = rcu_dereference(
+				conf->disks[i].rdev);
+			if (rdev2 && !test_bit(Faulty, &rdev2->flags)) {
 				s->handle_bad_blocks = 1;
 				atomic_inc(&rdev2->nr_pending);
 			} else

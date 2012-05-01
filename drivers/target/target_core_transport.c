@@ -732,13 +732,7 @@ void transport_complete_task(struct se_task *task, int success)
 	}
 
 	if (cmd->t_tasks_failed) {
-		if (!task->task_error_status) {
-			task->task_error_status =
-				TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
-			cmd->scsi_sense_reason =
-				TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		}
-
+		cmd->scsi_sense_reason = TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
 		INIT_WORK(&cmd->work, target_complete_failure_work);
 	} else {
 		atomic_set(&cmd->t_transport_complete, 1);
@@ -2070,13 +2064,7 @@ static inline int transport_execute_task_attr(struct se_cmd *cmd)
 static int transport_execute_tasks(struct se_cmd *cmd)
 {
 	int add_tasks;
-
-	if (se_dev_check_online(cmd->se_dev) != 0) {
-		cmd->scsi_sense_reason = TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		transport_generic_request_failure(cmd);
-		return 0;
-	}
-
+	struct se_device *se_dev = cmd->se_dev;
 	/*
 	 * Call transport_cmd_check_stop() to see if a fabric exception
 	 * has occurred that prevents execution.
@@ -2151,7 +2139,6 @@ check_depth:
 		spin_unlock_irqrestore(&cmd->t_state_lock, flags);
 		atomic_set(&cmd->t_transport_sent, 0);
 		transport_stop_tasks_for_cmd(cmd);
-		atomic_inc(&dev->depth_left);
 		transport_generic_request_failure(cmd);
 	}
 
@@ -2552,6 +2539,7 @@ static int transport_generic_cmd_sequencer(
 					cmd, cdb, pr_reg_type) != 0) {
 			cmd->se_cmd_flags |= SCF_SCSI_CDB_EXCEPTION;
 			cmd->se_cmd_flags |= SCF_SCSI_RESERVATION_CONFLICT;
+			cmd->scsi_status = SAM_STAT_RESERVATION_CONFLICT;
 			cmd->scsi_sense_reason = TCM_RESERVATION_CONFLICT;
 			return -EBUSY;
 		}
@@ -3874,6 +3862,14 @@ int transport_generic_new_cmd(struct se_cmd *cmd)
 	else if (!task_cdbs && (cmd->se_cmd_flags & SCF_SCSI_DATA_SG_IO_CDB)) {
 		cmd->t_state = TRANSPORT_COMPLETE;
 		atomic_set(&cmd->t_transport_active, 1);
+
+		if (cmd->t_task_cdb[0] == REQUEST_SENSE) {
+			u8 ua_asc = 0, ua_ascq = 0;
+
+			core_scsi3_ua_clear_for_request_sense(cmd,
+					&ua_asc, &ua_ascq);
+		}
+
 		INIT_WORK(&cmd->work, target_complete_ok_work);
 		queue_work(target_completion_wq, &cmd->work);
 		return 0;
@@ -4495,8 +4491,8 @@ int transport_send_check_condition_and_sense(
 		/* CURRENT ERROR */
 		buffer[offset] = 0x70;
 		buffer[offset+SPC_ADD_SENSE_LEN_OFFSET] = 10;
-		/* ABORTED COMMAND */
-		buffer[offset+SPC_SENSE_KEY_OFFSET] = ABORTED_COMMAND;
+		/* ILLEGAL REQUEST */
+		buffer[offset+SPC_SENSE_KEY_OFFSET] = ILLEGAL_REQUEST;
 		/* INVALID FIELD IN CDB */
 		buffer[offset+SPC_ASC_KEY_OFFSET] = 0x24;
 		break;
@@ -4504,8 +4500,8 @@ int transport_send_check_condition_and_sense(
 		/* CURRENT ERROR */
 		buffer[offset] = 0x70;
 		buffer[offset+SPC_ADD_SENSE_LEN_OFFSET] = 10;
-		/* ABORTED COMMAND */
-		buffer[offset+SPC_SENSE_KEY_OFFSET] = ABORTED_COMMAND;
+		/* ILLEGAL REQUEST */
+		buffer[offset+SPC_SENSE_KEY_OFFSET] = ILLEGAL_REQUEST;
 		/* INVALID FIELD IN PARAMETER LIST */
 		buffer[offset+SPC_ASC_KEY_OFFSET] = 0x26;
 		break;
@@ -4699,7 +4695,7 @@ static int transport_processing_thread(void *param)
 {
 	int ret;
 	struct se_cmd *cmd;
-	struct se_device *dev = (struct se_device *) param;
+	struct se_device *dev = param;
 
 	while (!kthread_should_stop()) {
 		ret = wait_event_interruptible(dev->dev_queue_obj.thread_wq,

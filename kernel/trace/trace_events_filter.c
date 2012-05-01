@@ -1877,12 +1877,21 @@ int apply_event_filter(struct ftrace_event_call *call, char *filter_string)
 	 * in the filter, we disable the filter and show the error
 	 * string
 	 */
-	tmp = call->filter;
-	rcu_assign_pointer(call->filter, filter);
-	if (tmp) {
-		/* Make sure the call is done with the filter */
-		synchronize_sched();
-		__free_filter(tmp);
+	if (filter) {
+		struct event_filter *tmp = call->filter;
+
+		if (!err)
+			call->flags |= TRACE_EVENT_FL_FILTERED;
+		else
+			filter_disable(call);
+
+		rcu_assign_pointer(call->filter, filter);
+
+		if (tmp) {
+			/* Make sure the call is done with the filter */
+			synchronize_sched();
+			__free_filter(tmp);
+		}
 	}
 out_unlock:
 	mutex_unlock(&event_mutex);

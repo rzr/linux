@@ -288,6 +288,8 @@ static inline hda_nid_t get_capsrc(struct alc_spec *spec, int idx)
 		spec->capsrc_nids[idx] : spec->adc_nids[idx];
 }
 
+static void call_update_outputs(struct hda_codec *codec);
+
 /* select the given imux item; either unmute exclusively or select the route */
 static int alc_mux_select(struct hda_codec *codec, unsigned int adc_idx,
 			  unsigned int idx, bool force)
@@ -2709,6 +2711,9 @@ static int alc_auto_fill_adc_caps(struct hda_codec *codec)
 	int max_nums = ARRAY_SIZE(spec->private_adc_nids);
 	int i, nums = 0;
 
+	if (spec->shared_mic_hp)
+		max_nums = 1; /* no multi streams with the shared HP/mic */
+
 	nid = codec->start_nid;
 	for (i = 0; i < codec->num_nodes; i++, nid++) {
 		hda_nid_t src;
@@ -3034,6 +3039,8 @@ static int alc_auto_fill_dac_nids(struct hda_codec *codec)
 {
 	struct alc_spec *spec = codec->spec;
 	struct auto_pin_cfg *cfg = &spec->autocfg;
+	unsigned int location, defcfg;
+	int num_pins;
 	bool redone = false;
 	int i;
 
@@ -3124,6 +3131,13 @@ static int alc_auto_fill_dac_nids(struct hda_codec *codec)
 			goto again;
 		}
 	}
+
+	if (!spec->multi_ios &&
+	    cfg->line_out_type == AUTO_PIN_SPEAKER_OUT &&
+	    cfg->hp_outs) {
+		/* try multi-ios with HP + inputs */
+		defcfg = snd_hda_codec_get_pincfg(codec, cfg->hp_pins[0]);
+		location = get_defcfg_location(defcfg);
 
 		num_pins = alc_auto_fill_multi_ios(codec, location, 1);
 		if (num_pins > 0) {
@@ -4640,7 +4654,6 @@ static const struct snd_pci_quirk alc882_fixup_tbl[] = {
 		      ALC882_FIXUP_ACER_ASPIRE_4930G),
 	SND_PCI_QUIRK(0x1025, 0x0155, "Packard-Bell M5120", ALC882_FIXUP_PB_M5210),
 	SND_PCI_QUIRK(0x1025, 0x0259, "Acer Aspire 5935", ALC889_FIXUP_DAC_ROUTE),
-	SND_PCI_QUIRK(0x1025, 0x026b, "Acer Aspire 8940G", ALC882_FIXUP_ACER_ASPIRE_8930G),
 	SND_PCI_QUIRK(0x1025, 0x0296, "Acer Aspire 7736z", ALC882_FIXUP_ACER_ASPIRE_7736),
 	SND_PCI_QUIRK(0x1043, 0x13c2, "Asus A7M", ALC882_FIXUP_EAPD),
 	SND_PCI_QUIRK(0x1043, 0x1873, "ASUS W90V", ALC882_FIXUP_ASUS_W90V),

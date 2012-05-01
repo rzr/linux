@@ -57,6 +57,10 @@ the following:
 
   4. Bus type of the device, if both dev->bus and dev->bus->pm are present.
 
+If the subsystem chosen by applying the above rules doesn't provide the relevant
+callback, the PM core will invoke the corresponding driver callback stored in
+dev->driver->pm directly (if present).
+
 The PM core always checks which callback to use in the order given above, so the
 priority order of callbacks from high to low is: PM domain, device type, class
 and bus type.  Moreover, the high-priority one will always take precedence over
@@ -64,17 +68,17 @@ a low-priority one.  The PM domain, bus type, device type and class callbacks
 are referred to as subsystem-level callbacks in what follows.
 
 By default, the callbacks are always invoked in process context with interrupts
-enabled.  However, subsystems can use the pm_runtime_irq_safe() helper function
-to tell the PM core that their ->runtime_suspend(), ->runtime_resume() and
-->runtime_idle() callbacks may be invoked in atomic context with interrupts
-disabled for a given device.  This implies that the callback routines in
-question must not block or sleep, but it also means that the synchronous helper
-functions listed at the end of Section 4 may be used for that device within an
-interrupt handler or generally in an atomic context.
+enabled.  However, the pm_runtime_irq_safe() helper function can be used to tell
+the PM core that it is safe to run the ->runtime_suspend(), ->runtime_resume()
+and ->runtime_idle() callbacks for the given device in atomic context with
+interrupts disabled.  This implies that the callback routines in question must
+not block or sleep, but it also means that the synchronous helper functions
+listed at the end of Section 4 may be used for that device within an interrupt
+handler or generally in an atomic context.
 
-The subsystem-level suspend callback is _entirely_ _responsible_ for handling
-the suspend of the device as appropriate, which may, but need not include
-executing the device driver's own ->runtime_suspend() callback (from the
+The subsystem-level suspend callback, if present, is _entirely_ _responsible_
+for handling the suspend of the device as appropriate, which may, but need not
+include executing the device driver's own ->runtime_suspend() callback (from the
 PM core's point of view it is not necessary to implement a ->runtime_suspend()
 callback in a device driver as long as the subsystem-level suspend callback
 knows what to do to handle the device).

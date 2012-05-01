@@ -2171,22 +2171,12 @@ static int cgroup_attach_proc(struct cgroup *cgrp, struct task_struct *leader)
 	 */
 	INIT_LIST_HEAD(&newcg_list);
 	for (i = 0; i < group_size; i++) {
-		tsk = flex_array_get_ptr(group, i);
-		/* nothing to do if this task is already in the cgroup */
-		oldcgrp = task_cgroup_from_root(tsk, root);
-		if (cgrp == oldcgrp)
-			continue;
-		/* get old css_set pointer */
-		task_lock(tsk);
-		oldcg = tsk->cgroups;
-		get_css_set(oldcg);
-		task_unlock(tsk);
-		/* see if the new one for us is already in the list? */
-		if (css_set_check_fetched(cgrp, tsk, oldcg, &newcg_list)) {
-			/* was already there, nothing to do. */
-			put_css_set(oldcg);
-		} else {
-			/* we don't already have it. get new one. */
+		tc = flex_array_get(group, i);
+		oldcg = tc->task->cgroups;
+
+		/* if we don't already have it in the list get a new one */
+		if (!css_set_check_fetched(cgrp, tc->task, oldcg,
+					   &newcg_list)) {
 			retval = css_set_prefetch(cgrp, oldcg, &newcg_list);
 			if (retval)
 				goto out_list_teardown;

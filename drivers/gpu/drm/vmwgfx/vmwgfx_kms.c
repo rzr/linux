@@ -1093,6 +1093,7 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 	struct vmw_surface *surface = NULL;
 	struct vmw_dma_buffer *bo = NULL;
 	struct ttm_base_object *user_obj;
+	struct drm_mode_fb_cmd mode_cmd;
 	int ret;
 
 	mode_cmd.width = mode_cmd2->width;
@@ -1109,8 +1110,8 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 	 */
 
 	if (!vmw_kms_validate_mode_vram(dev_priv,
-					mode_cmd->pitch,
-					mode_cmd->height)) {
+					mode_cmd.pitch,
+					mode_cmd.height)) {
 		DRM_ERROR("VRAM size is too small for requested mode.\n");
 		return ERR_PTR(-ENOMEM);
 	}
@@ -1130,9 +1131,13 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 		return ERR_PTR(-ENOENT);
 	}
 
+	/**
+	 * End conditioned code.
+	 */
+
 	/* returns either a dmabuf or surface */
 	ret = vmw_user_lookup_handle(dev_priv, tfile,
-				     mode_cmd->handle,
+				     mode_cmd.handle,
 				     &surface, &bo);
 	if (ret)
 		goto err_out;
@@ -1140,10 +1145,10 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 	/* Create the new framebuffer depending one what we got back */
 	if (bo)
 		ret = vmw_kms_new_framebuffer_dmabuf(dev_priv, bo, &vfb,
-						     mode_cmd);
+						     &mode_cmd);
 	else if (surface)
 		ret = vmw_kms_new_framebuffer_surface(dev_priv, file_priv,
-						      surface, &vfb, mode_cmd);
+						      surface, &vfb, &mode_cmd);
 	else
 		BUG();
 

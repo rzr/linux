@@ -777,6 +777,7 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 		return;
 
 	hdmi_present_sense(&spec->pins[pin_idx], 1);
+	snd_hda_jack_report_sync(codec);
 }
 
 static void hdmi_non_intrinsic_event(struct hda_codec *codec, unsigned int res)
@@ -1240,8 +1241,7 @@ static int generic_hdmi_build_jack(struct hda_codec *codec, int pin_idx)
 	if (pcmdev > 0)
 		sprintf(hdmi_str + strlen(hdmi_str), ",pcm=%d", pcmdev);
 
-	hdmi_present_sense(per_pin, 0);
-	return 0;
+	return snd_hda_jack_add_kctl(codec, per_pin->pin_nid, hdmi_str, 0);
 }
 
 static int generic_hdmi_build_controls(struct hda_codec *codec)

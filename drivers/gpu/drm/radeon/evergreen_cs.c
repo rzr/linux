@@ -520,7 +520,7 @@ static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 		break;
 	case DB_Z_INFO:
 		track->db_z_info = radeon_get_ib_value(p, idx);
-		if (!p->keep_tiling_flags) {
+		if (!(p->cs_flags & RADEON_CS_KEEP_TILING_FLAGS)) {
 			r = evergreen_cs_packet_next_reloc(p, &reloc);
 			if (r) {
 				dev_warn(p->dev, "bad SET_CONTEXT_REG "
@@ -649,7 +649,7 @@ static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	case CB_COLOR7_INFO:
 		tmp = (reg - CB_COLOR0_INFO) / 0x3c;
 		track->cb_color_info[tmp] = radeon_get_ib_value(p, idx);
-		if (!p->keep_tiling_flags) {
+		if (!(p->cs_flags & RADEON_CS_KEEP_TILING_FLAGS)) {
 			r = evergreen_cs_packet_next_reloc(p, &reloc);
 			if (r) {
 				dev_warn(p->dev, "bad SET_CONTEXT_REG "
@@ -666,7 +666,7 @@ static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	case CB_COLOR11_INFO:
 		tmp = ((reg - CB_COLOR8_INFO) / 0x1c) + 8;
 		track->cb_color_info[tmp] = radeon_get_ib_value(p, idx);
-		if (!p->keep_tiling_flags) {
+		if (!(p->cs_flags & RADEON_CS_KEEP_TILING_FLAGS)) {
 			r = evergreen_cs_packet_next_reloc(p, &reloc);
 			if (r) {
 				dev_warn(p->dev, "bad SET_CONTEXT_REG "
@@ -1355,7 +1355,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 					return -EINVAL;
 				}
 				ib[idx+1+(i*8)+2] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
-				if (!p->keep_tiling_flags) {
+				if (!(p->cs_flags & RADEON_CS_KEEP_TILING_FLAGS)) {
 					ib[idx+1+(i*8)+1] |=
 						TEX_ARRAY_MODE(evergreen_cs_get_aray_mode(reloc->lobj.tiling_flags));
 					if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO) {

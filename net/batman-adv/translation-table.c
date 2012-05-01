@@ -244,10 +244,9 @@ void tt_local_add(struct net_device *soft_iface, const uint8_t *addr,
 		tt_global_entry->orig_node->tt_poss_change = true;
 		/* The global entry has to be marked as ROAMING and has to be
 		 * kept for consistency purpose */
-		tt_global_entry->flags |= TT_CLIENT_ROAM;
+		tt_global_entry->common.flags |= TT_CLIENT_ROAM;
 		tt_global_entry->roam_at = jiffies;
-
-		send_roam_adv(bat_priv, tt_global_entry->addr,
+		send_roam_adv(bat_priv, tt_global_entry->common.addr,
 			      tt_global_entry->orig_node);
 	}
 out:
@@ -680,9 +679,9 @@ void tt_global_del(struct bat_priv *bat_priv,
 			 * 2) the client roamed to us => we can directly delete
 			 *    the global entry, since it is useless now. */
 			tt_local_entry = tt_local_hash_find(bat_priv,
-							tt_global_entry->addr);
+							    tt_global_entry->common.addr);
 			if (!tt_local_entry) {
-				tt_global_entry->flags |= TT_CLIENT_ROAM;
+				tt_global_entry->common.flags |= TT_CLIENT_ROAM;
 				tt_global_entry->roam_at = jiffies;
 				goto out;
 			}

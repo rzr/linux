@@ -644,6 +644,7 @@ static int mbind_range(struct mm_struct *mm, unsigned long start,
 	if (!vma || vma->vm_start > start)
 		return -EFAULT;
 
+	prev = vma->vm_prev;
 	if (start > vma->vm_start)
 		prev = vma;
 

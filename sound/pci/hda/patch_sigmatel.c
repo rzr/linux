@@ -1608,7 +1608,7 @@ static const struct snd_pci_quirk stac92hd73xx_codec_id_cfg_tbl[] = {
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x043a,
 		      "Alienware M17x", STAC_ALIENWARE_M17X),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0490,
-		      "Alienware M17x", STAC_ALIENWARE_M17X),
+		      "Alienware M17x R3", STAC_DELL_EQ),
 	{} /* terminator */
 };
 
@@ -4870,7 +4870,14 @@ static int find_mute_led_cfg(struct hda_codec *codec, int default_polarity)
 			/* BIOS bug: unfilled OEM string */
 			if (strstr(dev->name, "HP_Mute_LED_P_G")) {
 				set_hp_led_gpio(codec);
-				spec->gpio_led_polarity = 1;
+				switch (codec->subsystem_id) {
+				case 0x103c148a:
+					spec->gpio_led_polarity = 0;
+					break;
+				default:
+					spec->gpio_led_polarity = 1;
+					break;
+				}
 				return 1;
 			}
 		}

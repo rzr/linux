@@ -195,7 +195,7 @@ int target_emulate_set_target_port_groups(struct se_task *task)
 		cmd->scsi_sense_reason = TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
 		return -EINVAL;
 	}
-	buf = transport_kmap_first_data_page(cmd);
+	buf = transport_kmap_data_sg(cmd);
 
 	/*
 	 * Determine if explict ALUA via SET_TARGET_PORT_GROUPS is allowed

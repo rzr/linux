@@ -4396,15 +4396,6 @@ static const struct snd_pci_quirk cxt5051_fixups[] = {
 	{}
 };
 
-static const struct snd_pci_quirk cxt5066_fixups[] = {
-	SND_PCI_QUIRK(0x17aa, 0x20f2, "Lenovo T400", CXT_PINCFG_LENOVO_TP410),
-	SND_PCI_QUIRK(0x17aa, 0x215e, "Lenovo T410", CXT_PINCFG_LENOVO_TP410),
-	SND_PCI_QUIRK(0x17aa, 0x215f, "Lenovo T510", CXT_PINCFG_LENOVO_TP410),
-	SND_PCI_QUIRK(0x17aa, 0x21ce, "Lenovo T420", CXT_PINCFG_LENOVO_TP410),
-	SND_PCI_QUIRK(0x17aa, 0x21cf, "Lenovo T520", CXT_PINCFG_LENOVO_TP410),
-	{}
-};
-
 /* add "fake" mute amp-caps to DACs on cx5051 so that mixer mute switches
  * can be created (bko#42825)
  */
@@ -4441,10 +4432,6 @@ static int patch_conexant_auto(struct hda_codec *codec)
 		break;
 	case 0x14f15051:
 		add_cx5051_fake_mutes(codec);
-		apply_pin_fixup(codec, cxt5051_fixups, cxt_pincfg_tbl);
-		break;
-	default:
-		apply_pin_fixup(codec, cxt5066_fixups, cxt_pincfg_tbl);
 		break;
 	}
 

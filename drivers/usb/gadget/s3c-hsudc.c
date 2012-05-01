@@ -1146,9 +1146,8 @@ static int s3c_hsudc_start(struct usb_gadget *gadget,
 	int ret;
 
 	if (!driver
-		|| driver->speed < USB_SPEED_FULL
-		|| !bind
-		|| !driver->unbind || !driver->disconnect || !driver->setup)
+		|| driver->max_speed < USB_SPEED_FULL
+		|| !driver->setup)
 		return -EINVAL;
 
 	if (!hsudc)
