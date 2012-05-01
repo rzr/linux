@@ -95,6 +95,10 @@ static int disable_msi = 0;
 module_param(disable_msi, int, 0);
 MODULE_PARM_DESC(disable_msi, "Disable Message Signaled Interrupt (MSI)");
 
+static int legacy_pme = 0;
+module_param(legacy_pme, int, 0);
+MODULE_PARM_DESC(legacy_pme, "Legacy power management");
+
 static DEFINE_PCI_DEVICE_TABLE(sky2_id_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_SYSKONNECT, 0x9000) }, /* SK-9Sxx */
 	{ PCI_DEVICE(PCI_VENDOR_ID_SYSKONNECT, 0x9E00) }, /* SK-9Exx */
@@ -866,6 +870,13 @@ static void sky2_wol_init(struct sky2_port *sky2)
 
 	/* Disable PiG firmware */
 	sky2_write16(hw, B0_CTST, Y2_HW_WOL_OFF);
+
+	/* Needed by some broken BIOSes, use PCI rather than PCI-e for WOL */
+	if (legacy_pme) {
+		u32 reg1 = sky2_pci_read32(hw, PCI_DEV_REG1);
+		reg1 |= PCI_Y2_PME_LEGACY;
+		sky2_pci_write32(hw, PCI_DEV_REG1, reg1);
+	}
 
 	/* block receiver */
 	sky2_write8(hw, SK_REG(port, RX_GMF_CTRL_T), GMF_RST_SET);
@@ -1756,13 +1767,14 @@ static int sky2_open(struct net_device *dev)
 
 	sky2_hw_up(sky2);
 
+	/* Enable interrupts from phy/mac for port */
+	imask = sky2_read32(hw, B0_IMSK);
+
 	if (hw->chip_id == CHIP_ID_YUKON_OPT ||
 	    hw->chip_id == CHIP_ID_YUKON_PRM ||
 	    hw->chip_id == CHIP_ID_YUKON_OP_2)
 		imask |= Y2_IS_PHY_QLNK;	/* enable PHY Quick Link */
 
-	/* Enable interrupts from phy/mac for port */
-	imask = sky2_read32(hw, B0_IMSK);
 	imask |= portirq_msk[port];
 	sky2_write32(hw, B0_IMSK, imask);
 	sky2_read32(hw, B0_IMSK);

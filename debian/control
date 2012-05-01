@@ -61,7 +61,7 @@ Description: Debian patches to version 3.3 of the Linux kernel
  linux-source-3.3 package, as well as architecture-specific patches.
  .
  Note that these patches do NOT apply against a pristine Linux 3.3 kernel
- but only against the kernel tarball linux-2.6_3.3.orig.tar.gz from the
+ but only against the kernel tarball linux-2.6_3.3.4.orig.tar.gz from the
  Debian archive.
 
 Package: linux-support-3.3.0-trunk

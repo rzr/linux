@@ -9,7 +9,7 @@ from debian_linux.patches import PatchSeries, PatchSeriesList
 
 _default_home = "/usr/src/kernel-patches/all/3.3/debian"
 revisions = "orig base 1~experimental.1".split()
-upstream = "3.3"
+upstream = "3.3.4"
 
 class MatchExtra(object):
     def __init__(self, arch, featureset):
