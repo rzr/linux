@@ -838,9 +838,9 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
 			return status;
 		}
 	}
-	status = fh_want_write(&cstate->current_fh);
-	if (status)
-		return status;
+	err = fh_want_write(&cstate->current_fh);
+	if (err)
+		return nfserrno(err);
 	status = nfs_ok;
 
 	status = check_attr_support(rqstp, cstate, setattr->sa_bmval,

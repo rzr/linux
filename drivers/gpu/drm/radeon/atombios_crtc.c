@@ -550,8 +550,8 @@ static u32 atombios_adjust_pll(struct drm_crtc *crtc,
 		if (encoder->crtc == crtc) {
 			radeon_encoder = to_radeon_encoder(encoder);
 			connector = radeon_get_connector_for_encoder(encoder);
-			if (connector && connector->display_info.bpc)
-				bpc = connector->display_info.bpc;
+			/* if (connector && connector->display_info.bpc)
+				bpc = connector->display_info.bpc; */
 			encoder_mode = atombios_get_encoder_mode(encoder);
 			is_duallink = radeon_dig_monitor_is_duallink(encoder, mode->clock);
 			if ((radeon_encoder->devices & (ATOM_DEVICE_LCD_SUPPORT | ATOM_DEVICE_DFP_SUPPORT)) ||

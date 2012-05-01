@@ -262,10 +262,9 @@ int rtl92c_download_fw(struct ieee80211_hw *hw)
 	u32 fwsize;
 	enum version_8192c version = rtlhal->version;
 
-	if (!rtlhal->pfirmware)
+	if (rtlpriv->max_fw_size == 0 || !rtlhal->pfirmware)
 		return 1;
 
-	pr_info("Loading firmware file %s\n", rtlpriv->cfg->fw_name);
 	pfwheader = (struct rtl92c_firmware_header *)rtlhal->pfirmware;
 	pfwdata = (u8 *) rtlhal->pfirmware;
 	fwsize = rtlhal->fwsize;

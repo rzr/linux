@@ -22,6 +22,8 @@
 #include "ioctl.h"
 #include "ulist.h"
 
+#define BTRFS_BACKREF_SEARCH_COMMIT_ROOT ((struct btrfs_trans_handle *)0)
+
 struct inode_fs_paths {
 	struct btrfs_path		*btrfs_path;
 	struct btrfs_root		*fs_root;

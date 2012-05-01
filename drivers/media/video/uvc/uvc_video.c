@@ -468,21 +468,29 @@ uvc_video_clock_decode(struct uvc_streaming *stream, struct uvc_buffer *buf,
 	spin_unlock_irqrestore(&stream->clock.lock, flags);
 }
 
+static void uvc_video_clock_reset(struct uvc_streaming *stream)
+{
+	struct uvc_clock *clock = &stream->clock;
+
+	clock->head = 0;
+	clock->count = 0;
+	clock->last_sof = -1;
+	clock->sof_offset = -1;
+}
+
 static int uvc_video_clock_init(struct uvc_streaming *stream)
 {
 	struct uvc_clock *clock = &stream->clock;
 
 	spin_lock_init(&clock->lock);
-	clock->head = 0;
-	clock->count = 0;
 	clock->size = 32;
-	clock->last_sof = -1;
-	clock->sof_offset = -1;
 
 	clock->samples = kmalloc(clock->size * sizeof(*clock->samples),
 				 GFP_KERNEL);
 	if (clock->samples == NULL)
 		return -ENOMEM;
+
+	uvc_video_clock_reset(stream);
 
 	return 0;
 }
@@ -1424,8 +1432,6 @@ static void uvc_uninit_video(struct uvc_streaming *stream, int free_buffers)
 
 	if (free_buffers)
 		uvc_free_urb_buffers(stream);
-
-	uvc_video_clock_cleanup(stream);
 }
 
 /*
@@ -1554,10 +1560,6 @@ static int uvc_init_video(struct uvc_streaming *stream, gfp_t gfp_flags)
 	stream->bulk.payload_size = 0;
 
 	uvc_video_stats_start(stream);
-
-	ret = uvc_video_clock_init(stream);
-	if (ret < 0)
-		return ret;
 
 	if (intf->num_altsetting > 1) {
 		struct usb_host_endpoint *best_ep = NULL;
@@ -1839,10 +1841,17 @@ int uvc_video_enable(struct uvc_streaming *stream, int enable)
 		goto error_commit;
 
 	ret = uvc_init_video(stream, GFP_KERNEL);
-	if (ret < 0) {
-		usb_set_interface(stream->dev->udev, stream->intfnum, 0);
-		uvc_queue_enable(&stream->queue, 0);
-	}
+	if (ret < 0)
+		goto error_video;
+
+	return 0;
+
+error_video:
+	usb_set_interface(stream->dev->udev, stream->intfnum, 0);
+error_commit:
+	uvc_queue_enable(&stream->queue, 0);
+error_queue:
+	uvc_video_clock_cleanup(stream);
 
 	return ret;
 }

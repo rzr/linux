@@ -503,6 +503,9 @@ static int pm_genpd_runtime_suspend(struct device *dev)
 
 	might_sleep_if(!genpd->dev_irq_safe);
 
+	if (dev_gpd_data(dev)->always_on)
+		return -EBUSY;
+
 	stop_ok = genpd->gov ? genpd->gov->stop_ok : NULL;
 	if (stop_ok && !stop_ok(dev))
 		return -EBUSY;
@@ -847,7 +850,8 @@ static int pm_genpd_suspend_noirq(struct device *dev)
 	if (ret)
 		return ret;
 
-	if (dev->power.wakeup_path && genpd_dev_active_wakeup(genpd, dev))
+	if (dev_gpd_data(dev)->always_on
+	    || (dev->power.wakeup_path && genpd_dev_active_wakeup(genpd, dev)))
 		return 0;
 
 	genpd_stop_dev(genpd, dev);
@@ -1064,8 +1068,10 @@ static int pm_genpd_restore_noirq(struct device *dev)
 		}
 	}
 
+	if (genpd->suspend_power_off || dev_gpd_data(dev)->always_on)
+		return 0;
+
 	pm_genpd_poweron(genpd);
-	genpd->suspended_count--;
 	genpd_start_dev(genpd, dev);
 
 	return genpd_resume_early(genpd, dev);
@@ -1589,7 +1595,6 @@ void pm_genpd_init(struct generic_pm_domain *genpd,
 	genpd->poweroff_task = NULL;
 	genpd->resume_count = 0;
 	genpd->device_count = 0;
-	genpd->suspended_count = 0;
 	genpd->max_off_time_ns = -1;
 	genpd->domain.ops.runtime_suspend = pm_genpd_runtime_suspend;
 	genpd->domain.ops.runtime_resume = pm_genpd_runtime_resume;
