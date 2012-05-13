@@ -511,7 +511,9 @@ static int __do_config_autodelink(struct us_data *us, u8 *data, u16 len)
 
 	US_DEBUGP("%s, addr = 0xfe47, len = %d\n", __FUNCTION__, len);
 
-	US_DEBUGP("%s, addr = 0xfe47, len = %d\n", __FUNCTION__, len);
+	buf = kmemdup(data, len, GFP_NOIO);
+	if (!buf)
+		return USB_STOR_TRANSPORT_ERROR;
 
 	cmnd[0] = 0xF0;
 	cmnd[1] = 0x0E;

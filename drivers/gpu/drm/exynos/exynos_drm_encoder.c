@@ -106,43 +106,6 @@ static void exynos_drm_encoder_dpms(struct drm_encoder *encoder, int mode)
 	mutex_unlock(&dev->struct_mutex);
 }
 
-static void exynos_drm_encoder_dpms(struct drm_encoder *encoder, int mode)
-{
-	struct drm_device *dev = encoder->dev;
-	struct exynos_drm_manager *manager = exynos_drm_get_manager(encoder);
-	struct exynos_drm_manager_ops *manager_ops = manager->ops;
-	struct exynos_drm_encoder *exynos_encoder = to_exynos_encoder(encoder);
-
-	DRM_DEBUG_KMS("%s, encoder dpms: %d\n", __FILE__, mode);
-
-	if (exynos_encoder->dpms == mode) {
-		DRM_DEBUG_KMS("desired dpms mode is same as previous one.\n");
-		return;
-	}
-
-	mutex_lock(&dev->struct_mutex);
-
-	switch (mode) {
-	case DRM_MODE_DPMS_ON:
-		if (manager_ops && manager_ops->apply)
-			manager_ops->apply(manager->dev);
-		exynos_drm_display_power(encoder, mode);
-		exynos_encoder->dpms = mode;
-		break;
-	case DRM_MODE_DPMS_STANDBY:
-	case DRM_MODE_DPMS_SUSPEND:
-	case DRM_MODE_DPMS_OFF:
-		exynos_drm_display_power(encoder, mode);
-		exynos_encoder->dpms = mode;
-		break;
-	default:
-		DRM_ERROR("unspecified mode %d\n", mode);
-		break;
-	}
-
-	mutex_unlock(&dev->struct_mutex);
-}
-
 static bool
 exynos_drm_encoder_mode_fixup(struct drm_encoder *encoder,
 			       struct drm_display_mode *mode,

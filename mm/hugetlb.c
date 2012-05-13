@@ -2395,7 +2395,7 @@ static int unmap_ref_private(struct mm_struct *mm, struct vm_area_struct *vma,
 	 */
 	address = address & huge_page_mask(h);
 	pgoff = vma_hugecache_offset(h, vma, address);
-	mapping = (struct address_space *)page_private(page);
+	mapping = vma->vm_file->f_dentry->d_inode->i_mapping;
 
 	/*
 	 * Take the mapping lock for the duration of the table walk. As

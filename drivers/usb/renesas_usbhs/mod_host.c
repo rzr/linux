@@ -164,42 +164,9 @@ static struct usbhsh_request *usbhsh_ureq_alloc(struct usbhsh_hpriv *hpriv,
 					       struct urb *urb,
 					       gfp_t mem_flags)
 {
+	struct usbhsh_request *ureq;
 	struct usbhs_priv *priv = usbhsh_hpriv_to_priv(hpriv);
-	struct usbhsh_ep *uep = usbhsh_ep_to_uep(urb->ep);
-	struct usbhsh_device *udev = usbhsh_device_get(hpriv, urb);
-	struct usbhs_pipe *pipe;
-	struct usb_endpoint_descriptor *desc = &urb->ep->desc;
 	struct device *dev = usbhs_priv_to_dev(priv);
-	unsigned long flags;
-	int dir_in_req = !!usb_pipein(urb->pipe);
-	int is_dcp = usb_endpoint_xfer_control(desc);
-	int i, dir_in;
-	int ret = -EBUSY;
-
-	/********************  spin lock ********************/
-	usbhs_lock(priv, flags);
-
-	if (unlikely(usbhsh_uep_to_pipe(uep))) {
-		dev_err(dev, "uep already has pipe\n");
-		goto usbhsh_pipe_attach_done;
-	}
-
-	usbhs_for_each_pipe_with_dcp(pipe, priv, i) {
-
-		/* check pipe type */
-		if (!usbhs_pipe_type_is(pipe, usb_endpoint_type(desc)))
-			continue;
-
-		/* check pipe direction if normal pipe */
-		if (!is_dcp) {
-			dir_in = !!usbhs_pipe_is_dir_in(pipe);
-			if (0 != (dir_in - dir_in_req))
-				continue;
-		}
-
-		/* check pipe is free */
-		if (usbhsh_pipe_to_uep(pipe))
-			continue;
 
 	ureq = kzalloc(sizeof(struct usbhsh_request), mem_flags);
 	if (!ureq) {
@@ -211,18 +178,7 @@ static struct usbhsh_request *usbhsh_ureq_alloc(struct usbhsh_hpriv *hpriv,
 	ureq->urb = urb;
 	usbhsh_urb_to_ureq(urb) = ureq;
 
-	usbhsh_uep_to_udev(uep)	= udev;
-	usbhsh_uep_to_ep(uep)	= ep;
-	usbhsh_ep_to_uep(ep)	= uep;
-
-	usbhs_unlock(priv, flags);
-	/********************  spin unlock ******************/
-
-	dev_dbg(dev, "%s [%d-%d]\n", __func__,
-		usbhsh_device_number(hpriv, udev),
-		usb_endpoint_num(desc));
-
-	return 0;
+	return ureq;
 }
 
 static void usbhsh_ureq_free(struct usbhsh_hpriv *hpriv,
@@ -271,9 +227,6 @@ static void usbhsh_endpoint_sequence_save(struct usbhsh_hpriv *hpriv,
 	 * see [image of mod_host]
 	 *     [HARDWARE LIMITATION]
 	 */
-
-	/********************  spin lock ********************/
-	usbhs_lock(priv, flags);
 
 	/*
 	 * next sequence depends on actual_length

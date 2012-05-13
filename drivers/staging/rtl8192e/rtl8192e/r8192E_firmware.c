@@ -228,6 +228,13 @@ bool init_firmware(struct net_device *dev)
 	struct r8192_priv *priv = rtllib_priv(dev);
 	bool			rt_status = true;
 
+	u8	*firmware_img_buf[3] = { &Rtl8192PciEFwBootArray[0],
+					 &Rtl8192PciEFwMainArray[0],
+					 &Rtl8192PciEFwDataArray[0]};
+
+	u32	firmware_img_len[3] = { sizeof(Rtl8192PciEFwBootArray),
+					sizeof(Rtl8192PciEFwMainArray),
+					sizeof(Rtl8192PciEFwDataArray)};
 	u32	file_length = 0;
 	u8	*mapped_file = NULL;
 	u8	init_step = 0;
@@ -301,6 +308,14 @@ bool init_firmware(struct net_device *dev)
 				file_length = pfirmware->firmware_buf_size[init_step];
 				break;
 			}
+			case FW_SOURCE_HEADER_FILE:
+				mapped_file =  firmware_img_buf[init_step];
+				file_length  = firmware_img_len[init_step];
+				if (init_step == FW_INIT_STEP2_DATA) {
+					memcpy(pfirmware->firmware_buf[init_step], mapped_file, file_length);
+					pfirmware->firmware_buf_size[init_step] = file_length;
+				}
+				break;
 
 			default:
 				break;

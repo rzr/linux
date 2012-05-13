@@ -941,6 +941,11 @@ static int usbhsg_stop(struct usbhs_priv *priv)
 	return usbhsg_try_stop(priv, USBHSG_STATUS_STARTED);
 }
 
+static void usbhs_mod_gadget_release(struct device *pdev)
+{
+	/* do nothing */
+}
+
 int usbhs_mod_gadget_probe(struct usbhs_priv *priv)
 {
 	struct usbhsg_gpriv *gpriv;

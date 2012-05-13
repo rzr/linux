@@ -345,7 +345,7 @@ static void ath9k_hw_nf_sanitize(struct ath_hw *ah, s16 *nf)
 			"NF calibrated [%s] [chain %d] is %d\n",
 			(i >= 3 ? "ext" : "ctl"), i % 3, nf[i]);
 
-		if (nf[i] > ATH9K_NF_TOO_HIGH) {
+		if (nf[i] > limit->max) {
 			ath_dbg(common, CALIBRATE,
 				"NF[%d] (%d) > MAX (%d), correcting to MAX\n",
 				i, nf[i], limit->max);

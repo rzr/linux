@@ -437,13 +437,6 @@ static int mnt_make_readonly(struct mount *mnt)
 
 static void __mnt_unmake_readonly(struct mount *mnt)
 {
-	struct mount *mnt;
-	int err = 0;
-
-	/* Racy optimization.  Recheck the counter under MNT_WRITE_HOLD */
-	if (atomic_long_read(&sb->s_remove_count))
-		return -EBUSY;
-
 	br_write_lock(vfsmount_lock);
 	mnt->mnt.mnt_flags &= ~MNT_READONLY;
 	br_write_unlock(vfsmount_lock);

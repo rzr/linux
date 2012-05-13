@@ -530,13 +530,6 @@ extern int __init efi_setup_pcdp_console(char *);
 #define EFI_LOCATE_BY_PROTOCOL			2
 
 /*
- * The type of search to perform when calling boottime->locate_handle
- */
-#define EFI_LOCATE_ALL_HANDLES			0
-#define EFI_LOCATE_BY_REGISTER_NOTIFY		1
-#define EFI_LOCATE_BY_PROTOCOL			2
-
-/*
  * EFI Device Path information
  */
 #define EFI_DEV_HW			0x01

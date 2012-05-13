@@ -106,6 +106,7 @@ static struct exynos_drm_gem_obj *exynos_drm_gem_init(struct drm_device *dev,
 {
 	struct exynos_drm_gem_obj *exynos_gem_obj;
 	struct drm_gem_object *obj;
+	int ret;
 
 	exynos_gem_obj = kzalloc(sizeof(*exynos_gem_obj), GFP_KERNEL);
 	if (!exynos_gem_obj) {

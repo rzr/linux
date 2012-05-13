@@ -123,6 +123,10 @@ int freeze_processes(void)
 {
 	int error;
 
+	error = __usermodehelper_disable(UMH_FREEZING);
+	if (error)
+		return error;
+
 	if (!pm_freezing)
 		atomic_inc(&system_freezing_cnt);
 
@@ -188,6 +192,8 @@ void thaw_processes(void)
 		__thaw_task(p);
 	} while_each_thread(g, p);
 	read_unlock(&tasklist_lock);
+
+	usermodehelper_enable();
 
 	schedule();
 	printk("done.\n");

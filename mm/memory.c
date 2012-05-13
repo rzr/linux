@@ -1251,7 +1251,7 @@ static inline unsigned long zap_pmd_range(struct mmu_gather *tlb,
 				VM_BUG_ON(!rwsem_is_locked(&tlb->mm->mmap_sem));
 				split_huge_page_pmd(vma->vm_mm, pmd);
 			} else if (zap_huge_pmd(tlb, vma, pmd, addr))
-				continue;
+				goto next;
 			/* fall through */
 		}
 		/*
