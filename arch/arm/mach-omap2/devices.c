@@ -49,6 +49,7 @@
 #include <plat/omap_hwmod.h>
 #include <plat/omap_device.h>
 #include <plat/omap4-keypad.h>
+#include <plat/am33xx.h>
 #include <plat/config_pwm.h>
 #include <plat/cpu.h>
 #include <plat/gpmc.h>
@@ -705,6 +706,41 @@ static void omap_init_sham(void)
 	}
 	platform_device_register(&sham_device);
 }
+
+#elif defined(CONFIG_CRYPTO_DEV_OMAP4_SHAM) || defined(CONFIG_CRYPTO_DEV_OMAP4_SHAM_MODULE)
+
+static struct resource omap4_sham_resources[] = {
+	{
+		.start	= AM33XX_SHA1MD5_P_BASE,
+		.end	= AM33XX_SHA1MD5_P_BASE + 0x120,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= AM33XX_IRQ_SHAEIP57t0_P,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= AM33XX_DMA_SHAEIP57T0_DIN,
+		.flags	= IORESOURCE_DMA,
+	}
+};
+
+static int omap4_sham_resources_sz = ARRAY_SIZE(omap4_sham_resources);
+
+
+static struct platform_device sham_device = {
+	.name		= "omap4-sham",
+	.id		= -1,
+};
+
+static void omap_init_sham(void)
+{
+	sham_device.resource = omap4_sham_resources;
+	sham_device.num_resources = omap4_sham_resources_sz;
+
+	platform_device_register(&sham_device);
+}
+
 #else
 static inline void omap_init_sham(void) { }
 #endif
@@ -772,6 +808,37 @@ static void omap_init_aes(void)
 		pr_err("%s: platform not supported\n", __func__);
 		return;
 	}
+	platform_device_register(&aes_device);
+}
+
+#elif defined(CONFIG_CRYPTO_DEV_OMAP4_AES) || defined(CONFIG_CRYPTO_DEV_OMAP4_AES_MODULE)
+
+static struct resource omap4_aes_resources[] = {
+	{
+		.start	= AM33XX_AES0_P_BASE,
+		.end	= AM33XX_AES0_P_BASE + 0x4C,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= AM33XX_DMA_AESEIP36T0_DOUT,
+		.flags	= IORESOURCE_DMA,
+	},
+	{
+		.start	= AM33XX_DMA_AESEIP36T0_DIN,
+		.flags	= IORESOURCE_DMA,
+	}
+};
+static int omap4_aes_resources_sz = ARRAY_SIZE(omap4_aes_resources);
+
+static struct platform_device aes_device = {
+	.name		= "omap4-aes",
+	.id		= -1,
+};
+
+static void omap_init_aes(void)
+{
+	aes_device.resource = omap4_aes_resources;
+	aes_device.num_resources = omap4_aes_resources_sz;
 	platform_device_register(&aes_device);
 }
 
