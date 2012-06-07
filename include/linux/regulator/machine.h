@@ -169,7 +169,7 @@ struct regulator_consumer_supply {
  *               be usable.
  * @num_consumer_supplies: Number of consumer device supplies.
  * @consumer_supplies: Consumer device supply configuration.
- *
+ * @ignore_check_consumers: If != 0, regulator_check_consumers() is disabled.
  * @regulator_init: Callback invoked when the regulator has been registered.
  * @driver_data: Data passed to regulator_init.
  */
@@ -181,6 +181,7 @@ struct regulator_init_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 
+        int ignore_check_consumers;
 	/* optional regulator machine specific init */
 	int (*regulator_init)(void *driver_data);
 	void *driver_data;	/* core does not touch this */

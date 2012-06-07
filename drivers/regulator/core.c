@@ -169,6 +169,9 @@ static int regulator_check_consumers(struct regulator_dev *rdev,
 {
 	struct regulator *regulator;
 
+        if (rdev->ignore_check_consumers)
+                return 0;
+
 	list_for_each_entry(regulator, &rdev->consumer_list, list) {
 		/*
 		 * Assume consumers that didn't say anything are OK
@@ -2688,6 +2691,7 @@ struct regulator_dev *regulator_register(struct regulator_desc *regulator_desc,
 	rdev->reg_data = driver_data;
 	rdev->owner = regulator_desc->owner;
 	rdev->desc = regulator_desc;
+        rdev->ignore_check_consumers = init_data->ignore_check_consumers;
 	INIT_LIST_HEAD(&rdev->consumer_list);
 	INIT_LIST_HEAD(&rdev->list);
 	BLOCKING_INIT_NOTIFIER_HEAD(&rdev->notifier);

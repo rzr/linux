@@ -73,6 +73,7 @@ obj-$(CONFIG_SOC_OMAPAM33XX)		+= cpuidle33xx.o pm33xx.o \
 obj-$(CONFIG_PM_DEBUG)			+= pm-debug.o
 obj-$(CONFIG_OMAP_SMARTREFLEX)          += sr_device.o smartreflex.o
 obj-$(CONFIG_OMAP_SMARTREFLEX_CLASS3)	+= smartreflex-class3.o
+obj-$(CONFIG_AM33XX_SMARTREFLEX)        += am33xx-smartreflex-class2.o
 
 AFLAGS_sleep24xx.o			:=-Wa,-march=armv6
 AFLAGS_sleep34xx.o			:=-Wa,-march=armv7-a$(plus_sec)

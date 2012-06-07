@@ -1437,6 +1437,7 @@ static struct regulator_init_data tps65217_regulator_data[] = {
 		.num_consumer_supplies = ARRAY_SIZE(tps65217_dcdc2_consumers),
 		.consumer_supplies = tps65217_dcdc2_consumers,
 		.driver_data = &dcdc2_ramp_delay,
+		.ignore_check_consumers = 1,
 	},
 
 	/* dcdc3 */
@@ -1451,6 +1452,7 @@ static struct regulator_init_data tps65217_regulator_data[] = {
 		},
 		.num_consumer_supplies = ARRAY_SIZE(tps65217_dcdc3_consumers),
 		.consumer_supplies = tps65217_dcdc3_consumers,
+		.ignore_check_consumers = 1,
 	},
 
 	/* ldo1 */
@@ -2460,6 +2462,9 @@ static void am335x_evm_setup(struct memory_accessor *mem_acc, void *context)
 
 	am335x_opp_update();
 
+	/* SmartReflex also requires board information. */
+	am33xx_sr_init();
+
 	return;
 
 out:
@@ -2511,6 +2516,7 @@ static struct regulator_init_data am335x_vdd1 = {
 	},
 	.num_consumer_supplies	= ARRAY_SIZE(am335x_vdd1_supply),
 	.consumer_supplies	= am335x_vdd1_supply,
+	.ignore_check_consumers = 1,
 };
 
 static struct regulator_consumer_supply am335x_vdd2_supply[] = {
@@ -2527,6 +2533,7 @@ static struct regulator_init_data am335x_vdd2 = {
 	},
 	.num_consumer_supplies	= ARRAY_SIZE(am335x_vdd2_supply),
 	.consumer_supplies	= am335x_vdd2_supply,
+	.ignore_check_consumers = 1,
 };
 
 static struct tps65910_board am335x_tps65910_info = {
