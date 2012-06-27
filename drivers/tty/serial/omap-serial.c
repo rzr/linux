@@ -1166,6 +1166,16 @@ static int serial_omap_suspend(struct device *dev)
 	struct uart_omap_port *up = dev_get_drvdata(dev);
 
 	if (up) {
+                /*
+                  In case suspending during Bluetooth traffic, after resume
+                  the bluetooth is stuck.
+                  It was identified that suspend is happening before the
+                  UART buffer was fully drained which caused this hang after
+                  resume. The following delay is a temporary workaround until
+                  the issue is resolved properly.
+                */
+                msleep(10);
+
 		uart_suspend_port(&serial_omap_reg, &up->port);
 		flush_work_sync(&up->qos_work);
 	}
