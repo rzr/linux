@@ -1,3 +1,529 @@
+linux (3.2.21-3) unstable; urgency=low
+
+  * driver core: remove __must_check from device_create_file
+    (fixes FTBFS on sparc)
+  * i2400m: Disable I2400M_SDIO; hardware did not reach production
+  * apparmor: remove advertising the support of network rules from
+    compat iface (Closes: #676515)
+  * xen/netfront: teardown the device before unregistering it (Closes: #675190)
+  * linux-{doc,manual,source,support}: Mark as capable of satisfying
+    relations from foreign packages (Multi-Arch: foreign) (Closes: #679202)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Thu, 28 Jun 2012 04:58:18 +0100
+
+linux (3.2.21-2) unstable; urgency=low
+
+  * [i386] cpufreq/gx: Fix the compile error
+  * [powerpc] Enable PPC_DISABLE_WERROR (fixes FTBFS)
+  * tracing/mm: Move include of trace/events/kmem.h out of header into slab.c
+    (fixes FTBFS on sparc)
+  * [i386] Disable incomplete lguest support
+  * udeb: Add missing dependencies for various modules (see #678587)
+    - [armel/kirkwood] fb-modules depends on kernel-image
+    - [ia64] nic-usb-modules depends on kernel-image, nic-shared-modules,
+      usb-modules
+    - [ia64] sata-modules depends on kernel-image, scsi-core-modules
+    - [ia64] scsi-modules depends on scsi-core-modules
+    - [ia64,powerpc,ppc64] pcmcia-modules depends on kernel-image
+    - [powerpc,ppc64] nic-pcmcia-modules depends on kernel-image,
+      nic-shared-modules, pcmcia-modules
+    - [powerpc,ppc64,x86] scsi-modules depends on ata-modules
+    - [x86] nic-extra-modules depends on i2c-modules
+  * wacom: do not crash when retrieving touch_max (Closes: #678798)
+  * wacom: Revert unintended changes to handling of Tablet PCs
+    (Closes: #677164)
+  * linux-image, README.Debian: Suggest debian-kernel-handbook package
+
+  [ Arnaud Patard ]
+  * [armel, armhf] backport BPF JIT support
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Tue, 26 Jun 2012 01:56:42 +0100
+
+linux (3.2.21-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.21
+    - NFSv4.1: Fix a request leak on the back channel
+    - target: Return error to initiator if SET TARGET PORT GROUPS emulation
+      fails
+    - USB: add NO_D3_DURING_SLEEP flag and revert 151b61284776be2
+    - USB: fix gathering of interface associations
+
+  [ Ben Hutchings ]
+  * [ia64,powerpc] udeb: Add crc-itu-t to crc-modules; make
+    firewire-core-modules depend on it (fixes FTBFS)
+  * [arm,m68k,sh4] udeb: Build ipv6-modules
+  * ethtool: allow ETHTOOL_GSSET_INFO for users
+  * [rt] bump version to 3.2.20-rt32
+  * cpu: Convert 'cpu' and 'machinecheck' sysdev_class to a regular subsystem
+  * [x86] Add driver auto probing for x86 features
+    - crypto: Add support for x86 cpuid auto loading for x86 crypto drivers
+      (Closes: #568008)
+    - intel-idle: convert to x86_cpu_id auto probing
+    - HWMON: Convert coretemp to x86 cpuid autoprobing
+    - HWMON: Convert via-cputemp to x86 cpuid autoprobing
+    - cpufreq: Add support for x86 cpuinfo auto loading (Closes: #664813)
+  * [x86] ACPI: Load acpi-cpufreq from processor driver automatically
+  * Bump ABI to 3
+  * input: Add Synaptics USB device driver (Closes: #678071)
+  * [x86] udeb: Fix dependencies for nic-wireless-modules
+
+  [ Aurelien Jarno ]
+  * [mips,mipsel] udeb: Remove rivafb and nvidiafb.
+  * [ppc64]: add udebs, based on powerpc/powerpc64.
+
+  [ Bastian Blank ]
+  * Support build-arch and build-indep make targets.
+
+  [ Arnaud Patard ]
+  * [armel/kirkwood] Add dreamplug and iconnect support (Closes: #675922)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Fri, 22 Jun 2012 13:54:15 +0100
+
+linux (3.2.20-1) unstable; urgency=low
+
+  * The "Confused? You Won't Be" release
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.20
+   - cifs: fix oops while traversing open file list (try #4)
+   - mm/fork: fix overflow in vma length when copying mmap on clone
+   - mm: fix faulty initialization in vmalloc_init()
+   - x86, amd, xen: Avoid NULL pointer paravirt references
+   - ext4: force ro mount if ext4_setup_super() fails
+   - ext4: disallow hard-linked directory in ext4_lookup
+   - ext4: add missing save_error_info() to ext4_error()
+   - ALSA: usb-audio: fix rate_list memory leak
+   - Bluetooth: btusb: typo in Broadcom SoftSailing id (Closes: #674565)
+   - ipv4: Do not use dead fib_info entries.
+   - ipv4: fix the rcu race between free_fib_info and ip_route_output_slow
+   - l2tp: fix oops in L2TP IP sockets for connect() AF_UNSPEC case
+   - btree: fix tree corruption in btree_get_prev()
+   - asix: allow full size 8021Q frames to be received (Closes: #676545)
+   - ext4: don't trash state flags in EXT4_IOC_SETFLAGS
+   - ext4: fix the free blocks calculation for ext3 file systems w/ uninit_bg
+
+  [ Ben Hutchings ]
+  * Rename source package to 'linux' (Closes: #636010)
+  * Convert source package format to 3.0 (quilt)
+    - Convert patch system to quilt, except for the 'orig' patch series
+    - Use xz compression for upstream and Debian tarballs
+    - README.source: Update description of patch system to match current
+      usage
+    - linux-patch-debian: Remove; it is no longer necessary for GPL
+      compliance and does not work with our current patch management
+  * linux-image: Change package name for bugs to 'src:linux' (Closes: #644198)
+  * DFSG: video: Remove nvidiafb and rivafb, which include apparently
+    obfuscated code (Closes: #383481, #609615).  The nouveau driver supports
+    all the same hardware, aside from RIVA 128 (NV3).
+  * udeb: Add udf-modules containing UDF filesystem module (Closes: #613972)
+  * [mipsel/loongson2f] linux-image: Recommend libc6-loongson2f
+    (Closes: #629410)
+  * Build-Depend on kmod or module-init-tools, not just the latter
+  * test-patches: Recognise the rt featureset automatically
+  * udeb: Build-Depend on kernel-wedge >= 2.84; this allows us to list
+    modules as required even if they are built-in in some configurations
+  * filter: Allow to create sk-unattached filters
+  * proc: Backport hidepid mount option from Linux 3.4 (Closes: #669028)
+  * NFSv4: Reduce the footprint of the idmapper (Closes: #657078)
+  * [i386] thp: avoid atomic64_read in pmd_read_atomic for 32bit PAE
+    (Closes: #676360)
+  * linux-source: Add single patch for each featureset
+  * [x86] Enable CRASH_DUMP, PROC_VMCORE (Closes: #623177)
+  * media/dvb: Enable DVB_DDBRIDGE as module (Closes: #676952)
+  * net: sock: validate data_len before allocating skb in
+    sock_alloc_send_pskb() (CVE-2012-2136)
+  * macvtap: zerocopy: fix offset calculation when building skb
+  * macvtap: zerocopy: fix truesize underestimation
+  * macvtap: zerocopy: put page when fail to get all requested user pages
+  * macvtap: zerocopy: set SKBTX_DEV_ZEROCOPY only when skb is built
+    successfully
+  * macvtap: zerocopy: validate vectors before building skb (CVE-2012-2119)
+  * KVM: Fix buffer overflow in kvm_set_irq() (CVE-2012-2137)
+
+  [ Bastian Blank ]
+  * [s390/s390x,s390x/s390x] Build debugging symbols.
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Mon, 11 Jun 2012 02:46:34 +0100
+
+linux-2.6 (3.2.19-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.19
+    - hpsa: Fix problem with MSA2xxx devices (Closes: #661057)
+    - IB/core: Fix mismatch between locked and pinned pages
+    - iommu: Fix off by one in dmar_get_fault_reason()
+    - vfs: make AIO use the proper rw_verify_area() area helpers
+    - HID: logitech: read all 32 bits of report type bitfield (Closes: #671292)
+    - USB: Remove races in devio.c
+    - ext{3,4}: Fix error handling on inode bitmap corruption
+    - uvcvideo: Fix ENUMINPUT handling
+    - dl2k: Clean up rio_ioctl (CVE-2012-2313)
+    - [x86] MCE: Fix vm86 handling for 32bit mce handler
+    - [x86] mce: Fix check for processor context when machine check was taken.
+    - ethtool: Null-terminate filename passed to ethtool_ops::flash_device
+    - NFSv4: Fix buffer overflows in ACL support (CVE-2012-2375)
+      + Avoid reading past buffer when calling GETACL
+      + Avoid beyond bounds copy while caching ACL
+
+  [ Ben Hutchings ]
+  * be2net: Backport most changes up to Linux 3.5-rc1, thanks to
+    Sarveshwar Bandi (Closes: #673391)
+    - Add support for Skyhawk cards
+  * net/sched: Add codel and fq_codel from Linux 3.5-rc1
+  * [x86] udeb: Add hyperv-modules containing Hyper-V paravirtualised drivers
+  * [x86] ata_piix: defer disks to the Hyper-V drivers by default
+  * [x86] drm/i915:: Disable FBC on SandyBridge (Closes: #675022)
+  * AppArmor: compatibility patch for v5 interface (Closes: #661151)
+  * hugepages: fix use after free bug in "quota" handling (CVE-2012-2133)
+  * [x86] mm: pmd_read_atomic: fix 32bit PAE pmd walk vs pmd_populate SMP race
+    condition (CVE-2012-2373)
+  * hugetlb: fix resv_map leak in error path (CVE-2012-2390)
+  * [SCSI] fix scsi_wait_scan (Closes: #647436)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Fri, 01 Jun 2012 13:15:48 +0100
+
+linux-2.6 (3.2.18-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.18
+    - hugetlb: prevent BUG_ON in hugetlb_fault() -> hugetlb_cow()
+    - net: l2tp: unlock socket lock before returning from l2tp_ip_sendmsg
+    - [sparc] sparc64: Do not clobber %g2 in xcall_fetch_glob_regs().
+    - ext4: avoid deadlock on sync-mounted FS w/o journal
+    - brcm80211: smac: fix endless retry of A-MPDU transmissions
+      (Closes: #672891)
+    - target: Fix SPC-2 RELEASE bug for multi-session iSCSI client setups
+    - ALSA: hda/idt - Fix power-map for speaker-pins with some HP laptops
+      (Closes: #672582)
+    - usbnet: fix skb traversing races during unlink(v2)
+    - [arm] prevent VM_GROWSDOWN mmaps extending below FIRST_USER_ADDRESS
+
+  [ Jonathan Nieder ]
+  * wacom: Add support for various tablet models (Closes: #671801)
+  * rt2800usb: Add support for Ralink RT5392/RF5372 chipset (Closes: #673186)
+
+  [ Ben Hutchings ]
+  * test-patches: Fix -j option, broken since 3.1.0-1~experimental.1
+  * rt2800usb: Re-enable powersaving by default, as it should work better
+    than in 2.6.38
+  * [sparc,sparc64] Build virtio-modules-udeb for use in qemu (Closes: #673320)
+  * KVM: mmu_notifier: Flush TLBs before releasing mmu_lock
+  * [x86] KVM: nVMX: Fix erroneous exception bitmap check
+  * [x86] KVM: VMX: vmx_set_cr0 expects kvm->srcu locked
+  * [s390] KVM: do store status after handling STOP_ON_STOP bit
+  * [s390] KVM: Sanitize fpc registers for KVM_SET_FPU
+  * ACPI battery: only refresh the sysfs files when pertinent information
+    changes (Closes: #670958)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Mon, 21 May 2012 04:07:08 +0100
+
+linux-2.6 (3.2.17-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.17
+    - md: fix possible corruption of array metadata on shutdown.
+    - ext4: fix endianness breakage in ext4_split_extent_at()
+    - KVM: unmap pages from the iommu when slots are removed (CVE-2012-2121)
+    - btrfs: btrfs_root_readonly() broken on big-endian
+    - ocfs2: Fix various bugs affecting big-endian architectures
+    - lockd: fix the endianness bug
+    - phonet: Check input from user before allocating
+    - netlink: fix races after skb queueing
+    - net: fix a race in sock_queue_err_skb()
+    - net/ethernet: ks8851_mll fix rx frame buffer overflow
+    - x86, apic: APIC code touches invalid MSR on P5 class machines
+    - drm/i915: fix integer overflow in i915_gem_execbuffer2()
+    - drm/i915: fix integer overflow in i915_gem_do_execbuffer()
+    - USB: cdc-wdm: fix race leading leading to memory corruption
+    - autofs: make the autofsv5 packet file descriptor use a packetized pipe
+      (Closes: #633423)
+    - efi: Validate UEFI boot variables
+    - efivars: Improve variable validation
+    - fs/cifs: fix parsing of dfs referrals
+    - hfsplus: Fix potential buffer overflows (CVE-2012-2319)
+    - exit_signal: fix the "parent has changed security domain" logic
+
+  [ Ben Hutchings ]
+  * aufs: Enable AUFS_EXPORT
+  * ext4: Report max_batch_time option correctly (Closes: #654206)
+  * [i386/rt-686-pae] Enable HIGHMEM64G as intended for this configuration
+  * NFSv4: Revalidate uid/gid after open (Closes: #659111)
+  * sky2: propogate rx hash when packet is copied
+  * sky2: fix receive length error in mixed non-VLAN/VLAN traffic
+    (Closes: #492853)
+  * KVM: Ensure all vcpus are consistent with in-kernel irqchip settings
+    (CVE-2012-1601)
+  * KVM: lock slots_lock around device assignment (CVE-2012-2121)
+  * [rt] bump version to 3.2.16-rt27
+
+  [ Bastian Blank ]
+  * [s390] Enable IUCV special message support. (closes: #671238)
+
+  [ Arnaud Patard ]
+  * [armhf] Add vexpress support from Vagrant Cascadian with a slightly
+    modified kernel configuration (Closes: #670462)
+  * [armel] Introduce a new udeb module for leds and use it on kirkwoord
+    kernel thanks to Simon Guinot (Closes: #671200)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Sat, 12 May 2012 15:29:09 +0100
+
+linux-2.6 (3.2.16-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.16
+    - drm/i915: properly compute dp dithering for user-created modes
+      (Closes: #666360)
+    - md/bitmap: prevent bitmap_daemon_work running while initialising bitmap
+    - [ia64] Fix futex_atomic_cmpxchg_inatomic() (Closes: #659485)
+    - USB: serial: fix race between probe and open
+    - fcaps: clear the same personality flags as suid when fcaps are used
+      (CVE-2012-2123)
+    - ACPICA: Fix to allow region arguments to reference other scopes
+      (Closes: #661581)
+    - futex: Do not leak robust list to unprivileged process
+    - drm/radeon/kms: fix the regression of DVI connector check
+      (Closes: #670047)
+
+  [ Ben Hutchings ]
+  * rt2x00: Identify rt2800usb chipsets. (Closes: #658067)
+  * [x86] Add EFI boot stub support (Closes: #669033)
+  * brcmsmac: "INTERMEDIATE but not AMPDU" only when tracing
+  * NFSv4: Fix error handling and improve error reporting for file locking
+    (Closes: #669270)
+    - Rate limit the state manager for lock reclaim warning messages
+    - Ensure that the LOCK code sets exception->inode
+    - Ensure that we check lock exclusive/shared type against open modes
+  * [x86] i915: Fix integer overflows in i915_gem_{do_execbuffer,execbuffer2}
+  * Revert "autofs: work around unhappy compat problem on x86-64".
+    Reopens #633423.
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Sun, 29 Apr 2012 08:00:53 +0100
+
+linux-2.6 (3.2.15-1) unstable; urgency=high
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.15
+    - drm/radeon/kms: fix fans after resume (Closes: #596741)
+    - sysctl: fix write access to dmesg_restrict/kptr_restrict
+    - [x86] PCI: use host bridge _CRS info on MSI MS-7253 (Closes: #619034)
+    - nfs: Fix length of buffer copied in __nfs4_get_acl_uncached
+    - [x86] ioat: fix size of 'completion' for Xen (Closes: #660554)
+    - cred: copy_process() should clear child->replacement_session_keyring
+
+  [ Ben Hutchings ]
+  * net: fix /proc/net/dev regression (Closes: #659499)
+  * [armel/orion5x] Fix GPIO enable bits for MPP9 (Closes: #667446)
+  * [x86] drm/i915: mask transcoder select bits before setting them on LVDS
+  * [armhf/mx5,mipsel/loongson-2f] input: Enable INPUT_TOUCHSCREEN
+    (Closes: #668036)
+  * [x86] hv: Update all Hyper-V drivers to 3.4-rc1 (Closes: #661318)
+  * hugetlb: fix race condition in hugetlb_fault()
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Sat, 14 Apr 2012 18:23:44 +0100
+
+linux-2.6 (3.2.14-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.14
+    - mm: thp: fix pmd_bad() triggering in code paths holding mmap_sem
+      read mode (CVE-2012-1179)
+    - hugetlbfs: avoid taking i_mutex from hugetlbfs_read()
+    - md/bitmap: ensure to load bitmap when creating via sysfs
+      (Closes: #661558)
+    - md: dont set md arrays to readonly on shutdown
+    - md/raid1,raid10: avoid deadlock during resync/recovery (Closes: #584881)
+    - md: fix clearing of the changed flags for the bad blocks list
+    - xfs: fix inode lookup race
+    - sysctl: protect poll() in entries that may go away
+    - NFSv4: Rate limit the state manager warning messages (Closes: #666121)
+    - jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
+    - ext4: ignore EXT4_INODE_JOURNAL_DATA flag with delalloc
+    - ext4: fix race between sync and completed io work
+    - ext4: check for zero length extent
+    - vfs: fix d_ancestor() case in d_materialize_unique
+    - udf: Fix deadlock in udf_release_file()
+    - dm crypt: add missing error handling
+    - dm thin: fix stacked bi_next usage
+    - xfs: Fix oops on IO error during xlog_recover_process_iunlinks()
+    - NFSv4: Fix two infinite loops in the mount code
+    - drm/i915: suspend fbdev device around suspend/hibernate
+      (Closes: #645547)
+    - net: fix a potential rcu_read_lock() imbalance in rt6_fill_node()
+    - [x86] tls: Off by one limit check
+    - PCI: ASPM: Fix pcie devices with non-pcie children (Closes: #665420)
+
+  [ Jonathan Nieder ]
+  * ata: Enable PATA_IT8213 as module (Closes: #666506)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Thu, 05 Apr 2012 05:02:45 +0100
+
+linux-2.6 (3.2.13-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.13
+
+  [ Ben Hutchings ]
+  * kbuild: do not check for ancient modutils tools
+
+  [ Uwe Kleine-König ]
+  * [rt] bump version to 3.2.12-rt22
+
+  [ Bastian Blank ]
+  * [s390x] Ignore ABI change.
+
+ -- Bastian Blank <waldi@debian.org>  Wed, 28 Mar 2012 13:40:26 +0200
+
+linux-2.6 (3.2.12-1) unstable; urgency=high
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.11
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.12
+    - aio: fix io_setup/io_destroy race
+    - aio: fix the "too late munmap()" race
+    - vfs: fix double put after complete_walk()
+    - acer-wmi: No wifi rfkill on Lenovo machines (Closes: #655941)
+    - tcp: fix false reordering signal in tcp_shifted_skb
+    - r8169: corrupted IP fragments fix for large mtu
+    - tcp: don't fragment SACKed skbs in tcp_mark_head_lost()
+    - tcp: fix tcp_shift_skb_data() to not shift SACKed data below snd_una
+    - block: Fix NULL pointer dereference in sd_revalidate_disk
+      (Closes: #649735)
+    - block: fix __blkdev_get and add_disk race condition
+
+  [ Ben Hutchings ]
+  * [powerpc] Enable KVM_GUEST
+  * [s390] Ignore arch_pick_mmap_layout version change; it should not be
+    needed by modules (fixes FTBFS)
+  * [x86] Disable POHMELFS; this version is obsolete
+  * epoll: Don't limit non-nested epoll paths
+  * CIFS: Fix a spurious error in cifs_push_posix_locks
+  * [rt] bump rt patch to version 3.2.11-rt20
+  * aufs: Update to aufs3.2-20120312
+  * tcp: fix syncookie regression
+  * ipv6: Don't dev_hold(dev) in ip6_mc_find_dev_rcu
+
+  [ Jonathan Nieder ]
+  * [x86] Enable RTS5139 as module (Closes: #663912)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Tue, 20 Mar 2012 04:32:51 +0000
+
+linux-2.6 (3.2.10-1) unstable; urgency=high
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.10
+    - regset: Prevent null pointer reference on readonly regsets
+      (CVE-2012-1097)
+
+  [ Uwe Kleine-König ]
+  * [rt] bump rt patch to version 3.2.9-rt17
+  * [rt] fix conflict between the security restrictions on links introduced in
+    3.2.9-1 and rt (Closes: #663269)
+
+  [ Aurelien Jarno ]
+  * [mips,mipsel] Mark ext4-modules as provided by the kernel-image udeb, remove
+    ide-core-modules provide.
+
+  [ Ben Hutchings ]
+  * [x86,ia64] PCI/hotplug: Build-in common hotplug drivers:
+    - Change HOTPLUG_PCI, HOTPLUG_PCI_PCIE to built-in
+    - [x86] Change HOTPLUG_PCI_ACPI to built-in (Closes: #663433)
+    - [ia64] Enable HOTPLUG_PCI_SGI as built-in
+  * linux-headers: Remove unused, broken symlinks to Kbuild (Closes: #663597)
+  * udeb: Remove dependency of {pcmcia,usb}-storage-modules on ide-core-modules
+  * [mips,mipsel] Mark ata-modules as provided by the kernel-image udeb
+    for most flavours
+
+ -- Bastian Blank <waldi@debian.org>  Tue, 13 Mar 2012 17:19:32 +0100
+
+linux-2.6 (3.2.9-1) unstable; urgency=high
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.8
+    - [i386] i387: move TS_USEDFPU flag from thread_info to task_struct
+    - [x86] additional refactoring of FPU/SSE state save and restore
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.9
+    - vfs: fix d_inode_lookup() dentry ref leak
+    - target: Allow control CDBs with data > 1 page
+    - epoll: introduce POLLFREE to flush ->signalfd_wqh before kfree()
+    - epoll: ep_unregister_pollwait() can use the freed pwq->whead
+    - epoll: limit paths (CVE-2011-1083)
+    - cdrom: use copy_to_user() without the underscores
+
+  [ Bastian Blank ]
+  * [mips,mipsel] Also remove ext4 modules from installer.
+
+  [ Ben Hutchings ]
+  * Update debconf template translations:
+    - Update Dutch (Willem Kuyn) (Closes: #658736)
+    - Add Polish (Michał Kułach) (Closes: #658912)
+  * Bump ABI to 2
+  * fs: Introduce and enable security restrictions on links:
+    - Do not follow symlinks in /tmp that are owned by other users
+      (sysctl: fs.protected_symlinks)
+    - Do not allow unprivileged users to create hard links to sensitive files
+      (sysctl: fs.protected_hardlinks) (Closes: #609455)
+      + This breaks the 'at' package in stable, which will be fixed shortly
+        (see #597130)
+    The precise restrictions are specified in Documentation/sysctl/fs.txt in
+    the linux-doc-3.2 and linux-source-3.2 packages.
+  * iwlwifi: fix key removal (Closes: #651199)
+  * cgroups: Set CGROUP_PERF
+  * hid: Enable HID_HOLTEK, HID_PRIMAX, HID_SPEEDLINK, HID_WIIMOTE as modules,
+    HID_ACRUX_FF
+  * media/rc: Enable RC_ATI_REMOTE as module
+  * gspca: Enable USB_GSPCA_TOPRO as module
+  * dvb-usb: Enable DVB_USB_PCTV452E, DVB_USB_MXL111SF as modules
+
+  [ Uwe Kleine-König ]
+  * [x86] Update rt featureset to 3.2.9-rt15
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Sun, 04 Mar 2012 15:32:20 +0000
+
+linux-2.6 (3.2.7-1) unstable; urgency=low
+
+  * New upstream stable update:
+    http://www.kernel.org/pub/linux/kernel/v3.x/ChangeLog-3.2.7
+
+  [ Ben Hutchings ]
+  * Add Turkish debconf template translations (Mert Dirik) (Closes: #660117)
+  * [amd64] Disable BLK_DEV_IDEPNP, BLK_DEV_OPTI621, IDE_GENERIC
+  * Use libata-based drivers for most of the remaining PATA controllers:
+    - pata_legacy replaces ide-generic
+    - pata_isapnp replaces ide-pnp
+    - pata_opti replaces opti621
+    - pata_hpt366 and pata_hpt37x replace hpt366
+    - pata_ninja32 replaces delkin_cb
+    - pata_cs5535 replaces cs5535
+    - pata_winbond replaces sl82c105
+    - [alpha] pata_cypress replaces cy82c693
+    - [hppa] pata_ns87415 replaces ns87415
+    - [sparc] Various replacements, as for x86 in 2.6.32-10
+  * Disable old IDE subsystem [!ia64,m68k]:
+    - Disable BLK_DEV_IT8172, BLK_DEV_IT8213, BLK_DEV_TC86C001, BLK_DEV_TRM290
+    - [alpha] Disable BLK_DEV_4DRIVES, BLK_DEV_ALI14XX, BLK_DEV_DTC2278,
+      BLK_DEV_HT6560B, BLK_DEV_QD65XX, BLK_DEV_UMC8672
+  * fs: Enable EFI_PARTITION in all configurations (Closes: #660582)
+  * [i386] Re-enable INTEL_IOMMU, IRQ_REMAP
+  * [mips/r5k-ip32] Enable INPUT_SGI_BTNS (previously INPUT_SGIO2_BTNS)
+  * [powerpc/powerpc64] Enable IBM_EMAC (previously IBM_NEW_EMAC)
+  * [x86] drm/i915: do not enable RC6p on Sandy Bridge (Closes: #660265)
+  * ipsec: be careful of non existing mac headers (Closes: #660804)
+  * version: Use maintainer rather than uploader address for official
+    binary packages
+
+  [ Bastian Blank ]
+  * Don't advertise Xen support for rt images. (closes: #659988)
+  * [m68k,mips,mipsel] Use ext4 for all ext-variants. (closes: #660446)
+  * [m68k,mips,mipsel] Don't built-in ramdisk support.
+  * [hppa,mips,mipsel] Don't built-in cramfs support.
+  * [alpha,hppa] Don't built-in ext2.
+  * Remove IDE trigger for LED support.
+  * Remove all framebuffer bootup logos.
+  * NFSv4: Fix an Oops in the NFSv4 getacl code.
+
+ -- Bastian Blank <waldi@debian.org>  Tue, 28 Feb 2012 16:00:41 +0100
+
 linux-2.6 (3.2.6-1) unstable; urgency=low
 
   * New upstream stable update:

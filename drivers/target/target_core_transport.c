@@ -2507,6 +2507,7 @@ static int transport_generic_cmd_sequencer(
 					cmd, cdb, pr_reg_type) != 0) {
 			cmd->se_cmd_flags |= SCF_SCSI_CDB_EXCEPTION;
 			cmd->se_cmd_flags |= SCF_SCSI_RESERVATION_CONFLICT;
+			cmd->scsi_status = SAM_STAT_RESERVATION_CONFLICT;
 			cmd->scsi_sense_reason = TCM_RESERVATION_CONFLICT;
 			return -EBUSY;
 		}
@@ -2665,7 +2666,7 @@ static int transport_generic_cmd_sequencer(
 			cmd->se_cmd_flags |= SCF_SCSI_CONTROL_SG_IO_CDB;
 
 			if (target_check_write_same_discard(&cdb[10], dev) < 0)
-				goto out_invalid_cdb_field;
+				goto out_unsupported_cdb;
 			if (!passthrough)
 				cmd->execute_task = target_emulate_write_same;
 			break;
@@ -2948,7 +2949,7 @@ static int transport_generic_cmd_sequencer(
 		cmd->se_cmd_flags |= SCF_SCSI_CONTROL_SG_IO_CDB;
 
 		if (target_check_write_same_discard(&cdb[1], dev) < 0)
-			goto out_invalid_cdb_field;
+			goto out_unsupported_cdb;
 		if (!passthrough)
 			cmd->execute_task = target_emulate_write_same;
 		break;
@@ -2971,7 +2972,7 @@ static int transport_generic_cmd_sequencer(
 		 * of byte 1 bit 3 UNMAP instead of original reserved field
 		 */
 		if (target_check_write_same_discard(&cdb[1], dev) < 0)
-			goto out_invalid_cdb_field;
+			goto out_unsupported_cdb;
 		if (!passthrough)
 			cmd->execute_task = target_emulate_write_same;
 		break;
@@ -3052,11 +3053,6 @@ static int transport_generic_cmd_sequencer(
 	if (!(passthrough || cmd->execute_task ||
 	     (cmd->se_cmd_flags & SCF_SCSI_DATA_SG_IO_CDB)))
 		goto out_unsupported_cdb;
-
-	/* Let's limit control cdbs to a page, for simplicity's sake. */
-	if ((cmd->se_cmd_flags & SCF_SCSI_CONTROL_SG_IO_CDB) &&
-	    size > PAGE_SIZE)
-		goto out_invalid_cdb_field;
 
 	transport_set_supported_SAM_opcode(cmd);
 	return ret;
@@ -3435,9 +3431,11 @@ int transport_generic_map_mem_to_cmd(
 }
 EXPORT_SYMBOL(transport_generic_map_mem_to_cmd);
 
-void *transport_kmap_first_data_page(struct se_cmd *cmd)
+void *transport_kmap_data_sg(struct se_cmd *cmd)
 {
 	struct scatterlist *sg = cmd->t_data_sg;
+	struct page **pages;
+	int i;
 
 	BUG_ON(!sg);
 	/*
@@ -3445,15 +3443,41 @@ void *transport_kmap_first_data_page(struct se_cmd *cmd)
 	 * tcm_loop who may be using a contig buffer from the SCSI midlayer for
 	 * control CDBs passed as SGLs via transport_generic_map_mem_to_cmd()
 	 */
-	return kmap(sg_page(sg)) + sg->offset;
-}
-EXPORT_SYMBOL(transport_kmap_first_data_page);
+	if (!cmd->t_data_nents)
+		return NULL;
+	else if (cmd->t_data_nents == 1)
+		return kmap(sg_page(sg)) + sg->offset;
 
-void transport_kunmap_first_data_page(struct se_cmd *cmd)
-{
-	kunmap(sg_page(cmd->t_data_sg));
+	/* >1 page. use vmap */
+	pages = kmalloc(sizeof(*pages) * cmd->t_data_nents, GFP_KERNEL);
+	if (!pages)
+		return NULL;
+
+	/* convert sg[] to pages[] */
+	for_each_sg(cmd->t_data_sg, sg, cmd->t_data_nents, i) {
+		pages[i] = sg_page(sg);
+	}
+
+	cmd->t_data_vmap = vmap(pages, cmd->t_data_nents,  VM_MAP, PAGE_KERNEL);
+	kfree(pages);
+	if (!cmd->t_data_vmap)
+		return NULL;
+
+	return cmd->t_data_vmap + cmd->t_data_sg[0].offset;
 }
-EXPORT_SYMBOL(transport_kunmap_first_data_page);
+EXPORT_SYMBOL(transport_kmap_data_sg);
+
+void transport_kunmap_data_sg(struct se_cmd *cmd)
+{
+	if (!cmd->t_data_nents)
+		return;
+	else if (cmd->t_data_nents == 1)
+		kunmap(sg_page(cmd->t_data_sg));
+
+	vunmap(cmd->t_data_vmap);
+	cmd->t_data_vmap = NULL;
+}
+EXPORT_SYMBOL(transport_kunmap_data_sg);
 
 static int
 transport_generic_get_mem(struct se_cmd *cmd)

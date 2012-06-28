@@ -275,7 +275,6 @@ CONFIG_FB=y
 ## file: drivers/video/console/Kconfig
 ##
 CONFIG_FRAMEBUFFER_CONSOLE=y
-CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
 
 ##
 ## file: drivers/video/omap/Kconfig
@@ -330,11 +329,4 @@ CONFIG_SND_SOC=m
 CONFIG_SND_OMAP_SOC=m
 CONFIG_SND_OMAP_SOC_RX51=m
 CONFIG_SND_OMAP_SOC_SDP4430=m
-
-##
-## file: unknown
-##
-CONFIG_LEDS_GPIO_PLATFORM=y
-# CONFIG_OMAP_PM_NONE is not set
-CONFIG_USB_MUSB_OTG=y
 

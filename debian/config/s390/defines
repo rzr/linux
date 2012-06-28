@@ -1,3 +1,8 @@
+[abi]
+ignore-changes:
+# Seems to be exported by mistake; no other architecture does
+ arch_pick_mmap_layout
+
 [base]
 flavours:
  s390x
@@ -27,6 +32,9 @@ parts: tape
 initramfs: false
 override-localversion: s390
 type: plain-s390-tape
+
+[s390x_build]
+debug-info: true
 
 [s390x_description]
 hardware: IBM zSeries

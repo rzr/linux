@@ -781,7 +781,7 @@ static int iscsit_alloc_buffs(struct iscsi_cmd *cmd)
 	struct scatterlist *sgl;
 	u32 length = cmd->se_cmd.data_length;
 	int nents = DIV_ROUND_UP(length, PAGE_SIZE);
-	int i = 0, ret;
+	int i = 0, j = 0, ret;
 	/*
 	 * If no SCSI payload is present, allocate the default iovecs used for
 	 * iSCSI PDU Header
@@ -822,17 +822,15 @@ static int iscsit_alloc_buffs(struct iscsi_cmd *cmd)
 	 */
         ret = iscsit_allocate_iovecs(cmd);
         if (ret < 0)
-		goto page_alloc_failed;
+		return -ENOMEM;
 
 	return 0;
 
 page_alloc_failed:
-	while (i >= 0) {
-		__free_page(sg_page(&sgl[i]));
-		i--;
-	}
-	kfree(cmd->t_mem_sg);
-	cmd->t_mem_sg = NULL;
+	while (j < i)
+		__free_page(sg_page(&sgl[j++]));
+
+	kfree(sgl);
 	return -ENOMEM;
 }
 
@@ -1029,7 +1027,7 @@ done:
 		return iscsit_add_reject_from_cmd(
 				ISCSI_REASON_BOOKMARK_NO_RESOURCES,
 				1, 1, buf, cmd);
-	} else if (transport_ret == -EINVAL) {
+	} else if (transport_ret < 0) {
 		/*
 		 * Unsupported SAM Opcode.  CHECK_CONDITION will be sent
 		 * in iscsit_execute_cmd() during the CmdSN OOO Execution

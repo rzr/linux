@@ -45,7 +45,7 @@ CONFIG_X86_GENERIC=y
 ##
 ## file: arch/x86/lguest/Kconfig
 ##
-CONFIG_LGUEST_GUEST=y
+# CONFIG_LGUEST_GUEST is not set
 
 ##
 ## file: crypto/Kconfig
@@ -62,8 +62,11 @@ CONFIG_ACPI_BLACKLIST_YEAR=0
 ##
 ## file: drivers/ata/Kconfig
 ##
-# CONFIG_PATA_CS5535 is not set
+CONFIG_PATA_CS5535=m
 CONFIG_PATA_CS5536=m
+CONFIG_PATA_ISAPNP=m
+CONFIG_PATA_OPTI=m
+CONFIG_PATA_LEGACY=m
 
 ##
 ## file: drivers/atm/Kconfig
@@ -153,18 +156,6 @@ CONFIG_SCx200_I2C_SCL=12
 CONFIG_SCx200_I2C_SDA=13
 
 ##
-## file: drivers/ide/Kconfig
-##
-CONFIG_BLK_DEV_CS5535=m
-# CONFIG_BLK_DEV_CS5536 is not set
-# CONFIG_BLK_DEV_4DRIVES is not set
-# CONFIG_BLK_DEV_ALI14XX is not set
-# CONFIG_BLK_DEV_DTC2278 is not set
-# CONFIG_BLK_DEV_HT6560B is not set
-# CONFIG_BLK_DEV_QD65XX is not set
-# CONFIG_BLK_DEV_UMC8672 is not set
-
-##
 ## file: drivers/input/misc/Kconfig
 ##
 CONFIG_INPUT_WISTRON_BTNS=m
@@ -197,7 +188,7 @@ CONFIG_LEDS_WRAP=m
 ##
 ## file: drivers/lguest/Kconfig
 ##
-CONFIG_LGUEST=m
+# CONFIG_LGUEST is not set
 
 ##
 ## file: drivers/macintosh/Kconfig
@@ -473,7 +464,6 @@ CONFIG_SERIAL_8250_EXAR_ST16C554=m
 ##
 ## file: drivers/video/Kconfig
 ##
-CONFIG_FB_NVIDIA_I2C=y
 CONFIG_FB_I810=m
 # CONFIG_FB_I810_GTF is not set
 CONFIG_FB_MATROX_G=y
@@ -573,9 +563,4 @@ CONFIG_SND_MSND_CLASSIC=m
 ## file: sound/pci/Kconfig
 ##
 CONFIG_SND_SIS7019=m
-
-##
-## file: unknown
-##
-CONFIG_CS5535_GPIO=m
 

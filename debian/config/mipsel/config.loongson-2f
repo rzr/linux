@@ -44,6 +44,11 @@ CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
 ## end choice
 
 ##
+## file: drivers/input/touchscreen/Kconfig
+##
+CONFIG_INPUT_TOUCHSCREEN=y
+
+##
 ## file: drivers/net/ethernet/amd/Kconfig
 ##
 # CONFIG_PCNET32 is not set
@@ -125,19 +130,4 @@ CONFIG_BACKLIGHT_GENERIC=m
 ##
 # CONFIG_VGA_CONSOLE is not set
 CONFIG_FRAMEBUFFER_CONSOLE=y
-
-##
-## file: fs/ext2/Kconfig
-##
-CONFIG_EXT2_FS=y
-
-##
-## file: fs/ext3/Kconfig
-##
-CONFIG_EXT3_FS=y
-
-##
-## file: unknown
-##
-CONFIG_NET_PCI=y
 

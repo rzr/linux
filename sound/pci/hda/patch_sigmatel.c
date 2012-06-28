@@ -4484,9 +4484,9 @@ static int stac92xx_init(struct hda_codec *codec)
 		def_conf = get_defcfg_connect(def_conf);
 		/* skip any ports that don't have jacks since presence
  		 * detection is useless */
-		if (def_conf != AC_JACK_PORT_COMPLEX) {
-			if (def_conf != AC_JACK_PORT_NONE)
-				stac_toggle_power_map(codec, nid, 1);
+		if (def_conf != AC_JACK_PORT_NONE &&
+		    !is_jack_detectable(codec, nid)) {
+			stac_toggle_power_map(codec, nid, 1);
 			continue;
 		}
 		if (enable_pin_detect(codec, nid, STAC_PWR_EVENT)) {
@@ -4719,7 +4719,7 @@ static void stac92xx_hp_detect(struct hda_codec *codec)
 		unsigned int val = AC_PINCTL_OUT_EN | AC_PINCTL_HP_EN;
 		if (no_hp_sensing(spec, i))
 			continue;
-		if (presence)
+		if (1 /*presence*/)
 			stac92xx_set_pinctl(codec, cfg->hp_pins[i], val);
 #if 0 /* FIXME */
 /* Resetting the pinctl like below may lead to (a sort of) regressions

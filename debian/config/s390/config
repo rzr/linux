@@ -50,6 +50,11 @@ CONFIG_CRYPTO_AES_S390=m
 CONFIG_S390_PRNG=m
 
 ##
+## file: drivers/input/touchscreen/Kconfig
+##
+# CONFIG_INPUT_TOUCHSCREEN is not set
+
+##
 ## file: drivers/memstick/Kconfig
 ##
 # CONFIG_MEMSTICK is not set
@@ -115,7 +120,7 @@ CONFIG_S390_VMUR=m
 CONFIG_LCS=m
 CONFIG_CTCM=m
 CONFIG_NETIUCV=m
-CONFIG_SMSGIUCV=m
+CONFIG_SMSGIUCV=y
 CONFIG_CLAW=m
 CONFIG_QETH=m
 CONFIG_QETH_L2=m

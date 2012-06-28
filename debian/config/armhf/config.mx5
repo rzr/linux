@@ -67,6 +67,11 @@ CONFIG_USB_HID=y
 CONFIG_I2C_IMX=y
 
 ##
+## file: drivers/input/touchscreen/Kconfig
+##
+CONFIG_INPUT_TOUCHSCREEN=y
+
+##
 ## file: drivers/leds/Kconfig
 ##
 CONFIG_LEDS_GPIO=y
@@ -173,6 +178,5 @@ CONFIG_SND_IMX_SOC=m
 ##
 ## file: unknown
 ##
-CONFIG_LEDS_GPIO_PLATFORM=y
 CONFIG_SND_SOC_IMX_SGTL5000=m
 
