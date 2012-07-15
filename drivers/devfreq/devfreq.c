@@ -347,7 +347,7 @@ struct devfreq *devfreq_add_device(struct device *dev,
 		if (!IS_ERR(devfreq)) {
 			dev_err(dev, "%s: Unable to create devfreq for the device. It already has one.\n", __func__);
 			err = -EINVAL;
-			goto err_out;
+			goto out;
 		}
 	}
 
@@ -356,7 +356,7 @@ struct devfreq *devfreq_add_device(struct device *dev,
 		dev_err(dev, "%s: Unable to create devfreq for the device\n",
 			__func__);
 		err = -ENOMEM;
-		goto err_out;
+		goto out;
 	}
 
 	mutex_init(&devfreq->lock);
@@ -399,16 +399,17 @@ struct devfreq *devfreq_add_device(struct device *dev,
 				   devfreq->next_polling);
 	}
 	mutex_unlock(&devfreq_list_lock);
-out:
-	return devfreq;
-
+	goto out;
 err_init:
 	device_unregister(&devfreq->dev);
 err_dev:
 	mutex_unlock(&devfreq->lock);
 	kfree(devfreq);
-err_out:
-	return ERR_PTR(err);
+out:
+	if (err)
+		return ERR_PTR(err);
+	else
+		return devfreq;
 }
 
 /**

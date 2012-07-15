@@ -23,4 +23,9 @@ static inline void arch_idle(void)
 	cpu_do_idle();
 }
 
+static inline void arch_reset(int mode, const char *cmd)
+{
+	/* Watchdog reset to go here. */
+}
+
 #endif /* __ASM_ARCH_SYSTEM_H */

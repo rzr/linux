@@ -279,10 +279,9 @@ static void smsc9420_ethtool_get_drvinfo(struct net_device *netdev,
 {
 	struct smsc9420_pdata *pd = netdev_priv(netdev);
 
-	strlcpy(drvinfo->driver, DRV_NAME, sizeof(drvinfo->driver));
-	strlcpy(drvinfo->bus_info, pci_name(pd->pdev),
-		sizeof(drvinfo->bus_info));
-	strlcpy(drvinfo->version, DRV_VERSION, sizeof(drvinfo->version));
+	strcpy(drvinfo->driver, DRV_NAME);
+	strcpy(drvinfo->bus_info, pci_name(pd->pdev));
+	strcpy(drvinfo->version, DRV_VERSION);
 }
 
 static u32 smsc9420_ethtool_get_msglevel(struct net_device *netdev)

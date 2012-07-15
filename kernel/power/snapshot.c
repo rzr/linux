@@ -812,8 +812,7 @@ unsigned int snapshot_additional_pages(struct zone *zone)
 	unsigned int res;
 
 	res = DIV_ROUND_UP(zone->spanned_pages, BM_BITS_PER_BLOCK);
-	res += DIV_ROUND_UP(res * sizeof(struct bm_block),
-			    LINKED_PAGE_DATA_SIZE);
+	res += DIV_ROUND_UP(res * sizeof(struct bm_block), PAGE_SIZE);
 	return 2 * res;
 }
 
@@ -857,9 +856,6 @@ static struct page *saveable_highmem_page(struct zone *zone, unsigned long pfn)
 
 	if (swsusp_page_is_forbidden(page) ||  swsusp_page_is_free(page) ||
 	    PageReserved(page))
-		return NULL;
-
-	if (page_is_guard(page))
 		return NULL;
 
 	return page;
@@ -922,9 +918,6 @@ static struct page *saveable_page(struct zone *zone, unsigned long pfn)
 
 	if (PageReserved(page)
 	    && (!kernel_page_present(page) || pfn_is_nosave(pfn)))
-		return NULL;
-
-	if (page_is_guard(page))
 		return NULL;
 
 	return page;

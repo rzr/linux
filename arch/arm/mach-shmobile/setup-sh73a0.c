@@ -607,7 +607,7 @@ static struct resource sh73a0_dmae_resources[] = {
 		.flags  = IORESOURCE_MEM,
 	},
 	{
-		.name	= "error_irq",
+		/* DMA error IRQ */
 		.start  = gic_spi(129),
 		.end    = gic_spi(129),
 		.flags  = IORESOURCE_IRQ,

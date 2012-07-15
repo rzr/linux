@@ -90,7 +90,8 @@ typedef unsigned int xfs_buf_flags_t;
 	{ _XBF_DELWRI_Q,	"DELWRI_Q" }
 
 typedef enum {
-	XBT_FORCE_FLUSH = 0,
+	XBT_FORCE_SLEEP = 0,
+	XBT_FORCE_FLUSH = 1,
 } xfs_buftarg_flags_t;
 
 typedef struct xfs_buftarg {

@@ -355,4 +355,17 @@ static struct platform_driver radio_si4713_pdriver = {
 	.remove         = __exit_p(radio_si4713_pdriver_remove),
 };
 
-module_platform_driver(radio_si4713_pdriver);
+/* Module Interface */
+static int __init radio_si4713_module_init(void)
+{
+	return platform_driver_register(&radio_si4713_pdriver);
+}
+
+static void __exit radio_si4713_module_exit(void)
+{
+	platform_driver_unregister(&radio_si4713_pdriver);
+}
+
+module_init(radio_si4713_module_init);
+module_exit(radio_si4713_module_exit);
+

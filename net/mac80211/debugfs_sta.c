@@ -66,11 +66,11 @@ static ssize_t sta_flags_read(struct file *file, char __user *userbuf,
 			    "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 			    TEST(AUTH), TEST(ASSOC), TEST(PS_STA),
 			    TEST(PS_DRIVER), TEST(AUTHORIZED),
-			    TEST(SHORT_PREAMBLE),
+			    TEST(SHORT_PREAMBLE), TEST(ASSOC_AP),
 			    TEST(WME), TEST(WDS), TEST(CLEAR_PS_FILT),
 			    TEST(MFP), TEST(BLOCK_BA), TEST(PSPOLL),
 			    TEST(UAPSD), TEST(SP), TEST(TDLS_PEER),
-			    TEST(TDLS_PEER_AUTH), TEST(RATE_CONTROL));
+			    TEST(TDLS_PEER_AUTH));
 #undef TEST
 	return simple_read_from_buffer(userbuf, count, ppos, buf, res);
 }

@@ -73,34 +73,6 @@ static void _rtl92c_enable_fw_download(struct ieee80211_hw *hw, bool enable)
 	}
 }
 
-static void rtl_block_fw_writeN(struct ieee80211_hw *hw, const u8 *buffer,
-				u32 size)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	u32 blockSize = REALTEK_USB_VENQT_MAX_BUF_SIZE - 20;
-	u8 *bufferPtr = (u8 *) buffer;
-	u32 i, offset, blockCount, remainSize;
-
-	blockCount = size / blockSize;
-	remainSize = size % blockSize;
-
-	for (i = 0; i < blockCount; i++) {
-		offset = i * blockSize;
-		rtlpriv->io.writeN_sync(rtlpriv,
-					(FW_8192C_START_ADDRESS + offset),
-					(void *)(bufferPtr + offset),
-					blockSize);
-	}
-
-	if (remainSize) {
-		offset = blockCount * blockSize;
-		rtlpriv->io.writeN_sync(rtlpriv,
-					(FW_8192C_START_ADDRESS + offset),
-					(void *)(bufferPtr + offset),
-					remainSize);
-	}
-}
-
 static void _rtl92c_fw_block_write(struct ieee80211_hw *hw,
 				   const u8 *buffer, u32 size)
 {
@@ -109,30 +81,23 @@ static void _rtl92c_fw_block_write(struct ieee80211_hw *hw,
 	u8 *bufferPtr = (u8 *) buffer;
 	u32 *pu4BytePtr = (u32 *) buffer;
 	u32 i, offset, blockCount, remainSize;
-	u32 data;
 
-	if (rtlpriv->io.writeN_sync) {
-		rtl_block_fw_writeN(hw, buffer, size);
-		return;
-	}
 	blockCount = size / blockSize;
 	remainSize = size % blockSize;
-	if (remainSize) {
-		/* the last word is < 4 bytes - pad it with zeros */
-		for (i = 0; i < 4 - remainSize; i++)
-			*(bufferPtr + size + i) = 0;
-		blockCount++;
-	}
 
 	for (i = 0; i < blockCount; i++) {
 		offset = i * blockSize;
-		/* for big-endian platforms, the firmware data need to be byte
-		 * swapped as it was read as a byte string and will be written
-		 * as 32-bit dwords and byte swapped when written
-		 */
-		data = le32_to_cpu(*(__le32 *)(pu4BytePtr + i));
 		rtl_write_dword(rtlpriv, (FW_8192C_START_ADDRESS + offset),
-				data);
+				*(pu4BytePtr + i));
+	}
+
+	if (remainSize) {
+		offset = blockCount * blockSize;
+		bufferPtr += offset;
+		for (i = 0; i < remainSize; i++) {
+			rtl_write_byte(rtlpriv, (FW_8192C_START_ADDRESS +
+						 offset + i), *(bufferPtr + i));
+		}
 	}
 }
 
@@ -262,7 +227,8 @@ int rtl92c_download_fw(struct ieee80211_hw *hw)
 	u32 fwsize;
 	enum version_8192c version = rtlhal->version;
 
-	if (rtlpriv->max_fw_size == 0 || !rtlhal->pfirmware)
+	pr_info("Loading firmware file %s\n", rtlpriv->cfg->fw_name);
+	if (!rtlhal->pfirmware)
 		return 1;
 
 	pfwheader = (struct rtl92c_firmware_header *)rtlhal->pfirmware;
@@ -272,9 +238,8 @@ int rtl92c_download_fw(struct ieee80211_hw *hw)
 	if (IS_FW_HEADER_EXIST(pfwheader)) {
 		RT_TRACE(rtlpriv, COMP_FW, DBG_DMESG,
 			 ("Firmware Version(%d), Signature(%#x),Size(%d)\n",
-			 le16_to_cpu(pfwheader->version),
-			 le16_to_cpu(pfwheader->signature),
-			 (uint)sizeof(struct rtl92c_firmware_header)));
+			  pfwheader->version, pfwheader->signature,
+			  (uint)sizeof(struct rtl92c_firmware_header)));
 
 		pfwdata = pfwdata + sizeof(struct rtl92c_firmware_header);
 		fwsize = fwsize - sizeof(struct rtl92c_firmware_header);
@@ -517,7 +482,14 @@ static void _rtl92c_fill_h2c_command(struct ieee80211_hw *hw,
 void rtl92c_fill_h2c_cmd(struct ieee80211_hw *hw,
 			 u8 element_id, u32 cmd_len, u8 *p_cmdbuffer)
 {
+	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
 	u32 tmp_cmdbuf[2];
+
+	if (rtlhal->fw_ready == false) {
+		RT_ASSERT(false, ("return H2C cmd because of Fw "
+				  "download fail!!!\n"));
+		return;
+	}
 
 	memset(tmp_cmdbuf, 0, 8);
 	memcpy(tmp_cmdbuf, p_cmdbuffer, cmd_len);

@@ -266,6 +266,7 @@ static int ipoib_mcast_join_finish(struct ipoib_mcast *mcast,
 		netif_tx_unlock_bh(dev);
 
 		skb->dev = dev;
+
 		if (dev_queue_xmit(skb))
 			ipoib_warn(priv, "dev_queue_xmit failed to requeue packet\n");
 
@@ -720,7 +721,7 @@ out:
 
 		rcu_read_lock();
 		if (dst)
-			n = dst_get_neighbour_noref(dst);
+			n = dst_get_neighbour(dst);
 		if (n && !*to_ipoib_neigh(n)) {
 			struct ipoib_neigh *neigh = ipoib_neigh_alloc(n,
 								      skb->dev);

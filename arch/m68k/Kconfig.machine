@@ -1,7 +1,5 @@
 comment "Machine Types"
 
-if M68KCLASSIC
-
 config AMIGA
 	bool "Amiga support"
 	depends on MMU
@@ -131,8 +129,6 @@ config SUN3
 	  are incompatible with all other m68k targets (including Sun 3x!).
 
 	  If you don't want to compile a kernel exclusively for a Sun 3, say N.
-
-endif # M68KCLASSIC
 
 config PILOT
 	bool

@@ -399,7 +399,7 @@ static int __exit mc13xxx_rtc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct platform_device_id mc13xxx_rtc_idtable[] = {
+const struct platform_device_id mc13xxx_rtc_idtable[] = {
 	{
 		.name = "mc13783-rtc",
 	}, {

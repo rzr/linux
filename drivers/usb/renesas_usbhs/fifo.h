@@ -59,7 +59,6 @@ struct usbhs_pkt {
 	int trans;
 	int actual;
 	int zero;
-	int sequence;
 };
 
 struct usbhs_pkt_handle {
@@ -96,7 +95,7 @@ void usbhs_pkt_init(struct usbhs_pkt *pkt);
 void usbhs_pkt_push(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt,
 		    void (*done)(struct usbhs_priv *priv,
 				 struct usbhs_pkt *pkt),
-		    void *buf, int len, int zero, int sequence);
+		    void *buf, int len, int zero);
 struct usbhs_pkt *usbhs_pkt_pop(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt);
 void usbhs_pkt_start(struct usbhs_pipe *pipe);
 

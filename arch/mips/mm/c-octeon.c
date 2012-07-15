@@ -223,7 +223,7 @@ static void __cpuinit probe_octeon(void)
 		break;
 
 	default:
-		panic("Unsupported Cavium Networks CPU type");
+		panic("Unsupported Cavium Networks CPU type\n");
 		break;
 	}
 

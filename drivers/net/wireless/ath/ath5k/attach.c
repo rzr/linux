@@ -27,7 +27,8 @@
 #include "debug.h"
 
 /**
- * ath5k_hw_post() - Power On Self Test helper function
+ * ath5k_hw_post - Power On Self Test helper function
+ *
  * @ah: The &struct ath5k_hw
  */
 static int ath5k_hw_post(struct ath5k_hw *ah)
@@ -91,7 +92,8 @@ static int ath5k_hw_post(struct ath5k_hw *ah)
 }
 
 /**
- * ath5k_hw_init() - Check if hw is supported and init the needed structs
+ * ath5k_hw_init - Check if hw is supported and init the needed structs
+ *
  * @ah: The &struct ath5k_hw associated with the device
  *
  * Check if the device is supported, perform a POST and initialize the needed
@@ -296,7 +298,7 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 
 		/* Reset SERDES to load new settings */
 		ath5k_hw_reg_write(ah, 0x00000000, AR5K_PCIE_SERDES_RESET);
-		usleep_range(1000, 1500);
+		mdelay(1);
 	}
 
 	/* Get misc capabilities */
@@ -304,6 +306,11 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 	if (ret) {
 		ATH5K_ERR(ah, "unable to get device capabilities\n");
 		goto err;
+	}
+
+	if (test_bit(ATH_STAT_2G_DISABLED, ah->status)) {
+		__clear_bit(AR5K_MODE_11B, ah->ah_capabilities.cap_mode);
+		__clear_bit(AR5K_MODE_11G, ah->ah_capabilities.cap_mode);
 	}
 
 	/* Crypto settings */
@@ -342,7 +349,8 @@ err:
 }
 
 /**
- * ath5k_hw_deinit() - Free the &struct ath5k_hw
+ * ath5k_hw_deinit - Free the ath5k_hw struct
+ *
  * @ah: The &struct ath5k_hw
  */
 void ath5k_hw_deinit(struct ath5k_hw *ah)

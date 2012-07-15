@@ -10,6 +10,7 @@
 #include <linux/gpio.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/mbus.h>
 #include <linux/io.h>
 #include <plat/mpp.h>
 #include <mach/hardware.h>

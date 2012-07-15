@@ -47,6 +47,7 @@ struct ucb1x00_ts {
 	u16			x_res;
 	u16			y_res;
 
+	unsigned int		restart:1;
 	unsigned int		adcsync:1;
 };
 
@@ -206,17 +207,15 @@ static int ucb1x00_thread(void *_ts)
 {
 	struct ucb1x00_ts *ts = _ts;
 	DECLARE_WAITQUEUE(wait, current);
-	bool frozen, ignore = false;
 	int valid = 0;
 
 	set_freezable();
 	add_wait_queue(&ts->irq_wait, &wait);
-	while (!kthread_freezable_should_stop(&frozen)) {
+	while (!kthread_should_stop()) {
 		unsigned int x, y, p;
 		signed long timeout;
 
-		if (frozen)
-			ignore = true;
+		ts->restart = 0;
 
 		ucb1x00_adc_enable(ts->ucb);
 
@@ -259,7 +258,7 @@ static int ucb1x00_thread(void *_ts)
 			 * space.  We therefore leave it to user space
 			 * to do any filtering they please.
 			 */
-			if (!ignore) {
+			if (!ts->restart) {
 				ucb1x00_ts_evt_add(ts, p, x, y);
 				valid = 1;
 			}
@@ -267,6 +266,8 @@ static int ucb1x00_thread(void *_ts)
 			set_current_state(TASK_INTERRUPTIBLE);
 			timeout = HZ / 100;
 		}
+
+		try_to_freeze();
 
 		schedule_timeout(timeout);
 	}
@@ -339,6 +340,26 @@ static void ucb1x00_ts_close(struct input_dev *idev)
 	ucb1x00_disable(ts->ucb);
 }
 
+#ifdef CONFIG_PM
+static int ucb1x00_ts_resume(struct ucb1x00_dev *dev)
+{
+	struct ucb1x00_ts *ts = dev->priv;
+
+	if (ts->rtask != NULL) {
+		/*
+		 * Restart the TS thread to ensure the
+		 * TS interrupt mode is set up again
+		 * after sleep.
+		 */
+		ts->restart = 1;
+		wake_up(&ts->irq_wait);
+	}
+	return 0;
+}
+#else
+#define ucb1x00_ts_resume NULL
+#endif
+
 
 /*
  * Initialisation.
@@ -404,6 +425,7 @@ static void ucb1x00_ts_remove(struct ucb1x00_dev *dev)
 static struct ucb1x00_driver ucb1x00_ts_driver = {
 	.add		= ucb1x00_ts_add,
 	.remove		= ucb1x00_ts_remove,
+	.resume		= ucb1x00_ts_resume,
 };
 
 static int __init ucb1x00_ts_init(void)

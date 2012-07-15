@@ -196,7 +196,18 @@ static struct platform_driver altera_ps2_driver = {
 		.of_match_table = altera_ps2_match,
 	},
 };
-module_platform_driver(altera_ps2_driver);
+
+static int __init altera_ps2_init(void)
+{
+	return platform_driver_register(&altera_ps2_driver);
+}
+module_init(altera_ps2_init);
+
+static void __exit altera_ps2_exit(void)
+{
+	platform_driver_unregister(&altera_ps2_driver);
+}
+module_exit(altera_ps2_exit);
 
 MODULE_DESCRIPTION("Altera University Program PS2 controller driver");
 MODULE_AUTHOR("Thomas Chou <thomas@wytron.com.tw>");

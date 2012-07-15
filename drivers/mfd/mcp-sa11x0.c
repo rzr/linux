@@ -257,7 +257,18 @@ static struct platform_driver mcp_sa11x0_driver = {
 /*
  * This needs re-working
  */
-module_platform_driver(mcp_sa11x0_driver);
+static int __init mcp_sa11x0_init(void)
+{
+	return platform_driver_register(&mcp_sa11x0_driver);
+}
+
+static void __exit mcp_sa11x0_exit(void)
+{
+	platform_driver_unregister(&mcp_sa11x0_driver);
+}
+
+module_init(mcp_sa11x0_init);
+module_exit(mcp_sa11x0_exit);
 
 MODULE_AUTHOR("Russell King <rmk@arm.linux.org.uk>");
 MODULE_DESCRIPTION("SA11x0 multimedia communications port driver");

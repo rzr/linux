@@ -118,56 +118,6 @@ static const struct sysfs_ops dev_sysfs_ops = {
 	.store	= dev_attr_store,
 };
 
-#define to_ext_attr(x) container_of(x, struct dev_ext_attribute, attr)
-
-ssize_t device_store_ulong(struct device *dev,
-			   struct device_attribute *attr,
-			   const char *buf, size_t size)
-{
-	struct dev_ext_attribute *ea = to_ext_attr(attr);
-	char *end;
-	unsigned long new = simple_strtoul(buf, &end, 0);
-	if (end == buf)
-		return -EINVAL;
-	*(unsigned long *)(ea->var) = new;
-	/* Always return full write size even if we didn't consume all */
-	return size;
-}
-EXPORT_SYMBOL_GPL(device_store_ulong);
-
-ssize_t device_show_ulong(struct device *dev,
-			  struct device_attribute *attr,
-			  char *buf)
-{
-	struct dev_ext_attribute *ea = to_ext_attr(attr);
-	return snprintf(buf, PAGE_SIZE, "%lx\n", *(unsigned long *)(ea->var));
-}
-EXPORT_SYMBOL_GPL(device_show_ulong);
-
-ssize_t device_store_int(struct device *dev,
-			 struct device_attribute *attr,
-			 const char *buf, size_t size)
-{
-	struct dev_ext_attribute *ea = to_ext_attr(attr);
-	char *end;
-	long new = simple_strtol(buf, &end, 0);
-	if (end == buf || new > INT_MAX || new < INT_MIN)
-		return -EINVAL;
-	*(int *)(ea->var) = new;
-	/* Always return full write size even if we didn't consume all */
-	return size;
-}
-EXPORT_SYMBOL_GPL(device_store_int);
-
-ssize_t device_show_int(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
-{
-	struct dev_ext_attribute *ea = to_ext_attr(attr);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", *(int *)(ea->var));
-}
-EXPORT_SYMBOL_GPL(device_show_int);
 
 /**
  *	device_release - free device structure.
@@ -248,7 +198,7 @@ static int dev_uevent(struct kset *kset, struct kobject *kobj,
 	if (MAJOR(dev->devt)) {
 		const char *tmp;
 		const char *name;
-		umode_t mode = 0;
+		mode_t mode = 0;
 
 		add_uevent_var(env, "MAJOR=%u", MAJOR(dev->devt));
 		add_uevent_var(env, "MINOR=%u", MINOR(dev->devt));
@@ -514,7 +464,7 @@ static ssize_t show_dev(struct device *dev, struct device_attribute *attr,
 static struct device_attribute devt_attr =
 	__ATTR(dev, S_IRUGO, show_dev, NULL);
 
-/* /sys/devices/ */
+/* kset to create /sys/devices/  */
 struct kset *devices_kset;
 
 /**
@@ -631,11 +581,6 @@ static void klist_children_put(struct klist_node *n)
  * may use @dev's fields. In particular, get_device()/put_device()
  * may be used for reference counting of @dev after calling this
  * function.
- *
- * All fields in @dev must be initialized by the caller to 0, except
- * for those explicitly set to some other value.  The simplest
- * approach is to use kzalloc() to allocate the structure containing
- * @dev.
  *
  * NOTE: Use put_device() to give up your reference instead of freeing
  * @dev directly once you have called this function.
@@ -766,10 +711,6 @@ static struct kobject *get_device_parent(struct device *dev,
 		return k;
 	}
 
-	/* subsystems can specify a default root directory for their devices */
-	if (!parent && dev->bus && dev->bus->dev_root)
-		return &dev->bus->dev_root->kobj;
-
 	if (parent)
 		return &parent->kobj;
 	return NULL;
@@ -788,6 +729,14 @@ static void cleanup_glue_dir(struct device *dev, struct kobject *glue_dir)
 static void cleanup_device_parent(struct device *dev)
 {
 	cleanup_glue_dir(dev, dev->kobj.parent);
+}
+
+static void setup_parent(struct device *dev, struct device *parent)
+{
+	struct kobject *kobj;
+	kobj = get_device_parent(dev, parent);
+	if (kobj)
+		dev->kobj.parent = kobj;
 }
 
 static int device_add_class_symlinks(struct device *dev)
@@ -935,13 +884,6 @@ int device_private_init(struct device *dev)
  * to the global and sibling lists for the device, then
  * adds it to the other relevant subsystems of the driver model.
  *
- * Do not call this routine or device_register() more than once for
- * any device structure.  The driver model core is not designed to work
- * with devices that get unregistered and then spring back to life.
- * (Among other things, it's very hard to guarantee that all references
- * to the previous incarnation of @dev have been dropped.)  Allocate
- * and register a fresh new struct device instead.
- *
  * NOTE: _Never_ directly free @dev after calling this function, even
  * if it returned an error! Always use put_device() to give up your
  * reference instead.
@@ -949,7 +891,6 @@ int device_private_init(struct device *dev)
 int device_add(struct device *dev)
 {
 	struct device *parent = NULL;
-	struct kobject *kobj;
 	struct class_interface *class_intf;
 	int error = -EINVAL;
 
@@ -973,10 +914,6 @@ int device_add(struct device *dev)
 		dev->init_name = NULL;
 	}
 
-	/* subsystems can specify simple device enumeration */
-	if (!dev_name(dev) && dev->bus && dev->bus->dev_name)
-		dev_set_name(dev, "%s%u", dev->bus->dev_name, dev->id);
-
 	if (!dev_name(dev)) {
 		error = -EINVAL;
 		goto name_error;
@@ -985,9 +922,7 @@ int device_add(struct device *dev)
 	pr_debug("device: '%s': %s\n", dev_name(dev), __func__);
 
 	parent = get_device(dev->parent);
-	kobj = get_device_parent(dev, parent);
-	if (kobj)
-		dev->kobj.parent = kobj;
+	setup_parent(dev, parent);
 
 	/* use parent numa_node */
 	if (parent)
@@ -1034,7 +969,7 @@ int device_add(struct device *dev)
 	device_pm_add(dev);
 
 	/* Notify clients of device addition.  This call must come
-	 * after dpm_sysfs_add() and before kobject_uevent().
+	 * after dpm_sysf_add() and before kobject_uevent().
 	 */
 	if (dev->bus)
 		blocking_notifier_call_chain(&dev->bus->p->bus_notifier,
@@ -1047,17 +982,17 @@ int device_add(struct device *dev)
 			       &parent->p->klist_children);
 
 	if (dev->class) {
-		mutex_lock(&dev->class->p->mutex);
+		mutex_lock(&dev->class->p->class_mutex);
 		/* tie the class to the device */
 		klist_add_tail(&dev->knode_class,
 			       &dev->class->p->klist_devices);
 
 		/* notify any interfaces that the device is here */
 		list_for_each_entry(class_intf,
-				    &dev->class->p->interfaces, node)
+				    &dev->class->p->class_interfaces, node)
 			if (class_intf->add_dev)
 				class_intf->add_dev(dev, class_intf);
-		mutex_unlock(&dev->class->p->mutex);
+		mutex_unlock(&dev->class->p->class_mutex);
 	}
 done:
 	put_device(dev);
@@ -1101,9 +1036,6 @@ name_error:
  * I.e. you should only call the two helpers separately if
  * have a clearly defined need to use and refcount the device
  * before it is added to the hierarchy.
- *
- * For more information, see the kerneldoc for device_initialize()
- * and device_add().
  *
  * NOTE: _Never_ directly free @dev after calling this function, even
  * if it returned an error! Always use put_device() to give up the
@@ -1175,15 +1107,15 @@ void device_del(struct device *dev)
 	if (dev->class) {
 		device_remove_class_symlinks(dev);
 
-		mutex_lock(&dev->class->p->mutex);
+		mutex_lock(&dev->class->p->class_mutex);
 		/* notify any interfaces that the device is now gone */
 		list_for_each_entry(class_intf,
-				    &dev->class->p->interfaces, node)
+				    &dev->class->p->class_interfaces, node)
 			if (class_intf->remove_dev)
 				class_intf->remove_dev(dev, class_intf);
 		/* remove the device from the class list */
 		klist_del(&dev->knode_class);
-		mutex_unlock(&dev->class->p->mutex);
+		mutex_unlock(&dev->class->p->class_mutex);
 	}
 	device_remove_file(dev, &uevent_attr);
 	device_remove_attrs(dev);
@@ -1250,7 +1182,7 @@ static struct device *next_device(struct klist_iter *i)
  * freed by the caller.
  */
 const char *device_get_devnode(struct device *dev,
-			       umode_t *mode, const char **tmp)
+			       mode_t *mode, const char **tmp)
 {
 	char *s;
 

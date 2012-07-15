@@ -30,6 +30,7 @@
 
 ******************************************************************************/
 #include <linux/wireless.h>
+#include <linux/version.h>
 #include <linux/kmod.h>
 #include <linux/module.h>
 
@@ -294,7 +295,6 @@ int rtllib_wx_get_scan(struct rtllib_device *ieee,
 
 	return err;
 }
-EXPORT_SYMBOL(rtllib_wx_get_scan);
 
 int rtllib_wx_set_encode(struct rtllib_device *ieee,
 			    struct iw_request_info *info,
@@ -306,44 +306,44 @@ int rtllib_wx_set_encode(struct rtllib_device *ieee,
 		.flags = 0
 	};
 	int i, key, key_provided, len;
-	struct lib80211_crypt_data **crypt;
+	struct rtllib_crypt_data **crypt;
 
 	RTLLIB_DEBUG_WX("SET_ENCODE\n");
 
 	key = erq->flags & IW_ENCODE_INDEX;
 	if (key) {
-		if (key > NUM_WEP_KEYS)
+		if (key > WEP_KEYS)
 			return -EINVAL;
 		key--;
 		key_provided = 1;
 	} else {
 		key_provided = 0;
-		key = ieee->crypt_info.tx_keyidx;
+		key = ieee->tx_keyidx;
 	}
 
 	RTLLIB_DEBUG_WX("Key: %d [%s]\n", key, key_provided ?
 			   "provided" : "default");
-	crypt = &ieee->crypt_info.crypt[key];
+	crypt = &ieee->crypt[key];
 	if (erq->flags & IW_ENCODE_DISABLED) {
 		if (key_provided && *crypt) {
 			RTLLIB_DEBUG_WX("Disabling encryption on key %d.\n",
 					   key);
-			lib80211_crypt_delayed_deinit(&ieee->crypt_info, crypt);
+			rtllib_crypt_delayed_deinit(ieee, crypt);
 		} else
 			RTLLIB_DEBUG_WX("Disabling encryption.\n");
 
 		/* Check all the keys to see if any are still configured,
 		 * and if no key index was provided, de-init them all */
-		for (i = 0; i < NUM_WEP_KEYS; i++) {
-			if (ieee->crypt_info.crypt[i] != NULL) {
+		for (i = 0; i < WEP_KEYS; i++) {
+			if (ieee->crypt[i] != NULL) {
 				if (key_provided)
 					break;
-				lib80211_crypt_delayed_deinit(&ieee->crypt_info,
-							    &ieee->crypt_info.crypt[i]);
+				rtllib_crypt_delayed_deinit(ieee,
+							    &ieee->crypt[i]);
 			}
 		}
 
-		if (i == NUM_WEP_KEYS) {
+		if (i == WEP_KEYS) {
 			sec.enabled = 0;
 			sec.level = SEC_LEVEL_0;
 			sec.flags |= SEC_ENABLED | SEC_LEVEL;
@@ -358,24 +358,25 @@ int rtllib_wx_set_encode(struct rtllib_device *ieee,
 	sec.flags |= SEC_ENABLED;
 
 	if (*crypt != NULL && (*crypt)->ops != NULL &&
-	    strcmp((*crypt)->ops->name, "R-WEP") != 0) {
+	    strcmp((*crypt)->ops->name, "WEP") != 0) {
 		/* changing to use WEP; deinit previously used algorithm
 		 * on this key */
-		lib80211_crypt_delayed_deinit(&ieee->crypt_info, crypt);
+		rtllib_crypt_delayed_deinit(ieee, crypt);
 	}
 
 	if (*crypt == NULL) {
-		struct lib80211_crypt_data *new_crypt;
+		struct rtllib_crypt_data *new_crypt;
 
 		/* take WEP into use */
-		new_crypt = kzalloc(sizeof(struct lib80211_crypt_data),
+		new_crypt = kmalloc(sizeof(struct rtllib_crypt_data),
 				    GFP_KERNEL);
 		if (new_crypt == NULL)
 			return -ENOMEM;
-		new_crypt->ops = lib80211_get_crypto_ops("R-WEP");
+		memset(new_crypt, 0, sizeof(struct rtllib_crypt_data));
+		new_crypt->ops = rtllib_get_crypto_ops("WEP");
 		if (!new_crypt->ops) {
 			request_module("rtllib_crypt_wep");
-			new_crypt->ops = lib80211_get_crypto_ops("R-WEP");
+			new_crypt->ops = rtllib_get_crypto_ops("WEP");
 		}
 
 		if (new_crypt->ops)
@@ -411,7 +412,7 @@ int rtllib_wx_set_encode(struct rtllib_device *ieee,
 		 * explicitely set */
 		if (key == sec.active_key)
 			sec.flags |= SEC_ACTIVE_KEY;
-		ieee->crypt_info.tx_keyidx = key;
+		ieee->tx_keyidx = key;
 
 	} else {
 		len = (*crypt)->ops->get_key(sec.keys[key], WEP_KEY_LEN,
@@ -434,7 +435,7 @@ int rtllib_wx_set_encode(struct rtllib_device *ieee,
 		if (key_provided) {
 			RTLLIB_DEBUG_WX(
 				"Setting key %d to default Tx key.\n", key);
-			ieee->crypt_info.tx_keyidx = key;
+			ieee->tx_keyidx = key;
 			sec.active_key = key;
 			sec.flags |= SEC_ACTIVE_KEY;
 		}
@@ -469,7 +470,6 @@ int rtllib_wx_set_encode(struct rtllib_device *ieee,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(rtllib_wx_set_encode);
 
 int rtllib_wx_get_encode(struct rtllib_device *ieee,
 			    struct iw_request_info *info,
@@ -477,7 +477,7 @@ int rtllib_wx_get_encode(struct rtllib_device *ieee,
 {
 	struct iw_point *erq = &(wrqu->encoding);
 	int len, key;
-	struct lib80211_crypt_data *crypt;
+	struct rtllib_crypt_data *crypt;
 
 	RTLLIB_DEBUG_WX("GET_ENCODE\n");
 
@@ -486,13 +486,13 @@ int rtllib_wx_get_encode(struct rtllib_device *ieee,
 
 	key = erq->flags & IW_ENCODE_INDEX;
 	if (key) {
-		if (key > NUM_WEP_KEYS)
+		if (key > WEP_KEYS)
 			return -EINVAL;
 		key--;
 	} else {
-		key = ieee->crypt_info.tx_keyidx;
+		key = ieee->tx_keyidx;
 	}
-	crypt = ieee->crypt_info.crypt[key];
+	crypt = ieee->crypt[key];
 
 	erq->flags = key + 1;
 
@@ -513,7 +513,6 @@ int rtllib_wx_get_encode(struct rtllib_device *ieee,
 
 	return 0;
 }
-EXPORT_SYMBOL(rtllib_wx_get_encode);
 
 int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 			       struct iw_request_info *info,
@@ -526,29 +525,29 @@ int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 	int i, idx;
 	int group_key = 0;
 	const char *alg, *module;
-	struct lib80211_crypto_ops *ops;
-	struct lib80211_crypt_data **crypt;
+	struct rtllib_crypto_ops *ops;
+	struct rtllib_crypt_data **crypt;
 
 	struct rtllib_security sec = {
 		.flags = 0,
 	};
 	idx = encoding->flags & IW_ENCODE_INDEX;
 	if (idx) {
-		if (idx < 1 || idx > NUM_WEP_KEYS)
+		if (idx < 1 || idx > WEP_KEYS)
 			return -EINVAL;
 		idx--;
 	} else{
-			idx = ieee->crypt_info.tx_keyidx;
+			idx = ieee->tx_keyidx;
 	}
 	if (ext->ext_flags & IW_ENCODE_EXT_GROUP_KEY) {
-		crypt = &ieee->crypt_info.crypt[idx];
+		crypt = &ieee->crypt[idx];
 		group_key = 1;
 	} else {
 		/* some Cisco APs use idx>0 for unicast in dynamic WEP */
 		if (idx != 0 && ext->alg != IW_ENCODE_ALG_WEP)
 			return -EINVAL;
 		if (ieee->iw_mode == IW_MODE_INFRA)
-			crypt = &ieee->crypt_info.crypt[idx];
+			crypt = &ieee->crypt[idx];
 		else
 			return -EINVAL;
 	}
@@ -557,13 +556,13 @@ int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 	if ((encoding->flags & IW_ENCODE_DISABLED) ||
 	    ext->alg == IW_ENCODE_ALG_NONE) {
 		if (*crypt)
-			lib80211_crypt_delayed_deinit(&ieee->crypt_info, crypt);
+			rtllib_crypt_delayed_deinit(ieee, crypt);
 
-		for (i = 0; i < NUM_WEP_KEYS; i++) {
-			if (ieee->crypt_info.crypt[i] != NULL)
+		for (i = 0; i < WEP_KEYS; i++) {
+			if (ieee->crypt[i] != NULL)
 				break;
 		}
-		if (i == NUM_WEP_KEYS) {
+		if (i == WEP_KEYS) {
 			sec.enabled = 0;
 			sec.level = SEC_LEVEL_0;
 			sec.flags |= SEC_LEVEL;
@@ -574,15 +573,15 @@ int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 	sec.enabled = 1;
 	switch (ext->alg) {
 	case IW_ENCODE_ALG_WEP:
-		alg = "R-WEP";
+		alg = "WEP";
 		module = "rtllib_crypt_wep";
 		break;
 	case IW_ENCODE_ALG_TKIP:
-		alg = "R-TKIP";
+		alg = "TKIP";
 		module = "rtllib_crypt_tkip";
 		break;
 	case IW_ENCODE_ALG_CCMP:
-		alg = "R-CCMP";
+		alg = "CCMP";
 		module = "rtllib_crypt_ccmp";
 		break;
 	default:
@@ -593,14 +592,14 @@ int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 	}
 	printk(KERN_INFO "alg name:%s\n", alg);
 
-	ops = lib80211_get_crypto_ops(alg);
+	 ops = rtllib_get_crypto_ops(alg);
 	if (ops == NULL) {
 		char tempbuf[100];
 
 		memset(tempbuf, 0x00, 100);
 		sprintf(tempbuf, "%s", module);
 		request_module("%s", tempbuf);
-		ops = lib80211_get_crypto_ops(alg);
+		ops = rtllib_get_crypto_ops(alg);
 	}
 	if (ops == NULL) {
 		RTLLIB_DEBUG_WX("%s: unknown crypto alg %d\n",
@@ -611,9 +610,9 @@ int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 	}
 
 	if (*crypt == NULL || (*crypt)->ops != ops) {
-		struct lib80211_crypt_data *new_crypt;
+		struct rtllib_crypt_data *new_crypt;
 
-		lib80211_crypt_delayed_deinit(&ieee->crypt_info, crypt);
+		rtllib_crypt_delayed_deinit(ieee, crypt);
 
 		new_crypt = kzalloc(sizeof(*new_crypt), GFP_KERNEL);
 		if (new_crypt == NULL) {
@@ -642,7 +641,7 @@ int rtllib_wx_set_encode_ext(struct rtllib_device *ieee,
 		goto done;
 	}
 	if (ext->ext_flags & IW_ENCODE_EXT_SET_TX_KEY) {
-		ieee->crypt_info.tx_keyidx = idx;
+		ieee->tx_keyidx = idx;
 		sec.active_key = idx;
 		sec.flags |= SEC_ACTIVE_KEY;
 	}
@@ -675,7 +674,6 @@ done:
 	}
 	return ret;
 }
-EXPORT_SYMBOL(rtllib_wx_set_encode_ext);
 
 int rtllib_wx_get_encode_ext(struct rtllib_device *ieee,
 			       struct iw_request_info *info,
@@ -683,7 +681,7 @@ int rtllib_wx_get_encode_ext(struct rtllib_device *ieee,
 {
 	struct iw_point *encoding = &wrqu->encoding;
 	struct iw_encode_ext *ext = (struct iw_encode_ext *)extra;
-	struct lib80211_crypt_data *crypt;
+	struct rtllib_crypt_data *crypt;
 	int idx, max_key_len;
 
 	max_key_len = encoding->length - sizeof(*ext);
@@ -692,18 +690,18 @@ int rtllib_wx_get_encode_ext(struct rtllib_device *ieee,
 
 	idx = encoding->flags & IW_ENCODE_INDEX;
 	if (idx) {
-		if (idx < 1 || idx > NUM_WEP_KEYS)
+		if (idx < 1 || idx > WEP_KEYS)
 			return -EINVAL;
 		idx--;
 	} else {
-		idx = ieee->crypt_info.tx_keyidx;
+		idx = ieee->tx_keyidx;
 	}
 	if (!(ext->ext_flags & IW_ENCODE_EXT_GROUP_KEY) &&
 	    (ext->alg != IW_ENCODE_ALG_WEP))
 		if (idx != 0 || (ieee->iw_mode != IW_MODE_INFRA))
 			return -EINVAL;
 
-	crypt = ieee->crypt_info.crypt[idx];
+	crypt = ieee->crypt[idx];
 
 	encoding->flags = idx + 1;
 	memset(ext, 0, sizeof(*ext));
@@ -713,11 +711,11 @@ int rtllib_wx_get_encode_ext(struct rtllib_device *ieee,
 		ext->key_len = 0;
 		encoding->flags |= IW_ENCODE_DISABLED;
 	} else {
-		if (strcmp(crypt->ops->name, "R-WEP") == 0)
+		if (strcmp(crypt->ops->name, "WEP") == 0)
 			ext->alg = IW_ENCODE_ALG_WEP;
-		else if (strcmp(crypt->ops->name, "R-TKIP"))
+		else if (strcmp(crypt->ops->name, "TKIP"))
 			ext->alg = IW_ENCODE_ALG_TKIP;
-		else if (strcmp(crypt->ops->name, "R-CCMP"))
+		else if (strcmp(crypt->ops->name, "CCMP"))
 			ext->alg = IW_ENCODE_ALG_CCMP;
 		else
 			return -EINVAL;
@@ -780,7 +778,6 @@ int rtllib_wx_set_mlme(struct rtllib_device *ieee,
 
 	return 0;
 }
-EXPORT_SYMBOL(rtllib_wx_set_mlme);
 
 int rtllib_wx_set_auth(struct rtllib_device *ieee,
 			       struct iw_request_info *info,
@@ -833,7 +830,6 @@ int rtllib_wx_set_auth(struct rtllib_device *ieee,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(rtllib_wx_set_auth);
 
 int rtllib_wx_set_gen_ie(struct rtllib_device *ieee, u8 *ie, size_t len)
 {
@@ -850,9 +846,10 @@ int rtllib_wx_set_gen_ie(struct rtllib_device *ieee, u8 *ie, size_t len)
 
 			ieee->wps_ie_len = (len < MAX_WZC_IE_LEN) ? (len) :
 					   (MAX_WZC_IE_LEN);
-			buf = kmemdup(ie, ieee->wps_ie_len, GFP_KERNEL);
+			buf = kmalloc(ieee->wps_ie_len, GFP_KERNEL);
 			if (buf == NULL)
 				return -ENOMEM;
+			memcpy(buf, ie, ieee->wps_ie_len);
 			ieee->wps_ie = buf;
 			return 0;
 		}
@@ -863,9 +860,10 @@ int rtllib_wx_set_gen_ie(struct rtllib_device *ieee, u8 *ie, size_t len)
 	if (len) {
 		if (len != ie[1]+2)
 			return -EINVAL;
-		buf = kmemdup(ie, len, GFP_KERNEL);
+		buf = kmalloc(len, GFP_KERNEL);
 		if (buf == NULL)
 			return -ENOMEM;
+		memcpy(buf, ie, len);
 		kfree(ieee->wpa_ie);
 		ieee->wpa_ie = buf;
 		ieee->wpa_ie_len = len;
@@ -876,4 +874,3 @@ int rtllib_wx_set_gen_ie(struct rtllib_device *ieee, u8 *ie, size_t len)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(rtllib_wx_set_gen_ie);

@@ -293,14 +293,12 @@ static u32 unresettable_controller[] = {
 	0x3215103C, /* Smart Array E200i */
 	0x3237103C, /* Smart Array E500 */
 	0x323D103C, /* Smart Array P700m */
-	0x40800E11, /* Smart Array 5i */
 	0x409C0E11, /* Smart Array 6400 */
 	0x409D0E11, /* Smart Array 6400 EM */
 };
 
 /* List of controllers which cannot even be soft reset */
 static u32 soft_unresettable_controller[] = {
-	0x40800E11, /* Smart Array 5i */
 	/* Exclude 640x boards.  These are two pci devices in one slot
 	 * which share a battery backed cache module.  One controls the
 	 * cache, the other accesses the cache through the one that controls
@@ -1676,30 +1674,26 @@ static void figure_bus_target_lun(struct ctlr_info *h,
 
 	if (is_logical_dev_addr_mode(lunaddrbytes)) {
 		/* logical device */
-		if (unlikely(is_scsi_rev_5(h))) {
-			/* p1210m, logical drives lun assignments
-			 * match SCSI REPORT LUNS data.
+		lunid = le32_to_cpu(*((__le32 *) lunaddrbytes));
+		if (is_msa2xxx(h, device)) {
+			/* msa2xxx way, put logicals on bus 1
+			 * and match target/lun numbers box
+			 * reports.
 			 */
-			lunid = le32_to_cpu(*((__le32 *) lunaddrbytes));
-			*bus = 0;
-			*target = 0;
-			*lun = (lunid & 0x3fff) + 1;
+			*bus = 1;
+			*target = (lunid >> 16) & 0x3fff;
+			*lun = lunid & 0x00ff;
 		} else {
-			/* not p1210m... */
-			lunid = le32_to_cpu(*((__le32 *) lunaddrbytes));
-			if (is_msa2xxx(h, device)) {
-				/* msa2xxx way, put logicals on bus 1
-				 * and match target/lun numbers box
-				 * reports.
-				 */
-				*bus = 1;
-				*target = (lunid >> 16) & 0x3fff;
-				*lun = lunid & 0x00ff;
-			} else {
-				/* Traditional smart array way. */
+			if (likely(is_scsi_rev_5(h))) {
+				/* All current smart arrays (circa 2011) */
 				*bus = 0;
-				*lun = 0;
+				*target = 0;
+				*lun = (lunid & 0x3fff) + 1;
+			} else {
+				/* Traditional old smart array way. */
+				*bus = 0;
 				*target = lunid & 0x3fff;
+				*lun = 0;
 			}
 		}
 	} else {
@@ -4271,9 +4265,7 @@ static void stop_controller_lockup_detector(struct ctlr_info *h)
 	remove_ctlr_from_lockup_detector_list(h);
 	/* If the list of ctlr's to monitor is empty, stop the thread */
 	if (list_empty(&hpsa_ctlr_list)) {
-		spin_unlock_irqrestore(&lockup_detector_lock, flags);
 		kthread_stop(hpsa_lockup_detector);
-		spin_lock_irqsave(&lockup_detector_lock, flags);
 		hpsa_lockup_detector = NULL;
 	}
 	spin_unlock_irqrestore(&lockup_detector_lock, flags);

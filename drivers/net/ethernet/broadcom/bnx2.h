@@ -6563,24 +6563,11 @@ struct l2_fhdr {
 #define MB_TX_CID_ADDR	MB_GET_CID_ADDR(TX_CID)
 #define MB_RX_CID_ADDR	MB_GET_CID_ADDR(RX_CID)
 
-/*
- * This driver uses new build_skb() API :
- * RX ring buffer contains pointer to kmalloc() data only,
- * skb are built only after Hardware filled the frame.
- */
 struct sw_bd {
-	u8			*data;
+	struct sk_buff		*skb;
+	struct l2_fhdr		*desc;
 	DEFINE_DMA_UNMAP_ADDR(mapping);
 };
-
-/* Its faster to compute this from data than storing it in sw_bd
- * (less cache misses)
- */
-static inline struct l2_fhdr *get_l2_fhdr(u8 *data)
-{
-	return (struct l2_fhdr *)(PTR_ALIGN(data, BNX2_RX_ALIGN) + NET_SKB_PAD);
-}
-
 
 struct sw_pg {
 	struct page		*page;

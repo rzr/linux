@@ -145,9 +145,7 @@ static void key_gc_keyring(struct key *keyring, time_t limit)
 	if (!klist)
 		goto unlock_dont_gc;
 
-	loop = klist->nkeys;
-	smp_rmb();
-	for (loop--; loop >= 0; loop--) {
+	for (loop = klist->nkeys - 1; loop >= 0; loop--) {
 		key = klist->keys[loop];
 		if (test_bit(KEY_FLAG_DEAD, &key->flags) ||
 		    (key->expiry > 0 && key->expiry <= limit))

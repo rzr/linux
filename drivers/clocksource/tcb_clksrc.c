@@ -59,6 +59,7 @@ static struct clocksource clksrc = {
 	.rating         = 200,
 	.read           = tc_get_cycles,
 	.mask           = CLOCKSOURCE_MASK(32),
+	.shift          = 18,
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
@@ -255,6 +256,7 @@ static int __init tcb_clksrc_init(void)
 		best_divisor_idx = i;
 	}
 
+	clksrc.mult = clocksource_hz2mult(divided_rate, clksrc.shift);
 
 	printk(bootinfo, clksrc.name, CONFIG_ATMEL_TCB_CLKSRC_BLOCK,
 			divided_rate / 1000000,
@@ -290,7 +292,7 @@ static int __init tcb_clksrc_init(void)
 	__raw_writel(ATMEL_TC_SYNC, tcaddr + ATMEL_TC_BCR);
 
 	/* and away we go! */
-	clocksource_register_hz(&clksrc, divided_rate);
+	clocksource_register(&clksrc);
 
 	/* channel 2:  periodic and oneshot timer support */
 	setup_clkevents(tc, clk32k_divisor_idx);

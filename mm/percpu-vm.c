@@ -184,7 +184,8 @@ static void pcpu_unmap_pages(struct pcpu_chunk *chunk,
 				   page_end - page_start);
 	}
 
-	bitmap_clear(populated, page_start, page_end - page_start);
+	for (i = page_start; i < page_end; i++)
+		__clear_bit(i, populated);
 }
 
 /**

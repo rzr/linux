@@ -239,5 +239,4 @@ MACHINE_START(GUMSTIX, "Gumstix")
 	.handle_irq	= pxa25x_handle_irq,
 	.timer		= &pxa_timer,
 	.init_machine	= gumstix_init,
-	.restart	= pxa_restart,
 MACHINE_END

@@ -52,7 +52,7 @@
 #define LOCK_RETRY_DELAY                (200)
 
 /* Debug functions */
-static bool debug;
+static int debug;
 module_param(debug, bool, 0644);
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
 

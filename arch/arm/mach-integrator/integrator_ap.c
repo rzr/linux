@@ -472,5 +472,4 @@ MACHINE_START(INTEGRATOR, "ARM-Integrator")
 	.init_irq	= ap_init_irq,
 	.timer		= &ap_timer,
 	.init_machine	= ap_init,
-	.restart	= integrator_restart,
 MACHINE_END

@@ -51,8 +51,6 @@ extern int unsynchronized_tsc(void);
 extern int check_tsc_unstable(void);
 extern unsigned long native_calibrate_tsc(void);
 
-extern int tsc_clocksource_reliable;
-
 /*
  * Boot-time check whether the TSCs are synchronized across
  * all CPUs/cores:

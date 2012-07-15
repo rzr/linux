@@ -361,6 +361,5 @@ MACHINE_START(PALMTE2, "Palm Tungsten|E2")
 	.init_irq	= pxa25x_init_irq,
 	.handle_irq	= pxa25x_handle_irq,
 	.timer		= &pxa_timer,
-	.init_machine	= palmte2_init,
-	.restart	= pxa_restart,
+	.init_machine	= palmte2_init
 MACHINE_END

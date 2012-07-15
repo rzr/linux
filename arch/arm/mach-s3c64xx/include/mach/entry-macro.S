@@ -12,8 +12,7 @@
  * warranty of any kind, whether express or implied.
 */
 
-		.macro  disable_fiq
-		.endm
+#include <mach/map.h>
+#include <mach/irqs.h>
 
-		.macro  arch_ret_to_user, tmp1, tmp2
-		.endm
+#include <asm/entry-macro-vic2.S>

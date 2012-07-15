@@ -142,7 +142,7 @@ static int s3c2412_i2s_hw_params(struct snd_pcm_substream *substream,
 	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
 	SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000)
 
-static const struct snd_soc_dai_ops s3c2412_i2s_dai_ops = {
+static struct snd_soc_dai_ops s3c2412_i2s_dai_ops = {
 	.hw_params	= s3c2412_i2s_hw_params,
 };
 
@@ -184,7 +184,17 @@ static struct platform_driver s3c2412_iis_driver = {
 	},
 };
 
-module_platform_driver(s3c2412_iis_driver);
+static int __init s3c2412_i2s_init(void)
+{
+	return platform_driver_register(&s3c2412_iis_driver);
+}
+module_init(s3c2412_i2s_init);
+
+static void __exit s3c2412_i2s_exit(void)
+{
+	platform_driver_unregister(&s3c2412_iis_driver);
+}
+module_exit(s3c2412_i2s_exit);
 
 /* Module information */
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");

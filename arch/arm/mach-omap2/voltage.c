@@ -27,7 +27,7 @@
 #include <linux/slab.h>
 #include <linux/clk.h>
 
-#include "common.h"
+#include <plat/common.h>
 
 #include "prm-regbits-34xx.h"
 #include "prm-regbits-44xx.h"

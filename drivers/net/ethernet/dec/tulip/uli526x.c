@@ -960,11 +960,10 @@ static void netdev_get_drvinfo(struct net_device *dev,
 {
 	struct uli526x_board_info *np = netdev_priv(dev);
 
-	strlcpy(info->driver, DRV_NAME, sizeof(info->driver));
-	strlcpy(info->version, DRV_VERSION, sizeof(info->version));
+	strcpy(info->driver, DRV_NAME);
+	strcpy(info->version, DRV_VERSION);
 	if (np->pdev)
-		strlcpy(info->bus_info, pci_name(np->pdev),
-			sizeof(info->bus_info));
+		strcpy(info->bus_info, pci_name(np->pdev));
 	else
 		sprintf(info->bus_info, "EISA 0x%lx %d",
 			dev->base_addr, dev->irq);

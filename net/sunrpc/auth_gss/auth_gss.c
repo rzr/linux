@@ -392,8 +392,7 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
 }
 
 static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-				struct rpc_clnt *clnt,
-				const char *service_name)
+				struct rpc_clnt *clnt, int machine_cred)
 {
 	struct gss_api_mech *mech = gss_msg->auth->mech;
 	char *p = gss_msg->databuf;
@@ -408,8 +407,12 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
 		p += len;
 		gss_msg->msg.len += len;
 	}
-	if (service_name != NULL) {
-		len = sprintf(p, "service=%s ", service_name);
+	if (machine_cred) {
+		len = sprintf(p, "service=* ");
+		p += len;
+		gss_msg->msg.len += len;
+	} else if (!strcmp(clnt->cl_program->name, "nfs4_cb")) {
+		len = sprintf(p, "service=nfs ");
 		p += len;
 		gss_msg->msg.len += len;
 	}
@@ -426,18 +429,17 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
 }
 
 static void gss_encode_msg(struct gss_upcall_msg *gss_msg,
-				struct rpc_clnt *clnt,
-				const char *service_name)
+				struct rpc_clnt *clnt, int machine_cred)
 {
 	if (pipe_version == 0)
 		gss_encode_v0_msg(gss_msg);
 	else /* pipe_version == 1 */
-		gss_encode_v1_msg(gss_msg, clnt, service_name);
+		gss_encode_v1_msg(gss_msg, clnt, machine_cred);
 }
 
-static struct gss_upcall_msg *
-gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
-		uid_t uid, const char *service_name)
+static inline struct gss_upcall_msg *
+gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
+		int machine_cred)
 {
 	struct gss_upcall_msg *gss_msg;
 	int vers;
@@ -457,7 +459,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
 	atomic_set(&gss_msg->count, 1);
 	gss_msg->uid = uid;
 	gss_msg->auth = gss_auth;
-	gss_encode_msg(gss_msg, clnt, service_name);
+	gss_encode_msg(gss_msg, clnt, machine_cred);
 	return gss_msg;
 }
 
@@ -469,7 +471,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
 	struct gss_upcall_msg *gss_new, *gss_msg;
 	uid_t uid = cred->cr_uid;
 
-	gss_new = gss_alloc_msg(gss_auth, clnt, uid, gss_cred->gc_principal);
+	gss_new = gss_alloc_msg(gss_auth, uid, clnt, gss_cred->gc_machine_cred);
 	if (IS_ERR(gss_new))
 		return gss_new;
 	gss_msg = gss_add_msg(gss_new);
@@ -993,9 +995,7 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
 	 */
 	cred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_NEW;
 	cred->gc_service = gss_auth->service;
-	cred->gc_principal = NULL;
-	if (acred->machine_cred)
-		cred->gc_principal = acred->principal;
+	cred->gc_machine_cred = acred->machine_cred;
 	kref_get(&gss_auth->kref);
 	return &cred->gc_base;
 
@@ -1030,12 +1030,7 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
 	if (!test_bit(RPCAUTH_CRED_UPTODATE, &rc->cr_flags))
 		return 0;
 out:
-	if (acred->principal != NULL) {
-		if (gss_cred->gc_principal == NULL)
-			return 0;
-		return strcmp(acred->principal, gss_cred->gc_principal) == 0;
-	}
-	if (gss_cred->gc_principal != NULL)
+	if (acred->machine_cred != gss_cred->gc_machine_cred)
 		return 0;
 	return rc->cr_uid == acred->uid;
 }
@@ -1109,8 +1104,7 @@ static int gss_renew_cred(struct rpc_task *task)
 	struct rpc_auth *auth = oldcred->cr_auth;
 	struct auth_cred acred = {
 		.uid = oldcred->cr_uid,
-		.principal = gss_cred->gc_principal,
-		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
+		.machine_cred = gss_cred->gc_machine_cred,
 	};
 	struct rpc_cred *new;
 

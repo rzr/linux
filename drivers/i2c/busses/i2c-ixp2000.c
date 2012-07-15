@@ -148,7 +148,18 @@ static struct platform_driver ixp2000_i2c_driver = {
 	},
 };
 
-module_platform_driver(ixp2000_i2c_driver);
+static int __init ixp2000_i2c_init(void)
+{
+	return platform_driver_register(&ixp2000_i2c_driver);
+}
+
+static void __exit ixp2000_i2c_exit(void)
+{
+	platform_driver_unregister(&ixp2000_i2c_driver);
+}
+
+module_init(ixp2000_i2c_init);
+module_exit(ixp2000_i2c_exit);
 
 MODULE_AUTHOR ("Deepak Saxena <dsaxena@plexity.net>");
 MODULE_DESCRIPTION("IXP2000 GPIO-based I2C bus driver");

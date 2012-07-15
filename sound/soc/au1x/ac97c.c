@@ -195,7 +195,7 @@ static int alchemy_ac97c_startup(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static const struct snd_soc_dai_ops alchemy_ac97c_ops = {
+static struct snd_soc_dai_ops alchemy_ac97c_ops = {
 	.startup		= alchemy_ac97c_startup,
 };
 
@@ -229,34 +229,35 @@ static int __devinit au1xac97c_drvprobe(struct platform_device *pdev)
 	struct resource *iores, *dmares;
 	struct au1xpsc_audio_data *ctx;
 
-	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
+	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
 
 	mutex_init(&ctx->lock);
 
 	iores = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!iores)
-		return -ENODEV;
+	if (!iores) {
+		ret = -ENODEV;
+		goto out0;
+	}
 
-	if (!devm_request_mem_region(&pdev->dev, iores->start,
-				     resource_size(iores),
-				     pdev->name))
-		return -EBUSY;
+	ret = -EBUSY;
+	if (!request_mem_region(iores->start, resource_size(iores),
+				pdev->name))
+		goto out0;
 
-	ctx->mmio = devm_ioremap_nocache(&pdev->dev, iores->start,
-					 resource_size(iores));
+	ctx->mmio = ioremap_nocache(iores->start, resource_size(iores));
 	if (!ctx->mmio)
-		return -EBUSY;
+		goto out1;
 
 	dmares = platform_get_resource(pdev, IORESOURCE_DMA, 0);
 	if (!dmares)
-		return -EBUSY;
+		goto out2;
 	ctx->dmaids[SNDRV_PCM_STREAM_PLAYBACK] = dmares->start;
 
 	dmares = platform_get_resource(pdev, IORESOURCE_DMA, 1);
 	if (!dmares)
-		return -EBUSY;
+		goto out2;
 	ctx->dmaids[SNDRV_PCM_STREAM_CAPTURE] = dmares->start;
 
 	/* switch it on */
@@ -270,19 +271,32 @@ static int __devinit au1xac97c_drvprobe(struct platform_device *pdev)
 
 	ret = snd_soc_register_dai(&pdev->dev, &au1xac97c_dai_driver);
 	if (ret)
-		return ret;
+		goto out2;
 
 	ac97c_workdata = ctx;
 	return 0;
+
+out2:
+	iounmap(ctx->mmio);
+out1:
+	release_mem_region(iores->start, resource_size(iores));
+out0:
+	kfree(ctx);
+	return ret;
 }
 
 static int __devexit au1xac97c_drvremove(struct platform_device *pdev)
 {
 	struct au1xpsc_audio_data *ctx = platform_get_drvdata(pdev);
+	struct resource *r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	snd_soc_unregister_dai(&pdev->dev);
 
 	WR(ctx, AC97_ENABLE, EN_D);	/* clock off, disable */
+
+	iounmap(ctx->mmio);
+	release_mem_region(r->start, resource_size(r));
+	kfree(ctx);
 
 	ac97c_workdata = NULL;	/* MDEV */
 

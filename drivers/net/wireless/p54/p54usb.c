@@ -1083,4 +1083,15 @@ static struct usb_driver p54u_driver = {
 	.soft_unbind = 1,
 };
 
-module_usb_driver(p54u_driver);
+static int __init p54u_init(void)
+{
+	return usb_register(&p54u_driver);
+}
+
+static void __exit p54u_exit(void)
+{
+	usb_deregister(&p54u_driver);
+}
+
+module_init(p54u_init);
+module_exit(p54u_exit);

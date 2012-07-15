@@ -37,9 +37,16 @@ static void __iomem *wdog_base;
 /*
  * Reset the system. It is called by machine_restart().
  */
-void mxc_restart(char mode, const char *cmd)
+void arch_reset(char mode, const char *cmd)
 {
 	unsigned int wcr_enable;
+
+#ifdef CONFIG_MACH_MX51_EFIKAMX
+	if (machine_is_mx51_efikamx()) {
+		mx51_efikamx_reset();
+		return;
+	}
+#endif
 
 	if (cpu_is_mx1()) {
 		wcr_enable = (1 << 0);
@@ -64,7 +71,7 @@ void mxc_restart(char mode, const char *cmd)
 	mdelay(50);
 
 	/* we'll take a jump through zero as a poor second */
-	soft_restart(0);
+	cpu_reset(0);
 }
 
 void mxc_arch_reset_init(void __iomem *base)

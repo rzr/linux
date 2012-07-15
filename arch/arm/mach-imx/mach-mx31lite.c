@@ -287,5 +287,4 @@ MACHINE_START(MX31LITE, "LogicPD i.MX31 SOM")
 	.handle_irq = imx31_handle_irq,
 	.timer = &mx31lite_timer,
 	.init_machine = mx31lite_init,
-	.restart	= mxc_restart,
 MACHINE_END

@@ -143,7 +143,6 @@ static struct snd_soc_dai_link smdk_dai[] = {
 
 static struct snd_soc_card smdk_pcm = {
 	.name = "SMDK-PCM",
-	.owner = THIS_MODULE,
 	.dai_link = smdk_dai,
 	.num_links = 2,
 };
@@ -189,7 +188,19 @@ static struct platform_driver snd_smdk_driver = {
 	.remove = __devexit_p(snd_smdk_remove),
 };
 
-module_platform_driver(snd_smdk_driver);
+static int __init smdk_audio_init(void)
+{
+	return platform_driver_register(&snd_smdk_driver);
+}
+
+module_init(smdk_audio_init);
+
+static void __exit smdk_audio_exit(void)
+{
+	platform_driver_unregister(&snd_smdk_driver);
+}
+
+module_exit(smdk_audio_exit);
 
 MODULE_AUTHOR("Sangbeom Kim, <sbkim73@samsung.com>");
 MODULE_DESCRIPTION("ALSA SoC SMDK WM8580 for PCM");

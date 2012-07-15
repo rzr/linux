@@ -221,8 +221,8 @@ static int apply_replay_entry(struct ubifs_info *c, struct replay_entry *r)
 {
 	int err;
 
-	dbg_mntk(&r->key, "LEB %d:%d len %d deletion %d sqnum %llu key ",
-		 r->lnum, r->offs, r->len, r->deletion, r->sqnum);
+	dbg_mnt("LEB %d:%d len %d deletion %d sqnum %llu %s", r->lnum,
+		r->offs, r->len, r->deletion, r->sqnum, DBGKEY(&r->key));
 
 	/* Set c->replay_sqnum to help deal with dangling branches. */
 	c->replay_sqnum = r->sqnum;
@@ -361,7 +361,7 @@ static int insert_node(struct ubifs_info *c, int lnum, int offs, int len,
 {
 	struct replay_entry *r;
 
-	dbg_mntk(key, "add LEB %d:%d, key ", lnum, offs);
+	dbg_mnt("add LEB %d:%d, key %s", lnum, offs, DBGKEY(key));
 
 	if (key_inum(c, key) >= c->highest_inum)
 		c->highest_inum = key_inum(c, key);
@@ -409,7 +409,7 @@ static int insert_dent(struct ubifs_info *c, int lnum, int offs, int len,
 	struct replay_entry *r;
 	char *nbuf;
 
-	dbg_mntk(key, "add LEB %d:%d, key ", lnum, offs);
+	dbg_mnt("add LEB %d:%d, key %s", lnum, offs, DBGKEY(key));
 	if (key_inum(c, key) >= c->highest_inum)
 		c->highest_inum = key_inum(c, key);
 

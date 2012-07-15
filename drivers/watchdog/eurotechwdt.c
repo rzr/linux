@@ -64,7 +64,7 @@
 static unsigned long eurwdt_is_open;
 static int eurwdt_timeout;
 static char eur_expect_close;
-static DEFINE_SPINLOCK(eurwdt_lock);
+static spinlock_t eurwdt_lock;
 
 /*
  * You must set these - there is no sane way to probe for this board.
@@ -445,6 +445,8 @@ static int __init eurwdt_init(void)
 		    "eurwdt: can't register reboot notifier (err=%d)\n", ret);
 		goto outreg;
 	}
+
+	spin_lock_init(&eurwdt_lock);
 
 	ret = misc_register(&eurwdt_miscdev);
 	if (ret) {

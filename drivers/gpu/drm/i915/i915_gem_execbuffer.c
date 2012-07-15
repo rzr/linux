@@ -971,31 +971,6 @@ i915_gem_execbuffer_retire_commands(struct drm_device *dev,
 }
 
 static int
-i915_reset_gen7_sol_offsets(struct drm_device *dev,
-			    struct intel_ring_buffer *ring)
-{
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	int ret, i;
-
-	if (!IS_GEN7(dev) || ring != &dev_priv->ring[RCS])
-		return 0;
-
-	ret = intel_ring_begin(ring, 4 * 3);
-	if (ret)
-		return ret;
-
-	for (i = 0; i < 4; i++) {
-		intel_ring_emit(ring, MI_LOAD_REGISTER_IMM(1));
-		intel_ring_emit(ring, GEN7_SO_WRITE_OFFSET(i));
-		intel_ring_emit(ring, 0);
-	}
-
-	intel_ring_advance(ring);
-
-	return 0;
-}
-
-static int
 i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 		       struct drm_file *file,
 		       struct drm_i915_gem_execbuffer2 *args,
@@ -1082,6 +1057,11 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 			return -EINVAL;
 		}
 
+		if (args->num_cliprects > UINT_MAX / sizeof(*cliprects)) {
+			DRM_DEBUG("execbuf with %u cliprects\n",
+				  args->num_cliprects);
+			return -EINVAL;
+		}
 		cliprects = kmalloc(args->num_cliprects * sizeof(*cliprects),
 				    GFP_KERNEL);
 		if (cliprects == NULL) {
@@ -1207,12 +1187,6 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 		intel_ring_advance(ring);
 
 		dev_priv->relative_constants_mode = mode;
-	}
-
-	if (args->flags & I915_EXEC_GEN7_SOL_RESET) {
-		ret = i915_reset_gen7_sol_offsets(dev, ring);
-		if (ret)
-			goto err;
 	}
 
 	trace_i915_gem_ring_dispatch(ring, seqno);
@@ -1353,7 +1327,8 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
 	struct drm_i915_gem_exec_object2 *exec2_list = NULL;
 	int ret;
 
-	if (args->buffer_count < 1) {
+	if (args->buffer_count < 1 ||
+	    args->buffer_count > UINT_MAX / sizeof(*exec2_list)) {
 		DRM_ERROR("execbuf2 with %d buffers\n", args->buffer_count);
 		return -EINVAL;
 	}

@@ -23,4 +23,4 @@ $(obj)/compressed/vmlinux: FORCE
 
 install: $(CONFIGURE) $(obj)/image
 	sh -x  $(srctree)/$(obj)/install.sh $(KERNELRELEASE) $(obj)/image \
-	      System.map "$(INSTALL_PATH)"
+	      System.map Kerntypes "$(INSTALL_PATH)"

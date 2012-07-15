@@ -30,14 +30,14 @@
 #include "coda_int.h"
 
 /* dir inode-ops */
-static int coda_create(struct inode *dir, struct dentry *new, umode_t mode, struct nameidata *nd);
+static int coda_create(struct inode *dir, struct dentry *new, int mode, struct nameidata *nd);
 static struct dentry *coda_lookup(struct inode *dir, struct dentry *target, struct nameidata *nd);
 static int coda_link(struct dentry *old_dentry, struct inode *dir_inode, 
 		     struct dentry *entry);
 static int coda_unlink(struct inode *dir_inode, struct dentry *entry);
 static int coda_symlink(struct inode *dir_inode, struct dentry *entry,
 			const char *symname);
-static int coda_mkdir(struct inode *dir_inode, struct dentry *entry, umode_t mode);
+static int coda_mkdir(struct inode *dir_inode, struct dentry *entry, int mode);
 static int coda_rmdir(struct inode *dir_inode, struct dentry *entry);
 static int coda_rename(struct inode *old_inode, struct dentry *old_dentry, 
                        struct inode *new_inode, struct dentry *new_dentry);
@@ -96,11 +96,12 @@ const struct file_operations coda_dir_operations = {
 /* access routines: lookup, readlink, permission */
 static struct dentry *coda_lookup(struct inode *dir, struct dentry *entry, struct nameidata *nd)
 {
-	struct super_block *sb = dir->i_sb;
+	struct inode *inode = NULL;
+	struct CodaFid resfid = { { 0, } };
+	int type = 0;
+	int error = 0;
 	const char *name = entry->d_name.name;
 	size_t length = entry->d_name.len;
-	struct inode *inode;
-	int type = 0;
 
 	if (length > CODA_MAXNAMLEN) {
 		printk(KERN_ERR "name too long: lookup, %s (%*s)\n",
@@ -110,20 +111,22 @@ static struct dentry *coda_lookup(struct inode *dir, struct dentry *entry, struc
 
 	/* control object, create inode on the fly */
 	if (coda_isroot(dir) && coda_iscontrol(name, length)) {
-		inode = coda_cnode_makectl(sb);
+		error = coda_cnode_makectl(&inode, dir->i_sb);
 		type = CODA_NOCACHE;
-	} else {
-		struct CodaFid fid = { { 0, } };
-		int error = venus_lookup(sb, coda_i2f(dir), name, length,
-				     &type, &fid);
-		inode = !error ? coda_cnode_make(&fid, sb) : ERR_PTR(error);
+		goto exit;
 	}
 
-	if (!IS_ERR(inode) && (type & CODA_NOCACHE))
-		coda_flag_inode(inode, C_VATTR | C_PURGE);
+	error = venus_lookup(dir->i_sb, coda_i2f(dir), name, length,
+			     &type, &resfid);
+	if (!error)
+		error = coda_cnode_make(&inode, &resfid, dir->i_sb);
 
-	if (inode == ERR_PTR(-ENOENT))
-		inode = NULL;
+	if (error && error != -ENOENT)
+		return ERR_PTR(error);
+
+exit:
+	if (inode && (type & CODA_NOCACHE))
+		coda_flag_inode(inode, C_VATTR | C_PURGE);
 
 	return d_splice_alias(inode, entry);
 }
@@ -188,7 +191,7 @@ static inline void coda_dir_drop_nlink(struct inode *dir)
 }
 
 /* creation routines: create, mknod, mkdir, link, symlink */
-static int coda_create(struct inode *dir, struct dentry *de, umode_t mode, struct nameidata *nd)
+static int coda_create(struct inode *dir, struct dentry *de, int mode, struct nameidata *nd)
 {
 	int error;
 	const char *name=de->d_name.name;
@@ -220,7 +223,7 @@ err_out:
 	return error;
 }
 
-static int coda_mkdir(struct inode *dir, struct dentry *de, umode_t mode)
+static int coda_mkdir(struct inode *dir, struct dentry *de, int mode)
 {
 	struct inode *inode;
 	struct coda_vattr attrs;

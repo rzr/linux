@@ -1293,4 +1293,15 @@ static struct platform_driver bigmac_sbus_driver = {
 	.remove		= __devexit_p(bigmac_sbus_remove),
 };
 
-module_platform_driver(bigmac_sbus_driver);
+static int __init bigmac_init(void)
+{
+	return platform_driver_register(&bigmac_sbus_driver);
+}
+
+static void __exit bigmac_exit(void)
+{
+	platform_driver_unregister(&bigmac_sbus_driver);
+}
+
+module_init(bigmac_init);
+module_exit(bigmac_exit);

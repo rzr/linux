@@ -29,7 +29,6 @@
 #include "nouveau_connector.h"
 #include "nouveau_encoder.h"
 #include "nouveau_crtc.h"
-#include "nouveau_gpio.h"
 
 /******************************************************************************
  * aux channel util functions
@@ -274,6 +273,8 @@ nouveau_dp_tu_update(struct drm_device *dev, int or, int link, u32 clk, u32 bpp)
 u8 *
 nouveau_dp_bios_data(struct drm_device *dev, struct dcb_entry *dcb, u8 **entry)
 {
+	struct drm_nouveau_private *dev_priv = dev->dev_private;
+	struct nvbios *bios = &dev_priv->vbios;
 	struct bit_entry d;
 	u8 *table;
 	int i;
@@ -288,7 +289,7 @@ nouveau_dp_bios_data(struct drm_device *dev, struct dcb_entry *dcb, u8 **entry)
 		return NULL;
 	}
 
-	table = ROMPTR(dev, d.data[0]);
+	table = ROMPTR(bios, d.data[0]);
 	if (!table) {
 		NV_ERROR(dev, "displayport table pointer invalid\n");
 		return NULL;
@@ -305,7 +306,7 @@ nouveau_dp_bios_data(struct drm_device *dev, struct dcb_entry *dcb, u8 **entry)
 	}
 
 	for (i = 0; i < table[3]; i++) {
-		*entry = ROMPTR(dev, table[table[1] + (i * table[2])]);
+		*entry = ROMPTR(bios, table[table[1] + (i * table[2])]);
 		if (*entry && bios_encoder_match(dcb, ROM32((*entry)[0])))
 			return table;
 	}
@@ -335,6 +336,7 @@ struct dp_state {
 static void
 dp_set_link_config(struct drm_device *dev, struct dp_state *dp)
 {
+	struct drm_nouveau_private *dev_priv = dev->dev_private;
 	int or = dp->or, link = dp->link;
 	u8 *entry, sink[2];
 	u32 dp_ctrl;
@@ -358,7 +360,7 @@ dp_set_link_config(struct drm_device *dev, struct dp_state *dp)
 	 * table, that has (among other things) pointers to more scripts that
 	 * need to be executed, this time depending on link speed.
 	 */
-	entry = ROMPTR(dev, dp->entry[10]);
+	entry = ROMPTR(&dev_priv->vbios, dp->entry[10]);
 	if (entry) {
 		if (dp->table[0] < 0x30) {
 			while (dp->link_bw < (ROM16(entry[0]) * 10))
@@ -557,6 +559,8 @@ dp_link_train_eq(struct drm_device *dev, struct dp_state *dp)
 bool
 nouveau_dp_link_train(struct drm_encoder *encoder, u32 datarate)
 {
+	struct drm_nouveau_private *dev_priv = encoder->dev->dev_private;
+	struct nouveau_gpio_engine *pgpio = &dev_priv->engine.gpio;
 	struct nouveau_encoder *nv_encoder = nouveau_encoder(encoder);
 	struct nouveau_crtc *nv_crtc = nouveau_crtc(encoder->crtc);
 	struct nouveau_connector *nv_connector =
@@ -577,7 +581,7 @@ nouveau_dp_link_train(struct drm_encoder *encoder, u32 datarate)
 
 	dp.dcb = nv_encoder->dcb;
 	dp.crtc = nv_crtc->index;
-	dp.auxch = auxch->drive;
+	dp.auxch = auxch->rd;
 	dp.or = nv_encoder->or;
 	dp.link = !(nv_encoder->dcb->sorconf.link & 1);
 	dp.dpcd = nv_encoder->dp.dpcd;
@@ -586,7 +590,7 @@ nouveau_dp_link_train(struct drm_encoder *encoder, u32 datarate)
 	 * we take during link training (DP_SET_POWER is one), we need
 	 * to ignore them for the moment to avoid races.
 	 */
-	nouveau_gpio_irq(dev, 0, nv_connector->hpd, 0xff, false);
+	pgpio->irq_enable(dev, nv_connector->dcb->gpio_tag, false);
 
 	/* enable down-spreading, if possible */
 	if (dp.table[1] >= 16) {
@@ -635,7 +639,7 @@ nouveau_dp_link_train(struct drm_encoder *encoder, u32 datarate)
 	nouveau_bios_run_init_table(dev, ROM16(dp.entry[8]), dp.dcb, dp.crtc);
 
 	/* re-enable hotplug detect */
-	nouveau_gpio_irq(dev, 0, nv_connector->hpd, 0xff, true);
+	pgpio->irq_enable(dev, nv_connector->dcb->gpio_tag, true);
 	return true;
 }
 
@@ -652,7 +656,7 @@ nouveau_dp_detect(struct drm_encoder *encoder)
 	if (!auxch)
 		return false;
 
-	ret = auxch_tx(dev, auxch->drive, 9, DP_DPCD_REV, dpcd, 8);
+	ret = auxch_tx(dev, auxch->rd, 9, DP_DPCD_REV, dpcd, 8);
 	if (ret)
 		return false;
 
@@ -680,7 +684,7 @@ int
 nouveau_dp_auxch(struct nouveau_i2c_chan *auxch, int cmd, int addr,
 		 uint8_t *data, int data_nr)
 {
-	return auxch_tx(auxch->dev, auxch->drive, cmd, addr, data, data_nr);
+	return auxch_tx(auxch->dev, auxch->rd, cmd, addr, data, data_nr);
 }
 
 static int

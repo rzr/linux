@@ -326,7 +326,18 @@ static struct platform_driver spear_kbd_driver = {
 #endif
 	},
 };
-module_platform_driver(spear_kbd_driver);
+
+static int __init spear_kbd_init(void)
+{
+	return platform_driver_register(&spear_kbd_driver);
+}
+module_init(spear_kbd_init);
+
+static void __exit spear_kbd_exit(void)
+{
+	platform_driver_unregister(&spear_kbd_driver);
+}
+module_exit(spear_kbd_exit);
 
 MODULE_AUTHOR("Rajeev Kumar");
 MODULE_DESCRIPTION("SPEAr Keyboard Driver");

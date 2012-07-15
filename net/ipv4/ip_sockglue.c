@@ -37,7 +37,7 @@
 #include <net/route.h>
 #include <net/xfrm.h>
 #include <net/compat.h>
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 #include <net/transp_v6.h>
 #endif
 
@@ -55,13 +55,20 @@
 /*
  *	SOL_IP control messages.
  */
-#define PKTINFO_SKB_CB(__skb) ((struct in_pktinfo *)((__skb)->cb))
 
 static void ip_cmsg_recv_pktinfo(struct msghdr *msg, struct sk_buff *skb)
 {
-	struct in_pktinfo info = *PKTINFO_SKB_CB(skb);
+	struct in_pktinfo info;
+	struct rtable *rt = skb_rtable(skb);
 
 	info.ipi_addr.s_addr = ip_hdr(skb)->daddr;
+	if (rt) {
+		info.ipi_ifindex = rt->rt_iif;
+		info.ipi_spec_dst.s_addr = rt->rt_spec_dst;
+	} else {
+		info.ipi_ifindex = 0;
+		info.ipi_spec_dst.s_addr = 0;
+	}
 
 	put_cmsg(msg, SOL_IP, IP_PKTINFO, sizeof(info), &info);
 }
@@ -508,7 +515,7 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 						sock_owned_by_user(sk));
 		if (inet->is_icsk) {
 			struct inet_connection_sock *icsk = inet_csk(sk);
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 			if (sk->sk_family == PF_INET ||
 			    (!((1 << sk->sk_state) &
 			       (TCPF_LISTEN | TCPF_CLOSE)) &&
@@ -519,7 +526,7 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 				if (opt)
 					icsk->icsk_ext_hdr_len += opt->opt.optlen;
 				icsk->icsk_sync_mss(sk, icsk->icsk_pmtu_cookie);
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 			}
 #endif
 		}
@@ -985,28 +992,20 @@ e_inval:
 }
 
 /**
- * ipv4_pktinfo_prepare - transfert some info from rtable to skb
+ * ip_queue_rcv_skb - Queue an skb into sock receive queue
  * @sk: socket
  * @skb: buffer
  *
- * To support IP_CMSG_PKTINFO option, we store rt_iif and rt_spec_dst
- * in skb->cb[] before dst drop.
- * This way, receiver doesnt make cache line misses to read rtable.
+ * Queues an skb into socket receive queue. If IP_CMSG_PKTINFO option
+ * is not set, we drop skb dst entry now, while dst cache line is hot.
  */
-void ipv4_pktinfo_prepare(struct sk_buff *skb)
+int ip_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
-	struct in_pktinfo *pktinfo = PKTINFO_SKB_CB(skb);
-	const struct rtable *rt = skb_rtable(skb);
-
-	if (rt) {
-		pktinfo->ipi_ifindex = rt->rt_iif;
-		pktinfo->ipi_spec_dst.s_addr = rt->rt_spec_dst;
-	} else {
-		pktinfo->ipi_ifindex = 0;
-		pktinfo->ipi_spec_dst.s_addr = 0;
-	}
-	skb_dst_drop(skb);
+	if (!(inet_sk(sk)->cmsg_flags & IP_CMSG_PKTINFO))
+		skb_dst_drop(skb);
+	return sock_queue_rcv_skb(sk, skb);
 }
+EXPORT_SYMBOL(ip_queue_rcv_skb);
 
 int ip_setsockopt(struct sock *sk, int level,
 		int optname, char __user *optval, unsigned int optlen)

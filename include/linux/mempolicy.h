@@ -164,11 +164,11 @@ static inline void mpol_get(struct mempolicy *pol)
 		atomic_inc(&pol->refcnt);
 }
 
-extern bool __mpol_equal(struct mempolicy *a, struct mempolicy *b);
-static inline bool mpol_equal(struct mempolicy *a, struct mempolicy *b)
+extern int __mpol_equal(struct mempolicy *a, struct mempolicy *b);
+static inline int mpol_equal(struct mempolicy *a, struct mempolicy *b)
 {
 	if (a == b)
-		return true;
+		return 1;
 	return __mpol_equal(a, b);
 }
 
@@ -257,9 +257,9 @@ static inline int vma_migratable(struct vm_area_struct *vma)
 
 struct mempolicy {};
 
-static inline bool mpol_equal(struct mempolicy *a, struct mempolicy *b)
+static inline int mpol_equal(struct mempolicy *a, struct mempolicy *b)
 {
-	return true;
+	return 1;
 }
 
 static inline void mpol_put(struct mempolicy *p)

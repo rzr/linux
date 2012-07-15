@@ -70,7 +70,7 @@ void show_regs(struct pt_regs * regs)
 /*
  * Create a kernel thread
  */
-__noreturn void kernel_thread_helper(void *arg, int (*fn)(void *))
+ATTRIB_NORET void kernel_thread_helper(void *arg, int (*fn)(void *))
 {
 	do_exit(fn(arg));
 }

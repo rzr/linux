@@ -1292,7 +1292,18 @@ static struct platform_driver crypto4xx_driver = {
 	.remove		= crypto4xx_remove,
 };
 
-module_platform_driver(crypto4xx_driver);
+static int __init crypto4xx_init(void)
+{
+	return platform_driver_register(&crypto4xx_driver);
+}
+
+static void __exit crypto4xx_exit(void)
+{
+	platform_driver_unregister(&crypto4xx_driver);
+}
+
+module_init(crypto4xx_init);
+module_exit(crypto4xx_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("James Hsiao <jhsiao@amcc.com>");

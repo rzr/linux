@@ -84,12 +84,10 @@ static ssize_t input_polldev_set_poll(struct device *dev,
 {
 	struct input_polled_dev *polldev = dev_get_drvdata(dev);
 	struct input_dev *input = polldev->input;
-	unsigned int interval;
-	int err;
+	unsigned long interval;
 
-	err = kstrtouint(buf, 0, &interval);
-	if (err)
-		return err;
+	if (strict_strtoul(buf, 0, &interval))
+		return -EINVAL;
 
 	if (interval < polldev->poll_interval_min)
 		return -EINVAL;

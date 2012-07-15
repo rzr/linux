@@ -395,7 +395,10 @@ xfs_quiesce_data(
 	 */
 	xfs_inode_ag_iterator(mp, xfs_log_dirty_inode, 0);
 
-	/* force out the log */
+	xfs_qm_sync(mp, SYNC_TRYLOCK);
+	xfs_qm_sync(mp, SYNC_WAIT);
+
+	/* force out the newly dirtied log buffers */
 	xfs_log_force(mp, XFS_LOG_SYNC);
 
 	/* write superblock and hoover up shutdown errors */
@@ -503,6 +506,7 @@ xfs_sync_worker(
 			error = xfs_fs_log_dummy(mp);
 		else
 			xfs_log_force(mp, 0);
+		error = xfs_qm_sync(mp, SYNC_TRYLOCK);
 
 		/* start pushing all the metadata that is currently dirty */
 		xfs_ail_push_all(mp->m_ail);
@@ -707,13 +711,14 @@ xfs_reclaim_inode_grab(
 		return 1;
 
 	/*
-	 * If we are asked for non-blocking operation, do unlocked checks to
-	 * see if the inode already is being flushed or in reclaim to avoid
-	 * lock traffic.
+	 * do some unlocked checks first to avoid unnecessary lock traffic.
+	 * The first is a flush lock check, the second is a already in reclaim
+	 * check. Only do these checks if we are not going to block on locks.
 	 */
 	if ((flags & SYNC_TRYLOCK) &&
-	    __xfs_iflags_test(ip, XFS_IFLOCK | XFS_IRECLAIM))
+	    (!ip->i_flush.done || __xfs_iflags_test(ip, XFS_IRECLAIM))) {
 		return 1;
+	}
 
 	/*
 	 * The radix tree lock here protects a thread in xfs_iget from racing

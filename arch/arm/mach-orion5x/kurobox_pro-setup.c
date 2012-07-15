@@ -386,7 +386,6 @@ MACHINE_START(KUROBOX_PRO, "Buffalo/Revogear Kurobox Pro")
 	.init_irq	= orion5x_init_irq,
 	.timer		= &orion5x_timer,
 	.fixup		= tag_fixup_mem32,
-	.restart	= orion5x_restart,
 MACHINE_END
 #endif
 
@@ -400,6 +399,5 @@ MACHINE_START(LINKSTATION_PRO, "Buffalo Linkstation Pro/Live")
 	.init_irq	= orion5x_init_irq,
 	.timer		= &orion5x_timer,
 	.fixup		= tag_fixup_mem32,
-	.restart	= orion5x_restart,
 MACHINE_END
 #endif

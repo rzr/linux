@@ -14,7 +14,7 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/serial_core.h>
 
 #include <mach/map.h>
@@ -174,23 +174,20 @@ static struct s3c24xx_dma_order __initdata s3c2440_dma_order = {
 	},
 };
 
-static int __init s3c2440_dma_add(struct device *dev,
-				  struct subsys_interface *sif)
+static int __init s3c2440_dma_add(struct sys_device *sysdev)
 {
 	s3c2410_dma_init();
 	s3c24xx_dma_order_set(&s3c2440_dma_order);
 	return s3c24xx_dma_init_map(&s3c2440_dma_sel);
 }
 
-static struct subsys_interface s3c2440_dma_interface = {
-	.name		= "s3c2440_dma",
-	.subsys		= &s3c2440_subsys,
-	.add_dev	= s3c2440_dma_add,
+static struct sysdev_driver s3c2440_dma_driver = {
+	.add	= s3c2440_dma_add,
 };
 
 static int __init s3c2440_dma_init(void)
 {
-	return subsys_interface_register(&s3c2440_dma_interface);
+	return sysdev_driver_register(&s3c2440_sysclass, &s3c2440_dma_driver);
 }
 
 arch_initcall(s3c2440_dma_init);

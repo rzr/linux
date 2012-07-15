@@ -89,19 +89,9 @@ static void tm6000_urb_received(struct urb *urb)
 	int ret;
 	struct tm6000_core *dev = urb->context;
 
-	switch (urb->status) {
-	case 0:
-	case -ETIMEDOUT:
-		break;
-	case -ENOENT:
-	case -ECONNRESET:
-	case -ESHUTDOWN:
-		return;
-	default:
+	if (urb->status != 0)
 		print_err_status(dev, 0, urb->status);
-	}
-
-	if (urb->actual_length > 0)
+	else if (urb->actual_length > 0)
 		dvb_dmx_swfilter(&dev->dvb->demux, urb->transfer_buffer,
 						   urb->actual_length);
 
@@ -161,7 +151,7 @@ static int tm6000_start_stream(struct tm6000_core *dev)
 		printk(KERN_ERR "tm6000: pipe resetted\n");
 
 /*	mutex_lock(&tm6000_driver.open_close_mutex); */
-	ret = usb_submit_urb(dvb->bulk_urb, GFP_ATOMIC);
+	ret = usb_submit_urb(dvb->bulk_urb, GFP_KERNEL);
 
 /*	mutex_unlock(&tm6000_driver.open_close_mutex); */
 	if (ret) {
@@ -405,11 +395,6 @@ static int dvb_init(struct tm6000_core *dev)
 
 	if (!dev->caps.has_dvb)
 		return 0;
-
-	if (dev->udev->speed == USB_SPEED_FULL) {
-		printk(KERN_INFO "This USB2.0 device cannot be run on a USB1.1 port. (it lacks a hardware PID filter)\n");
-		return 0;
-	}
 
 	dvb = kzalloc(sizeof(struct tm6000_dvb), GFP_KERNEL);
 	if (!dvb) {

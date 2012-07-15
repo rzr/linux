@@ -26,7 +26,7 @@ OPTIONS
         Show only DSOs with hits.
 -i::
 --input=::
-        Input file name. (default: perf.data unless stdin is a fifo)
+        Input file name. (default: perf.data)
 -f::
 --force::
 	Don't do ownership validation.

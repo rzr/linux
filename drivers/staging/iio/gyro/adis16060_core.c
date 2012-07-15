@@ -98,11 +98,11 @@ static int adis16060_read_raw(struct iio_dev *indio_dev,
 		mutex_unlock(&indio_dev->mlock);
 		*val = tval;
 		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_OFFSET:
+	case (1 << IIO_CHAN_INFO_OFFSET_SEPARATE):
 		*val = -7;
 		*val2 = 461117;
 		return IIO_VAL_INT_PLUS_MICRO;
-	case IIO_CHAN_INFO_SCALE:
+	case (1 << IIO_CHAN_INFO_SCALE_SEPARATE):
 		*val = 0;
 		*val2 = 34000;
 		return IIO_VAL_INT_PLUS_MICRO;
@@ -136,8 +136,8 @@ static const struct iio_chan_spec adis16060_channels[] = {
 		.type = IIO_TEMP,
 		.indexed = 1,
 		.channel = 0,
-		.info_mask = IIO_CHAN_INFO_OFFSET_SEPARATE_BIT |
-		IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
+		.info_mask = (1 << IIO_CHAN_INFO_OFFSET_SEPARATE) |
+		(1 << IIO_CHAN_INFO_SCALE_SEPARATE),
 		.address = ADIS16060_TEMP_OUT,
 	}
 };

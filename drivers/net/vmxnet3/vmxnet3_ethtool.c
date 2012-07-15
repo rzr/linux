@@ -202,9 +202,14 @@ vmxnet3_get_drvinfo(struct net_device *netdev, struct ethtool_drvinfo *drvinfo)
 	struct vmxnet3_adapter *adapter = netdev_priv(netdev);
 
 	strlcpy(drvinfo->driver, vmxnet3_driver_name, sizeof(drvinfo->driver));
+	drvinfo->driver[sizeof(drvinfo->driver) - 1] = '\0';
 
 	strlcpy(drvinfo->version, VMXNET3_DRIVER_VERSION_REPORT,
 		sizeof(drvinfo->version));
+	drvinfo->driver[sizeof(drvinfo->version) - 1] = '\0';
+
+	strlcpy(drvinfo->fw_version, "N/A", sizeof(drvinfo->fw_version));
+	drvinfo->fw_version[sizeof(drvinfo->fw_version) - 1] = '\0';
 
 	strlcpy(drvinfo->bus_info, pci_name(adapter->pdev),
 		ETHTOOL_BUSINFO_LEN);
@@ -257,11 +262,11 @@ vmxnet3_get_strings(struct net_device *netdev, u32 stringset, u8 *buf)
 	}
 }
 
-int vmxnet3_set_features(struct net_device *netdev, netdev_features_t features)
+int vmxnet3_set_features(struct net_device *netdev, u32 features)
 {
 	struct vmxnet3_adapter *adapter = netdev_priv(netdev);
 	unsigned long flags;
-	netdev_features_t changed = features ^ netdev->features;
+	u32 changed = features ^ netdev->features;
 
 	if (changed & (NETIF_F_RXCSUM | NETIF_F_LRO | NETIF_F_HW_VLAN_RX)) {
 		if (features & NETIF_F_RXCSUM)
@@ -565,38 +570,44 @@ vmxnet3_get_rxnfc(struct net_device *netdev, struct ethtool_rxnfc *info,
 }
 
 #ifdef VMXNET3_RSS
-static u32
-vmxnet3_get_rss_indir_size(struct net_device *netdev)
-{
-	struct vmxnet3_adapter *adapter = netdev_priv(netdev);
-	struct UPT1_RSSConf *rssConf = adapter->rss_conf;
-
-	return rssConf->indTableSize;
-}
-
 static int
-vmxnet3_get_rss_indir(struct net_device *netdev, u32 *p)
+vmxnet3_get_rss_indir(struct net_device *netdev,
+		      struct ethtool_rxfh_indir *p)
 {
 	struct vmxnet3_adapter *adapter = netdev_priv(netdev);
 	struct UPT1_RSSConf *rssConf = adapter->rss_conf;
-	unsigned int n = rssConf->indTableSize;
+	unsigned int n = min_t(unsigned int, p->size, rssConf->indTableSize);
 
+	p->size = rssConf->indTableSize;
 	while (n--)
-		p[n] = rssConf->indTable[n];
+		p->ring_index[n] = rssConf->indTable[n];
 	return 0;
 
 }
 
 static int
-vmxnet3_set_rss_indir(struct net_device *netdev, const u32 *p)
+vmxnet3_set_rss_indir(struct net_device *netdev,
+		      const struct ethtool_rxfh_indir *p)
 {
 	unsigned int i;
 	unsigned long flags;
 	struct vmxnet3_adapter *adapter = netdev_priv(netdev);
 	struct UPT1_RSSConf *rssConf = adapter->rss_conf;
 
+	if (p->size != rssConf->indTableSize)
+		return -EINVAL;
+	for (i = 0; i < rssConf->indTableSize; i++) {
+		/*
+		 * Return with error code if any of the queue indices
+		 * is out of range
+		 */
+		if (p->ring_index[i] < 0 ||
+		    p->ring_index[i] >= adapter->num_rx_queues)
+			return -EINVAL;
+	}
+
 	for (i = 0; i < rssConf->indTableSize; i++)
-		rssConf->indTable[i] = p[i];
+		rssConf->indTable[i] = p->ring_index[i];
 
 	spin_lock_irqsave(&adapter->cmd_lock, flags);
 	VMXNET3_WRITE_BAR1_REG(adapter, VMXNET3_REG_CMD,
@@ -608,7 +619,7 @@ vmxnet3_set_rss_indir(struct net_device *netdev, const u32 *p)
 }
 #endif
 
-static const struct ethtool_ops vmxnet3_ethtool_ops = {
+static struct ethtool_ops vmxnet3_ethtool_ops = {
 	.get_settings      = vmxnet3_get_settings,
 	.get_drvinfo       = vmxnet3_get_drvinfo,
 	.get_regs_len      = vmxnet3_get_regs_len,
@@ -623,7 +634,6 @@ static const struct ethtool_ops vmxnet3_ethtool_ops = {
 	.set_ringparam     = vmxnet3_set_ringparam,
 	.get_rxnfc         = vmxnet3_get_rxnfc,
 #ifdef VMXNET3_RSS
-	.get_rxfh_indir_size = vmxnet3_get_rss_indir_size,
 	.get_rxfh_indir    = vmxnet3_get_rss_indir,
 	.set_rxfh_indir    = vmxnet3_set_rss_indir,
 #endif

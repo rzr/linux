@@ -404,6 +404,5 @@ MACHINE_START(PALMZ72, "Palm Zire72")
 	.init_irq	= pxa27x_init_irq,
 	.handle_irq	= pxa27x_handle_irq,
 	.timer		= &pxa_timer,
-	.init_machine	= palmz72_init,
-	.restart	= pxa_restart,
+	.init_machine	= palmz72_init
 MACHINE_END

@@ -100,11 +100,8 @@ static int atmel_bl_update_status(struct backlight_device *bl)
 		brightness = 0;
 
 	lcdc_writel(sinfo, ATMEL_LCDC_CONTRAST_VAL, brightness);
-	if (contrast_ctr & ATMEL_LCDC_POL_POSITIVE)
-		lcdc_writel(sinfo, ATMEL_LCDC_CONTRAST_CTR,
+	lcdc_writel(sinfo, ATMEL_LCDC_CONTRAST_CTR,
 			brightness ? contrast_ctr : 0);
-	else
-		lcdc_writel(sinfo, ATMEL_LCDC_CONTRAST_CTR, contrast_ctr);
 
 	bl->props.fb_blank = bl->props.power = sinfo->bl_power = power;
 
@@ -685,30 +682,14 @@ static int atmel_lcdfb_setcolreg(unsigned int regno, unsigned int red,
 
 	case FB_VISUAL_PSEUDOCOLOR:
 		if (regno < 256) {
-			if (cpu_is_at91sam9261() || cpu_is_at91sam9263()
-			    || cpu_is_at91sam9rl()) {
-				/* old style I+BGR:555 */
-				val  = ((red   >> 11) & 0x001f);
-				val |= ((green >>  6) & 0x03e0);
-				val |= ((blue  >>  1) & 0x7c00);
+			val  = ((red   >> 11) & 0x001f);
+			val |= ((green >>  6) & 0x03e0);
+			val |= ((blue  >>  1) & 0x7c00);
 
-				/*
-				 * TODO: intensity bit. Maybe something like
-				 *   ~(red[10] ^ green[10] ^ blue[10]) & 1
-				 */
-			} else {
-				/* new style BGR:565 / RGB:565 */
-				if (sinfo->lcd_wiring_mode ==
-				    ATMEL_LCDC_WIRING_RGB) {
-					val  = ((blue >> 11) & 0x001f);
-					val |= ((red  >>  0) & 0xf800);
-				} else {
-					val  = ((red  >> 11) & 0x001f);
-					val |= ((blue >>  0) & 0xf800);
-				}
-
-				val |= ((green >>  5) & 0x07e0);
-			}
+			/*
+			 * TODO: intensity bit. Maybe something like
+			 *   ~(red[10] ^ green[10] ^ blue[10]) & 1
+			 */
 
 			lcdc_writel(sinfo, ATMEL_LCDC_LUT(regno), val);
 			ret = 0;

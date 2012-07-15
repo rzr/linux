@@ -25,7 +25,6 @@ HPI internal definitions
 #define _HPI_INTERNAL_H_
 
 #include "hpi.h"
-
 /** maximum number of memory regions mapped to an adapter */
 #define HPI_MAX_ADAPTER_MEM_SPACES (2)
 
@@ -221,6 +220,8 @@ enum HPI_CONTROL_ATTRIBUTES {
 
 	HPI_COBRANET_SET = HPI_CTL_ATTR(COBRANET, 1),
 	HPI_COBRANET_GET = HPI_CTL_ATTR(COBRANET, 2),
+	/*HPI_COBRANET_SET_DATA         = HPI_CTL_ATTR(COBRANET, 3), */
+	/*HPI_COBRANET_GET_DATA         = HPI_CTL_ATTR(COBRANET, 4), */
 	HPI_COBRANET_GET_STATUS = HPI_CTL_ATTR(COBRANET, 5),
 	HPI_COBRANET_SEND_PACKET = HPI_CTL_ATTR(COBRANET, 6),
 	HPI_COBRANET_GET_PACKET = HPI_CTL_ATTR(COBRANET, 7),
@@ -240,9 +241,7 @@ enum HPI_CONTROL_ATTRIBUTES {
 	HPI_PAD_PROGRAM_TYPE = HPI_CTL_ATTR(PAD, 5),
 	HPI_PAD_PROGRAM_ID = HPI_CTL_ATTR(PAD, 6),
 	HPI_PAD_TA_SUPPORT = HPI_CTL_ATTR(PAD, 7),
-	HPI_PAD_TA_ACTIVE = HPI_CTL_ATTR(PAD, 8),
-
-	HPI_UNIVERSAL_ENTITY = HPI_CTL_ATTR(UNIVERSAL, 1)
+	HPI_PAD_TA_ACTIVE = HPI_CTL_ATTR(PAD, 8)
 };
 
 #define HPI_POLARITY_POSITIVE           0
@@ -394,10 +393,14 @@ enum HPI_FUNCTION_IDS {
 	HPI_SUBSYS_OPEN = HPI_FUNC_ID(SUBSYSTEM, 1),
 	HPI_SUBSYS_GET_VERSION = HPI_FUNC_ID(SUBSYSTEM, 2),
 	HPI_SUBSYS_GET_INFO = HPI_FUNC_ID(SUBSYSTEM, 3),
+	/* HPI_SUBSYS_FIND_ADAPTERS     = HPI_FUNC_ID(SUBSYSTEM, 4), */
 	HPI_SUBSYS_CREATE_ADAPTER = HPI_FUNC_ID(SUBSYSTEM, 5),
 	HPI_SUBSYS_CLOSE = HPI_FUNC_ID(SUBSYSTEM, 6),
+	/* HPI_SUBSYS_DELETE_ADAPTER    = HPI_FUNC_ID(SUBSYSTEM, 7), */
 	HPI_SUBSYS_DRIVER_LOAD = HPI_FUNC_ID(SUBSYSTEM, 8),
 	HPI_SUBSYS_DRIVER_UNLOAD = HPI_FUNC_ID(SUBSYSTEM, 9),
+	/* HPI_SUBSYS_READ_PORT_8               = HPI_FUNC_ID(SUBSYSTEM, 10), */
+	/* HPI_SUBSYS_WRITE_PORT_8              = HPI_FUNC_ID(SUBSYSTEM, 11), */
 	HPI_SUBSYS_GET_NUM_ADAPTERS = HPI_FUNC_ID(SUBSYSTEM, 12),
 	HPI_SUBSYS_GET_ADAPTER = HPI_FUNC_ID(SUBSYSTEM, 13),
 	HPI_SUBSYS_SET_NETWORK_INTERFACE = HPI_FUNC_ID(SUBSYSTEM, 14),
@@ -427,10 +430,7 @@ enum HPI_FUNCTION_IDS {
 	HPI_ADAPTER_IRQ_QUERY_AND_CLEAR = HPI_FUNC_ID(ADAPTER, 19),
 	HPI_ADAPTER_IRQ_CALLBACK = HPI_FUNC_ID(ADAPTER, 20),
 	HPI_ADAPTER_DELETE = HPI_FUNC_ID(ADAPTER, 21),
-	HPI_ADAPTER_READ_FLASH = HPI_FUNC_ID(ADAPTER, 22),
-	HPI_ADAPTER_END_FLASH = HPI_FUNC_ID(ADAPTER, 23),
-	HPI_ADAPTER_FILESTORE_DELETE_ALL = HPI_FUNC_ID(ADAPTER, 24),
-#define HPI_ADAPTER_FUNCTION_COUNT 24
+#define HPI_ADAPTER_FUNCTION_COUNT 21
 
 	HPI_OSTREAM_OPEN = HPI_FUNC_ID(OSTREAM, 1),
 	HPI_OSTREAM_CLOSE = HPI_FUNC_ID(OSTREAM, 2),
@@ -495,9 +495,7 @@ enum HPI_FUNCTION_IDS {
 	HPI_MIXER_GET_CONTROL_MULTIPLE_VALUES = HPI_FUNC_ID(MIXER, 10),
 	HPI_MIXER_STORE = HPI_FUNC_ID(MIXER, 11),
 	HPI_MIXER_GET_CACHE_INFO = HPI_FUNC_ID(MIXER, 12),
-	HPI_MIXER_GET_BLOCK_HANDLE = HPI_FUNC_ID(MIXER, 13),
-	HPI_MIXER_GET_PARAMETER_HANDLE = HPI_FUNC_ID(MIXER, 14),
-#define HPI_MIXER_FUNCTION_COUNT 14
+#define HPI_MIXER_FUNCTION_COUNT 12
 
 	HPI_CONTROL_GET_INFO = HPI_FUNC_ID(CONTROL, 1),
 	HPI_CONTROL_GET_STATE = HPI_FUNC_ID(CONTROL, 2),
@@ -620,7 +618,7 @@ struct hpi_hostbuffer_status {
 	u32 auxiliary_data_available;
 	u32 stream_state;
 	/* DSP index in to the host bus master buffer. */
-	u32 dsp_index;
+	u32 dSP_index;
 	/* Host index in to the host bus master buffer. */
 	u32 host_index;
 	u32 size_in_bytes;
@@ -663,6 +661,13 @@ union hpi_adapterx_msg {
 		u16 index;
 	} module_info;
 	struct {
+		u32 checksum;
+		u16 sequence;
+		u16 length;
+		u16 offset; /**< offset from start of msg to data */
+		u16 unused;
+	} program_flash;
+	struct {
 		u16 index;
 		u16 what;
 		u16 property_index;
@@ -673,10 +678,18 @@ union hpi_adapterx_msg {
 		u16 parameter2;
 	} property_set;
 	struct {
+		u32 offset;
+	} query_flash;
+	struct {
 		u32 pad32;
 		u16 key1;
 		u16 key2;
 	} restart;
+	struct {
+		u32 offset;
+		u32 length;
+		u32 key;
+	} start_flash;
 	struct {
 		u32 pad32;
 		u16 value;
@@ -684,7 +697,6 @@ union hpi_adapterx_msg {
 	struct {
 		u32 yes;
 	} irq_query;
-	u32 pad[3];
 };
 
 struct hpi_adapter_res {
@@ -712,9 +724,17 @@ union hpi_adapterx_res {
 		u32 adapter_mode;
 	} mode;
 	struct {
+		u16 sequence;
+	} program_flash;
+	struct {
 		u16 parameter1;
 		u16 parameter2;
 	} property_get;
+	struct {
+		u32 checksum;
+		u32 length;
+		u32 version;
+	} query_flash;
 	struct {
 		u32 yes;
 	} irq_query;
@@ -1130,9 +1150,74 @@ struct hpi_res_adapter_get_info {
 	struct hpi_adapter_res p;
 };
 
+/* padding is so these are same size as v0 hpi_message */
+struct hpi_msg_adapter_query_flash {
+	struct hpi_message_header h;
+	u32 offset;
+	u8 pad_to_version0_size[sizeof(struct hpi_message) -	/* V0 res */
+		sizeof(struct hpi_message_header) - 1 * sizeof(u32)];
+};
+
+/* padding is so these are same size as v0 hpi_response */
+struct hpi_res_adapter_query_flash {
+	struct hpi_response_header h;
+	u32 checksum;
+	u32 length;
+	u32 version;
+	u8 pad_to_version0_size[sizeof(struct hpi_response) -	/* V0 res */
+		sizeof(struct hpi_response_header) - 3 * sizeof(u32)];
+};
+
+struct hpi_msg_adapter_start_flash {
+	struct hpi_message_header h;
+	u32 offset;
+	u32 length;
+	u32 key;
+	u8 pad_to_version0_size[sizeof(struct hpi_message) -	/* V0 res */
+		sizeof(struct hpi_message_header) - 3 * sizeof(u32)];
+};
+
+struct hpi_res_adapter_start_flash {
+	struct hpi_response_header h;
+	u8 pad_to_version0_size[sizeof(struct hpi_response) -	/* V0 res */
+		sizeof(struct hpi_response_header)];
+};
+
+struct hpi_msg_adapter_program_flash_payload {
+	u32 checksum;
+	u16 sequence;
+	u16 length;
+	u16 offset; /**< offset from start of msg to data */
+	u16 unused;
+	/* ensure sizeof(header + payload) == sizeof(hpi_message_V0)
+	   because old firmware expects data after message of this size */
+	u8 pad_to_version0_size[sizeof(struct hpi_message) -	/* V0 message */
+		sizeof(struct hpi_message_header) - sizeof(u32) -
+		4 * sizeof(u16)];
+};
+
+struct hpi_msg_adapter_program_flash {
+	struct hpi_message_header h;
+	struct hpi_msg_adapter_program_flash_payload p;
+	u32 data[256];
+};
+
+struct hpi_res_adapter_program_flash {
+	struct hpi_response_header h;
+	u16 sequence;
+	u8 pad_to_version0_size[sizeof(struct hpi_response) -	/* V0 res */
+		sizeof(struct hpi_response_header) - sizeof(u16)];
+};
+
+struct hpi_msg_adapter_debug_read {
+	struct hpi_message_header h;
+	u32 dsp_address;
+	u32 count_bytes;
+};
+
 struct hpi_res_adapter_debug_read {
 	struct hpi_response_header h;
-	u8 bytes[1024];
+	u8 bytes[256];
 };
 
 struct hpi_msg_cobranet_hmi {
@@ -1376,7 +1461,7 @@ struct hpi_control_cache_pad {
 /* 2^N sized FIFO buffer (internal to HPI<->DSP interaction) */
 struct hpi_fifo_buffer {
 	u32 size;
-	u32 dsp_index;
+	u32 dSP_index;
 	u32 host_index;
 };
 

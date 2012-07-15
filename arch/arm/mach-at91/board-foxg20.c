@@ -106,8 +106,6 @@ static void __init foxg20_init_early(void)
  */
 static struct at91_usbh_data __initdata foxg20_usbh_data = {
 	.ports		= 2,
-	.vbus_pin	= {-EINVAL, -EINVAL},
-	.overcurrent_pin= {-EINVAL, -EINVAL},
 };
 
 /*
@@ -115,7 +113,7 @@ static struct at91_usbh_data __initdata foxg20_usbh_data = {
  */
 static struct at91_udc_data __initdata foxg20_udc_data = {
 	.vbus_pin	= AT91_PIN_PC6,
-	.pullup_pin	= -EINVAL,		/* pull-up driven by UDC */
+	.pullup_pin	= 0,		/* pull-up driven by UDC */
 };
 
 
@@ -137,7 +135,7 @@ static struct spi_board_info foxg20_spi_devices[] = {
 /*
  * MACB Ethernet device
  */
-static struct macb_platform_data __initdata foxg20_macb_data = {
+static struct at91_eth_data __initdata foxg20_macb_data = {
 	.phy_irq_pin	= AT91_PIN_PA7,
 	.is_rmii	= 1,
 };
@@ -149,9 +147,6 @@ static struct macb_platform_data __initdata foxg20_macb_data = {
 static struct at91_mmc_data __initdata foxg20_mmc_data = {
 	.slot_b		= 1,
 	.wire4		= 1,
-	.det_pin	= -EINVAL,
-	.wp_pin		= -EINVAL,
-	.vcc_pin	= -EINVAL,
 };
 
 

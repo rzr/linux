@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/serial_8250.h>
+#include <linux/mbus.h>
 #include <linux/ata_platform.h>
 #include <linux/mv643xx_eth.h>
 #include <linux/mv643xx_i2c.h>
@@ -202,12 +203,13 @@ void __init orion_rtc_init(unsigned long mapbase,
  ****************************************************************************/
 static __init void ge_complete(
 	struct mv643xx_eth_shared_platform_data *orion_ge_shared_data,
-	int tclk,
+	struct mbus_dram_target_info *mbus_dram_info, int tclk,
 	struct resource *orion_ge_resource, unsigned long irq,
 	struct platform_device *orion_ge_shared,
 	struct mv643xx_eth_platform_data *eth_data,
 	struct platform_device *orion_ge)
 {
+	orion_ge_shared_data->dram = mbus_dram_info;
 	orion_ge_shared_data->t_clk = tclk;
 	orion_ge_resource->start = irq;
 	orion_ge_resource->end = irq;
@@ -257,6 +259,7 @@ static struct platform_device orion_ge00 = {
 };
 
 void __init orion_ge00_init(struct mv643xx_eth_platform_data *eth_data,
+			    struct mbus_dram_target_info *mbus_dram_info,
 			    unsigned long mapbase,
 			    unsigned long irq,
 			    unsigned long irq_err,
@@ -264,7 +267,7 @@ void __init orion_ge00_init(struct mv643xx_eth_platform_data *eth_data,
 {
 	fill_resources(&orion_ge00_shared, orion_ge00_shared_resources,
 		       mapbase + 0x2000, SZ_16K - 1, irq_err);
-	ge_complete(&orion_ge00_shared_data, tclk,
+	ge_complete(&orion_ge00_shared_data, mbus_dram_info, tclk,
 		    orion_ge00_resources, irq, &orion_ge00_shared,
 		    eth_data, &orion_ge00);
 }
@@ -310,6 +313,7 @@ static struct platform_device orion_ge01 = {
 };
 
 void __init orion_ge01_init(struct mv643xx_eth_platform_data *eth_data,
+			    struct mbus_dram_target_info *mbus_dram_info,
 			    unsigned long mapbase,
 			    unsigned long irq,
 			    unsigned long irq_err,
@@ -317,7 +321,7 @@ void __init orion_ge01_init(struct mv643xx_eth_platform_data *eth_data,
 {
 	fill_resources(&orion_ge01_shared, orion_ge01_shared_resources,
 		       mapbase + 0x2000, SZ_16K - 1, irq_err);
-	ge_complete(&orion_ge01_shared_data, tclk,
+	ge_complete(&orion_ge01_shared_data, mbus_dram_info, tclk,
 		    orion_ge01_resources, irq, &orion_ge01_shared,
 		    eth_data, &orion_ge01);
 }
@@ -363,6 +367,7 @@ static struct platform_device orion_ge10 = {
 };
 
 void __init orion_ge10_init(struct mv643xx_eth_platform_data *eth_data,
+			    struct mbus_dram_target_info *mbus_dram_info,
 			    unsigned long mapbase,
 			    unsigned long irq,
 			    unsigned long irq_err,
@@ -370,7 +375,7 @@ void __init orion_ge10_init(struct mv643xx_eth_platform_data *eth_data,
 {
 	fill_resources(&orion_ge10_shared, orion_ge10_shared_resources,
 		       mapbase + 0x2000, SZ_16K - 1, irq_err);
-	ge_complete(&orion_ge10_shared_data, tclk,
+	ge_complete(&orion_ge10_shared_data, mbus_dram_info, tclk,
 		    orion_ge10_resources, irq, &orion_ge10_shared,
 		    eth_data, &orion_ge10);
 }
@@ -416,6 +421,7 @@ static struct platform_device orion_ge11 = {
 };
 
 void __init orion_ge11_init(struct mv643xx_eth_platform_data *eth_data,
+			    struct mbus_dram_target_info *mbus_dram_info,
 			    unsigned long mapbase,
 			    unsigned long irq,
 			    unsigned long irq_err,
@@ -423,7 +429,7 @@ void __init orion_ge11_init(struct mv643xx_eth_platform_data *eth_data,
 {
 	fill_resources(&orion_ge11_shared, orion_ge11_shared_resources,
 		       mapbase + 0x2000, SZ_16K - 1, irq_err);
-	ge_complete(&orion_ge11_shared_data, tclk,
+	ge_complete(&orion_ge11_shared_data, mbus_dram_info, tclk,
 		    orion_ge11_resources, irq, &orion_ge11_shared,
 		    eth_data, &orion_ge11);
 }
@@ -586,6 +592,8 @@ void __init orion_wdt_init(unsigned long tclk)
 /*****************************************************************************
  * XOR
  ****************************************************************************/
+static struct mv_xor_platform_shared_data orion_xor_shared_data;
+
 static u64 orion_xor_dmamask = DMA_BIT_MASK(32);
 
 void __init orion_xor_init_channels(
@@ -624,6 +632,9 @@ static struct resource orion_xor0_shared_resources[] = {
 static struct platform_device orion_xor0_shared = {
 	.name		= MV_XOR_SHARED_NAME,
 	.id		= 0,
+	.dev		= {
+		.platform_data = &orion_xor_shared_data,
+	},
 	.num_resources	= ARRAY_SIZE(orion_xor0_shared_resources),
 	.resource	= orion_xor0_shared_resources,
 };
@@ -676,11 +687,14 @@ static struct platform_device orion_xor01_channel = {
 	},
 };
 
-void __init orion_xor0_init(unsigned long mapbase_low,
+void __init orion_xor0_init(struct mbus_dram_target_info *mbus_dram_info,
+			    unsigned long mapbase_low,
 			    unsigned long mapbase_high,
 			    unsigned long irq_0,
 			    unsigned long irq_1)
 {
+	orion_xor_shared_data.dram = mbus_dram_info;
+
 	orion_xor0_shared_resources[0].start = mapbase_low;
 	orion_xor0_shared_resources[0].end = mapbase_low + 0xff;
 	orion_xor0_shared_resources[1].start = mapbase_high;
@@ -713,6 +727,9 @@ static struct resource orion_xor1_shared_resources[] = {
 static struct platform_device orion_xor1_shared = {
 	.name		= MV_XOR_SHARED_NAME,
 	.id		= 1,
+	.dev		= {
+		.platform_data = &orion_xor_shared_data,
+	},
 	.num_resources	= ARRAY_SIZE(orion_xor1_shared_resources),
 	.resource	= orion_xor1_shared_resources,
 };
@@ -808,10 +825,12 @@ static struct platform_device orion_ehci = {
 	},
 };
 
-void __init orion_ehci_init(unsigned long mapbase,
+void __init orion_ehci_init(struct mbus_dram_target_info *mbus_dram_info,
+			    unsigned long mapbase,
 			    unsigned long irq,
 			    enum orion_ehci_phy_ver phy_version)
 {
+	orion_ehci_data.dram = mbus_dram_info;
 	orion_ehci_data.phy_version = phy_version;
 	fill_resources(&orion_ehci, orion_ehci_resources, mapbase, SZ_4K - 1,
 		       irq);
@@ -834,9 +853,11 @@ static struct platform_device orion_ehci_1 = {
 	},
 };
 
-void __init orion_ehci_1_init(unsigned long mapbase,
+void __init orion_ehci_1_init(struct mbus_dram_target_info *mbus_dram_info,
+			      unsigned long mapbase,
 			      unsigned long irq)
 {
+	orion_ehci_data.dram = mbus_dram_info;
 	fill_resources(&orion_ehci_1, orion_ehci_1_resources,
 		       mapbase, SZ_4K - 1, irq);
 
@@ -858,9 +879,11 @@ static struct platform_device orion_ehci_2 = {
 	},
 };
 
-void __init orion_ehci_2_init(unsigned long mapbase,
+void __init orion_ehci_2_init(struct mbus_dram_target_info *mbus_dram_info,
+			      unsigned long mapbase,
 			      unsigned long irq)
 {
+	orion_ehci_data.dram = mbus_dram_info;
 	fill_resources(&orion_ehci_2, orion_ehci_2_resources,
 		       mapbase, SZ_4K - 1, irq);
 
@@ -887,9 +910,11 @@ static struct platform_device orion_sata = {
 };
 
 void __init orion_sata_init(struct mv_sata_platform_data *sata_data,
+			    struct mbus_dram_target_info *mbus_dram_info,
 			    unsigned long mapbase,
 			    unsigned long irq)
 {
+	sata_data->dram = mbus_dram_info;
 	orion_sata.dev.platform_data = sata_data;
 	fill_resources(&orion_sata, orion_sata_resources,
 		       mapbase, 0x5000 - 1, irq);

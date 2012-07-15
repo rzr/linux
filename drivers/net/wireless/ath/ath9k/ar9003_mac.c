@@ -175,24 +175,20 @@ static bool ar9003_hw_get_isr(struct ath_hw *ah, enum ath9k_int *masked)
 	u32 isr = 0;
 	u32 mask2 = 0;
 	struct ath9k_hw_capabilities *pCap = &ah->caps;
+	u32 sync_cause = 0;
 	struct ath_common *common = ath9k_hw_common(ah);
-	struct ath9k_hw_mci *mci = &ah->btcoex_hw.mci;
-	u32 sync_cause = 0, async_cause;
 
-	async_cause = REG_READ(ah, AR_INTR_ASYNC_CAUSE);
-
-	if (async_cause & (AR_INTR_MAC_IRQ | AR_INTR_ASYNC_MASK_MCI)) {
+	if (REG_READ(ah, AR_INTR_ASYNC_CAUSE) & AR_INTR_MAC_IRQ) {
 		if ((REG_READ(ah, AR_RTC_STATUS) & AR_RTC_STATUS_M)
 				== AR_RTC_STATUS_ON)
 			isr = REG_READ(ah, AR_ISR);
 	}
 
-
 	sync_cause = REG_READ(ah, AR_INTR_SYNC_CAUSE) & AR_INTR_SYNC_DEFAULT;
 
 	*masked = 0;
 
-	if (!isr && !sync_cause && !async_cause)
+	if (!isr && !sync_cause)
 		return false;
 
 	if (isr) {
@@ -298,33 +294,6 @@ static bool ar9003_hw_get_isr(struct ath_hw *ah, enum ath9k_int *masked)
 			ar9003_hw_bb_watchdog_read(ah);
 	}
 
-	if (async_cause & AR_INTR_ASYNC_MASK_MCI) {
-		u32 raw_intr, rx_msg_intr;
-
-		rx_msg_intr = REG_READ(ah, AR_MCI_INTERRUPT_RX_MSG_RAW);
-		raw_intr = REG_READ(ah, AR_MCI_INTERRUPT_RAW);
-
-		if ((raw_intr == 0xdeadbeef) || (rx_msg_intr == 0xdeadbeef))
-			ath_dbg(common, MCI,
-				"MCI gets 0xdeadbeef during MCI int processing new raw_intr=0x%08x, new rx_msg_raw=0x%08x, raw_intr=0x%08x, rx_msg_raw=0x%08x\n",
-				raw_intr, rx_msg_intr, mci->raw_intr,
-				mci->rx_msg_intr);
-		else {
-			mci->rx_msg_intr |= rx_msg_intr;
-			mci->raw_intr |= raw_intr;
-			*masked |= ATH9K_INT_MCI;
-
-			if (rx_msg_intr & AR_MCI_INTERRUPT_RX_MSG_CONT_INFO)
-				mci->cont_status =
-					REG_READ(ah, AR_MCI_CONT_STATUS);
-
-			REG_WRITE(ah, AR_MCI_INTERRUPT_RX_MSG_RAW, rx_msg_intr);
-			REG_WRITE(ah, AR_MCI_INTERRUPT_RAW, raw_intr);
-			ath_dbg(common, MCI, "AR_INTR_SYNC_MCI\n");
-
-		}
-	}
-
 	if (sync_cause) {
 		if (sync_cause & AR_INTR_SYNC_RADM_CPL_TIMEOUT) {
 			REG_WRITE(ah, AR_RC, AR_RC_HOSTIF);
@@ -333,7 +302,7 @@ static bool ar9003_hw_get_isr(struct ath_hw *ah, enum ath9k_int *masked)
 		}
 
 		if (sync_cause & AR_INTR_SYNC_LOCAL_TIMEOUT)
-			ath_dbg(common, INTERRUPT,
+			ath_dbg(common, ATH_DBG_INTERRUPT,
 				"AR_INTR_SYNC_LOCAL_TIMEOUT\n");
 
 		REG_WRITE(ah, AR_INTR_SYNC_CAUSE_CLR, sync_cause);
@@ -364,7 +333,7 @@ static int ar9003_hw_proc_txdesc(struct ath_hw *ah, void *ds,
 
 	if ((MS(ads->ds_info, AR_DescId) != ATHEROS_VENDOR_ID) ||
 	    (MS(ads->ds_info, AR_TxRxDesc) != 1)) {
-		ath_dbg(ath9k_hw_common(ah), XMIT,
+		ath_dbg(ath9k_hw_common(ah), ATH_DBG_XMIT,
 			"Tx Descriptor error %x\n", ads->ds_info);
 		memset(ads, 0, sizeof(*ads));
 		return -EIO;
@@ -573,7 +542,7 @@ void ath9k_hw_reset_txstatus_ring(struct ath_hw *ah)
 	memset((void *) ah->ts_ring, 0,
 		ah->ts_size * sizeof(struct ar9003_txs));
 
-	ath_dbg(ath9k_hw_common(ah), XMIT,
+	ath_dbg(ath9k_hw_common(ah), ATH_DBG_XMIT,
 		"TS Start 0x%x End 0x%x Virt %p, Size %d\n",
 		ah->ts_paddr_start, ah->ts_paddr_end,
 		ah->ts_ring, ah->ts_size);
@@ -584,7 +553,7 @@ void ath9k_hw_reset_txstatus_ring(struct ath_hw *ah)
 
 void ath9k_hw_setup_statusring(struct ath_hw *ah, void *ts_start,
 			       u32 ts_paddr_start,
-			       u16 size)
+			       u8 size)
 {
 
 	ah->ts_paddr_start = ts_paddr_start;

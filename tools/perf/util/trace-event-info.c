@@ -18,7 +18,7 @@
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-#include "util.h"
+#define _GNU_SOURCE
 #include <dirent.h>
 #include <mntent.h>
 #include <stdio.h>
@@ -31,6 +31,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <linux/list.h>
@@ -42,6 +43,10 @@
 #include "evsel.h"
 
 #define VERSION "0.5"
+
+#define _STR(x) #x
+#define STR(x) _STR(x)
+#define MAX_PATH 256
 
 #define TRACE_CTRL	"tracing_on"
 #define TRACE		"trace"
@@ -67,6 +72,26 @@ struct events {
 	char *name;
 };
 
+
+
+static void die(const char *fmt, ...)
+{
+	va_list ap;
+	int ret = errno;
+
+	if (errno)
+		perror("perf");
+	else
+		ret = -1;
+
+	va_start(ap, fmt);
+	fprintf(stderr, "  ");
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+
+	fprintf(stderr, "\n");
+	exit(ret);
+}
 
 void *malloc_or_die(unsigned int size)
 {

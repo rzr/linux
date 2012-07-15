@@ -192,15 +192,9 @@ static int sdio_bus_remove(struct device *dev)
 	return ret;
 }
 
-#ifdef CONFIG_PM
-
-static int pm_no_operation(struct device *dev)
-{
-	return 0;
-}
+#ifdef CONFIG_PM_RUNTIME
 
 static const struct dev_pm_ops sdio_bus_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_no_operation, pm_no_operation)
 	SET_RUNTIME_PM_OPS(
 		pm_generic_runtime_suspend,
 		pm_generic_runtime_resume,
@@ -210,11 +204,11 @@ static const struct dev_pm_ops sdio_bus_pm_ops = {
 
 #define SDIO_PM_OPS_PTR	(&sdio_bus_pm_ops)
 
-#else /* !CONFIG_PM */
+#else /* !CONFIG_PM_RUNTIME */
 
 #define SDIO_PM_OPS_PTR	NULL
 
-#endif /* !CONFIG_PM */
+#endif /* !CONFIG_PM_RUNTIME */
 
 static struct bus_type sdio_bus_type = {
 	.name		= "sdio",

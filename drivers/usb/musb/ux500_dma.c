@@ -37,6 +37,7 @@ struct ux500_dma_channel {
 	struct dma_channel channel;
 	struct ux500_dma_controller *controller;
 	struct musb_hw_ep *hw_ep;
+	struct work_struct channel_work;
 	struct dma_chan *dma_chan;
 	unsigned int cur_len;
 	dma_cookie_t cookie;
@@ -55,11 +56,31 @@ struct ux500_dma_controller {
 	dma_addr_t phy_base;
 };
 
-/* Work function invoked from DMA callback to handle rx transfers. */
-void ux500_dma_callback(void *private_data)
+/* Work function invoked from DMA callback to handle tx transfers. */
+static void ux500_tx_work(struct work_struct *data)
 {
-	struct dma_channel *channel = private_data;
-	struct ux500_dma_channel *ux500_channel = channel->private_data;
+	struct ux500_dma_channel *ux500_channel = container_of(data,
+		struct ux500_dma_channel, channel_work);
+	struct musb_hw_ep       *hw_ep = ux500_channel->hw_ep;
+	struct musb *musb = hw_ep->musb;
+	unsigned long flags;
+
+	dev_dbg(musb->controller, "DMA tx transfer done on hw_ep=%d\n",
+		hw_ep->epnum);
+
+	spin_lock_irqsave(&musb->lock, flags);
+	ux500_channel->channel.actual_len = ux500_channel->cur_len;
+	ux500_channel->channel.status = MUSB_DMA_STATUS_FREE;
+	musb_dma_completion(musb, hw_ep->epnum,
+				ux500_channel->is_tx);
+	spin_unlock_irqrestore(&musb->lock, flags);
+}
+
+/* Work function invoked from DMA callback to handle rx transfers. */
+static void ux500_rx_work(struct work_struct *data)
+{
+	struct ux500_dma_channel *ux500_channel = container_of(data,
+		struct ux500_dma_channel, channel_work);
 	struct musb_hw_ep       *hw_ep = ux500_channel->hw_ep;
 	struct musb *musb = hw_ep->musb;
 	unsigned long flags;
@@ -73,7 +94,14 @@ void ux500_dma_callback(void *private_data)
 	musb_dma_completion(musb, hw_ep->epnum,
 		ux500_channel->is_tx);
 	spin_unlock_irqrestore(&musb->lock, flags);
+}
 
+void ux500_dma_callback(void *private_data)
+{
+	struct dma_channel *channel = (struct dma_channel *)private_data;
+	struct ux500_dma_channel *ux500_channel = channel->private_data;
+
+	schedule_work(&ux500_channel->channel_work);
 }
 
 static bool ux500_configure_channel(struct dma_channel *channel,
@@ -84,7 +112,7 @@ static bool ux500_configure_channel(struct dma_channel *channel,
 	struct musb_hw_ep *hw_ep = ux500_channel->hw_ep;
 	struct dma_chan *dma_chan = ux500_channel->dma_chan;
 	struct dma_async_tx_descriptor *dma_desc;
-	enum dma_transfer_direction direction;
+	enum dma_data_direction direction;
 	struct scatterlist sg;
 	struct dma_slave_config slave_conf;
 	enum dma_slave_buswidth addr_width;
@@ -104,7 +132,7 @@ static bool ux500_configure_channel(struct dma_channel *channel,
 	sg_dma_address(&sg) = dma_addr;
 	sg_dma_len(&sg) = len;
 
-	direction = ux500_channel->is_tx ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
+	direction = ux500_channel->is_tx ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
 	addr_width = (len & 0x3) ? DMA_SLAVE_BUSWIDTH_1_BYTE :
 					DMA_SLAVE_BUSWIDTH_4_BYTES;
 
@@ -302,6 +330,7 @@ static int ux500_dma_controller_start(struct dma_controller *c)
 	void **param_array;
 	struct ux500_dma_channel *channel_array;
 	u32 ch_count;
+	void (*musb_channel_work)(struct work_struct *);
 	dma_cap_mask_t mask;
 
 	if ((data->num_rx_channels > UX500_MUSB_DMA_NUM_RX_CHANNELS) ||
@@ -318,6 +347,7 @@ static int ux500_dma_controller_start(struct dma_controller *c)
 	channel_array = controller->rx_channel;
 	ch_count = data->num_rx_channels;
 	param_array = data->dma_rx_param_array;
+	musb_channel_work = ux500_rx_work;
 
 	for (dir = 0; dir < 2; dir++) {
 		for (ch_num = 0; ch_num < ch_count; ch_num++) {
@@ -344,12 +374,15 @@ static int ux500_dma_controller_start(struct dma_controller *c)
 				return -EBUSY;
 			}
 
+			INIT_WORK(&ux500_channel->channel_work,
+				musb_channel_work);
 		}
 
 		/* Prepare the loop for TX channels */
 		channel_array = controller->tx_channel;
 		ch_count = data->num_tx_channels;
 		param_array = data->dma_tx_param_array;
+		musb_channel_work = ux500_tx_work;
 		is_tx = 1;
 	}
 

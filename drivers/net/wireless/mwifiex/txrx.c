@@ -134,7 +134,7 @@ int mwifiex_write_data_complete(struct mwifiex_adapter *adapter,
 	if (!priv)
 		goto done;
 
-	mwifiex_set_trans_start(priv->netdev);
+	priv->netdev->trans_start = jiffies;
 	if (!status) {
 		priv->stats.tx_packets++;
 		priv->stats.tx_bytes += skb->len;
@@ -152,8 +152,7 @@ int mwifiex_write_data_complete(struct mwifiex_adapter *adapter,
 		if ((GET_BSS_ROLE(tpriv) == MWIFIEX_BSS_ROLE_STA)
 				&& (tpriv->media_connected)) {
 			if (netif_queue_stopped(tpriv->netdev))
-				mwifiex_wake_up_net_dev_queue(tpriv->netdev,
-								adapter);
+				netif_wake_queue(tpriv->netdev);
 		}
 	}
 done:

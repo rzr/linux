@@ -532,18 +532,21 @@ int xenbus_printf(struct xenbus_transaction t,
 {
 	va_list ap;
 	int ret;
-	char *buf;
+#define PRINTF_BUFFER_SIZE 4096
+	char *printf_buffer;
 
-	va_start(ap, fmt);
-	buf = kvasprintf(GFP_NOIO | __GFP_HIGH, fmt, ap);
-	va_end(ap);
-
-	if (!buf)
+	printf_buffer = kmalloc(PRINTF_BUFFER_SIZE, GFP_NOIO | __GFP_HIGH);
+	if (printf_buffer == NULL)
 		return -ENOMEM;
 
-	ret = xenbus_write(t, dir, node, buf);
+	va_start(ap, fmt);
+	ret = vsnprintf(printf_buffer, PRINTF_BUFFER_SIZE, fmt, ap);
+	va_end(ap);
 
-	kfree(buf);
+	BUG_ON(ret > PRINTF_BUFFER_SIZE-1);
+	ret = xenbus_write(t, dir, node, printf_buffer);
+
+	kfree(printf_buffer);
 
 	return ret;
 }

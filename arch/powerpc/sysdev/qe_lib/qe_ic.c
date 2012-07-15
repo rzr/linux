@@ -22,6 +22,7 @@
 #include <linux/stddef.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
+#include <linux/sysdev.h>
 #include <linux/device.h>
 #include <linux/bootmem.h>
 #include <linux/spinlock.h>
@@ -483,14 +484,13 @@ int qe_ic_set_high_priority(unsigned int virq, unsigned int priority, int high)
 	return 0;
 }
 
-static struct bus_type qe_ic_subsys = {
+static struct sysdev_class qe_ic_sysclass = {
 	.name = "qe_ic",
-	.dev_name = "qe_ic",
 };
 
-static struct device device_qe_ic = {
+static struct sys_device device_qe_ic = {
 	.id = 0,
-	.bus = &qe_ic_subsys,
+	.cls = &qe_ic_sysclass,
 };
 
 static int __init init_qe_ic_sysfs(void)
@@ -499,12 +499,12 @@ static int __init init_qe_ic_sysfs(void)
 
 	printk(KERN_DEBUG "Registering qe_ic with sysfs...\n");
 
-	rc = subsys_system_register(&qe_ic_subsys, NULL);
+	rc = sysdev_class_register(&qe_ic_sysclass);
 	if (rc) {
 		printk(KERN_ERR "Failed registering qe_ic sys class\n");
 		return -ENODEV;
 	}
-	rc = device_register(&device_qe_ic);
+	rc = sysdev_register(&device_qe_ic);
 	if (rc) {
 		printk(KERN_ERR "Failed registering qe_ic sys device\n");
 		return -ENODEV;

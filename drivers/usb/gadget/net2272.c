@@ -69,7 +69,7 @@ static const char * const ep_name[] = {
  *
  * If use_dma is disabled, pio will be used instead.
  */
-static bool use_dma = 0;
+static int use_dma = 0;
 module_param(use_dma, bool, 0644);
 
 /*
@@ -1459,7 +1459,7 @@ static int net2272_start(struct usb_gadget *_gadget,
 	unsigned i;
 
 	if (!driver || !driver->unbind || !driver->setup ||
-	    driver->max_speed != USB_SPEED_HIGH)
+	    driver->speed != USB_SPEED_HIGH)
 		return -EINVAL;
 
 	dev = container_of(_gadget, struct net2272, gadget);
@@ -2235,7 +2235,7 @@ net2272_probe_init(struct device *dev, unsigned int irq)
 	ret->irq = irq;
 	ret->dev = dev;
 	ret->gadget.ops = &net2272_ops;
-	ret->gadget.max_speed = USB_SPEED_HIGH;
+	ret->gadget.is_dualspeed = 1;
 
 	/* the "gadget" abstracts/virtualizes the controller */
 	dev_set_name(&ret->gadget.dev, "gadget");

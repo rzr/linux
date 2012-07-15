@@ -311,7 +311,17 @@ static struct platform_driver vt8500_rtc_driver = {
 	},
 };
 
-module_platform_driver(vt8500_rtc_driver);
+static int __init vt8500_rtc_init(void)
+{
+	return platform_driver_register(&vt8500_rtc_driver);
+}
+module_init(vt8500_rtc_init);
+
+static void __exit vt8500_rtc_exit(void)
+{
+	platform_driver_unregister(&vt8500_rtc_driver);
+}
+module_exit(vt8500_rtc_exit);
 
 MODULE_AUTHOR("Alexey Charkov <alchark@gmail.com>");
 MODULE_DESCRIPTION("VIA VT8500 SoC Realtime Clock Driver (RTC)");

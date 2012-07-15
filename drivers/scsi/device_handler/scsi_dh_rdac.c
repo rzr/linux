@@ -364,7 +364,10 @@ static void release_controller(struct kref *kref)
 	struct rdac_controller *ctlr;
 	ctlr = container_of(kref, struct rdac_controller, kref);
 
+	flush_workqueue(kmpath_rdacd);
+	spin_lock(&list_lock);
 	list_del(&ctlr->node);
+	spin_unlock(&list_lock);
 	kfree(ctlr);
 }
 
@@ -373,17 +376,20 @@ static struct rdac_controller *get_controller(int index, char *array_name,
 {
 	struct rdac_controller *ctlr, *tmp;
 
+	spin_lock(&list_lock);
+
 	list_for_each_entry(tmp, &ctlr_list, node) {
 		if ((memcmp(tmp->array_id, array_id, UNIQUE_ID_LEN) == 0) &&
 			  (tmp->index == index) &&
 			  (tmp->host == sdev->host)) {
 			kref_get(&tmp->kref);
+			spin_unlock(&list_lock);
 			return tmp;
 		}
 	}
 	ctlr = kmalloc(sizeof(*ctlr), GFP_ATOMIC);
 	if (!ctlr)
-		return NULL;
+		goto done;
 
 	/* initialize fields of controller */
 	memcpy(ctlr->array_id, array_id, UNIQUE_ID_LEN);
@@ -399,7 +405,8 @@ static struct rdac_controller *get_controller(int index, char *array_name,
 	INIT_WORK(&ctlr->ms_work, send_mode_select);
 	INIT_LIST_HEAD(&ctlr->ms_head);
 	list_add(&ctlr->node, &ctlr_list);
-
+done:
+	spin_unlock(&list_lock);
 	return ctlr;
 }
 
@@ -510,12 +517,9 @@ static int initialize_controller(struct scsi_device *sdev,
 			index = 0;
 		else
 			index = 1;
-
-		spin_lock(&list_lock);
 		h->ctlr = get_controller(index, array_name, array_id, sdev);
 		if (!h->ctlr)
 			err = SCSI_DH_RES_TEMP_UNAVAIL;
-		spin_unlock(&list_lock);
 	}
 	return err;
 }
@@ -816,24 +820,6 @@ static const struct scsi_dh_devlist rdac_dev_list[] = {
 	{NULL, NULL},
 };
 
-static bool rdac_match(struct scsi_device *sdev)
-{
-	int i;
-
-	if (scsi_device_tpgs(sdev))
-		return false;
-
-	for (i = 0; rdac_dev_list[i].vendor; i++) {
-		if (!strncmp(sdev->vendor, rdac_dev_list[i].vendor,
-			strlen(rdac_dev_list[i].vendor)) &&
-		    !strncmp(sdev->model, rdac_dev_list[i].model,
-			strlen(rdac_dev_list[i].model))) {
-			return true;
-		}
-	}
-	return false;
-}
-
 static int rdac_bus_attach(struct scsi_device *sdev);
 static void rdac_bus_detach(struct scsi_device *sdev);
 
@@ -846,7 +832,6 @@ static struct scsi_device_handler rdac_dh = {
 	.attach = rdac_bus_attach,
 	.detach = rdac_bus_detach,
 	.activate = rdac_activate,
-	.match = rdac_match,
 };
 
 static int rdac_bus_attach(struct scsi_device *sdev)
@@ -902,9 +887,7 @@ static int rdac_bus_attach(struct scsi_device *sdev)
 	return 0;
 
 clean_ctlr:
-	spin_lock(&list_lock);
 	kref_put(&h->ctlr->kref, release_controller);
-	spin_unlock(&list_lock);
 
 failed:
 	kfree(scsi_dh_data);
@@ -919,19 +902,14 @@ static void rdac_bus_detach( struct scsi_device *sdev )
 	struct rdac_dh_data *h;
 	unsigned long flags;
 
-	scsi_dh_data = sdev->scsi_dh_data;
-	h = (struct rdac_dh_data *) scsi_dh_data->buf;
-	if (h->ctlr && h->ctlr->ms_queued)
-		flush_workqueue(kmpath_rdacd);
-
 	spin_lock_irqsave(sdev->request_queue->queue_lock, flags);
+	scsi_dh_data = sdev->scsi_dh_data;
 	sdev->scsi_dh_data = NULL;
 	spin_unlock_irqrestore(sdev->request_queue->queue_lock, flags);
 
-	spin_lock(&list_lock);
+	h = (struct rdac_dh_data *) scsi_dh_data->buf;
 	if (h->ctlr)
 		kref_put(&h->ctlr->kref, release_controller);
-	spin_unlock(&list_lock);
 	kfree(scsi_dh_data);
 	module_put(THIS_MODULE);
 	sdev_printk(KERN_NOTICE, sdev, "%s: Detached\n", RDAC_NAME);
@@ -956,8 +934,6 @@ static int __init rdac_init(void)
 	if (!kmpath_rdacd) {
 		scsi_unregister_device_handler(&rdac_dh);
 		printk(KERN_ERR "kmpath_rdacd creation failed.\n");
-
-		r = -EINVAL;
 	}
 done:
 	return r;

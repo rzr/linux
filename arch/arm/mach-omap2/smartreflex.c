@@ -26,7 +26,7 @@
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
 
-#include "common.h"
+#include <plat/common.h>
 
 #include "pm.h"
 #include "smartreflex.h"
@@ -897,7 +897,7 @@ static int __init omap_sr_probe(struct platform_device *pdev)
 		ret = sr_late_init(sr_info);
 		if (ret) {
 			pr_warning("%s: Error in SR late init\n", __func__);
-			goto err_iounmap;
+			return ret;
 		}
 	}
 

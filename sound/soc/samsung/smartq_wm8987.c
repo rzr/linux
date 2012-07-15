@@ -198,7 +198,6 @@ static struct snd_soc_dai_link smartq_dai[] = {
 
 static struct snd_soc_card snd_soc_smartq = {
 	.name = "SmartQ",
-	.owner = THIS_MODULE,
 	.dai_link = smartq_dai,
 	.num_links = ARRAY_SIZE(smartq_dai),
 

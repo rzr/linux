@@ -302,7 +302,19 @@ static struct platform_driver mainstone_wm97xx_driver = {
 		.name = "wm97xx-touch",
 	},
 };
-module_platform_driver(mainstone_wm97xx_driver);
+
+static int __init mainstone_wm97xx_init(void)
+{
+	return platform_driver_register(&mainstone_wm97xx_driver);
+}
+
+static void __exit mainstone_wm97xx_exit(void)
+{
+	platform_driver_unregister(&mainstone_wm97xx_driver);
+}
+
+module_init(mainstone_wm97xx_init);
+module_exit(mainstone_wm97xx_exit);
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood <lrg@slimlogic.co.uk>");

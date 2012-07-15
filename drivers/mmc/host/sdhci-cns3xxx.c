@@ -115,7 +115,17 @@ static struct platform_driver sdhci_cns3xxx_driver = {
 	.remove		= __devexit_p(sdhci_cns3xxx_remove),
 };
 
-module_platform_driver(sdhci_cns3xxx_driver);
+static int __init sdhci_cns3xxx_init(void)
+{
+	return platform_driver_register(&sdhci_cns3xxx_driver);
+}
+module_init(sdhci_cns3xxx_init);
+
+static void __exit sdhci_cns3xxx_exit(void)
+{
+	platform_driver_unregister(&sdhci_cns3xxx_driver);
+}
+module_exit(sdhci_cns3xxx_exit);
 
 MODULE_DESCRIPTION("SDHCI driver for CNS3xxx");
 MODULE_AUTHOR("Scott Shu, "

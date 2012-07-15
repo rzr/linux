@@ -273,7 +273,19 @@ static struct platform_driver ixp4xx_flash_driver = {
 	},
 };
 
-module_platform_driver(ixp4xx_flash_driver);
+static int __init ixp4xx_flash_init(void)
+{
+	return platform_driver_register(&ixp4xx_flash_driver);
+}
+
+static void __exit ixp4xx_flash_exit(void)
+{
+	platform_driver_unregister(&ixp4xx_flash_driver);
+}
+
+
+module_init(ixp4xx_flash_init);
+module_exit(ixp4xx_flash_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MTD map driver for Intel IXP4xx systems");

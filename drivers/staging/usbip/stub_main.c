@@ -246,9 +246,8 @@ static int __init usbip_host_init(void)
 {
 	int ret;
 
-	init_busid_table();
-
 	stub_priv_cache = KMEM_CACHE(stub_priv, SLAB_HWCACHE_ALIGN);
+
 	if (!stub_priv_cache) {
 		pr_err("kmem_cache_create failed\n");
 		return -ENOMEM;
@@ -267,6 +266,7 @@ static int __init usbip_host_init(void)
 		goto err_create_file;
 	}
 
+	init_busid_table();
 	pr_info(DRIVER_DESC " v" USBIP_VERSION "\n");
 	return ret;
 

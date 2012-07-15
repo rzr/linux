@@ -488,10 +488,10 @@ static ssize_t ad7877_disable_store(struct device *dev,
 				     const char *buf, size_t count)
 {
 	struct ad7877 *ts = dev_get_drvdata(dev);
-	unsigned int val;
+	unsigned long val;
 	int error;
 
-	error = kstrtouint(buf, 10, &val);
+	error = strict_strtoul(buf, 10, &val);
 	if (error)
 		return error;
 
@@ -518,10 +518,10 @@ static ssize_t ad7877_dac_store(struct device *dev,
 				     const char *buf, size_t count)
 {
 	struct ad7877 *ts = dev_get_drvdata(dev);
-	unsigned int val;
+	unsigned long val;
 	int error;
 
-	error = kstrtouint(buf, 10, &val);
+	error = strict_strtoul(buf, 10, &val);
 	if (error)
 		return error;
 
@@ -548,10 +548,10 @@ static ssize_t ad7877_gpio3_store(struct device *dev,
 				     const char *buf, size_t count)
 {
 	struct ad7877 *ts = dev_get_drvdata(dev);
-	unsigned int val;
+	unsigned long val;
 	int error;
 
-	error = kstrtouint(buf, 10, &val);
+	error = strict_strtoul(buf, 10, &val);
 	if (error)
 		return error;
 
@@ -579,10 +579,10 @@ static ssize_t ad7877_gpio4_store(struct device *dev,
 				     const char *buf, size_t count)
 {
 	struct ad7877 *ts = dev_get_drvdata(dev);
-	unsigned int val;
+	unsigned long val;
 	int error;
 
-	error = kstrtouint(buf, 10, &val);
+	error = strict_strtoul(buf, 10, &val);
 	if (error)
 		return error;
 
@@ -612,10 +612,10 @@ static struct attribute *ad7877_attributes[] = {
 	NULL
 };
 
-static umode_t ad7877_attr_is_visible(struct kobject *kobj,
+static mode_t ad7877_attr_is_visible(struct kobject *kobj,
 				     struct attribute *attr, int n)
 {
-	umode_t mode = attr->mode;
+	mode_t mode = attr->mode;
 
 	if (attr == &dev_attr_aux3.attr) {
 		if (gpio3)
@@ -853,6 +853,7 @@ static SIMPLE_DEV_PM_OPS(ad7877_pm, ad7877_suspend, ad7877_resume);
 static struct spi_driver ad7877_driver = {
 	.driver = {
 		.name	= "ad7877",
+		.bus	= &spi_bus_type,
 		.owner	= THIS_MODULE,
 		.pm	= &ad7877_pm,
 	},

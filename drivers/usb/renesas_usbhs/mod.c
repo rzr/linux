@@ -50,9 +50,7 @@ static int usbhsm_autonomy_irq_vbus(struct usbhs_priv *priv,
 {
 	struct platform_device *pdev = usbhs_priv_to_pdev(priv);
 
-	renesas_usbhs_call_notify_hotplug(pdev);
-
-	return 0;
+	return usbhsc_drvcllbck_notify_hotplug(pdev);
 }
 
 void usbhs_mod_autonomy_mode(struct usbhs_priv *priv)

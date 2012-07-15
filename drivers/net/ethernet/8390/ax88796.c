@@ -623,8 +623,7 @@ static int ax_mii_init(struct net_device *dev)
 
 	ax->mii_bus->name = "ax88796_mii_bus";
 	ax->mii_bus->parent = dev->dev.parent;
-	snprintf(ax->mii_bus->id, MII_BUS_ID_SIZE, "%s-%x",
-		pdev->name, pdev->id);
+	snprintf(ax->mii_bus->id, MII_BUS_ID_SIZE, "%x", pdev->id);
 
 	ax->mii_bus->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
 	if (!ax->mii_bus->irq) {
@@ -736,14 +735,15 @@ static int ax_init_dev(struct net_device *dev)
 	if (ax->plat->flags & AXFLG_MAC_FROMDEV) {
 		ei_outb(E8390_NODMA + E8390_PAGE1 + E8390_STOP,
 			ei_local->mem + E8390_CMD); /* 0x61 */
-		for (i = 0; i < ETH_ALEN; i++)
+		for (i = 0; i < ETHER_ADDR_LEN; i++)
 			dev->dev_addr[i] =
 				ei_inb(ioaddr + EN1_PHYS_SHIFT(i));
 	}
 
 	if ((ax->plat->flags & AXFLG_MAC_FROMPLATFORM) &&
 	    ax->plat->mac_addr)
-		memcpy(dev->dev_addr, ax->plat->mac_addr, ETH_ALEN);
+		memcpy(dev->dev_addr, ax->plat->mac_addr,
+		       ETHER_ADDR_LEN);
 
 	ax_reset_8390(dev);
 
@@ -991,7 +991,18 @@ static struct platform_driver axdrv = {
 	.resume		= ax_resume,
 };
 
-module_platform_driver(axdrv);
+static int __init axdrv_init(void)
+{
+	return platform_driver_register(&axdrv);
+}
+
+static void __exit axdrv_exit(void)
+{
+	platform_driver_unregister(&axdrv);
+}
+
+module_init(axdrv_init);
+module_exit(axdrv_exit);
 
 MODULE_DESCRIPTION("AX88796 10/100 Ethernet platform driver");
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");

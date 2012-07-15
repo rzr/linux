@@ -34,7 +34,6 @@ static struct snd_soc_dai_link simone_dai = {
 
 static struct snd_soc_card snd_soc_simone = {
 	.name		= "Sim.One",
-	.owner		= THIS_MODULE,
 	.dai_link	= &simone_dai,
 	.num_links	= 1,
 };
@@ -82,7 +81,17 @@ static struct platform_driver simone_driver = {
 	.remove		= __devexit_p(simone_remove),
 };
 
-module_platform_driver(simone_driver);
+static int __init simone_init(void)
+{
+	return platform_driver_register(&simone_driver);
+}
+module_init(simone_init);
+
+static void __exit simone_exit(void)
+{
+	platform_driver_unregister(&simone_driver);
+}
+module_exit(simone_exit);
 
 MODULE_DESCRIPTION("ALSA SoC Simplemachines Sim.One");
 MODULE_AUTHOR("Mika Westerberg <mika.westerberg@iki.fi>");

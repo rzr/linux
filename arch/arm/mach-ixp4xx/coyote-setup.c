@@ -117,7 +117,6 @@ MACHINE_START(ADI_COYOTE, "ADI Engineering Coyote")
 #if defined(CONFIG_PCI)
 	.dma_zone_size	= SZ_64M,
 #endif
-	.restart	= ixp4xx_restart,
 MACHINE_END
 #endif
 
@@ -133,7 +132,6 @@ MACHINE_START(IXDPG425, "Intel IXDPG425")
 	.timer		= &ixp4xx_timer,
 	.atag_offset	= 0x100,
 	.init_machine	= coyote_init,
-	.restart	= ixp4xx_restart,
 MACHINE_END
 #endif
 

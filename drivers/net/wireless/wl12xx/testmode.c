@@ -26,10 +26,8 @@
 #include <net/genetlink.h>
 
 #include "wl12xx.h"
-#include "debug.h"
 #include "acx.h"
 #include "reg.h"
-#include "ps.h"
 
 #define WL1271_TM_MAX_DATA_LENGTH 1024
 
@@ -90,47 +88,31 @@ static int wl1271_tm_cmd_test(struct wl1271 *wl, struct nlattr *tb[])
 		return -EMSGSIZE;
 
 	mutex_lock(&wl->mutex);
-
-	if (wl->state == WL1271_STATE_OFF) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	ret = wl1271_ps_elp_wakeup(wl);
-	if (ret < 0)
-		goto out;
-
 	ret = wl1271_cmd_test(wl, buf, buf_len, answer);
+	mutex_unlock(&wl->mutex);
+
 	if (ret < 0) {
 		wl1271_warning("testmode cmd test failed: %d", ret);
-		goto out_sleep;
+		return ret;
 	}
 
 	if (answer) {
 		len = nla_total_size(buf_len);
 		skb = cfg80211_testmode_alloc_reply_skb(wl->hw->wiphy, len);
-		if (!skb) {
-			ret = -ENOMEM;
-			goto out_sleep;
-		}
+		if (!skb)
+			return -ENOMEM;
 
 		NLA_PUT(skb, WL1271_TM_ATTR_DATA, buf_len, buf);
 		ret = cfg80211_testmode_reply(skb);
 		if (ret < 0)
-			goto out_sleep;
+			return ret;
 	}
 
-out_sleep:
-	wl1271_ps_elp_sleep(wl);
-out:
-	mutex_unlock(&wl->mutex);
-
-	return ret;
+	return 0;
 
 nla_put_failure:
 	kfree_skb(skb);
-	ret = -EMSGSIZE;
-	goto out_sleep;
+	return -EMSGSIZE;
 }
 
 static int wl1271_tm_cmd_interrogate(struct wl1271 *wl, struct nlattr *tb[])
@@ -147,53 +129,33 @@ static int wl1271_tm_cmd_interrogate(struct wl1271 *wl, struct nlattr *tb[])
 
 	ie_id = nla_get_u8(tb[WL1271_TM_ATTR_IE_ID]);
 
-	mutex_lock(&wl->mutex);
-
-	if (wl->state == WL1271_STATE_OFF) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	ret = wl1271_ps_elp_wakeup(wl);
-	if (ret < 0)
-		goto out;
-
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
-	if (!cmd) {
-		ret = -ENOMEM;
-		goto out_sleep;
-	}
+	if (!cmd)
+		return -ENOMEM;
 
+	mutex_lock(&wl->mutex);
 	ret = wl1271_cmd_interrogate(wl, ie_id, cmd, sizeof(*cmd));
+	mutex_unlock(&wl->mutex);
+
 	if (ret < 0) {
 		wl1271_warning("testmode cmd interrogate failed: %d", ret);
-		goto out_free;
+		kfree(cmd);
+		return ret;
 	}
 
 	skb = cfg80211_testmode_alloc_reply_skb(wl->hw->wiphy, sizeof(*cmd));
 	if (!skb) {
-		ret = -ENOMEM;
-		goto out_free;
+		kfree(cmd);
+		return -ENOMEM;
 	}
 
 	NLA_PUT(skb, WL1271_TM_ATTR_DATA, sizeof(*cmd), cmd);
-	ret = cfg80211_testmode_reply(skb);
-	if (ret < 0)
-		goto out_free;
 
-out_free:
-	kfree(cmd);
-out_sleep:
-	wl1271_ps_elp_sleep(wl);
-out:
-	mutex_unlock(&wl->mutex);
-
-	return ret;
+	return 0;
 
 nla_put_failure:
 	kfree_skb(skb);
-	ret = -EMSGSIZE;
-	goto out_free;
+	return -EMSGSIZE;
 }
 
 static int wl1271_tm_cmd_configure(struct wl1271 *wl, struct nlattr *tb[])

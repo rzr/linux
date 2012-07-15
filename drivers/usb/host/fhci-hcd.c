@@ -824,7 +824,17 @@ static struct platform_driver of_fhci_driver = {
 	.remove		= __devexit_p(of_fhci_remove),
 };
 
-module_platform_driver(of_fhci_driver);
+static int __init fhci_module_init(void)
+{
+	return platform_driver_register(&of_fhci_driver);
+}
+module_init(fhci_module_init);
+
+static void __exit fhci_module_exit(void)
+{
+	platform_driver_unregister(&of_fhci_driver);
+}
+module_exit(fhci_module_exit);
 
 MODULE_DESCRIPTION("USB Freescale Host Controller Interface Driver");
 MODULE_AUTHOR("Shlomi Gridish <gridish@freescale.com>, "

@@ -16,7 +16,6 @@
 
 #include <linux/clk.h>
 #include <linux/device.h>
-#include <linux/mod_devicetable.h>
 #include <linux/err.h>
 #include <linux/resource.h>
 #include <linux/regulator/consumer.h>
@@ -34,6 +33,12 @@ struct amba_device {
 	u64			dma_mask;
 	unsigned int		periphid;
 	unsigned int		irq[AMBA_NR_IRQS];
+};
+
+struct amba_id {
+	unsigned int		id;
+	unsigned int		mask;
+	void			*data;
 };
 
 struct amba_driver {

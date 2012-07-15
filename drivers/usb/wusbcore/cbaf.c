@@ -655,7 +655,17 @@ static struct usb_driver cbaf_driver = {
 	.disconnect =	cbaf_disconnect,
 };
 
-module_usb_driver(cbaf_driver);
+static int __init cbaf_driver_init(void)
+{
+	return usb_register(&cbaf_driver);
+}
+module_init(cbaf_driver_init);
+
+static void __exit cbaf_driver_exit(void)
+{
+	usb_deregister(&cbaf_driver);
+}
+module_exit(cbaf_driver_exit);
 
 MODULE_AUTHOR("Inaky Perez-Gonzalez <inaky.perez-gonzalez@intel.com>");
 MODULE_DESCRIPTION("Wireless USB Cable Based Association");

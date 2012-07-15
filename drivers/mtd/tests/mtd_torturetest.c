@@ -105,7 +105,7 @@ static inline int erase_eraseblock(int ebnum)
 	ei.addr = addr;
 	ei.len  = mtd->erasesize;
 
-	err = mtd_erase(mtd, &ei);
+	err = mtd->erase(mtd, &ei);
 	if (err) {
 		printk(PRINT_PREF "error %d while erasing EB %d\n", err, ebnum);
 		return err;
@@ -127,7 +127,7 @@ static inline int erase_eraseblock(int ebnum)
 static inline int check_eraseblock(int ebnum, unsigned char *buf)
 {
 	int err, retries = 0;
-	size_t read;
+	size_t read = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 	size_t len = mtd->erasesize;
 
@@ -137,7 +137,7 @@ static inline int check_eraseblock(int ebnum, unsigned char *buf)
 	}
 
 retry:
-	err = mtd_read(mtd, addr, len, &read, check_buf);
+	err = mtd->read(mtd, addr, len, &read, check_buf);
 	if (mtd_is_bitflip(err))
 		printk(PRINT_PREF "single bit flip occurred at EB %d "
 		       "MTD reported that it was fixed.\n", ebnum);
@@ -181,7 +181,7 @@ retry:
 static inline int write_pattern(int ebnum, void *buf)
 {
 	int err;
-	size_t written;
+	size_t written = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 	size_t len = mtd->erasesize;
 
@@ -189,7 +189,7 @@ static inline int write_pattern(int ebnum, void *buf)
 		addr = (ebnum + 1) * mtd->erasesize - pgcnt * pgsize;
 		len = pgcnt * pgsize;
 	}
-	err = mtd_write(mtd, addr, len, &written, buf);
+	err = mtd->write(mtd, addr, len, &written, buf);
 	if (err) {
 		printk(PRINT_PREF "error %d while writing EB %d, written %zd"
 		      " bytes\n", err, ebnum, written);
@@ -290,9 +290,10 @@ static int __init tort_init(void)
 	 * Check if there is a bad eraseblock among those we are going to test.
 	 */
 	memset(&bad_ebs[0], 0, sizeof(int) * ebcnt);
-	if (mtd_can_have_bb(mtd)) {
+	if (mtd->block_isbad) {
 		for (i = eb; i < eb + ebcnt; i++) {
-			err = mtd_block_isbad(mtd, (loff_t)i * mtd->erasesize);
+			err = mtd->block_isbad(mtd,
+					       (loff_t)i * mtd->erasesize);
 
 			if (err < 0) {
 				printk(PRINT_PREF "block_isbad() returned %d "

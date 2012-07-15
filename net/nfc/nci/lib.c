@@ -42,8 +42,11 @@ int nci_to_errno(__u8 code)
 	case NCI_STATUS_REJECTED:
 		return -EBUSY;
 
-	case NCI_STATUS_RF_FRAME_CORRUPTED:
+	case NCI_STATUS_MESSAGE_CORRUPTED:
 		return -EBADMSG;
+
+	case NCI_STATUS_BUFFER_FULL:
+		return -ENOBUFS;
 
 	case NCI_STATUS_NOT_INITIALIZED:
 		return -EHOSTDOWN;
@@ -76,6 +79,12 @@ int nci_to_errno(__u8 code)
 	case NCI_STATUS_RF_TIMEOUT_ERROR:
 	case NCI_STATUS_NFCEE_TIMEOUT_ERROR:
 		return -ETIMEDOUT;
+
+	case NCI_STATUS_RF_LINK_LOSS_ERROR:
+		return -ENOLINK;
+
+	case NCI_STATUS_MAX_ACTIVE_NFCEE_INTERFACES_REACHED:
+		return -EDQUOT;
 
 	case NCI_STATUS_FAILED:
 	default:

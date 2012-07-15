@@ -474,11 +474,10 @@ static int dm9000_nway_reset(struct net_device *dev)
 	return mii_nway_restart(&dm->mii);
 }
 
-static int dm9000_set_features(struct net_device *dev,
-	netdev_features_t features)
+static int dm9000_set_features(struct net_device *dev, u32 features)
 {
 	board_info_t *dm = to_dm9000_board(dev);
-	netdev_features_t changed = dev->features ^ features;
+	u32 changed = dev->features ^ features;
 	unsigned long flags;
 
 	if (!(changed & NETIF_F_RXCSUM))

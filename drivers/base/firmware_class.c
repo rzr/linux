@@ -81,11 +81,6 @@ enum {
 
 static int loading_timeout = 60;	/* In seconds */
 
-static inline long firmware_loading_timeout(void)
-{
-	return loading_timeout > 0 ? loading_timeout * HZ : MAX_SCHEDULE_TIMEOUT;
-}
-
 /* fw_lock could be moved to 'struct firmware_priv' but since it is just
  * guarding for corner cases a global lock should be OK */
 static DEFINE_MUTEX(fw_lock);
@@ -440,7 +435,7 @@ static void firmware_class_timeout(u_long data)
 }
 
 static struct firmware_priv *
-fw_create_instance(const struct firmware *firmware, const char *fw_name,
+fw_create_instance(struct firmware *firmware, const char *fw_name,
 		   struct device *device, bool uevent, bool nowait)
 {
 	struct firmware_priv *fw_priv;
@@ -454,7 +449,7 @@ fw_create_instance(const struct firmware *firmware, const char *fw_name,
 		goto err_out;
 	}
 
-	fw_priv->fw = (struct firmware *)firmware;
+	fw_priv->fw = firmware;
 	fw_priv->nowait = nowait;
 	strcpy(fw_priv->fw_id, fw_name);
 	init_completion(&fw_priv->completion);
@@ -515,10 +510,13 @@ static void fw_destroy_instance(struct firmware_priv *fw_priv)
 	device_unregister(f_dev);
 }
 
-static int _request_firmware_prepare(const struct firmware **firmware_p,
-				     const char *name, struct device *device)
+static int _request_firmware(const struct firmware **firmware_p,
+			     const char *name, struct device *device,
+			     bool uevent, bool nowait)
 {
+	struct firmware_priv *fw_priv;
 	struct firmware *firmware;
+	int retval = 0;
 
 	if (!firmware_p)
 		return -EINVAL;
@@ -527,7 +525,8 @@ static int _request_firmware_prepare(const struct firmware **firmware_p,
 	if (!firmware) {
 		dev_err(device, "%s: kmalloc(struct firmware) failed\n",
 			__func__);
-		return -ENOMEM;
+		retval = -ENOMEM;
+		goto out;
 	}
 
 	if (fw_get_builtin_firmware(firmware, name)) {
@@ -535,33 +534,26 @@ static int _request_firmware_prepare(const struct firmware **firmware_p,
 		return 0;
 	}
 
-	return 1;
-}
-
-static void _request_firmware_cleanup(const struct firmware **firmware_p)
-{
-	release_firmware(*firmware_p);
-	*firmware_p = NULL;
-}
-
-static int _request_firmware(const struct firmware *firmware,
-			     const char *name, struct device *device,
-			     bool uevent, bool nowait, long timeout)
-{
-	struct firmware_priv *fw_priv;
-	int retval = 0;
+	if (WARN_ON(usermodehelper_is_disabled())) {
+		dev_err(device, "firmware: %s will not be loaded\n", name);
+		retval = -EBUSY;
+		goto out;
+	}
 
 	if (uevent)
 		dev_dbg(device, "firmware: requesting %s\n", name);
 
 	fw_priv = fw_create_instance(firmware, name, device, uevent, nowait);
-	if (IS_ERR(fw_priv))
-		return PTR_ERR(fw_priv);
+	if (IS_ERR(fw_priv)) {
+		retval = PTR_ERR(fw_priv);
+		goto out;
+	}
 
 	if (uevent) {
-		if (timeout != MAX_SCHEDULE_TIMEOUT)
+		if (loading_timeout > 0)
 			mod_timer(&fw_priv->timeout,
-				  round_jiffies_up(jiffies + timeout));
+				  round_jiffies_up(jiffies +
+						   loading_timeout * HZ));
 
 		kobject_uevent(&fw_priv->dev.kobj, KOBJ_ADD);
 	}
@@ -578,6 +570,13 @@ static int _request_firmware(const struct firmware *firmware,
 	mutex_unlock(&fw_lock);
 
 	fw_destroy_instance(fw_priv);
+
+out:
+	if (retval) {
+		release_firmware(firmware);
+		*firmware_p = NULL;
+	}
+
 	return retval;
 }
 
@@ -600,24 +599,7 @@ int
 request_firmware(const struct firmware **firmware_p, const char *name,
                  struct device *device)
 {
-	int ret;
-
-	ret = _request_firmware_prepare(firmware_p, name, device);
-	if (ret <= 0)
-		return ret;
-
-	ret = usermodehelper_read_trylock();
-	if (WARN_ON(ret)) {
-		dev_err(device, "firmware: %s will not be loaded\n", name);
-	} else {
-		ret = _request_firmware(*firmware_p, name, device, true, false,
-					firmware_loading_timeout());
-		usermodehelper_read_unlock();
-	}
-	if (ret)
-		_request_firmware_cleanup(firmware_p);
-
-	return ret;
+        return _request_firmware(firmware_p, name, device, true, false);
 }
 
 /**
@@ -648,7 +630,6 @@ static int request_firmware_work_func(void *arg)
 {
 	struct firmware_work *fw_work = arg;
 	const struct firmware *fw;
-	long timeout;
 	int ret;
 
 	if (!arg) {
@@ -656,24 +637,8 @@ static int request_firmware_work_func(void *arg)
 		return 0;
 	}
 
-	ret = _request_firmware_prepare(&fw, fw_work->name, fw_work->device);
-	if (ret <= 0)
-		goto out;
-
-	timeout = usermodehelper_read_lock_wait(firmware_loading_timeout());
-	if (timeout) {
-		ret = _request_firmware(fw, fw_work->name, fw_work->device,
-					fw_work->uevent, true, timeout);
-		usermodehelper_read_unlock();
-	} else {
-		dev_dbg(fw_work->device, "firmware: %s loading timed out\n",
-			fw_work->name);
-		ret = -EAGAIN;
-	}
-	if (ret)
-		_request_firmware_cleanup(&fw);
-
- out:
+	ret = _request_firmware(&fw, fw_work->name, fw_work->device,
+				fw_work->uevent, true);
 	fw_work->cont(fw, fw_work->context);
 
 	module_put(fw_work->module);

@@ -745,10 +745,9 @@ static int ti_hecc_error(struct net_device *ndev, int int_status,
 		}
 	}
 
-	netif_rx(skb);
+	netif_receive_skb(skb);
 	stats->rx_packets++;
 	stats->rx_bytes += cf->can_dlc;
-
 	return 0;
 }
 
@@ -1038,7 +1037,20 @@ static struct platform_driver ti_hecc_driver = {
 	.resume = ti_hecc_resume,
 };
 
-module_platform_driver(ti_hecc_driver);
+static int __init ti_hecc_init_driver(void)
+{
+	printk(KERN_INFO DRV_DESC "\n");
+	return platform_driver_register(&ti_hecc_driver);
+}
+
+static void __exit ti_hecc_exit_driver(void)
+{
+	printk(KERN_INFO DRV_DESC " unloaded\n");
+	platform_driver_unregister(&ti_hecc_driver);
+}
+
+module_exit(ti_hecc_exit_driver);
+module_init(ti_hecc_init_driver);
 
 MODULE_AUTHOR("Anant Gole <anantgole@ti.com>");
 MODULE_LICENSE("GPL v2");

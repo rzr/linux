@@ -86,11 +86,7 @@ int __logfs_buf_write(struct logfs_area *area, u64 ofs, void *buf, size_t len,
 		BUG_ON(!page); /* FIXME: reserve a pool */
 		SetPageUptodate(page);
 		memcpy(page_address(page) + offset, buf, copylen);
-
-		if (!PagePrivate(page)) {
-			SetPagePrivate(page);
-			page_cache_get(page);
-		}
+		SetPagePrivate(page);
 		page_cache_release(page);
 
 		buf += copylen;
@@ -114,10 +110,7 @@ static void pad_partial_page(struct logfs_area *area)
 		page = get_mapping_page(sb, index, 0);
 		BUG_ON(!page); /* FIXME: reserve a pool */
 		memset(page_address(page) + offset, 0xff, len);
-		if (!PagePrivate(page)) {
-			SetPagePrivate(page);
-			page_cache_get(page);
-		}
+		SetPagePrivate(page);
 		page_cache_release(page);
 	}
 }
@@ -137,10 +130,7 @@ static void pad_full_pages(struct logfs_area *area)
 		BUG_ON(!page); /* FIXME: reserve a pool */
 		SetPageUptodate(page);
 		memset(page_address(page), 0xff, PAGE_CACHE_SIZE);
-		if (!PagePrivate(page)) {
-			SetPagePrivate(page);
-			page_cache_get(page);
-		}
+		SetPagePrivate(page);
 		page_cache_release(page);
 		index++;
 		no_indizes--;
@@ -495,12 +485,8 @@ static void move_btree_to_page(struct inode *inode, struct page *page,
 		mempool_free(item, super->s_alias_pool);
 	}
 	block->page = page;
-
-	if (!PagePrivate(page)) {
-		SetPagePrivate(page);
-		page_cache_get(page);
-		set_page_private(page, (unsigned long) block);
-	}
+	SetPagePrivate(page);
+	page->private = (unsigned long)block;
 	block->ops = &indirect_block_ops;
 	initialize_block_counters(page, block, data, 0);
 }
@@ -550,12 +536,8 @@ void move_page_to_btree(struct page *page)
 		list_add(&item->list, &block->item_list);
 	}
 	block->page = NULL;
-
-	if (PagePrivate(page)) {
-		ClearPagePrivate(page);
-		page_cache_release(page);
-		set_page_private(page, 0);
-	}
+	ClearPagePrivate(page);
+	page->private = 0;
 	block->ops = &btree_block_ops;
 	err = alias_tree_insert(block->sb, block->ino, block->bix, block->level,
 			block);
@@ -720,10 +702,7 @@ void freeseg(struct super_block *sb, u32 segno)
 		page = find_get_page(mapping, ofs >> PAGE_SHIFT);
 		if (!page)
 			continue;
-		if (PagePrivate(page)) {
-			ClearPagePrivate(page);
-			page_cache_release(page);
-		}
+		ClearPagePrivate(page);
 		page_cache_release(page);
 	}
 }
@@ -862,16 +841,6 @@ static void free_area(struct logfs_area *area)
 	kfree(area);
 }
 
-void free_areas(struct super_block *sb)
-{
-	struct logfs_super *super = logfs_super(sb);
-	int i;
-
-	for_each_area(i)
-		free_area(super->s_area[i]);
-	free_area(super->s_journal_area);
-}
-
 static struct logfs_area *alloc_area(struct super_block *sb)
 {
 	struct logfs_area *area;
@@ -954,6 +923,10 @@ err:
 void logfs_cleanup_areas(struct super_block *sb)
 {
 	struct logfs_super *super = logfs_super(sb);
+	int i;
 
 	btree_grim_visitor128(&super->s_object_alias_tree, 0, kill_alias);
+	for_each_area(i)
+		free_area(super->s_area[i]);
+	free_area(super->s_journal_area);
 }

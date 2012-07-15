@@ -119,8 +119,9 @@ static void rbtx4939_flash_shutdown(struct platform_device *dev)
 {
 	struct rbtx4939_flash_info *info = platform_get_drvdata(dev);
 
-	if (mtd_suspend(info->mtd) == 0)
-		mtd_resume(info->mtd);
+	if (info->mtd->suspend && info->mtd->resume)
+		if (info->mtd->suspend(info->mtd) == 0)
+			info->mtd->resume(info->mtd);
 }
 #else
 #define rbtx4939_flash_shutdown NULL
@@ -136,7 +137,18 @@ static struct platform_driver rbtx4939_flash_driver = {
 	},
 };
 
-module_platform_driver(rbtx4939_flash_driver);
+static int __init rbtx4939_flash_init(void)
+{
+	return platform_driver_register(&rbtx4939_flash_driver);
+}
+
+static void __exit rbtx4939_flash_exit(void)
+{
+	platform_driver_unregister(&rbtx4939_flash_driver);
+}
+
+module_init(rbtx4939_flash_init);
+module_exit(rbtx4939_flash_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("RBTX4939 MTD map driver");

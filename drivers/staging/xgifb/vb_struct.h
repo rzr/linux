@@ -293,12 +293,13 @@ struct vb_device_info {
 	unsigned short   IF_DEF_ExpLink;
 	unsigned short   IF_DEF_HiVision;
 	unsigned short   LCDResInfo, LCDTypeInfo, VBType;/*301b*/
-	unsigned short   VBInfo, TVInfo, LCDInfo;
+	unsigned short   VBInfo, TVInfo, LCDInfo, Set_VGAType;
 	unsigned short   VBExtInfo;/*301lv*/
 	unsigned short   SetFlag;
 	unsigned short   NewFlickerMode;
 	unsigned short   SelectCRT2Rate;
 
+	unsigned char *ROMAddr;
 	void __iomem *FBAddr;
 	unsigned long BaseAddr;
 	unsigned long RelIO;
@@ -375,6 +376,7 @@ struct vb_device_info {
 	unsigned char   *pXGINew_CR97 ;
 
 	struct XGI330_LCDCapStruct  *LCDCapList;
+	struct XGI21_LVDSCapStruct  *XG21_LVDSCapList;
 
 	struct XGI_TimingHStruct  *TimingH;
 	struct XGI_TimingVStruct  *TimingV;

@@ -19,15 +19,6 @@
 
 #include <linux/ratelimit.h>
 
-char const *audit_point_name[] = {
-	"pre page fault",
-	"post page fault",
-	"pre pte write",
-	"post pte write",
-	"pre sync",
-	"post sync"
-};
-
 #define audit_printk(kvm, fmt, args...)		\
 	printk(KERN_ERR "audit: (%s) error: "	\
 		fmt, audit_point_name[kvm->arch.audit_point], ##args)
@@ -233,10 +224,7 @@ static void audit_vcpu_spte(struct kvm_vcpu *vcpu)
 	mmu_spte_walk(vcpu, audit_spte);
 }
 
-static bool mmu_audit;
-static struct jump_label_key mmu_audit_key;
-
-static void __kvm_mmu_audit(struct kvm_vcpu *vcpu, int point)
+static void kvm_mmu_audit(void *ignore, struct kvm_vcpu *vcpu, int point)
 {
 	static DEFINE_RATELIMIT_STATE(ratelimit_state, 5 * HZ, 10);
 
@@ -248,18 +236,18 @@ static void __kvm_mmu_audit(struct kvm_vcpu *vcpu, int point)
 	audit_vcpu_spte(vcpu);
 }
 
-static inline void kvm_mmu_audit(struct kvm_vcpu *vcpu, int point)
-{
-	if (static_branch((&mmu_audit_key)))
-		__kvm_mmu_audit(vcpu, point);
-}
+static bool mmu_audit;
 
 static void mmu_audit_enable(void)
 {
+	int ret;
+
 	if (mmu_audit)
 		return;
 
-	jump_label_inc(&mmu_audit_key);
+	ret = register_trace_kvm_mmu_audit(kvm_mmu_audit, NULL);
+	WARN_ON(ret);
+
 	mmu_audit = true;
 }
 
@@ -268,7 +256,8 @@ static void mmu_audit_disable(void)
 	if (!mmu_audit)
 		return;
 
-	jump_label_dec(&mmu_audit_key);
+	unregister_trace_kvm_mmu_audit(kvm_mmu_audit, NULL);
+	tracepoint_synchronize_unregister();
 	mmu_audit = false;
 }
 

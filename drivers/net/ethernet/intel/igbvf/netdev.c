@@ -1,7 +1,7 @@
 /*******************************************************************************
 
   Intel(R) 82576 Virtual Function Linux driver
-  Copyright(c) 2009 - 2012 Intel Corporation.
+  Copyright(c) 2009 - 2010 Intel Corporation.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms and conditions of the GNU General Public License,
@@ -24,8 +24,6 @@
   Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
 
 *******************************************************************************/
-
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -53,7 +51,7 @@ const char igbvf_driver_version[] = DRV_VERSION;
 static const char igbvf_driver_string[] =
 		  "Intel(R) Gigabit Virtual Function Network Driver";
 static const char igbvf_copyright[] =
-		  "Copyright (c) 2009 - 2012 Intel Corporation.";
+		  "Copyright (c) 2009 - 2011 Intel Corporation.";
 
 static int igbvf_poll(struct napi_struct *napi, int budget);
 static void igbvf_reset(struct igbvf_adapter *);
@@ -1176,31 +1174,32 @@ static void igbvf_set_rlpml(struct igbvf_adapter *adapter)
 	e1000_rlpml_set_vf(hw, max_frame_size);
 }
 
-static int igbvf_vlan_rx_add_vid(struct net_device *netdev, u16 vid)
+static void igbvf_vlan_rx_add_vid(struct net_device *netdev, u16 vid)
 {
 	struct igbvf_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 
-	if (hw->mac.ops.set_vfta(hw, vid, true)) {
+	if (hw->mac.ops.set_vfta(hw, vid, true))
 		dev_err(&adapter->pdev->dev, "Failed to add vlan id %d\n", vid);
-		return -EINVAL;
-	}
-	set_bit(vid, adapter->active_vlans);
-	return 0;
+	else
+		set_bit(vid, adapter->active_vlans);
 }
 
-static int igbvf_vlan_rx_kill_vid(struct net_device *netdev, u16 vid)
+static void igbvf_vlan_rx_kill_vid(struct net_device *netdev, u16 vid)
 {
 	struct igbvf_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 
-	if (hw->mac.ops.set_vfta(hw, vid, false)) {
+	igbvf_irq_disable(adapter);
+
+	if (!test_bit(__IGBVF_DOWN, &adapter->state))
+		igbvf_irq_enable(adapter);
+
+	if (hw->mac.ops.set_vfta(hw, vid, false))
 		dev_err(&adapter->pdev->dev,
 		        "Failed to remove vlan id %d\n", vid);
-		return -EINVAL;
-	}
-	clear_bit(vid, adapter->active_vlans);
-	return 0;
+	else
+		clear_bit(vid, adapter->active_vlans);
 }
 
 static void igbvf_restore_vlan(struct igbvf_adapter *adapter)
@@ -1747,9 +1746,10 @@ void igbvf_update_stats(struct igbvf_adapter *adapter)
 
 static void igbvf_print_link_info(struct igbvf_adapter *adapter)
 {
-	dev_info(&adapter->pdev->dev, "Link is Up %d Mbps %s Duplex\n",
-		 adapter->link_speed,
-		 adapter->link_duplex == FULL_DUPLEX ? "Full" : "Half");
+	dev_info(&adapter->pdev->dev, "Link is Up %d Mbps %s\n",
+	         adapter->link_speed,
+	         ((adapter->link_duplex == FULL_DUPLEX) ?
+	          "Full Duplex" : "Half Duplex"));
 }
 
 static bool igbvf_has_link(struct igbvf_adapter *adapter)
@@ -2532,8 +2532,7 @@ static void igbvf_print_device_info(struct igbvf_adapter *adapter)
 	dev_info(&pdev->dev, "Address: %pM\n", netdev->dev_addr);
 }
 
-static int igbvf_set_features(struct net_device *netdev,
-	netdev_features_t features)
+static int igbvf_set_features(struct net_device *netdev, u32 features)
 {
 	struct igbvf_adapter *adapter = netdev_priv(netdev);
 
@@ -2843,8 +2842,9 @@ static struct pci_driver igbvf_driver = {
 static int __init igbvf_init_module(void)
 {
 	int ret;
-	pr_info("%s - version %s\n", igbvf_driver_string, igbvf_driver_version);
-	pr_info("%s\n", igbvf_copyright);
+	printk(KERN_INFO "%s - version %s\n",
+	       igbvf_driver_string, igbvf_driver_version);
+	printk(KERN_INFO "%s\n", igbvf_copyright);
 
 	ret = pci_register_driver(&igbvf_driver);
 

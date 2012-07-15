@@ -560,9 +560,10 @@ asmlinkage void syscall_trace_enter(struct pt_regs *regs)
 	}
 
 out:
-	audit_syscall_entry(audit_arch(), regs->regs[2],
-			    regs->regs[4], regs->regs[5],
-			    regs->regs[6], regs->regs[7]);
+	if (unlikely(current->audit_context))
+		audit_syscall_entry(audit_arch(), regs->regs[2],
+				    regs->regs[4], regs->regs[5],
+				    regs->regs[6], regs->regs[7]);
 }
 
 /*
@@ -571,7 +572,9 @@ out:
  */
 asmlinkage void syscall_trace_leave(struct pt_regs *regs)
 {
-	audit_syscall_exit(regs);
+	if (unlikely(current->audit_context))
+		audit_syscall_exit(AUDITSC_RESULT(regs->regs[7]),
+		                   -regs->regs[2]);
 
 	if (!(current->ptrace & PT_PTRACED))
 		return;

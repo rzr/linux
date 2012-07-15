@@ -32,6 +32,8 @@ struct nouveau_crtc {
 
 	int index;
 
+	struct drm_display_mode *mode;
+
 	uint32_t dpms_saved_fp_control;
 	uint32_t fp_users;
 	int saturation;
@@ -65,8 +67,8 @@ struct nouveau_crtc {
 		int depth;
 	} lut;
 
-	int (*set_dither)(struct nouveau_crtc *crtc, bool update);
-	int (*set_scale)(struct nouveau_crtc *crtc, bool update);
+	int (*set_dither)(struct nouveau_crtc *crtc, bool on, bool update);
+	int (*set_scale)(struct nouveau_crtc *crtc, int mode, bool update);
 };
 
 static inline struct nouveau_crtc *nouveau_crtc(struct drm_crtc *crtc)

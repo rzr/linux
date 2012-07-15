@@ -14,7 +14,6 @@
 
 #include "iio.h"
 #include "sysfs.h"
-#include "events.h"
 #include "iio_simple_dummy.h"
 
 /* Evgen 'fakes' interrupt events for this example */

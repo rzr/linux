@@ -16,7 +16,6 @@
  * www.brocade.com
  */
 #include <linux/firmware.h>
-#include "bnad.h"
 #include "bfi.h"
 #include "cna.h"
 

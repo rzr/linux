@@ -119,8 +119,8 @@ struct resource eseries_tmio_resources[] = {
 		.flags  = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start  = PXA_GPIO_TO_IRQ(GPIO_ESERIES_TMIO_IRQ),
-		.end    = PXA_GPIO_TO_IRQ(GPIO_ESERIES_TMIO_IRQ),
+		.start  = IRQ_GPIO(GPIO_ESERIES_TMIO_IRQ),
+		.end    = IRQ_GPIO(GPIO_ESERIES_TMIO_IRQ),
 		.flags  = IORESOURCE_IRQ,
 	},
 };
@@ -196,7 +196,6 @@ MACHINE_START(E330, "Toshiba e330")
 	.fixup		= eseries_fixup,
 	.init_machine	= e330_init,
 	.timer		= &pxa_timer,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif
 
@@ -247,7 +246,6 @@ MACHINE_START(E350, "Toshiba e350")
 	.fixup		= eseries_fixup,
 	.init_machine	= e350_init,
 	.timer		= &pxa_timer,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif
 
@@ -371,7 +369,6 @@ MACHINE_START(E400, "Toshiba e400")
 	.fixup		= eseries_fixup,
 	.init_machine	= e400_init,
 	.timer		= &pxa_timer,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif
 
@@ -528,18 +525,12 @@ static struct platform_device e740_t7l66xb_device = {
 	.resource      = eseries_tmio_resources,
 };
 
-static struct platform_device e740_audio_device = {
-	.name		= "e740-audio",
-	.id		= -1,
-};
-
 /* ----------------------------------------------------------------------- */
 
 static struct platform_device *e740_devices[] __initdata = {
 	&e740_fb_device,
 	&e740_t7l66xb_device,
 	&e7xx_gpio_vbus,
-	&e740_audio_device,
 };
 
 static void __init e740_init(void)
@@ -567,7 +558,6 @@ MACHINE_START(E740, "Toshiba e740")
 	.fixup		= eseries_fixup,
 	.init_machine	= e740_init,
 	.timer		= &pxa_timer,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif
 
@@ -728,18 +718,12 @@ static struct platform_device e750_tc6393xb_device = {
 	.resource      = eseries_tmio_resources,
 };
 
-static struct platform_device e750_audio_device = {
-	.name		= "e750-audio",
-	.id		= -1,
-};
-
 /* ------------------------------------------------------------- */
 
 static struct platform_device *e750_devices[] __initdata = {
 	&e750_fb_device,
 	&e750_tc6393xb_device,
 	&e7xx_gpio_vbus,
-	&e750_audio_device,
 };
 
 static void __init e750_init(void)
@@ -766,7 +750,6 @@ MACHINE_START(E750, "Toshiba e750")
 	.fixup		= eseries_fixup,
 	.init_machine	= e750_init,
 	.timer		= &pxa_timer,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif
 
@@ -941,18 +924,12 @@ static struct platform_device e800_tc6393xb_device = {
 	.resource      = eseries_tmio_resources,
 };
 
-static struct platform_device e800_audio_device = {
-	.name		= "e800-audio",
-	.id		= -1,
-};
-
 /* ----------------------------------------------------------------------- */
 
 static struct platform_device *e800_devices[] __initdata = {
 	&e800_fb_device,
 	&e800_tc6393xb_device,
 	&e800_gpio_vbus,
-	&e800_audio_device,
 };
 
 static void __init e800_init(void)
@@ -978,6 +955,5 @@ MACHINE_START(E800, "Toshiba e800")
 	.fixup		= eseries_fixup,
 	.init_machine	= e800_init,
 	.timer		= &pxa_timer,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif

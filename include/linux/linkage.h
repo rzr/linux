@@ -88,4 +88,8 @@
 
 #endif
 
+#define NORET_TYPE    /**/
+#define ATTRIB_NORET  __attribute__((noreturn))
+#define NORET_AND     noreturn,
+
 #endif

@@ -281,11 +281,8 @@ static void ad7879_close(struct input_dev* input)
 		__ad7879_disable(ts);
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int ad7879_suspend(struct device *dev)
+void ad7879_suspend(struct ad7879 *ts)
 {
-	struct ad7879 *ts = dev_get_drvdata(dev);
-
 	mutex_lock(&ts->input->mutex);
 
 	if (!ts->suspended && !ts->disabled && ts->input->users)
@@ -294,14 +291,11 @@ static int ad7879_suspend(struct device *dev)
 	ts->suspended = true;
 
 	mutex_unlock(&ts->input->mutex);
-
-	return 0;
 }
+EXPORT_SYMBOL(ad7879_suspend);
 
-static int ad7879_resume(struct device *dev)
+void ad7879_resume(struct ad7879 *ts)
 {
-	struct ad7879 *ts = dev_get_drvdata(dev);
-
 	mutex_lock(&ts->input->mutex);
 
 	if (ts->suspended && !ts->disabled && ts->input->users)
@@ -310,13 +304,8 @@ static int ad7879_resume(struct device *dev)
 	ts->suspended = false;
 
 	mutex_unlock(&ts->input->mutex);
-
-	return 0;
 }
-#endif
-
-SIMPLE_DEV_PM_OPS(ad7879_pm_ops, ad7879_suspend, ad7879_resume);
-EXPORT_SYMBOL(ad7879_pm_ops);
+EXPORT_SYMBOL(ad7879_resume);
 
 static void ad7879_toggle(struct ad7879 *ts, bool disable)
 {
@@ -351,10 +340,10 @@ static ssize_t ad7879_disable_store(struct device *dev,
 				     const char *buf, size_t count)
 {
 	struct ad7879 *ts = dev_get_drvdata(dev);
-	unsigned int val;
+	unsigned long val;
 	int error;
 
-	error = kstrtouint(buf, 10, &val);
+	error = strict_strtoul(buf, 10, &val);
 	if (error)
 		return error;
 

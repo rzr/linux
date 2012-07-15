@@ -22,21 +22,6 @@ unsigned int cpu_last_asid = ASID_FIRST_VERSION;
 DEFINE_PER_CPU(struct mm_struct *, current_mm);
 #endif
 
-#ifdef CONFIG_ARM_LPAE
-#define cpu_set_asid(asid) {						\
-	unsigned long ttbl, ttbh;					\
-	asm volatile(							\
-	"	mrrc	p15, 0, %0, %1, c2		@ read TTBR0\n"	\
-	"	mov	%1, %2, lsl #(48 - 32)		@ set ASID\n"	\
-	"	mcrr	p15, 0, %0, %1, c2		@ set TTBR0\n"	\
-	: "=&r" (ttbl), "=&r" (ttbh)					\
-	: "r" (asid & ~ASID_MASK));					\
-}
-#else
-#define cpu_set_asid(asid) \
-	asm("	mcr	p15, 0, %0, c13, c0, 1\n" : : "r" (asid))
-#endif
-
 /*
  * We fork()ed a process, and we need a new context for the child
  * to run in.  We reserve version 0 for initial tasks so we will
@@ -52,7 +37,7 @@ void __init_new_context(struct task_struct *tsk, struct mm_struct *mm)
 static void flush_context(void)
 {
 	/* set the reserved ASID before flushing the TLB */
-	cpu_set_asid(0);
+	asm("mcr	p15, 0, %0, c13, c0, 1\n" : : "r" (0));
 	isb();
 	local_flush_tlb_all();
 	if (icache_is_vivt_asid_tagged()) {
@@ -114,7 +99,7 @@ static void reset_context(void *info)
 	set_mm_context(mm, asid);
 
 	/* set the new ASID */
-	cpu_set_asid(mm->context.id);
+	asm("mcr	p15, 0, %0, c13, c0, 1\n" : : "r" (mm->context.id));
 	isb();
 }
 

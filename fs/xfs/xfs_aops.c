@@ -111,7 +111,8 @@ xfs_ioend_new_eof(
 	xfs_fsize_t		bsize;
 
 	bsize = ioend->io_offset + ioend->io_size;
-	isize = MIN(i_size_read(VFS_I(ip)), bsize);
+	isize = MAX(ip->i_size, ip->i_new_size);
+	isize = MIN(isize, bsize);
 	return isize > ip->i_d.di_size ? isize : 0;
 }
 
@@ -125,7 +126,11 @@ static inline bool xfs_ioend_is_append(struct xfs_ioend *ioend)
 }
 
 /*
- * Update on-disk file size now that data has been written to disk.
+ * Update on-disk file size now that data has been written to disk.  The
+ * current in-memory file size is i_size.  If a write is beyond eof i_new_size
+ * will be the intended file size until i_size is updated.  If this write does
+ * not extend all the way to the valid file size then restrict this update to
+ * the end of the write.
  *
  * This function does not block as blocking on the inode lock in IO completion
  * can lead to IO completion order dependency deadlocks.. If it can't get the
@@ -1274,15 +1279,6 @@ xfs_end_io_direct_write(
 	struct xfs_ioend	*ioend = iocb->private;
 
 	/*
-	 * While the generic direct I/O code updates the inode size, it does
-	 * so only after the end_io handler is called, which means our
-	 * end_io handler thinks the on-disk size is outside the in-core
-	 * size.  To prevent this just update it a little bit earlier here.
-	 */
-	if (offset + size > i_size_read(ioend->io_inode))
-		i_size_write(ioend->io_inode, offset + size);
-
-	/*
 	 * blockdev_direct_IO can return an error even after the I/O
 	 * completion handler was called.  Thus we need to protect
 	 * against double-freeing.
@@ -1344,11 +1340,12 @@ xfs_vm_write_failed(
 
 	if (to > inode->i_size) {
 		/*
-		 * Punch out the delalloc blocks we have already allocated.
-		 *
-		 * Don't bother with xfs_setattr given that nothing can have
-		 * made it to disk yet as the page is still locked at this
-		 * point.
+		 * punch out the delalloc blocks we have already allocated. We
+		 * don't call xfs_setattr() to do this as we may be in the
+		 * middle of a multi-iovec write and so the vfs inode->i_size
+		 * will not match the xfs ip->i_size and so it will zero too
+		 * much. Hence we jus truncate the page cache to zero what is
+		 * necessary and punch the delalloc blocks directly.
 		 */
 		struct xfs_inode	*ip = XFS_I(inode);
 		xfs_fileoff_t		start_fsb;

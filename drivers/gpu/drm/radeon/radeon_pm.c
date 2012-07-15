@@ -252,10 +252,7 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 
 	mutex_lock(&rdev->ddev->struct_mutex);
 	mutex_lock(&rdev->vram_mutex);
-	for (i = 0; i < RADEON_NUM_RINGS; ++i) {
-		if (rdev->ring[i].ring_obj)
-			mutex_lock(&rdev->ring[i].mutex);
-	}
+	mutex_lock(&rdev->cp.mutex);
 
 	/* gui idle int has issues on older chips it seems */
 	if (rdev->family >= CHIP_R600) {
@@ -271,13 +268,12 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 			radeon_irq_set(rdev);
 		}
 	} else {
-		struct radeon_ring *ring = &rdev->ring[RADEON_RING_TYPE_GFX_INDEX];
-		if (ring->ready) {
+		if (rdev->cp.ready) {
 			struct radeon_fence *fence;
-			radeon_ring_alloc(rdev, ring, 64);
-			radeon_fence_create(rdev, &fence, radeon_ring_index(rdev, ring));
+			radeon_ring_alloc(rdev, 64);
+			radeon_fence_create(rdev, &fence);
 			radeon_fence_emit(rdev, fence);
-			radeon_ring_commit(rdev, ring);
+			radeon_ring_commit(rdev);
 			radeon_fence_wait(fence, false);
 			radeon_fence_unref(&fence);
 		}
@@ -311,10 +307,7 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 
 	rdev->pm.dynpm_planned_action = DYNPM_ACTION_NONE;
 
-	for (i = 0; i < RADEON_NUM_RINGS; ++i) {
-		if (rdev->ring[i].ring_obj)
-			mutex_unlock(&rdev->ring[i].mutex);
-	}
+	mutex_unlock(&rdev->cp.mutex);
 	mutex_unlock(&rdev->vram_mutex);
 	mutex_unlock(&rdev->ddev->struct_mutex);
 }
@@ -802,14 +795,19 @@ static void radeon_dynpm_idle_work_handler(struct work_struct *work)
 	resched = ttm_bo_lock_delayed_workqueue(&rdev->mman.bdev);
 	mutex_lock(&rdev->pm.mutex);
 	if (rdev->pm.dynpm_state == DYNPM_STATE_ACTIVE) {
+		unsigned long irq_flags;
 		int not_processed = 0;
-		int i;
 
-		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
-			not_processed += radeon_fence_count_emitted(rdev, i);
-			if (not_processed >= 3)
-				break;
+		read_lock_irqsave(&rdev->fence_drv.lock, irq_flags);
+		if (!list_empty(&rdev->fence_drv.emited)) {
+			struct list_head *ptr;
+			list_for_each(ptr, &rdev->fence_drv.emited) {
+				/* count up to 3, that's enought info */
+				if (++not_processed >= 3)
+					break;
+			}
 		}
+		read_unlock_irqrestore(&rdev->fence_drv.lock, irq_flags);
 
 		if (not_processed >= 3) { /* should upclock */
 			if (rdev->pm.dynpm_planned_action == DYNPM_ACTION_DOWNCLOCK) {

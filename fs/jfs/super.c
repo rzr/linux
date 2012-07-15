@@ -119,6 +119,7 @@ static void jfs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
 	struct jfs_inode_info *ji = JFS_IP(inode);
+	INIT_LIST_HEAD(&inode->i_dentry);
 	kmem_cache_free(jfs_inode_cachep, ji);
 }
 
@@ -608,9 +609,9 @@ static int jfs_sync_fs(struct super_block *sb, int wait)
 	return 0;
 }
 
-static int jfs_show_options(struct seq_file *seq, struct dentry *root)
+static int jfs_show_options(struct seq_file *seq, struct vfsmount *vfs)
 {
-	struct jfs_sb_info *sbi = JFS_SBI(root->d_sb);
+	struct jfs_sb_info *sbi = JFS_SBI(vfs->mnt_sb);
 
 	if (sbi->uid != -1)
 		seq_printf(seq, ",uid=%d", sbi->uid);

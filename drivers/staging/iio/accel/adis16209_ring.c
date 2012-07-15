@@ -72,10 +72,9 @@ static irqreturn_t adis16209_trigger_handler(int irq, void *p)
 		return -ENOMEM;
 	}
 
-	if (!bitmap_empty(indio_dev->active_scan_mask, indio_dev->masklength) &&
+	if (ring->scan_count &&
 	    adis16209_read_ring_data(&indio_dev->dev, st->rx) >= 0)
-		for (; i < bitmap_weight(indio_dev->active_scan_mask,
-					 indio_dev->masklength); i++)
+		for (; i < ring->scan_count; i++)
 			data[i] = be16_to_cpup((__be16 *)&(st->rx[i*2]));
 
 	/* Guaranteed to be aligned with 8 byte boundary */
@@ -115,8 +114,10 @@ int adis16209_configure_ring(struct iio_dev *indio_dev)
 	indio_dev->buffer = ring;
 	/* Effectively select the ring buffer implementation */
 	ring->access = &ring_sw_access_funcs;
+	ring->bpe = 2;
 	ring->scan_timestamp = true;
-	indio_dev->setup_ops = &adis16209_ring_setup_ops;
+	ring->setup_ops = &adis16209_ring_setup_ops;
+	ring->owner = THIS_MODULE;
 
 	indio_dev->pollfunc = iio_alloc_pollfunc(&iio_pollfunc_store_time,
 						 &adis16209_trigger_handler,

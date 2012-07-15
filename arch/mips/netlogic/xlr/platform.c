@@ -15,19 +15,18 @@
 #include <linux/serial_8250.h>
 #include <linux/serial_reg.h>
 
-#include <asm/netlogic/haldefs.h>
 #include <asm/netlogic/xlr/iomap.h>
 #include <asm/netlogic/xlr/pic.h>
 #include <asm/netlogic/xlr/xlr.h>
 
 unsigned int nlm_xlr_uart_in(struct uart_port *p, int offset)
 {
-	uint64_t uartbase;
+	nlm_reg_t *mmio;
 	unsigned int value;
 
-	/* sign extend to 64 bits, if needed */
-	uartbase = (uint64_t)(long)p->membase;
-	value = nlm_read_reg(uartbase, offset);
+	/* XLR uart does not need any mapping of regs */
+	mmio = (nlm_reg_t *)(p->membase + (offset << p->regshift));
+	value = netlogic_read_reg(mmio, 0);
 
 	/* See XLR/XLS errata */
 	if (offset == UART_MSR)
@@ -40,10 +39,10 @@ unsigned int nlm_xlr_uart_in(struct uart_port *p, int offset)
 
 void nlm_xlr_uart_out(struct uart_port *p, int offset, int value)
 {
-	uint64_t uartbase;
+	nlm_reg_t *mmio;
 
-	/* sign extend to 64 bits, if needed */
-	uartbase = (uint64_t)(long)p->membase;
+	/* XLR uart does not need any mapping of regs */
+	mmio = (nlm_reg_t *)(p->membase + (offset << p->regshift));
 
 	/* See XLR/XLS errata */
 	if (offset == UART_MSR)
@@ -51,7 +50,7 @@ void nlm_xlr_uart_out(struct uart_port *p, int offset, int value)
 	else if (offset == UART_MCR)
 		value ^= 0x3;
 
-	nlm_write_reg(uartbase, offset, value);
+	netlogic_write_reg(mmio, 0, value);
 }
 
 #define PORT(_irq)					\
@@ -83,15 +82,15 @@ static struct platform_device uart_device = {
 
 static int __init nlm_uart_init(void)
 {
-	unsigned long uartbase;
+	nlm_reg_t *mmio;
 
-	uartbase = (unsigned long)nlm_mmio_base(NETLOGIC_IO_UART_0_OFFSET);
-	xlr_uart_data[0].membase = (void __iomem *)uartbase;
-	xlr_uart_data[0].mapbase = CPHYSADDR(uartbase);
+	mmio = netlogic_io_mmio(NETLOGIC_IO_UART_0_OFFSET);
+	xlr_uart_data[0].membase = (void __iomem *)mmio;
+	xlr_uart_data[0].mapbase = CPHYSADDR((unsigned long)mmio);
 
-	uartbase = (unsigned long)nlm_mmio_base(NETLOGIC_IO_UART_1_OFFSET);
-	xlr_uart_data[1].membase = (void __iomem *)uartbase;
-	xlr_uart_data[1].mapbase = CPHYSADDR(uartbase);
+	mmio = netlogic_io_mmio(NETLOGIC_IO_UART_1_OFFSET);
+	xlr_uart_data[1].membase = (void __iomem *)mmio;
+	xlr_uart_data[1].mapbase = CPHYSADDR((unsigned long)mmio);
 
 	return platform_device_register(&uart_device);
 }

@@ -351,7 +351,20 @@ static struct platform_driver atmel_tsadcc_driver = {
 		.name	= "atmel_tsadcc",
 	},
 };
-module_platform_driver(atmel_tsadcc_driver);
+
+static int __init atmel_tsadcc_init(void)
+{
+	return platform_driver_register(&atmel_tsadcc_driver);
+}
+
+static void __exit atmel_tsadcc_exit(void)
+{
+	platform_driver_unregister(&atmel_tsadcc_driver);
+}
+
+module_init(atmel_tsadcc_init);
+module_exit(atmel_tsadcc_exit);
+
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Atmel TouchScreen Driver");

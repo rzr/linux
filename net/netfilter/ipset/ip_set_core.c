@@ -77,33 +77,27 @@ find_set_type(const char *name, u8 family, u8 revision)
 }
 
 /* Unlock, try to load a set type module and lock again */
-static bool
-load_settype(const char *name)
+static int
+try_to_load_type(const char *name)
 {
 	nfnl_unlock();
 	pr_debug("try to load ip_set_%s\n", name);
 	if (request_module("ip_set_%s", name) < 0) {
 		pr_warning("Can't find ip_set type %s\n", name);
 		nfnl_lock();
-		return false;
+		return -IPSET_ERR_FIND_TYPE;
 	}
 	nfnl_lock();
-	return true;
+	return -EAGAIN;
 }
 
 /* Find a set type and reference it */
-#define find_set_type_get(name, family, revision, found)	\
-	__find_set_type_get(name, family, revision, found, false)
-
 static int
-__find_set_type_get(const char *name, u8 family, u8 revision,
-		    struct ip_set_type **found, bool retry)
+find_set_type_get(const char *name, u8 family, u8 revision,
+		  struct ip_set_type **found)
 {
 	struct ip_set_type *type;
 	int err;
-
-	if (retry && !load_settype(name))
-		return -IPSET_ERR_FIND_TYPE;
 
 	rcu_read_lock();
 	*found = find_set_type(name, family, revision);
@@ -111,8 +105,7 @@ __find_set_type_get(const char *name, u8 family, u8 revision,
 		err = !try_module_get((*found)->me) ? -EFAULT : 0;
 		goto unlock;
 	}
-	/* Make sure the type is already loaded
-	 * but we don't support the revision */
+	/* Make sure the type is loaded but we don't support the revision */
 	list_for_each_entry_rcu(type, &ip_set_type_list, list)
 		if (STREQ(type->name, name)) {
 			err = -IPSET_ERR_FIND_TYPE;
@@ -120,8 +113,7 @@ __find_set_type_get(const char *name, u8 family, u8 revision,
 		}
 	rcu_read_unlock();
 
-	return retry ? -IPSET_ERR_FIND_TYPE :
-		__find_set_type_get(name, family, revision, found, true);
+	return try_to_load_type(name);
 
 unlock:
 	rcu_read_unlock();
@@ -132,18 +124,11 @@ unlock:
  * If we succeeded, the supported minimal and maximum revisions are
  * filled out.
  */
-#define find_set_type_minmax(name, family, min, max) \
-	__find_set_type_minmax(name, family, min, max, false)
-
 static int
-__find_set_type_minmax(const char *name, u8 family, u8 *min, u8 *max,
-		       bool retry)
+find_set_type_minmax(const char *name, u8 family, u8 *min, u8 *max)
 {
 	struct ip_set_type *type;
 	bool found = false;
-
-	if (retry && !load_settype(name))
-		return -IPSET_ERR_FIND_TYPE;
 
 	*min = 255; *max = 0;
 	rcu_read_lock();
@@ -160,8 +145,7 @@ __find_set_type_minmax(const char *name, u8 family, u8 *min, u8 *max,
 	if (found)
 		return 0;
 
-	return retry ? -IPSET_ERR_FIND_TYPE :
-		__find_set_type_minmax(name, family, min, max, true);
+	return try_to_load_type(name);
 }
 
 #define family_name(f)	((f) == AF_INET ? "inet" : \
@@ -1142,7 +1126,6 @@ release_refcount:
 	if (ret || !cb->args[2]) {
 		pr_debug("release set %s\n", ip_set_list[index]->name);
 		ip_set_put_byindex(index);
-		cb->args[2] = 0;
 	}
 out:
 	if (nlh) {

@@ -626,7 +626,7 @@ pgtable_bad(struct pt_regs *regs, unsigned long error_code,
 
 static noinline void
 no_context(struct pt_regs *regs, unsigned long error_code,
-	   unsigned long address, int signal, int si_code)
+	   unsigned long address)
 {
 	struct task_struct *tsk = current;
 	unsigned long *stackend;
@@ -634,17 +634,8 @@ no_context(struct pt_regs *regs, unsigned long error_code,
 	int sig;
 
 	/* Are we prepared to handle this kernel fault? */
-	if (fixup_exception(regs)) {
-		if (current_thread_info()->sig_on_uaccess_error && signal) {
-			tsk->thread.trap_no = 14;
-			tsk->thread.error_code = error_code | PF_USER;
-			tsk->thread.cr2 = address;
-
-			/* XXX: hwpoison faults will set the wrong code. */
-			force_sig_info_fault(signal, si_code, address, tsk, 0);
-		}
+	if (fixup_exception(regs))
 		return;
-	}
 
 	/*
 	 * 32-bit:
@@ -673,7 +664,7 @@ no_context(struct pt_regs *regs, unsigned long error_code,
 
 	stackend = end_of_stack(tsk);
 	if (tsk != &init_task && *stackend != STACK_END_MAGIC)
-		printk(KERN_EMERG "Thread overran stack, or stack corrupted\n");
+		printk(KERN_ALERT "Thread overran stack, or stack corrupted\n");
 
 	tsk->thread.cr2		= address;
 	tsk->thread.trap_no	= 14;
@@ -684,7 +675,7 @@ no_context(struct pt_regs *regs, unsigned long error_code,
 		sig = 0;
 
 	/* Executive summary in case the body of the oops scrolled away */
-	printk(KERN_DEFAULT "CR2: %016lx\n", address);
+	printk(KERN_EMERG "CR2: %016lx\n", address);
 
 	oops_end(flags, regs, sig);
 }
@@ -764,7 +755,7 @@ __bad_area_nosemaphore(struct pt_regs *regs, unsigned long error_code,
 	if (is_f00f_bug(regs, address))
 		return;
 
-	no_context(regs, error_code, address, SIGSEGV, si_code);
+	no_context(regs, error_code, address);
 }
 
 static noinline void
@@ -828,7 +819,7 @@ do_sigbus(struct pt_regs *regs, unsigned long error_code, unsigned long address,
 
 	/* Kernel mode? Handle exceptions or die: */
 	if (!(error_code & PF_USER)) {
-		no_context(regs, error_code, address, SIGBUS, BUS_ADRERR);
+		no_context(regs, error_code, address);
 		return;
 	}
 
@@ -863,7 +854,7 @@ mm_fault_error(struct pt_regs *regs, unsigned long error_code,
 		if (!(fault & VM_FAULT_RETRY))
 			up_read(&current->mm->mmap_sem);
 		if (!(error_code & PF_USER))
-			no_context(regs, error_code, address, 0, 0);
+			no_context(regs, error_code, address);
 		return 1;
 	}
 	if (!(fault & VM_FAULT_ERROR))
@@ -873,8 +864,7 @@ mm_fault_error(struct pt_regs *regs, unsigned long error_code,
 		/* Kernel mode? Handle exceptions or die: */
 		if (!(error_code & PF_USER)) {
 			up_read(&current->mm->mmap_sem);
-			no_context(regs, error_code, address,
-				   SIGSEGV, SEGV_MAPERR);
+			no_context(regs, error_code, address);
 			return 1;
 		}
 

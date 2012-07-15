@@ -247,7 +247,25 @@ static struct usb_driver cinergyt2_driver = {
 	.id_table	= cinergyt2_usb_table
 };
 
-module_usb_driver(cinergyt2_driver);
+static int __init cinergyt2_usb_init(void)
+{
+	int err;
+
+	err = usb_register(&cinergyt2_driver);
+	if (err) {
+		err("usb_register() failed! (err %i)\n", err);
+		return err;
+	}
+	return 0;
+}
+
+static void __exit cinergyt2_usb_exit(void)
+{
+	usb_deregister(&cinergyt2_driver);
+}
+
+module_init(cinergyt2_usb_init);
+module_exit(cinergyt2_usb_exit);
 
 MODULE_DESCRIPTION("Terratec Cinergy T2 DVB-T driver");
 MODULE_LICENSE("GPL");

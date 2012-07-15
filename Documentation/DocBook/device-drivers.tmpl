@@ -50,9 +50,7 @@
 
      <sect1><title>Delaying, scheduling, and timer routines</title>
 !Iinclude/linux/sched.h
-!Ekernel/sched/core.c
-!Ikernel/sched/cpupri.c
-!Ikernel/sched/fair.c
+!Ekernel/sched.c
 !Iinclude/linux/completion.h
 !Ekernel/timer.c
      </sect1>
@@ -102,12 +100,9 @@ X!Iinclude/linux/kobject.h
 !Iinclude/linux/device.h
      </sect1>
      <sect1><title>Device Drivers Base</title>
-!Idrivers/base/init.c
 !Edrivers/base/driver.c
 !Edrivers/base/core.c
-!Edrivers/base/syscore.c
 !Edrivers/base/class.c
-!Idrivers/base/node.c
 !Edrivers/base/firmware_class.c
 !Edrivers/base/transport_class.c
 <!-- Cannot be included, because
@@ -116,18 +111,13 @@ X!Iinclude/linux/kobject.h
      exceed allowed 44 characters maximum
 X!Edrivers/base/attribute_container.c
 -->
-!Edrivers/base/dd.c
+!Edrivers/base/sys.c
 <!--
 X!Edrivers/base/interface.c
 -->
 !Iinclude/linux/platform_device.h
 !Edrivers/base/platform.c
 !Edrivers/base/bus.c
-     </sect1>
-     <sect1><title>Device Drivers DMA Management</title>
-!Edrivers/base/dma-buf.c
-!Edrivers/base/dma-coherent.c
-!Edrivers/base/dma-mapping.c
      </sect1>
      <sect1><title>Device Drivers Power Management</title>
 !Edrivers/base/power/main.c
@@ -226,8 +216,9 @@ X!Isound/sound_firmware.c
 
   <chapter id="uart16x50">
      <title>16x50 UART Driver</title>
+!Iinclude/linux/serial_core.h
 !Edrivers/tty/serial/serial_core.c
-!Edrivers/tty/serial/8250/8250.c
+!Edrivers/tty/serial/8250.c
   </chapter>
 
   <chapter id="fbdev">

@@ -623,7 +623,7 @@ int ocfs2_calc_security_init(struct inode *dir,
 
 int ocfs2_calc_xattr_init(struct inode *dir,
 			  struct buffer_head *dir_bh,
-			  umode_t mode,
+			  int mode,
 			  struct ocfs2_security_xattr_info *si,
 			  int *want_clusters,
 			  int *xattr_credits,

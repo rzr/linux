@@ -18,7 +18,6 @@
 #include "idmap.h"
 #include "nfsd.h"
 #include "cache.h"
-#include "fault_inject.h"
 
 /*
  *	We have a single directory with several nodes in it.
@@ -273,7 +272,7 @@ static ssize_t write_unlock_fs(struct file *file, char *buf, size_t size)
 	 * 2.  Is that directory a mount point, or
 	 * 3.  Is that directory the root of an exported file system?
 	 */
-	error = nlmsvc_unlock_all_by_sb(path.dentry->d_sb);
+	error = nlmsvc_unlock_all_by_sb(path.mnt->mnt_sb);
 
 	path_put(&path);
 	return error;
@@ -1129,13 +1128,9 @@ static int __init init_nfsd(void)
 	int retval;
 	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
 
-	retval = nfsd4_init_slabs();
+	retval = nfs4_state_init(); /* nfs4 locking state */
 	if (retval)
 		return retval;
-	nfs4_state_init();
-	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
-	if (retval)
-		goto out_free_slabs;
 	nfsd_stat_init();	/* Statistics */
 	retval = nfsd_reply_cache_init();
 	if (retval)
@@ -1166,8 +1161,6 @@ out_free_cache:
 	nfsd_reply_cache_shutdown();
 out_free_stat:
 	nfsd_stat_shutdown();
-	nfsd_fault_inject_cleanup();
-out_free_slabs:
 	nfsd4_free_slabs();
 	return retval;
 }
@@ -1182,7 +1175,6 @@ static void __exit exit_nfsd(void)
 	nfsd_lockd_shutdown();
 	nfsd_idmap_shutdown();
 	nfsd4_free_slabs();
-	nfsd_fault_inject_cleanup();
 	unregister_filesystem(&nfsd_fs_type);
 }
 

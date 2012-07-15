@@ -195,7 +195,7 @@ static void rxrpc_resend(struct rxrpc_call *call)
 		sp = rxrpc_skb(txb);
 
 		if (sp->need_resend) {
-			sp->need_resend = false;
+			sp->need_resend = 0;
 
 			/* each Tx packet has a new serial number */
 			sp->hdr.serial =
@@ -216,7 +216,7 @@ static void rxrpc_resend(struct rxrpc_call *call)
 		}
 
 		if (time_after_eq(jiffies + 1, sp->resend_at)) {
-			sp->need_resend = true;
+			sp->need_resend = 1;
 			resend |= 1;
 		} else if (resend & 2) {
 			if (time_before(sp->resend_at, resend_at))
@@ -265,7 +265,7 @@ static void rxrpc_resend_timer(struct rxrpc_call *call)
 		if (sp->need_resend) {
 			;
 		} else if (time_after_eq(jiffies + 1, sp->resend_at)) {
-			sp->need_resend = true;
+			sp->need_resend = 1;
 			resend |= 1;
 		} else if (resend & 2) {
 			if (time_before(sp->resend_at, resend_at))
@@ -314,11 +314,11 @@ static int rxrpc_process_soft_ACKs(struct rxrpc_call *call,
 
 		switch (sacks[loop]) {
 		case RXRPC_ACK_TYPE_ACK:
-			sp->need_resend = false;
+			sp->need_resend = 0;
 			*p_txb |= 1;
 			break;
 		case RXRPC_ACK_TYPE_NACK:
-			sp->need_resend = true;
+			sp->need_resend = 1;
 			*p_txb &= ~1;
 			resend = 1;
 			break;
@@ -344,13 +344,13 @@ static int rxrpc_process_soft_ACKs(struct rxrpc_call *call,
 
 		if (*p_txb & 1) {
 			/* packet must have been discarded */
-			sp->need_resend = true;
+			sp->need_resend = 1;
 			*p_txb &= ~1;
 			resend |= 1;
 		} else if (sp->need_resend) {
 			;
 		} else if (time_after_eq(jiffies + 1, sp->resend_at)) {
-			sp->need_resend = true;
+			sp->need_resend = 1;
 			resend |= 1;
 		} else if (resend & 2) {
 			if (time_before(sp->resend_at, resend_at))

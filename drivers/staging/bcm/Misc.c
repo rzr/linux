@@ -814,7 +814,6 @@ int reset_card_proc(PMINI_ADAPTER ps_adapter)
 	PMINI_ADAPTER Adapter = GET_BCM_ADAPTER(gblpnetdev);
 	PS_INTERFACE_ADAPTER psIntfAdapter = NULL;
 	unsigned int value = 0, uiResetValue = 0;
-	int bytes;
 
 	psIntfAdapter = ((PS_INTERFACE_ADAPTER)(ps_adapter->pvInterfaceAdapter));
 	ps_adapter->bDDRInitDone = FALSE;
@@ -849,9 +848,8 @@ int reset_card_proc(PMINI_ADAPTER ps_adapter)
 			ps_adapter->chip_id == BCS250_BC ||
 			ps_adapter->chip_id == BCS220_3) {
 
-			bytes = rdmalt(ps_adapter, HPM_CONFIG_LDO145, &value, sizeof(value));
-			if (bytes < 0) {
-				retval = bytes;
+			retval = rdmalt(ps_adapter, HPM_CONFIG_LDO145, &value, sizeof(value));
+			if (retval < 0) {
 				BCM_DEBUG_PRINT(Adapter, DBG_TYPE_PRINTK, 0, 0, "read failed with status :%d", retval);
 				goto err_exit;
 			}
@@ -864,9 +862,8 @@ int reset_card_proc(PMINI_ADAPTER ps_adapter)
 			}
 		}
 	} else {
-		bytes = rdmalt(ps_adapter, 0x0f007018, &value, sizeof(value));
-		if (bytes < 0) {
-			retval = bytes;
+		retval = rdmalt(ps_adapter, 0x0f007018, &value, sizeof(value));
+		if (retval < 0) {
 			BCM_DEBUG_PRINT(Adapter, DBG_TYPE_PRINTK, 0, 0, "read failed with status :%d", retval);
 			goto err_exit;
 		}
@@ -928,16 +925,11 @@ err_exit:
 
 int run_card_proc(PMINI_ADAPTER ps_adapter)
 {
-	int status = STATUS_SUCCESS;
-	int bytes;
-
 	unsigned int value = 0;
 	{
-		bytes = rdmalt(ps_adapter, CLOCK_RESET_CNTRL_REG_1, &value, sizeof(value));
-		if (bytes < 0) {
-			status = bytes;
+		if (rdmalt(ps_adapter, CLOCK_RESET_CNTRL_REG_1, &value, sizeof(value)) < 0) {
 			BCM_DEBUG_PRINT(ps_adapter, DBG_TYPE_INITEXIT, MP_INIT, DBG_LVL_ALL, "%s:%d\n", __func__, __LINE__);
-			return status;
+			return STATUS_FAILURE;
 		}
 
 		if (ps_adapter->bFlashBoot)
@@ -950,7 +942,7 @@ int run_card_proc(PMINI_ADAPTER ps_adapter)
 			return STATUS_FAILURE;
 		}
 	}
-	return status;
+	return STATUS_SUCCESS;
 }
 
 int InitCardAndDownloadFirmware(PMINI_ADAPTER ps_adapter)
@@ -1223,7 +1215,6 @@ static unsigned char *ReadMacAddrEEPROM(PMINI_ADAPTER Adapter, ulong dwAddress)
 	int status = 0, i = 0;
 	unsigned int temp = 0;
 	unsigned char *pucmacaddr = kmalloc(MAC_ADDRESS_SIZE, GFP_KERNEL);
-	int bytes;
 
 	if (!pucmacaddr) {
 		BCM_DEBUG_PRINT(Adapter, DBG_TYPE_PRINTK, 0, 0, "No Buffers to Read the EEPROM Address\n");
@@ -1240,9 +1231,8 @@ static unsigned char *ReadMacAddrEEPROM(PMINI_ADAPTER Adapter, ulong dwAddress)
 	}
 
 	for (i = 0; i < MAC_ADDRESS_SIZE; i++) {
-		bytes = rdmalt(Adapter, EEPROM_READ_DATA_Q_REG, &temp, sizeof(temp));
-		if (bytes < 0) {
-			status = bytes;
+		status = rdmalt(Adapter, EEPROM_READ_DATA_Q_REG, &temp, sizeof(temp));
+		if (status != STATUS_SUCCESS) {
 			BCM_DEBUG_PRINT(Adapter, DBG_TYPE_PRINTK, 0, 0, "rdm Failed..\n");
 			kfree(pucmacaddr);
 			pucmacaddr = NULL;
@@ -1584,13 +1574,11 @@ void update_per_sf_desc_cnts(PMINI_ADAPTER Adapter)
 {
 	INT iIndex = 0;
 	u32 uibuff[MAX_TARGET_DSX_BUFFERS];
-	int bytes;
 
 	if (!atomic_read(&Adapter->uiMBupdate))
 		return;
 
-	bytes = rdmaltWithLock(Adapter, TARGET_SFID_TXDESC_MAP_LOC, (PUINT)uibuff, sizeof(UINT) * MAX_TARGET_DSX_BUFFERS);
-	if (bytes < 0) {
+	if (rdmaltWithLock(Adapter, TARGET_SFID_TXDESC_MAP_LOC, (PUINT)uibuff, sizeof(UINT) * MAX_TARGET_DSX_BUFFERS) < 0) {
 		BCM_DEBUG_PRINT(Adapter, DBG_TYPE_PRINTK, 0, 0, "rdm failed\n");
 		return;
 	}

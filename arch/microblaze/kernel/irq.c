@@ -33,12 +33,11 @@ void __irq_entry do_IRQ(struct pt_regs *regs)
 	irq_enter();
 	irq = get_irq(regs);
 next_irq:
-	BUG_ON(!irq);
-	/* Substract 1 because of get_irq */
-	generic_handle_irq(irq + IRQ_OFFSET - NO_IRQ_OFFSET);
+	BUG_ON(irq == -1U);
+	generic_handle_irq(irq);
 
 	irq = get_irq(regs);
-	if (irq) {
+	if (irq != -1U) {
 		pr_debug("next irq: %d\n", irq);
 		++concurrent_irq;
 		goto next_irq;
@@ -53,13 +52,13 @@ next_irq:
   intc without any cascades or any connection that's why mapping is 1:1 */
 unsigned int irq_create_mapping(struct irq_host *host, irq_hw_number_t hwirq)
 {
-	return hwirq + IRQ_OFFSET;
+	return hwirq;
 }
 EXPORT_SYMBOL_GPL(irq_create_mapping);
 
 unsigned int irq_create_of_mapping(struct device_node *controller,
 				   const u32 *intspec, unsigned int intsize)
 {
-	return intspec[0] + IRQ_OFFSET;
+	return intspec[0];
 }
 EXPORT_SYMBOL_GPL(irq_create_of_mapping);

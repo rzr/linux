@@ -65,13 +65,6 @@ phys_addr_t memstart_addr = (phys_addr_t)~0ull;
 EXPORT_SYMBOL(memstart_addr);
 phys_addr_t kernstart_addr;
 EXPORT_SYMBOL(kernstart_addr);
-
-#ifdef CONFIG_RELOCATABLE_PPC32
-/* Used in __va()/__pa() */
-long long virt_phys_offset;
-EXPORT_SYMBOL(virt_phys_offset);
-#endif
-
 phys_addr_t lowmem_end_addr;
 
 int boot_mapsize;
@@ -141,7 +134,8 @@ void __init MMU_init(void)
 
 	if (memblock.memory.cnt > 1) {
 #ifndef CONFIG_WII
-		memblock_enforce_memory_limit(memblock.memory.regions[0].size);
+		memblock.memory.cnt = 1;
+		memblock_analyze();
 		printk(KERN_WARNING "Only using first contiguous memory region");
 #else
 		wii_memory_fixups();
@@ -164,6 +158,7 @@ void __init MMU_init(void)
 #ifndef CONFIG_HIGHMEM
 		total_memory = total_lowmem;
 		memblock_enforce_memory_limit(total_lowmem);
+		memblock_analyze();
 #endif /* CONFIG_HIGHMEM */
 	}
 

@@ -166,6 +166,7 @@ struct shared_phy_params {
 	struct phy_shim_info *physhim;
 	uint unit;
 	uint corerev;
+	uint buscorerev;
 	u16 vid;
 	u16 did;
 	uint chip;
@@ -174,6 +175,7 @@ struct shared_phy_params {
 	uint sromrev;
 	uint boardtype;
 	uint boardrev;
+	uint boardvendor;
 	u32 boardflags;
 	u32 boardflags2;
 };
@@ -181,7 +183,7 @@ struct shared_phy_params {
 
 extern struct shared_phy *wlc_phy_shared_attach(struct shared_phy_params *shp);
 extern struct brcms_phy_pub *wlc_phy_attach(struct shared_phy *sh,
-					    struct bcma_device *d11core,
+					    struct d11regs __iomem *regs,
 					    int bandtype, struct wiphy *wiphy);
 extern void wlc_phy_detach(struct brcms_phy_pub *ppi);
 

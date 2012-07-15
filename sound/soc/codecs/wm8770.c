@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <linux/of_device.h>
 #include <linux/pm.h>
+#include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -527,7 +528,7 @@ static int wm8770_set_bias_level(struct snd_soc_codec *codec,
 #define WM8770_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-static const struct snd_soc_dai_ops wm8770_dai_ops = {
+static struct snd_soc_dai_ops wm8770_dai_ops = {
 	.digital_mute = wm8770_mute,
 	.hw_params = wm8770_hw_params,
 	.set_fmt = wm8770_set_fmt,
@@ -555,7 +556,7 @@ static struct snd_soc_dai_driver wm8770_dai = {
 };
 
 #ifdef CONFIG_PM
-static int wm8770_suspend(struct snd_soc_codec *codec)
+static int wm8770_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
 	wm8770_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
@@ -690,13 +691,13 @@ static const struct of_device_id wm8770_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, wm8770_of_match);
 
+#if defined(CONFIG_SPI_MASTER)
 static int __devinit wm8770_spi_probe(struct spi_device *spi)
 {
 	struct wm8770_priv *wm8770;
 	int ret;
 
-	wm8770 = devm_kzalloc(&spi->dev, sizeof(struct wm8770_priv),
-			      GFP_KERNEL);
+	wm8770 = kzalloc(sizeof(struct wm8770_priv), GFP_KERNEL);
 	if (!wm8770)
 		return -ENOMEM;
 
@@ -705,13 +706,15 @@ static int __devinit wm8770_spi_probe(struct spi_device *spi)
 
 	ret = snd_soc_register_codec(&spi->dev,
 				     &soc_codec_dev_wm8770, &wm8770_dai, 1);
-
+	if (ret < 0)
+		kfree(wm8770);
 	return ret;
 }
 
 static int __devexit wm8770_spi_remove(struct spi_device *spi)
 {
 	snd_soc_unregister_codec(&spi->dev);
+	kfree(spi_get_drvdata(spi));
 	return 0;
 }
 
@@ -724,23 +727,28 @@ static struct spi_driver wm8770_spi_driver = {
 	.probe = wm8770_spi_probe,
 	.remove = __devexit_p(wm8770_spi_remove)
 };
+#endif
 
 static int __init wm8770_modinit(void)
 {
 	int ret = 0;
 
+#if defined(CONFIG_SPI_MASTER)
 	ret = spi_register_driver(&wm8770_spi_driver);
 	if (ret) {
 		printk(KERN_ERR "Failed to register wm8770 SPI driver: %d\n",
 		       ret);
 	}
+#endif
 	return ret;
 }
 module_init(wm8770_modinit);
 
 static void __exit wm8770_exit(void)
 {
+#if defined(CONFIG_SPI_MASTER)
 	spi_unregister_driver(&wm8770_spi_driver);
+#endif
 }
 module_exit(wm8770_exit);
 

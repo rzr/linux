@@ -151,7 +151,7 @@ static int max2165_set_bandwidth(struct max2165_priv *priv, u32 bw)
 {
 	u8 val;
 
-	if (bw == 8000000)
+	if (bw == BANDWIDTH_8_MHZ)
 		val = priv->bb_filter_8mhz_cfg;
 	else
 		val = priv->bb_filter_7mhz_cfg;
@@ -257,28 +257,39 @@ static void max2165_debug_status(struct max2165_priv *priv)
 	dprintk("VCO: %d, VCO Sub-band: %d, ADC: %d\n", vco, vco_sub_band, adc);
 }
 
-static int max2165_set_params(struct dvb_frontend *fe)
+static int max2165_set_params(struct dvb_frontend *fe,
+	struct dvb_frontend_parameters *params)
 {
 	struct max2165_priv *priv = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
-	switch (c->bandwidth_hz) {
-	case 7000000:
-	case 8000000:
-		priv->frequency = c->frequency;
-		break;
-	default:
-		printk(KERN_INFO "MAX2165: bandwidth %d Hz not supported.\n",
-		       c->bandwidth_hz);
+	dprintk("%s() frequency=%d (Hz)\n", __func__, params->frequency);
+	if (fe->ops.info.type == FE_ATSC) {
+			return -EINVAL;
+	} else if (fe->ops.info.type == FE_OFDM) {
+		dprintk("%s() OFDM\n", __func__);
+		switch (params->u.ofdm.bandwidth) {
+		case BANDWIDTH_6_MHZ:
+			return -EINVAL;
+		case BANDWIDTH_7_MHZ:
+		case BANDWIDTH_8_MHZ:
+			priv->frequency = params->frequency;
+			priv->bandwidth = params->u.ofdm.bandwidth;
+			break;
+		default:
+			printk(KERN_ERR "MAX2165 bandwidth not set!\n");
+			return -EINVAL;
+		}
+	} else {
+		printk(KERN_ERR "MAX2165 modulation type not supported!\n");
 		return -EINVAL;
 	}
 
-	dprintk("%s() frequency=%d\n", __func__, c->frequency);
+	dprintk("%s() frequency=%d\n", __func__, priv->frequency);
 
 	if (fe->ops.i2c_gate_ctrl)
 		fe->ops.i2c_gate_ctrl(fe, 1);
-	max2165_set_bandwidth(priv, c->bandwidth_hz);
+	max2165_set_bandwidth(priv, priv->bandwidth);
 	ret = max2165_set_rf(priv, priv->frequency);
 	mdelay(50);
 	max2165_debug_status(priv);
@@ -359,7 +370,7 @@ static int max2165_init(struct dvb_frontend *fe)
 
 	max2165_read_rom_table(priv);
 
-	max2165_set_bandwidth(priv, 8000000);
+	max2165_set_bandwidth(priv, BANDWIDTH_8_MHZ);
 
 	if (fe->ops.i2c_gate_ctrl)
 			fe->ops.i2c_gate_ctrl(fe, 0);

@@ -25,7 +25,6 @@
 #include <linux/input.h>
 #include <linux/pwm_backlight.h>
 
-#include <asm/hardware/vic.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
@@ -43,6 +42,7 @@
 #include <plat/clock.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
+#include <plat/s5pc100.h>
 #include <plat/fb.h>
 #include <plat/iic.h>
 #include <plat/ata.h>
@@ -52,8 +52,6 @@
 #include <plat/audio.h>
 #include <plat/backlight.h>
 #include <plat/regs-fb-v4.h>
-
-#include "common.h"
 
 /* Following are default values for UCON, ULCON and UFCON UART registers */
 #define SMDKC100_UCON_DEFAULT	(S3C2410_UCON_TXILEVEL |	\
@@ -217,7 +215,7 @@ static struct platform_pwm_backlight_data smdkc100_bl_data = {
 
 static void __init smdkc100_map_io(void)
 {
-	s5pc100_init_io(NULL, 0);
+	s5p_init_io(NULL, 0, S5P_VA_CHIPID);
 	s3c24xx_init_clocks(12000000);
 	s3c24xx_init_uarts(smdkc100_uartcfgs, ARRAY_SIZE(smdkc100_uartcfgs));
 }
@@ -252,9 +250,7 @@ MACHINE_START(SMDKC100, "SMDKC100")
 	/* Maintainer: Byungho Min <bhmin@samsung.com> */
 	.atag_offset	= 0x100,
 	.init_irq	= s5pc100_init_irq,
-	.handle_irq	= vic_handle_irq,
 	.map_io		= smdkc100_map_io,
 	.init_machine	= smdkc100_machine_init,
 	.timer		= &s3c24xx_timer,
-	.restart	= s5pc100_restart,
 MACHINE_END

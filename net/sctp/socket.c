@@ -804,7 +804,7 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
 				struct sockaddr_in6 *sin6;
 
 				sin6 = (struct sockaddr_in6 *)addrs;
-				asoc->asconf_addr_del_pending->v6.sin6_addr = sin6->sin6_addr;
+				ipv6_addr_copy(&asoc->asconf_addr_del_pending->v6.sin6_addr, &sin6->sin6_addr);
 			}
 			SCTP_DEBUG_PRINTK_IPADDR("send_asconf_del_ip: keep the last address asoc: %p ",
 			    " at %p\n", asoc, asoc->asconf_addr_del_pending,
@@ -6840,7 +6840,7 @@ struct proto sctp_prot = {
 	.sockets_allocated = &sctp_sockets_allocated,
 };
 
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 
 struct proto sctpv6_prot = {
 	.name		= "SCTPv6",
@@ -6871,4 +6871,4 @@ struct proto sctpv6_prot = {
 	.memory_allocated = &sctp_memory_allocated,
 	.sockets_allocated = &sctp_sockets_allocated,
 };
-#endif /* IS_ENABLED(CONFIG_IPV6) */
+#endif /* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */

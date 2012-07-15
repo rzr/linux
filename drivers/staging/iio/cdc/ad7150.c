@@ -15,7 +15,7 @@
 
 #include "../iio.h"
 #include "../sysfs.h"
-#include "../events.h"
+
 /*
  * AD7150 registers definition
  */
@@ -111,7 +111,7 @@ static int ad7150_read_raw(struct iio_dev *indio_dev,
 			return ret;
 		*val = swab16(ret);
 		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_AVERAGE_RAW:
+	case (1 << IIO_CHAN_INFO_AVERAGE_RAW_SEPARATE):
 		ret = i2c_smbus_read_word_data(chip->client,
 					ad7150_addresses[chan->channel][1]);
 		if (ret < 0)
@@ -429,7 +429,7 @@ static const struct iio_chan_spec ad7150_channels[] = {
 		.type = IIO_CAPACITANCE,
 		.indexed = 1,
 		.channel = 0,
-		.info_mask = IIO_CHAN_INFO_AVERAGE_RAW_SEPARATE_BIT,
+		.info_mask = (1 << IIO_CHAN_INFO_AVERAGE_RAW_SEPARATE),
 		.event_mask =
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) |
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING) |
@@ -441,7 +441,7 @@ static const struct iio_chan_spec ad7150_channels[] = {
 		.type = IIO_CAPACITANCE,
 		.indexed = 1,
 		.channel = 1,
-		.info_mask = IIO_CHAN_INFO_AVERAGE_RAW_SEPARATE_BIT,
+		.info_mask = (1 << IIO_CHAN_INFO_AVERAGE_RAW_SEPARATE),
 		.event_mask =
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) |
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING) |
@@ -657,8 +657,20 @@ static struct i2c_driver ad7150_driver = {
 	.remove = __devexit_p(ad7150_remove),
 	.id_table = ad7150_id,
 };
-module_i2c_driver(ad7150_driver);
+
+static __init int ad7150_init(void)
+{
+	return i2c_add_driver(&ad7150_driver);
+}
+
+static __exit void ad7150_exit(void)
+{
+	i2c_del_driver(&ad7150_driver);
+}
 
 MODULE_AUTHOR("Barry Song <21cnbao@gmail.com>");
 MODULE_DESCRIPTION("Analog Devices AD7150/1/6 capacitive sensor driver");
 MODULE_LICENSE("GPL v2");
+
+module_init(ad7150_init);
+module_exit(ad7150_exit);

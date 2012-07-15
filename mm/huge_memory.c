@@ -487,68 +487,41 @@ static struct attribute_group khugepaged_attr_group = {
 	.attrs = khugepaged_attr,
 	.name = "khugepaged",
 };
-
-static int __init hugepage_init_sysfs(struct kobject **hugepage_kobj)
-{
-	int err;
-
-	*hugepage_kobj = kobject_create_and_add("transparent_hugepage", mm_kobj);
-	if (unlikely(!*hugepage_kobj)) {
-		printk(KERN_ERR "hugepage: failed kobject create\n");
-		return -ENOMEM;
-	}
-
-	err = sysfs_create_group(*hugepage_kobj, &hugepage_attr_group);
-	if (err) {
-		printk(KERN_ERR "hugepage: failed register hugeage group\n");
-		goto delete_obj;
-	}
-
-	err = sysfs_create_group(*hugepage_kobj, &khugepaged_attr_group);
-	if (err) {
-		printk(KERN_ERR "hugepage: failed register hugeage group\n");
-		goto remove_hp_group;
-	}
-
-	return 0;
-
-remove_hp_group:
-	sysfs_remove_group(*hugepage_kobj, &hugepage_attr_group);
-delete_obj:
-	kobject_put(*hugepage_kobj);
-	return err;
-}
-
-static void __init hugepage_exit_sysfs(struct kobject *hugepage_kobj)
-{
-	sysfs_remove_group(hugepage_kobj, &khugepaged_attr_group);
-	sysfs_remove_group(hugepage_kobj, &hugepage_attr_group);
-	kobject_put(hugepage_kobj);
-}
-#else
-static inline int hugepage_init_sysfs(struct kobject **hugepage_kobj)
-{
-	return 0;
-}
-
-static inline void hugepage_exit_sysfs(struct kobject *hugepage_kobj)
-{
-}
 #endif /* CONFIG_SYSFS */
 
 static int __init hugepage_init(void)
 {
 	int err;
-	struct kobject *hugepage_kobj;
+#ifdef CONFIG_SYSFS
+	static struct kobject *hugepage_kobj;
+#endif
 
+	err = -EINVAL;
 	if (!has_transparent_hugepage()) {
 		transparent_hugepage_flags = 0;
-		return -EINVAL;
+		goto out;
 	}
 
-	err = hugepage_init_sysfs(&hugepage_kobj);
-	if (err)
-		return err;
+#ifdef CONFIG_SYSFS
+	err = -ENOMEM;
+	hugepage_kobj = kobject_create_and_add("transparent_hugepage", mm_kobj);
+	if (unlikely(!hugepage_kobj)) {
+		printk(KERN_ERR "hugepage: failed kobject create\n");
+		goto out;
+	}
+
+	err = sysfs_create_group(hugepage_kobj, &hugepage_attr_group);
+	if (err) {
+		printk(KERN_ERR "hugepage: failed register hugeage group\n");
+		goto out;
+	}
+
+	err = sysfs_create_group(hugepage_kobj, &khugepaged_attr_group);
+	if (err) {
+		printk(KERN_ERR "hugepage: failed register hugeage group\n");
+		goto out;
+	}
+#endif
 
 	err = khugepaged_slab_init();
 	if (err)
@@ -572,9 +545,7 @@ static int __init hugepage_init(void)
 
 	set_recommended_min_free_kbytes();
 
-	return 0;
 out:
-	hugepage_exit_sysfs(hugepage_kobj);
 	return err;
 }
 module_init(hugepage_init)
@@ -1027,7 +998,7 @@ out:
 }
 
 int zap_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
-		 pmd_t *pmd, unsigned long addr)
+		 pmd_t *pmd)
 {
 	int ret = 0;
 
@@ -1043,7 +1014,6 @@ int zap_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
 			pgtable = get_pmd_huge_pte(tlb->mm);
 			page = pmd_page(*pmd);
 			pmd_clear(pmd);
-			tlb_remove_pmd_tlb_entry(tlb, pmd, addr);
 			page_remove_rmap(page);
 			VM_BUG_ON(page_mapcount(page) < 0);
 			add_mm_counter(tlb->mm, MM_ANONPAGES, -HPAGE_PMD_NR);
@@ -1148,6 +1118,7 @@ int change_huge_pmd(struct vm_area_struct *vma, pmd_t *pmd,
 			entry = pmd_modify(entry, newprot);
 			set_pmd_at(mm, addr, pmd, entry);
 			spin_unlock(&vma->vm_mm->page_table_lock);
+			flush_tlb_range(vma, addr, addr + HPAGE_PMD_SIZE);
 			ret = 1;
 		}
 	} else
@@ -1230,16 +1201,16 @@ static int __split_huge_page_splitting(struct page *page,
 static void __split_huge_page_refcount(struct page *page)
 {
 	int i;
+	unsigned long head_index = page->index;
 	struct zone *zone = page_zone(page);
+	int zonestat;
 	int tail_count = 0;
 
 	/* prevent PageLRU to go away from under us, and freeze lru stats */
 	spin_lock_irq(&zone->lru_lock);
 	compound_lock(page);
-	/* complete memcg works before add pages to LRU */
-	mem_cgroup_split_huge_fixup(page);
 
-	for (i = HPAGE_PMD_NR - 1; i >= 1; i--) {
+	for (i = 1; i < HPAGE_PMD_NR; i++) {
 		struct page *page_tail = page + i;
 
 		/* tail_page->_mapcount cannot change */
@@ -1302,13 +1273,14 @@ static void __split_huge_page_refcount(struct page *page)
 		BUG_ON(page_tail->mapping);
 		page_tail->mapping = page->mapping;
 
-		page_tail->index = page->index + i;
+		page_tail->index = ++head_index;
 
 		BUG_ON(!PageAnon(page_tail));
 		BUG_ON(!PageUptodate(page_tail));
 		BUG_ON(!PageDirty(page_tail));
 		BUG_ON(!PageSwapBacked(page_tail));
 
+		mem_cgroup_split_huge_fixup(page, page_tail);
 
 		lru_add_page_tail(zone, page, page_tail);
 	}
@@ -1317,6 +1289,15 @@ static void __split_huge_page_refcount(struct page *page)
 
 	__dec_zone_page_state(page, NR_ANON_TRANSPARENT_HUGEPAGES);
 	__mod_zone_page_state(zone, NR_ANON_PAGES, HPAGE_PMD_NR);
+
+	/*
+	 * A hugepage counts for HPAGE_PMD_NR pages on the LRU statistics,
+	 * so adjust those appropriately if this page is on the LRU.
+	 */
+	if (PageLRU(page)) {
+		zonestat = NR_LRU_BASE + page_lru(page);
+		__mod_zone_page_state(zone, zonestat, -(HPAGE_PMD_NR-1));
+	}
 
 	ClearPageCompound(page);
 	compound_unlock(page);

@@ -338,7 +338,18 @@ static struct platform_driver of_flash_driver = {
 	.remove		= of_flash_remove,
 };
 
-module_platform_driver(of_flash_driver);
+static int __init of_flash_init(void)
+{
+	return platform_driver_register(&of_flash_driver);
+}
+
+static void __exit of_flash_exit(void)
+{
+	platform_driver_unregister(&of_flash_driver);
+}
+
+module_init(of_flash_init);
+module_exit(of_flash_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Vitaly Wool <vwool@ru.mvista.com>");

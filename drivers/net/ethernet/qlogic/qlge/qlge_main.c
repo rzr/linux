@@ -2307,7 +2307,7 @@ static int ql_napi_poll_msix(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
-static void qlge_vlan_mode(struct net_device *ndev, netdev_features_t features)
+static void qlge_vlan_mode(struct net_device *ndev, u32 features)
 {
 	struct ql_adapter *qdev = netdev_priv(ndev);
 
@@ -2323,8 +2323,7 @@ static void qlge_vlan_mode(struct net_device *ndev, netdev_features_t features)
 	}
 }
 
-static netdev_features_t qlge_fix_features(struct net_device *ndev,
-	netdev_features_t features)
+static u32 qlge_fix_features(struct net_device *ndev, u32 features)
 {
 	/*
 	 * Since there is no support for separate rx/tx vlan accel
@@ -2338,10 +2337,9 @@ static netdev_features_t qlge_fix_features(struct net_device *ndev,
 	return features;
 }
 
-static int qlge_set_features(struct net_device *ndev,
-	netdev_features_t features)
+static int qlge_set_features(struct net_device *ndev, u32 features)
 {
-	netdev_features_t changed = ndev->features ^ features;
+	u32 changed = ndev->features ^ features;
 
 	if (changed & NETIF_F_HW_VLAN_RX)
 		qlge_vlan_mode(ndev, features);
@@ -2349,66 +2347,56 @@ static int qlge_set_features(struct net_device *ndev,
 	return 0;
 }
 
-static int __qlge_vlan_rx_add_vid(struct ql_adapter *qdev, u16 vid)
+static void __qlge_vlan_rx_add_vid(struct ql_adapter *qdev, u16 vid)
 {
 	u32 enable_bit = MAC_ADDR_E;
-	int err;
 
-	err = ql_set_mac_addr_reg(qdev, (u8 *) &enable_bit,
-				  MAC_ADDR_TYPE_VLAN, vid);
-	if (err)
+	if (ql_set_mac_addr_reg
+	    (qdev, (u8 *) &enable_bit, MAC_ADDR_TYPE_VLAN, vid)) {
 		netif_err(qdev, ifup, qdev->ndev,
 			  "Failed to init vlan address.\n");
-	return err;
+	}
 }
 
-static int qlge_vlan_rx_add_vid(struct net_device *ndev, u16 vid)
+static void qlge_vlan_rx_add_vid(struct net_device *ndev, u16 vid)
 {
 	struct ql_adapter *qdev = netdev_priv(ndev);
 	int status;
-	int err;
 
 	status = ql_sem_spinlock(qdev, SEM_MAC_ADDR_MASK);
 	if (status)
-		return status;
+		return;
 
-	err = __qlge_vlan_rx_add_vid(qdev, vid);
+	__qlge_vlan_rx_add_vid(qdev, vid);
 	set_bit(vid, qdev->active_vlans);
 
 	ql_sem_unlock(qdev, SEM_MAC_ADDR_MASK);
-
-	return err;
 }
 
-static int __qlge_vlan_rx_kill_vid(struct ql_adapter *qdev, u16 vid)
+static void __qlge_vlan_rx_kill_vid(struct ql_adapter *qdev, u16 vid)
 {
 	u32 enable_bit = 0;
-	int err;
 
-	err = ql_set_mac_addr_reg(qdev, (u8 *) &enable_bit,
-				  MAC_ADDR_TYPE_VLAN, vid);
-	if (err)
+	if (ql_set_mac_addr_reg
+	    (qdev, (u8 *) &enable_bit, MAC_ADDR_TYPE_VLAN, vid)) {
 		netif_err(qdev, ifup, qdev->ndev,
 			  "Failed to clear vlan address.\n");
-	return err;
+	}
 }
 
-static int qlge_vlan_rx_kill_vid(struct net_device *ndev, u16 vid)
+static void qlge_vlan_rx_kill_vid(struct net_device *ndev, u16 vid)
 {
 	struct ql_adapter *qdev = netdev_priv(ndev);
 	int status;
-	int err;
 
 	status = ql_sem_spinlock(qdev, SEM_MAC_ADDR_MASK);
 	if (status)
-		return status;
+		return;
 
-	err = __qlge_vlan_rx_kill_vid(qdev, vid);
+	__qlge_vlan_rx_kill_vid(qdev, vid);
 	clear_bit(vid, qdev->active_vlans);
 
 	ql_sem_unlock(qdev, SEM_MAC_ADDR_MASK);
-
-	return err;
 }
 
 static void qlge_restore_vlan(struct ql_adapter *qdev)

@@ -872,7 +872,8 @@ static int __cpuinit detect_cache_attributes(unsigned int cpu)
 
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
-#include <linux/cpu.h>
+
+extern struct sysdev_class cpu_sysdev_class; /* from drivers/base/cpu.c */
 
 /* pointer to kobject for cpuX/cache */
 static DEFINE_PER_CPU(struct kobject *, ici_cache_kobject);
@@ -1100,9 +1101,9 @@ err_out:
 static DECLARE_BITMAP(cache_dev_map, NR_CPUS);
 
 /* Add/Remove cache interface for CPU device */
-static int __cpuinit cache_add_dev(struct device *dev)
+static int __cpuinit cache_add_dev(struct sys_device * sys_dev)
 {
-	unsigned int cpu = dev->id;
+	unsigned int cpu = sys_dev->id;
 	unsigned long i, j;
 	struct _index_kobject *this_object;
 	struct _cpuid4_info   *this_leaf;
@@ -1114,7 +1115,7 @@ static int __cpuinit cache_add_dev(struct device *dev)
 
 	retval = kobject_init_and_add(per_cpu(ici_cache_kobject, cpu),
 				      &ktype_percpu_entry,
-				      &dev->kobj, "%s", "cache");
+				      &sys_dev->kobj, "%s", "cache");
 	if (retval < 0) {
 		cpuid4_cache_sysfs_exit(cpu);
 		return retval;
@@ -1151,9 +1152,9 @@ static int __cpuinit cache_add_dev(struct device *dev)
 	return 0;
 }
 
-static void __cpuinit cache_remove_dev(struct device *dev)
+static void __cpuinit cache_remove_dev(struct sys_device * sys_dev)
 {
-	unsigned int cpu = dev->id;
+	unsigned int cpu = sys_dev->id;
 	unsigned long i;
 
 	if (per_cpu(ici_cpuid4_info, cpu) == NULL)
@@ -1172,17 +1173,17 @@ static int __cpuinit cacheinfo_cpu_callback(struct notifier_block *nfb,
 					unsigned long action, void *hcpu)
 {
 	unsigned int cpu = (unsigned long)hcpu;
-	struct device *dev;
+	struct sys_device *sys_dev;
 
-	dev = get_cpu_device(cpu);
+	sys_dev = get_cpu_sysdev(cpu);
 	switch (action) {
 	case CPU_ONLINE:
 	case CPU_ONLINE_FROZEN:
-		cache_add_dev(dev);
+		cache_add_dev(sys_dev);
 		break;
 	case CPU_DEAD:
 	case CPU_DEAD_FROZEN:
-		cache_remove_dev(dev);
+		cache_remove_dev(sys_dev);
 		break;
 	}
 	return NOTIFY_OK;
@@ -1201,9 +1202,9 @@ static int __cpuinit cache_sysfs_init(void)
 
 	for_each_online_cpu(i) {
 		int err;
-		struct device *dev = get_cpu_device(i);
+		struct sys_device *sys_dev = get_cpu_sysdev(i);
 
-		err = cache_add_dev(dev);
+		err = cache_add_dev(sys_dev);
 		if (err)
 			return err;
 	}

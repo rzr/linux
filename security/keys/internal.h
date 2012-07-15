@@ -33,7 +33,6 @@
 
 extern struct key_type key_type_dead;
 extern struct key_type key_type_user;
-extern struct key_type key_type_logon;
 
 /*****************************************************************************/
 /*

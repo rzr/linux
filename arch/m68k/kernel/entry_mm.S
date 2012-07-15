@@ -99,8 +99,7 @@ do_trace_exit:
 	jra	.Lret_from_exception
 
 ENTRY(ret_from_signal)
-	movel	%curptr@(TASK_STACK),%a1
-	tstb	%a1@(TINFO_FLAGS+2)
+	tstb	%curptr@(TASK_INFO+TINFO_FLAGS+2)
 	jge	1f
 	jbsr	syscall_trace
 1:	RESTORE_SWITCH_STACK
@@ -121,13 +120,11 @@ ENTRY(system_call)
 	SAVE_ALL_SYS
 
 	GET_CURRENT(%d1)
-	movel	%d1,%a1
-
 	| save top of frame
 	movel	%sp,%curptr@(TASK_THREAD+THREAD_ESP0)
 
 	| syscall trace?
-	tstb	%a1@(TINFO_FLAGS+2)
+	tstb	%curptr@(TASK_INFO+TINFO_FLAGS+2)
 	jmi	do_trace_entry
 	cmpl	#NR_syscalls,%d0
 	jcc	badsys
@@ -136,8 +133,7 @@ syscall:
 	movel	%d0,%sp@(PT_OFF_D0)	| save the return value
 ret_from_syscall:
 	|oriw	#0x0700,%sr
-	movel	%curptr@(TASK_STACK),%a1
-	movew	%a1@(TINFO_FLAGS+2),%d0
+	movew	%curptr@(TASK_INFO+TINFO_FLAGS+2),%d0
 	jne	syscall_exit_work
 1:	RESTORE_ALL
 
@@ -163,8 +159,7 @@ ENTRY(ret_from_exception)
 	andw	#ALLOWINT,%sr
 
 resume_userspace:
-	movel	%curptr@(TASK_STACK),%a1
-	moveb	%a1@(TINFO_FLAGS+3),%d0
+	moveb	%curptr@(TASK_INFO+TINFO_FLAGS+3),%d0
 	jne	exit_work
 1:	RESTORE_ALL
 
@@ -204,8 +199,7 @@ do_delayed_trace:
 ENTRY(auto_inthandler)
 	SAVE_ALL_INT
 	GET_CURRENT(%d0)
-	movel	%d0,%a1
-	addqb	#1,%a1@(TINFO_PREEMPT+1)
+	addqb	#1,%curptr@(TASK_INFO+TINFO_PREEMPT+1)
 					|  put exception # in d0
 	bfextu	%sp@(PT_OFF_FORMATVEC){#4,#10},%d0
 	subw	#VEC_SPUR,%d0
@@ -217,8 +211,7 @@ auto_irqhandler_fixup = . + 2
 	addql	#8,%sp			|  pop parameters off stack
 
 ret_from_interrupt:
-	movel	%curptr@(TASK_STACK),%a1
-	subqb	#1,%a1@(TINFO_PREEMPT+1)
+	subqb	#1,%curptr@(TASK_INFO+TINFO_PREEMPT+1)
 	jeq	ret_from_last_interrupt
 2:	RESTORE_ALL
 
@@ -239,8 +232,7 @@ ret_from_last_interrupt:
 ENTRY(user_inthandler)
 	SAVE_ALL_INT
 	GET_CURRENT(%d0)
-	movel	%d0,%a1
-	addqb	#1,%a1@(TINFO_PREEMPT+1)
+	addqb	#1,%curptr@(TASK_INFO+TINFO_PREEMPT+1)
 					|  put exception # in d0
 	bfextu	%sp@(PT_OFF_FORMATVEC){#4,#10},%d0
 user_irqvec_fixup = . + 2
@@ -251,8 +243,7 @@ user_irqvec_fixup = . + 2
 	jsr	do_IRQ			|  process the IRQ
 	addql	#8,%sp			|  pop parameters off stack
 
-	movel	%curptr@(TASK_STACK),%a1
-	subqb	#1,%a1@(TINFO_PREEMPT+1)
+	subqb	#1,%curptr@(TASK_INFO+TINFO_PREEMPT+1)
 	jeq	ret_from_last_interrupt
 	RESTORE_ALL
 
@@ -261,15 +252,13 @@ user_irqvec_fixup = . + 2
 ENTRY(bad_inthandler)
 	SAVE_ALL_INT
 	GET_CURRENT(%d0)
-	movel	%d0,%a1
-	addqb	#1,%a1@(TINFO_PREEMPT+1)
+	addqb	#1,%curptr@(TASK_INFO+TINFO_PREEMPT+1)
 
 	movel	%sp,%sp@-
 	jsr	handle_badint
 	addql	#4,%sp
 
-	movel	%curptr@(TASK_STACK),%a1
-	subqb	#1,%a1@(TINFO_PREEMPT+1)
+	subqb	#1,%curptr@(TASK_INFO+TINFO_PREEMPT+1)
 	jeq	ret_from_last_interrupt
 	RESTORE_ALL
 

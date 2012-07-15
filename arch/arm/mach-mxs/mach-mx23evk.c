@@ -184,5 +184,4 @@ MACHINE_START(MX23EVK, "Freescale MX23 EVK")
 	.init_irq	= mx23_init_irq,
 	.timer		= &mx23evk_timer,
 	.init_machine	= mx23evk_init,
-	.restart	= mxs_restart,
 MACHINE_END

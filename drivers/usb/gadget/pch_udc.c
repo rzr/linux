@@ -361,7 +361,7 @@ struct pch_udc_dev {
 static const char	ep0_string[] = "ep0in";
 static DEFINE_SPINLOCK(udc_stall_spinlock);	/* stall spin lock */
 struct pch_udc_dev *pch_udc;		/* pointer to device object */
-static bool speed_fs;
+static int speed_fs;
 module_param_named(speed_fs, speed_fs, bool, S_IRUGO);
 MODULE_PARM_DESC(speed_fs, "true for Full speed operation");
 
@@ -1536,7 +1536,6 @@ static int pch_udc_pcd_ep_disable(struct usb_ep *usbep)
 	pch_udc_ep_disable(ep);
 	pch_udc_disable_ep_interrupts(ep->dev, PCH_UDC_EPINT(ep->in, ep->num));
 	ep->desc = NULL;
-	ep->ep.desc = NULL;
 	INIT_LIST_HEAD(&ep->queue);
 	spin_unlock_irqrestore(&ep->dev->lock, iflags);
 	return 0;
@@ -2769,7 +2768,7 @@ static int pch_udc_start(struct usb_gadget_driver *driver,
 	struct pch_udc_dev	*dev = pch_udc;
 	int			retval;
 
-	if (!driver || (driver->max_speed == USB_SPEED_UNKNOWN) || !bind ||
+	if (!driver || (driver->speed == USB_SPEED_UNKNOWN) || !bind ||
 	    !driver->setup || !driver->unbind || !driver->disconnect) {
 		dev_err(&dev->pdev->dev,
 			"%s: invalid driver parameter\n", __func__);
@@ -3019,7 +3018,7 @@ static int pch_udc_probe(struct pci_dev *pdev,
 	dev->gadget.dev.dma_mask = pdev->dev.dma_mask;
 	dev->gadget.dev.release = gadget_release;
 	dev->gadget.name = KBUILD_MODNAME;
-	dev->gadget.max_speed = USB_SPEED_HIGH;
+	dev->gadget.is_dualspeed = 1;
 
 	retval = device_register(&dev->gadget.dev);
 	if (retval)

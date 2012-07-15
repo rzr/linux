@@ -401,6 +401,4 @@
 #include <asm/smsc911x.h>
 #endif
 
-#include <linux/smscphy.h>
-
 #endif				/* __SMSC911X_H__ */

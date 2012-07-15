@@ -441,4 +441,15 @@ static struct platform_driver driver = {
 	},
 };
 
-module_platform_driver(driver);
+static int __init sh_dac_init(void)
+{
+	return platform_driver_register(&driver);
+}
+
+static void __exit sh_dac_exit(void)
+{
+	platform_driver_unregister(&driver);
+}
+
+module_init(sh_dac_init);
+module_exit(sh_dac_exit);

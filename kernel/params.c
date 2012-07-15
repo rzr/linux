@@ -25,6 +25,12 @@
 #include <linux/slab.h>
 #include <linux/ctype.h>
 
+#if 0
+#define DEBUGP printk
+#else
+#define DEBUGP(fmt, a...)
+#endif
+
 /* Protects all parameters, and incidentally kmalloced_param list. */
 static DEFINE_MUTEX(param_lock);
 
@@ -97,10 +103,9 @@ static int parse_one(char *param,
 	for (i = 0; i < num_params; i++) {
 		if (parameq(param, params[i].name)) {
 			/* No one handled NULL, so do it here. */
-			if (!val && params[i].ops->set != param_set_bool
-			    && params[i].ops->set != param_set_bint)
+			if (!val && params[i].ops->set != param_set_bool)
 				return -EINVAL;
-			pr_debug("They are equal!  Calling %p\n",
+			DEBUGP("They are equal!  Calling %p\n",
 			       params[i].ops->set);
 			mutex_lock(&param_lock);
 			err = params[i].ops->set(val, &params[i]);
@@ -110,11 +115,11 @@ static int parse_one(char *param,
 	}
 
 	if (handle_unknown) {
-		pr_debug("Unknown argument: calling %p\n", handle_unknown);
+		DEBUGP("Unknown argument: calling %p\n", handle_unknown);
 		return handle_unknown(param, val);
 	}
 
-	pr_debug("Unknown argument `%s'\n", param);
+	DEBUGP("Unknown argument `%s'\n", param);
 	return -ENOENT;
 }
 
@@ -179,7 +184,7 @@ int parse_args(const char *name,
 {
 	char *param, *val;
 
-	pr_debug("Parsing ARGS: %s\n", args);
+	DEBUGP("Parsing ARGS: %s\n", args);
 
 	/* Chew leading spaces */
 	args = skip_spaces(args);
@@ -363,30 +368,6 @@ struct kernel_param_ops param_ops_invbool = {
 	.get = param_get_invbool,
 };
 EXPORT_SYMBOL(param_ops_invbool);
-
-int param_set_bint(const char *val, const struct kernel_param *kp)
-{
-	struct kernel_param boolkp;
-	bool v;
-	int ret;
-
-	/* Match bool exactly, by re-using it. */
-	boolkp = *kp;
-	boolkp.arg = &v;
-	boolkp.flags |= KPARAM_ISBOOL;
-
-	ret = param_set_bool(val, &boolkp);
-	if (ret == 0)
-		*(int *)kp->arg = v;
-	return ret;
-}
-EXPORT_SYMBOL(param_set_bint);
-
-struct kernel_param_ops param_ops_bint = {
-	.set = param_set_bint,
-	.get = param_get_int,
-};
-EXPORT_SYMBOL(param_ops_bint);
 
 /* We break the rule and mangle the string. */
 static int param_array(const char *name,

@@ -32,12 +32,9 @@ void __init prom_init(void)
 		mask = CKCTL_6345_ALL_SAFE_EN;
 	else if (BCMCPU_IS_6348())
 		mask = CKCTL_6348_ALL_SAFE_EN;
-	else if (BCMCPU_IS_6358())
-		mask = CKCTL_6358_ALL_SAFE_EN;
-	else if (BCMCPU_IS_6368())
-		mask = CKCTL_6368_ALL_SAFE_EN;
 	else
-		mask = 0;
+		/* BCMCPU_IS_6358() */
+		mask = CKCTL_6358_ALL_SAFE_EN;
 
 	reg = bcm_perf_readl(PERF_CKCTL_REG);
 	reg &= ~mask;

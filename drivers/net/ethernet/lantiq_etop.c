@@ -98,7 +98,6 @@ struct ltq_etop_chan {
 
 struct ltq_etop_priv {
 	struct net_device *netdev;
-	struct platform_device *pdev;
 	struct ltq_eth_data *pldata;
 	struct resource *res;
 
@@ -437,8 +436,7 @@ ltq_etop_mdio_init(struct net_device *dev)
 	priv->mii_bus->read = ltq_etop_mdio_rd;
 	priv->mii_bus->write = ltq_etop_mdio_wr;
 	priv->mii_bus->name = "ltq_mii";
-	snprintf(priv->mii_bus->id, MII_BUS_ID_SIZE, "%s-%x",
-		priv->pdev->name, priv->pdev->id);
+	snprintf(priv->mii_bus->id, MII_BUS_ID_SIZE, "%x", 0);
 	priv->mii_bus->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
 	if (!priv->mii_bus->irq) {
 		err = -ENOMEM;
@@ -736,7 +734,6 @@ ltq_etop_probe(struct platform_device *pdev)
 	dev->ethtool_ops = &ltq_etop_ethtool_ops;
 	priv = netdev_priv(dev);
 	priv->res = res;
-	priv->pdev = pdev;
 	priv->pldata = dev_get_platdata(&pdev->dev);
 	priv->netdev = dev;
 	spin_lock_init(&priv->lock);

@@ -85,9 +85,7 @@ struct recv_desc_bufs
 struct at91_private
 {
 	struct mii_if_info mii;			/* ethtool support */
-	struct macb_platform_data board_data;	/* board-specific
-						 * configuration (shared with
-						 * macb for common data */
+	struct at91_eth_data board_data;	/* board-specific configuration */
 	struct clk *ether_clk;			/* clock */
 
 	/* PHY */

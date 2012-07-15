@@ -558,7 +558,6 @@ static int at91_ep_disable (struct usb_ep * _ep)
 
 	/* restore the endpoint's pristine config */
 	ep->desc = NULL;
-	ep->ep.desc = NULL;
 	ep->ep.maxpacket = ep->maxpacket;
 
 	/* reset fifos and endpoint */
@@ -1634,7 +1633,7 @@ static int at91_start(struct usb_gadget_driver *driver,
 	unsigned long	flags;
 
 	if (!driver
-			|| driver->max_speed < USB_SPEED_FULL
+			|| driver->speed < USB_SPEED_FULL
 			|| !bind
 			|| !driver->setup) {
 		DBG("bad parameter.\n");
@@ -1749,7 +1748,7 @@ static int __init at91udc_probe(struct platform_device *pdev)
 
 	/* rm9200 needs manual D+ pullup; off by default */
 	if (cpu_is_at91rm9200()) {
-		if (gpio_is_valid(udc->board.pullup_pin)) {
+		if (udc->board.pullup_pin <= 0) {
 			DBG("no D+ pullup?\n");
 			retval = -ENODEV;
 			goto fail0;
@@ -1816,7 +1815,7 @@ static int __init at91udc_probe(struct platform_device *pdev)
 		DBG("request irq %d failed\n", udc->udp_irq);
 		goto fail1;
 	}
-	if (gpio_is_valid(udc->board.vbus_pin)) {
+	if (udc->board.vbus_pin > 0) {
 		retval = gpio_request(udc->board.vbus_pin, "udc_vbus");
 		if (retval < 0) {
 			DBG("request vbus pin failed\n");
@@ -1860,10 +1859,10 @@ static int __init at91udc_probe(struct platform_device *pdev)
 	INFO("%s version %s\n", driver_name, DRIVER_VERSION);
 	return 0;
 fail4:
-	if (gpio_is_valid(udc->board.vbus_pin) && !udc->board.vbus_polled)
+	if (udc->board.vbus_pin > 0 && !udc->board.vbus_polled)
 		free_irq(udc->board.vbus_pin, udc);
 fail3:
-	if (gpio_is_valid(udc->board.vbus_pin))
+	if (udc->board.vbus_pin > 0)
 		gpio_free(udc->board.vbus_pin);
 fail2:
 	free_irq(udc->udp_irq, udc);
@@ -1898,7 +1897,7 @@ static int __exit at91udc_remove(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, 0);
 	remove_debug_file(udc);
-	if (gpio_is_valid(udc->board.vbus_pin)) {
+	if (udc->board.vbus_pin > 0) {
 		free_irq(udc->board.vbus_pin, udc);
 		gpio_free(udc->board.vbus_pin);
 	}
@@ -1942,7 +1941,7 @@ static int at91udc_suspend(struct platform_device *pdev, pm_message_t mesg)
 		enable_irq_wake(udc->udp_irq);
 
 	udc->active_suspend = wake;
-	if (gpio_is_valid(udc->board.vbus_pin) && !udc->board.vbus_polled && wake)
+	if (udc->board.vbus_pin > 0 && !udc->board.vbus_polled && wake)
 		enable_irq_wake(udc->board.vbus_pin);
 	return 0;
 }
@@ -1952,7 +1951,7 @@ static int at91udc_resume(struct platform_device *pdev)
 	struct at91_udc *udc = platform_get_drvdata(pdev);
 	unsigned long	flags;
 
-	if (gpio_is_valid(udc->board.vbus_pin) && !udc->board.vbus_polled &&
+	if (udc->board.vbus_pin > 0 && !udc->board.vbus_polled &&
 	    udc->active_suspend)
 		disable_irq_wake(udc->board.vbus_pin);
 

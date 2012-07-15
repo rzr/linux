@@ -18,7 +18,6 @@
 #include <linux/smp.h>
 #include <linux/spinlock.h>
 #include <linux/mutex.h>
-#include <linux/freezer.h>
 
 #include <linux/sunrpc/clnt.h>
 
@@ -232,7 +231,7 @@ static int rpc_wait_bit_killable(void *word)
 {
 	if (fatal_signal_pending(current))
 		return -ERESTARTSYS;
-	freezable_schedule();
+	schedule();
 	return 0;
 }
 

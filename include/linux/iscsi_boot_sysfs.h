@@ -91,7 +91,7 @@ struct iscsi_boot_kobj {
 	 * The enum of the type. This can be any value of the above
 	 * properties.
 	 */
-	umode_t (*is_visible) (void *data, int type);
+	mode_t (*is_visible) (void *data, int type);
 
 	/*
 	 * Driver specific release function.
@@ -110,20 +110,20 @@ struct iscsi_boot_kobj *
 iscsi_boot_create_initiator(struct iscsi_boot_kset *boot_kset, int index,
 			    void *data,
 			    ssize_t (*show) (void *data, int type, char *buf),
-			    umode_t (*is_visible) (void *data, int type),
+			    mode_t (*is_visible) (void *data, int type),
 			    void (*release) (void *data));
 
 struct iscsi_boot_kobj *
 iscsi_boot_create_ethernet(struct iscsi_boot_kset *boot_kset, int index,
 			   void *data,
 			   ssize_t (*show) (void *data, int type, char *buf),
-			   umode_t (*is_visible) (void *data, int type),
+			   mode_t (*is_visible) (void *data, int type),
 			   void (*release) (void *data));
 struct iscsi_boot_kobj *
 iscsi_boot_create_target(struct iscsi_boot_kset *boot_kset, int index,
 			 void *data,
 			 ssize_t (*show) (void *data, int type, char *buf),
-			 umode_t (*is_visible) (void *data, int type),
+			 mode_t (*is_visible) (void *data, int type),
 			 void (*release) (void *data));
 
 struct iscsi_boot_kset *iscsi_boot_create_kset(const char *set_name);

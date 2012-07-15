@@ -23,6 +23,7 @@
 #include <linux/fsl_devices.h>
 #include <linux/serial_8250.h>
 #include <linux/i2c-tegra.h>
+#include <linux/platform_data/tegra_usb.h>
 #include <asm/pmu.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -445,18 +446,18 @@ static struct tegra_ulpi_config tegra_ehci2_ulpi_phy_config = {
 	.clk = "cdev2",
 };
 
-struct tegra_ehci_platform_data tegra_ehci1_pdata = {
+static struct tegra_ehci_platform_data tegra_ehci1_pdata = {
 	.operating_mode = TEGRA_USB_OTG,
 	.power_down_on_bus_suspend = 1,
 };
 
-struct tegra_ehci_platform_data tegra_ehci2_pdata = {
+static struct tegra_ehci_platform_data tegra_ehci2_pdata = {
 	.phy_config = &tegra_ehci2_ulpi_phy_config,
 	.operating_mode = TEGRA_USB_HOST,
 	.power_down_on_bus_suspend = 1,
 };
 
-struct tegra_ehci_platform_data tegra_ehci3_pdata = {
+static struct tegra_ehci_platform_data tegra_ehci3_pdata = {
 	.operating_mode = TEGRA_USB_HOST,
 	.power_down_on_bus_suspend = 1,
 };

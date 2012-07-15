@@ -76,7 +76,7 @@ struct usb_context {
 	struct usbnet *dev;
 };
 
-static bool turbo_mode = true;
+static int turbo_mode = true;
 module_param(turbo_mode, bool, 0644);
 MODULE_PARM_DESC(turbo_mode, "Enable multiple frames per Rx transaction");
 
@@ -728,8 +728,7 @@ static int smsc75xx_change_mtu(struct net_device *netdev, int new_mtu)
 }
 
 /* Enable or disable Rx checksum offload engine */
-static int smsc75xx_set_features(struct net_device *netdev,
-	netdev_features_t features)
+static int smsc75xx_set_features(struct net_device *netdev, u32 features)
 {
 	struct usbnet *dev = netdev_priv(netdev);
 	struct smsc75xx_priv *pdata = (struct smsc75xx_priv *)(dev->data[0]);
@@ -1239,7 +1238,17 @@ static struct usb_driver smsc75xx_driver = {
 	.disconnect	= usbnet_disconnect,
 };
 
-module_usb_driver(smsc75xx_driver);
+static int __init smsc75xx_init(void)
+{
+	return usb_register(&smsc75xx_driver);
+}
+module_init(smsc75xx_init);
+
+static void __exit smsc75xx_exit(void)
+{
+	usb_deregister(&smsc75xx_driver);
+}
+module_exit(smsc75xx_exit);
 
 MODULE_AUTHOR("Nancy Lin");
 MODULE_AUTHOR("Steve Glendinning <steve.glendinning@smsc.com>");

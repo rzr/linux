@@ -34,8 +34,8 @@
 
 /* Module definitions */
 
-static ushort resumeline = 898;
-module_param(resumeline, ushort, 0444);
+static int resumeline = 898;
+module_param(resumeline, int, 0444);
 
 /* Default off since it doesn't work on DCON ASIC in B-test OLPC board */
 static int useaa = 1;
@@ -456,7 +456,7 @@ static ssize_t dcon_mono_store(struct device *dev,
 	unsigned long enable_mono;
 	int rc;
 
-	rc = kstrtoul(buf, 10, &enable_mono);
+	rc = strict_strtoul(buf, 10, &enable_mono);
 	if (rc)
 		return rc;
 
@@ -472,7 +472,7 @@ static ssize_t dcon_freeze_store(struct device *dev,
 	unsigned long output;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &output);
+	ret = strict_strtoul(buf, 10, &output);
 	if (ret)
 		return ret;
 
@@ -498,10 +498,10 @@ static ssize_t dcon_freeze_store(struct device *dev,
 static ssize_t dcon_resumeline_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	unsigned short rl;
+	unsigned long rl;
 	int rc;
 
-	rc = kstrtou16(buf, 10, &rl);
+	rc = strict_strtoul(buf, 10, &rl);
 	if (rc)
 		return rc;
 
@@ -517,7 +517,7 @@ static ssize_t dcon_sleep_store(struct device *dev,
 	unsigned long output;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &output);
+	ret = strict_strtoul(buf, 10, &output);
 	if (ret)
 		return ret;
 
@@ -755,9 +755,9 @@ static int dcon_resume(struct i2c_client *client)
 irqreturn_t dcon_interrupt(int irq, void *id)
 {
 	struct dcon_priv *dcon = id;
-	u8 status;
+	int status = pdata->read_status();
 
-	if (pdata->read_status(&status))
+	if (status == -1)
 		return IRQ_NONE;
 
 	switch (status & 3) {

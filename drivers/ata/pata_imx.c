@@ -235,7 +235,17 @@ static struct platform_driver pata_imx_driver = {
 	},
 };
 
-module_platform_driver(pata_imx_driver);
+static int __init pata_imx_init(void)
+{
+	return platform_driver_register(&pata_imx_driver);
+}
+
+static void __exit pata_imx_exit(void)
+{
+	platform_driver_unregister(&pata_imx_driver);
+}
+module_init(pata_imx_init);
+module_exit(pata_imx_exit);
 
 MODULE_AUTHOR("Arnaud Patard <arnaud.patard@rtp-net.org>");
 MODULE_DESCRIPTION("low-level driver for iMX PATA");

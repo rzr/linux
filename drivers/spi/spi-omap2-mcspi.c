@@ -121,7 +121,6 @@ struct omap2_mcspi {
 	/* SPI1 has 4 channels, while SPI2 has 2 */
 	struct omap2_mcspi_dma	*dma_channels;
 	struct  device		*dev;
-	struct workqueue_struct *wq;
 };
 
 struct omap2_mcspi_cs {
@@ -143,6 +142,8 @@ struct omap2_mcspi_regs {
 };
 
 static struct omap2_mcspi_regs omap2_mcspi_ctx[OMAP2_MCSPI_MAX_CTRL];
+
+static struct workqueue_struct *omap2_mcspi_wq;
 
 #define MOD_REG_BIT(val, mask, set) do { \
 	if (set) \
@@ -1042,7 +1043,7 @@ static int omap2_mcspi_transfer(struct spi_device *spi, struct spi_message *m)
 
 	spin_lock_irqsave(&mcspi->lock, flags);
 	list_add_tail(&m->queue, &mcspi->msg_queue);
-	queue_work(mcspi->wq, &mcspi->work);
+	queue_work(omap2_mcspi_wq, &mcspi->work);
 	spin_unlock_irqrestore(&mcspi->lock, flags);
 
 	return 0;
@@ -1087,7 +1088,6 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 	struct omap2_mcspi	*mcspi;
 	struct resource		*r;
 	int			status = 0, i;
-	char			wq_name[20];
 
 	master = spi_alloc_master(&pdev->dev, sizeof *mcspi);
 	if (master == NULL) {
@@ -1111,17 +1111,10 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 	mcspi = spi_master_get_devdata(master);
 	mcspi->master = master;
 
-	sprintf(wq_name, "omap2_mcspi/%d", master->bus_num);
-	mcspi->wq = alloc_workqueue(wq_name, WQ_MEM_RECLAIM, 1);
-	if (mcspi->wq == NULL) {
-		status = -ENOMEM;
-		goto free_master;
-	}
-
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (r == NULL) {
 		status = -ENODEV;
-		goto free_master;
+		goto err1;
 	}
 
 	r->start += pdata->regs_offset;
@@ -1130,14 +1123,14 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 	if (!request_mem_region(r->start, resource_size(r),
 				dev_name(&pdev->dev))) {
 		status = -EBUSY;
-		goto free_master;
+		goto err1;
 	}
 
 	mcspi->base = ioremap(r->start, resource_size(r));
 	if (!mcspi->base) {
 		dev_dbg(&pdev->dev, "can't ioremap MCSPI\n");
 		status = -ENOMEM;
-		goto release_region;
+		goto err2;
 	}
 
 	mcspi->dev = &pdev->dev;
@@ -1152,7 +1145,7 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 			GFP_KERNEL);
 
 	if (mcspi->dma_channels == NULL)
-		goto unmap_io;
+		goto err2;
 
 	for (i = 0; i < master->num_chipselect; i++) {
 		char dma_ch_name[14];
@@ -1182,33 +1175,25 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 		mcspi->dma_channels[i].dma_tx_sync_dev = dma_res->start;
 	}
 
-	if (status < 0)
-		goto dma_chnl_free;
-
 	pm_runtime_enable(&pdev->dev);
 
 	if (status || omap2_mcspi_master_setup(mcspi) < 0)
-		goto disable_pm;
+		goto err3;
 
 	status = spi_register_master(master);
 	if (status < 0)
-		goto err_spi_register;
+		goto err4;
 
 	return status;
 
-err_spi_register:
+err4:
 	spi_master_put(master);
-disable_pm:
-	pm_runtime_disable(&pdev->dev);
-dma_chnl_free:
+err3:
 	kfree(mcspi->dma_channels);
-unmap_io:
-	iounmap(mcspi->base);
-release_region:
+err2:
 	release_mem_region(r->start, resource_size(r));
-free_master:
-	kfree(master);
-	platform_set_drvdata(pdev, NULL);
+	iounmap(mcspi->base);
+err1:
 	return status;
 }
 
@@ -1225,7 +1210,6 @@ static int __exit omap2_mcspi_remove(struct platform_device *pdev)
 	dma_channels = mcspi->dma_channels;
 
 	omap2_mcspi_disable_clocks(mcspi);
-	pm_runtime_disable(&pdev->dev);
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	release_mem_region(r->start, resource_size(r));
 
@@ -1233,8 +1217,6 @@ static int __exit omap2_mcspi_remove(struct platform_device *pdev)
 	spi_unregister_master(master);
 	iounmap(base);
 	kfree(dma_channels);
-	destroy_workqueue(mcspi->wq);
-	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }
@@ -1293,6 +1275,10 @@ static struct platform_driver omap2_mcspi_driver = {
 
 static int __init omap2_mcspi_init(void)
 {
+	omap2_mcspi_wq = create_singlethread_workqueue(
+				omap2_mcspi_driver.driver.name);
+	if (omap2_mcspi_wq == NULL)
+		return -1;
 	return platform_driver_probe(&omap2_mcspi_driver, omap2_mcspi_probe);
 }
 subsys_initcall(omap2_mcspi_init);
@@ -1301,6 +1287,7 @@ static void __exit omap2_mcspi_exit(void)
 {
 	platform_driver_unregister(&omap2_mcspi_driver);
 
+	destroy_workqueue(omap2_mcspi_wq);
 }
 module_exit(omap2_mcspi_exit);
 

@@ -73,7 +73,7 @@ MODULE_SUPPORTED_DEVICE("{{Xilinx,ML403 AC97 Controller Reference}}");
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
-static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;
+static int enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for ML403 AC97 Controller Reference.");
@@ -1341,4 +1341,15 @@ static struct platform_driver snd_ml403_ac97cr_driver = {
 	},
 };
 
-module_platform_driver(snd_ml403_ac97cr_driver);
+static int __init alsa_card_ml403_ac97cr_init(void)
+{
+	return platform_driver_register(&snd_ml403_ac97cr_driver);
+}
+
+static void __exit alsa_card_ml403_ac97cr_exit(void)
+{
+	platform_driver_unregister(&snd_ml403_ac97cr_driver);
+}
+
+module_init(alsa_card_ml403_ac97cr_init)
+module_exit(alsa_card_ml403_ac97cr_exit)

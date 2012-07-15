@@ -19,6 +19,7 @@
  ******************************************************************************/
 
 #include <target/target_core_base.h>
+#include <target/target_core_transport.h>
 
 #include "iscsi_target_core.h"
 #include "iscsi_target_device.h"
@@ -134,7 +135,7 @@ extern int iscsit_na_nopin_timeout(
 		spin_lock_bh(&se_nacl->nacl_sess_lock);
 		se_sess = se_nacl->nacl_sess;
 		if (se_sess) {
-			sess = se_sess->fabric_sess_ptr;
+			sess = (struct iscsi_session *)se_sess->fabric_sess_ptr;
 
 			spin_lock(&sess->conn_lock);
 			list_for_each_entry(conn, &sess->sess_conn_list,

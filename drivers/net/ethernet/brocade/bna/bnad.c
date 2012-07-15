@@ -44,18 +44,11 @@ static uint bnad_ioc_auto_recover = 1;
 module_param(bnad_ioc_auto_recover, uint, 0444);
 MODULE_PARM_DESC(bnad_ioc_auto_recover, "Enable / Disable auto recovery");
 
-static uint bna_debugfs_enable = 1;
-module_param(bna_debugfs_enable, uint, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(bna_debugfs_enable, "Enables debugfs feature, default=1,"
-		 " Range[false:0|true:1]");
-
 /*
  * Global variables
  */
 u32 bnad_rxqs_per_cq = 2;
-static u32 bna_id;
-static struct mutex bnad_list_mutex;
-static LIST_HEAD(bnad_list);
+
 static const u8 bnad_bcast_addr[] =  {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 /*
@@ -81,23 +74,6 @@ do {								\
 } while (0)
 
 #define BNAD_TXRX_SYNC_MDELAY	250	/* 250 msecs */
-
-static void
-bnad_add_to_list(struct bnad *bnad)
-{
-	mutex_lock(&bnad_list_mutex);
-	list_add_tail(&bnad->list_entry, &bnad_list);
-	bnad->id = bna_id++;
-	mutex_unlock(&bnad_list_mutex);
-}
-
-static void
-bnad_remove_from_list(struct bnad *bnad)
-{
-	mutex_lock(&bnad_list_mutex);
-	list_del(&bnad->list_entry);
-	mutex_unlock(&bnad_list_mutex);
-}
 
 /*
  * Reinitialize completions in CQ, once Rx is taken down
@@ -747,7 +723,7 @@ void
 bnad_cb_ethport_link_status(struct bnad *bnad,
 			enum bna_link_status link_status)
 {
-	bool link_up = false;
+	bool link_up = 0;
 
 	link_up = (link_status == BNA_LINK_UP) || (link_status == BNA_CEE_UP);
 
@@ -1106,16 +1082,6 @@ bnad_cb_enet_mtu_set(struct bnad *bnad)
 {
 	bnad->bnad_completions.mtu_comp_status = BNA_CB_SUCCESS;
 	complete(&bnad->bnad_completions.mtu_comp);
-}
-
-void
-bnad_cb_completion(void *arg, enum bfa_status status)
-{
-	struct bnad_iocmd_comp *iocmd_comp =
-			(struct bnad_iocmd_comp *)arg;
-
-	iocmd_comp->comp_status = (u32) status;
-	complete(&iocmd_comp->comp);
 }
 
 /* Resource allocation, free functions */
@@ -3002,7 +2968,7 @@ bnad_change_mtu(struct net_device *netdev, int new_mtu)
 	return err;
 }
 
-static int
+static void
 bnad_vlan_rx_add_vid(struct net_device *netdev,
 				 unsigned short vid)
 {
@@ -3010,7 +2976,7 @@ bnad_vlan_rx_add_vid(struct net_device *netdev,
 	unsigned long flags;
 
 	if (!bnad->rx_info[0].rx)
-		return 0;
+		return;
 
 	mutex_lock(&bnad->conf_mutex);
 
@@ -3020,11 +2986,9 @@ bnad_vlan_rx_add_vid(struct net_device *netdev,
 	spin_unlock_irqrestore(&bnad->bna_lock, flags);
 
 	mutex_unlock(&bnad->conf_mutex);
-
-	return 0;
 }
 
-static int
+static void
 bnad_vlan_rx_kill_vid(struct net_device *netdev,
 				  unsigned short vid)
 {
@@ -3032,7 +2996,7 @@ bnad_vlan_rx_kill_vid(struct net_device *netdev,
 	unsigned long flags;
 
 	if (!bnad->rx_info[0].rx)
-		return 0;
+		return;
 
 	mutex_lock(&bnad->conf_mutex);
 
@@ -3042,8 +3006,6 @@ bnad_vlan_rx_kill_vid(struct net_device *netdev,
 	spin_unlock_irqrestore(&bnad->bna_lock, flags);
 
 	mutex_unlock(&bnad->conf_mutex);
-
-	return 0;
 }
 
 #ifdef CONFIG_NET_POLL_CONTROLLER
@@ -3201,14 +3163,12 @@ bnad_lock_init(struct bnad *bnad)
 {
 	spin_lock_init(&bnad->bna_lock);
 	mutex_init(&bnad->conf_mutex);
-	mutex_init(&bnad_list_mutex);
 }
 
 static void
 bnad_lock_uninit(struct bnad *bnad)
 {
 	mutex_destroy(&bnad->conf_mutex);
-	mutex_destroy(&bnad_list_mutex);
 }
 
 /* PCI Initialization */
@@ -3226,7 +3186,7 @@ bnad_pci_init(struct bnad *bnad,
 		goto disable_device;
 	if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64)) &&
 	    !dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(64))) {
-		*using_dac = true;
+		*using_dac = 1;
 	} else {
 		err = dma_set_mask(&pdev->dev, DMA_BIT_MASK(32));
 		if (err) {
@@ -3235,7 +3195,7 @@ bnad_pci_init(struct bnad *bnad,
 			if (err)
 				goto release_regions;
 		}
-		*using_dac = false;
+		*using_dac = 0;
 	}
 	pci_set_master(pdev);
 	return 0;
@@ -3289,8 +3249,8 @@ bnad_pci_probe(struct pci_dev *pdev,
 		return err;
 	}
 	bnad = netdev_priv(netdev);
+
 	bnad_lock_init(bnad);
-	bnad_add_to_list(bnad);
 
 	mutex_lock(&bnad->conf_mutex);
 	/*
@@ -3316,10 +3276,6 @@ bnad_pci_probe(struct pci_dev *pdev,
 
 	/* Set link to down state */
 	netif_carrier_off(netdev);
-
-	/* Setup the debugfs node for this bfad */
-	if (bna_debugfs_enable)
-		bnad_debugfs_init(bnad);
 
 	/* Get resource requirement form bna */
 	spin_lock_irqsave(&bnad->bna_lock, flags);
@@ -3442,15 +3398,11 @@ disable_ioceth:
 res_free:
 	bnad_res_free(bnad, &bnad->res_info[0], BNA_RES_T_MAX);
 drv_uninit:
-	/* Remove the debugfs node for this bnad */
-	kfree(bnad->regdata);
-	bnad_debugfs_uninit(bnad);
 	bnad_uninit(bnad);
 pci_uninit:
 	bnad_pci_uninit(pdev);
 unlock_mutex:
 	mutex_unlock(&bnad->conf_mutex);
-	bnad_remove_from_list(bnad);
 	bnad_lock_uninit(bnad);
 	free_netdev(netdev);
 	return err;
@@ -3489,11 +3441,7 @@ bnad_pci_remove(struct pci_dev *pdev)
 	bnad_disable_msix(bnad);
 	bnad_pci_uninit(pdev);
 	mutex_unlock(&bnad->conf_mutex);
-	bnad_remove_from_list(bnad);
 	bnad_lock_uninit(bnad);
-	/* Remove the debugfs node for this bnad */
-	kfree(bnad->regdata);
-	bnad_debugfs_uninit(bnad);
 	bnad_uninit(bnad);
 	free_netdev(netdev);
 }

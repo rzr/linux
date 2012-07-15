@@ -1,8 +1,5 @@
 /*
- * config.c
- *
- * Helper functions for parsing config items.
- * Originally copied from GIT source.
+ * GIT - The information manager from hell
  *
  * Copyright (C) Linus Torvalds, 2005
  * Copyright (C) Johannes Schindelin, 2005

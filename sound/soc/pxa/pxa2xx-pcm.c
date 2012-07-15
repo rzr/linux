@@ -141,7 +141,17 @@ static struct platform_driver pxa_pcm_driver = {
 	.remove = __devexit_p(pxa2xx_soc_platform_remove),
 };
 
-module_platform_driver(pxa_pcm_driver);
+static int __init snd_pxa_pcm_init(void)
+{
+	return platform_driver_register(&pxa_pcm_driver);
+}
+module_init(snd_pxa_pcm_init);
+
+static void __exit snd_pxa_pcm_exit(void)
+{
+	platform_driver_unregister(&pxa_pcm_driver);
+}
+module_exit(snd_pxa_pcm_exit);
 
 MODULE_AUTHOR("Nicolas Pitre");
 MODULE_DESCRIPTION("Intel PXA2xx PCM DMA module");

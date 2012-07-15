@@ -30,7 +30,7 @@ module_param(debug, int, 0644);
 			printk(KERN_DEBUG "vb2: " fmt, ## arg);		\
 	} while (0)
 
-#define call_memop(q, op, args...)					\
+#define call_memop(q, plane, op, args...)				\
 	(((q)->mem_ops->op) ?						\
 		((q)->mem_ops->op(args)) : 0)
 
@@ -52,7 +52,7 @@ static int __vb2_buf_mem_alloc(struct vb2_buffer *vb)
 
 	/* Allocate memory for all planes in this buffer */
 	for (plane = 0; plane < vb->num_planes; ++plane) {
-		mem_priv = call_memop(q, alloc, q->alloc_ctx[plane],
+		mem_priv = call_memop(q, plane, alloc, q->alloc_ctx[plane],
 				      q->plane_sizes[plane]);
 		if (IS_ERR_OR_NULL(mem_priv))
 			goto free;
@@ -65,10 +65,8 @@ static int __vb2_buf_mem_alloc(struct vb2_buffer *vb)
 	return 0;
 free:
 	/* Free already allocated memory if one of the allocations failed */
-	for (; plane > 0; --plane) {
-		call_memop(q, put, vb->planes[plane - 1].mem_priv);
-		vb->planes[plane - 1].mem_priv = NULL;
-	}
+	for (; plane > 0; --plane)
+		call_memop(q, plane, put, vb->planes[plane - 1].mem_priv);
 
 	return -ENOMEM;
 }
@@ -82,10 +80,10 @@ static void __vb2_buf_mem_free(struct vb2_buffer *vb)
 	unsigned int plane;
 
 	for (plane = 0; plane < vb->num_planes; ++plane) {
-		call_memop(q, put, vb->planes[plane].mem_priv);
+		call_memop(q, plane, put, vb->planes[plane].mem_priv);
 		vb->planes[plane].mem_priv = NULL;
-		dprintk(3, "Freed plane %d of buffer %d\n", plane,
-			vb->v4l2_buf.index);
+		dprintk(3, "Freed plane %d of buffer %d\n",
+				plane, vb->v4l2_buf.index);
 	}
 }
 
@@ -99,9 +97,12 @@ static void __vb2_buf_userptr_put(struct vb2_buffer *vb)
 	unsigned int plane;
 
 	for (plane = 0; plane < vb->num_planes; ++plane) {
-		if (vb->planes[plane].mem_priv)
-			call_memop(q, put_userptr, vb->planes[plane].mem_priv);
-		vb->planes[plane].mem_priv = NULL;
+		void *mem_priv = vb->planes[plane].mem_priv;
+
+		if (mem_priv) {
+			call_memop(q, plane, put_userptr, mem_priv);
+			vb->planes[plane].mem_priv = NULL;
+		}
 	}
 }
 
@@ -304,7 +305,7 @@ static bool __buffer_in_use(struct vb2_queue *q, struct vb2_buffer *vb)
 		 * case anyway. If num_users() returns more than 1,
 		 * we are not the only user of the plane's memory.
 		 */
-		if (mem_priv && call_memop(q, num_users, mem_priv) > 1)
+		if (mem_priv && call_memop(q, plane, num_users, mem_priv) > 1)
 			return true;
 	}
 	return false;
@@ -730,10 +731,10 @@ void *vb2_plane_vaddr(struct vb2_buffer *vb, unsigned int plane_no)
 {
 	struct vb2_queue *q = vb->vb2_queue;
 
-	if (plane_no > vb->num_planes || !vb->planes[plane_no].mem_priv)
+	if (plane_no > vb->num_planes)
 		return NULL;
 
-	return call_memop(q, vaddr, vb->planes[plane_no].mem_priv);
+	return call_memop(q, plane_no, vaddr, vb->planes[plane_no].mem_priv);
 
 }
 EXPORT_SYMBOL_GPL(vb2_plane_vaddr);
@@ -753,10 +754,10 @@ void *vb2_plane_cookie(struct vb2_buffer *vb, unsigned int plane_no)
 {
 	struct vb2_queue *q = vb->vb2_queue;
 
-	if (plane_no > vb->num_planes || !vb->planes[plane_no].mem_priv)
+	if (plane_no > vb->num_planes)
 		return NULL;
 
-	return call_memop(q, cookie, vb->planes[plane_no].mem_priv);
+	return call_memop(q, plane_no, cookie, vb->planes[plane_no].mem_priv);
 }
 EXPORT_SYMBOL_GPL(vb2_plane_cookie);
 
@@ -882,8 +883,7 @@ static int __qbuf_userptr(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 
 	for (plane = 0; plane < vb->num_planes; ++plane) {
 		/* Skip the plane if already verified */
-		if (vb->v4l2_planes[plane].m.userptr &&
-		    vb->v4l2_planes[plane].m.userptr == planes[plane].m.userptr
+		if (vb->v4l2_planes[plane].m.userptr == planes[plane].m.userptr
 		    && vb->v4l2_planes[plane].length == planes[plane].length)
 			continue;
 
@@ -898,23 +898,27 @@ static int __qbuf_userptr(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 
 		/* Release previously acquired memory if present */
 		if (vb->planes[plane].mem_priv)
-			call_memop(q, put_userptr, vb->planes[plane].mem_priv);
+			call_memop(q, plane, put_userptr,
+					vb->planes[plane].mem_priv);
 
 		vb->planes[plane].mem_priv = NULL;
 		vb->v4l2_planes[plane].m.userptr = 0;
 		vb->v4l2_planes[plane].length = 0;
 
 		/* Acquire each plane's memory */
-		mem_priv = call_memop(q, get_userptr, q->alloc_ctx[plane],
-				      planes[plane].m.userptr,
-				      planes[plane].length, write);
-		if (IS_ERR_OR_NULL(mem_priv)) {
-			dprintk(1, "qbuf: failed acquiring userspace "
+		if (q->mem_ops->get_userptr) {
+			mem_priv = q->mem_ops->get_userptr(q->alloc_ctx[plane],
+							planes[plane].m.userptr,
+							planes[plane].length,
+							write);
+			if (IS_ERR(mem_priv)) {
+				dprintk(1, "qbuf: failed acquiring userspace "
 						"memory for plane %d\n", plane);
-			ret = mem_priv ? PTR_ERR(mem_priv) : -EINVAL;
-			goto err;
+				ret = PTR_ERR(mem_priv);
+				goto err;
+			}
+			vb->planes[plane].mem_priv = mem_priv;
 		}
-		vb->planes[plane].mem_priv = mem_priv;
 	}
 
 	/*
@@ -939,7 +943,8 @@ err:
 	/* In case of errors, release planes that were already acquired */
 	for (plane = 0; plane < vb->num_planes; ++plane) {
 		if (vb->planes[plane].mem_priv)
-			call_memop(q, put_userptr, vb->planes[plane].mem_priv);
+			call_memop(q, plane, put_userptr,
+				   vb->planes[plane].mem_priv);
 		vb->planes[plane].mem_priv = NULL;
 		vb->v4l2_planes[plane].m.userptr = 0;
 		vb->v4l2_planes[plane].length = 0;
@@ -1076,76 +1081,46 @@ EXPORT_SYMBOL_GPL(vb2_prepare_buf);
  */
 int vb2_qbuf(struct vb2_queue *q, struct v4l2_buffer *b)
 {
-	struct rw_semaphore *mmap_sem = NULL;
 	struct vb2_buffer *vb;
-	int ret = 0;
-
-	/*
-	 * In case of user pointer buffers vb2 allocator needs to get direct
-	 * access to userspace pages. This requires getting read access on
-	 * mmap semaphore in the current process structure. The same
-	 * semaphore is taken before calling mmap operation, while both mmap
-	 * and qbuf are called by the driver or v4l2 core with driver's lock
-	 * held. To avoid a AB-BA deadlock (mmap_sem then driver's lock in
-	 * mmap and driver's lock then mmap_sem in qbuf) the videobuf2 core
-	 * release driver's lock, takes mmap_sem and then takes again driver's
-	 * lock.
-	 *
-	 * To avoid race with other vb2 calls, which might be called after
-	 * releasing driver's lock, this operation is performed at the
-	 * beggining of qbuf processing. This way the queue status is
-	 * consistent after getting driver's lock back.
-	 */
-	if (q->memory == V4L2_MEMORY_USERPTR) {
-		mmap_sem = &current->mm->mmap_sem;
-		call_qop(q, wait_prepare, q);
-		down_read(mmap_sem);
-		call_qop(q, wait_finish, q);
-	}
+	int ret;
 
 	if (q->fileio) {
 		dprintk(1, "qbuf: file io in progress\n");
-		ret = -EBUSY;
-		goto unlock;
+		return -EBUSY;
 	}
 
 	if (b->type != q->type) {
 		dprintk(1, "qbuf: invalid buffer type\n");
-		ret = -EINVAL;
-		goto unlock;
+		return -EINVAL;
 	}
 
 	if (b->index >= q->num_buffers) {
 		dprintk(1, "qbuf: buffer index out of range\n");
-		ret = -EINVAL;
-		goto unlock;
+		return -EINVAL;
 	}
 
 	vb = q->bufs[b->index];
 	if (NULL == vb) {
 		/* Should never happen */
 		dprintk(1, "qbuf: buffer is NULL\n");
-		ret = -EINVAL;
-		goto unlock;
+		return -EINVAL;
 	}
 
 	if (b->memory != q->memory) {
 		dprintk(1, "qbuf: invalid memory type\n");
-		ret = -EINVAL;
-		goto unlock;
+		return -EINVAL;
 	}
 
 	switch (vb->state) {
 	case VB2_BUF_STATE_DEQUEUED:
 		ret = __buf_prepare(vb, b);
 		if (ret)
-			goto unlock;
+			return ret;
 	case VB2_BUF_STATE_PREPARED:
 		break;
 	default:
 		dprintk(1, "qbuf: buffer already in use\n");
-		ret = -EINVAL;
-		goto unlock;
+		return -EINVAL;
 	}
 
 	/*
@@ -1166,10 +1141,7 @@ int vb2_qbuf(struct vb2_queue *q, struct v4l2_buffer *b)
 	__fill_v4l2_buffer(vb, b);
 
 	dprintk(1, "qbuf of buffer %d succeeded\n", vb->v4l2_buf.index);
-unlock:
-	if (mmap_sem)
-		up_read(mmap_sem);
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(vb2_qbuf);
 
@@ -1549,6 +1521,7 @@ static int __find_plane_by_offset(struct vb2_queue *q, unsigned long off,
 int vb2_mmap(struct vb2_queue *q, struct vm_area_struct *vma)
 {
 	unsigned long off = vma->vm_pgoff << PAGE_SHIFT;
+	struct vb2_plane *vb_plane;
 	struct vb2_buffer *vb;
 	unsigned int buffer, plane;
 	int ret;
@@ -1585,8 +1558,9 @@ int vb2_mmap(struct vb2_queue *q, struct vm_area_struct *vma)
 		return ret;
 
 	vb = q->bufs[buffer];
+	vb_plane = &vb->planes[plane];
 
-	ret = call_memop(q, mmap, vb->planes[plane].mem_priv, vma);
+	ret = q->mem_ops->mmap(vb_plane->mem_priv, vma);
 	if (ret)
 		return ret;
 

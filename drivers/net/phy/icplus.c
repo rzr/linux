@@ -30,16 +30,16 @@
 #include <asm/irq.h>
 #include <asm/uaccess.h>
 
-MODULE_DESCRIPTION("ICPlus IP175C/IP101A/IP101G/IC1001 PHY drivers");
+MODULE_DESCRIPTION("ICPlus IP175C/IP101A/IC1001 PHY drivers");
 MODULE_AUTHOR("Michael Barkowski");
 MODULE_LICENSE("GPL");
 
-/* IP101A/G - IP1001 */
-#define IP10XX_SPEC_CTRL_STATUS		16	/* Spec. Control Register */
-#define IP1001_SPEC_CTRL_STATUS_2	20	/* IP1001 Spec. Control Reg 2 */
-#define IP1001_PHASE_SEL_MASK		3	/* IP1001 RX/TXPHASE_SEL */
-#define IP1001_APS_ON			11	/* IP1001 APS Mode  bit */
-#define IP101A_G_APS_ON			2	/* IP101A/G APS Mode bit */
+/* IP101A/IP1001 */
+#define IP10XX_SPEC_CTRL_STATUS		16  /* Spec. Control Register */
+#define IP1001_SPEC_CTRL_STATUS_2	20  /* IP1001 Spec. Control Reg 2 */
+#define IP1001_PHASE_SEL_MASK		3 /* IP1001 RX/TXPHASE_SEL */
+#define IP1001_APS_ON			11  /* IP1001 APS Mode  bit */
+#define IP101A_APS_ON			2   /* IP101A APS Mode bit */
 
 static int ip175c_config_init(struct phy_device *phydev)
 {
@@ -98,24 +98,20 @@ static int ip175c_config_init(struct phy_device *phydev)
 
 static int ip1xx_reset(struct phy_device *phydev)
 {
-	int bmcr;
+	int err, bmcr;
 
 	/* Software Reset PHY */
 	bmcr = phy_read(phydev, MII_BMCR);
-	if (bmcr < 0)
-		return bmcr;
 	bmcr |= BMCR_RESET;
-	bmcr = phy_write(phydev, MII_BMCR, bmcr);
-	if (bmcr < 0)
-		return bmcr;
+	err = phy_write(phydev, MII_BMCR, bmcr);
+	if (err < 0)
+		return err;
 
 	do {
 		bmcr = phy_read(phydev, MII_BMCR);
-		if (bmcr < 0)
-			return bmcr;
 	} while (bmcr & BMCR_RESET);
 
-	return 0;
+	return err;
 }
 
 static int ip1001_config_init(struct phy_device *phydev)
@@ -128,10 +124,7 @@ static int ip1001_config_init(struct phy_device *phydev)
 
 	/* Enable Auto Power Saving mode */
 	c = phy_read(phydev, IP1001_SPEC_CTRL_STATUS_2);
-	if (c < 0)
-		return c;
 	c |= IP1001_APS_ON;
-	c = phy_write(phydev, IP1001_SPEC_CTRL_STATUS_2, c);
 	if (c < 0)
 		return c;
 
@@ -139,19 +132,14 @@ static int ip1001_config_init(struct phy_device *phydev)
 		/* Additional delay (2ns) used to adjust RX clock phase
 		 * at RGMII interface */
 		c = phy_read(phydev, IP10XX_SPEC_CTRL_STATUS);
-		if (c < 0)
-			return c;
-
 		c |= IP1001_PHASE_SEL_MASK;
 		c = phy_write(phydev, IP10XX_SPEC_CTRL_STATUS, c);
-		if (c < 0)
-			return c;
 	}
 
-	return 0;
+	return c;
 }
 
-static int ip101a_g_config_init(struct phy_device *phydev)
+static int ip101a_config_init(struct phy_device *phydev)
 {
 	int c;
 
@@ -161,7 +149,7 @@ static int ip101a_g_config_init(struct phy_device *phydev)
 
 	/* Enable Auto Power Saving mode */
 	c = phy_read(phydev, IP10XX_SPEC_CTRL_STATUS);
-	c |= IP101A_G_APS_ON;
+	c |= IP101A_APS_ON;
 
 	return phy_write(phydev, IP10XX_SPEC_CTRL_STATUS, c);
 }
@@ -204,7 +192,6 @@ static struct phy_driver ip1001_driver = {
 	.phy_id_mask	= 0x0ffffff0,
 	.features	= PHY_GBIT_FEATURES | SUPPORTED_Pause |
 			  SUPPORTED_Asym_Pause,
-	.flags		= PHY_HAS_INTERRUPT,
 	.config_init	= &ip1001_config_init,
 	.config_aneg	= &genphy_config_aneg,
 	.read_status	= &genphy_read_status,
@@ -213,14 +200,13 @@ static struct phy_driver ip1001_driver = {
 	.driver		= { .owner = THIS_MODULE,},
 };
 
-static struct phy_driver ip101a_g_driver = {
+static struct phy_driver ip101a_driver = {
 	.phy_id		= 0x02430c54,
-	.name		= "ICPlus IP101A/G",
+	.name		= "ICPlus IP101A",
 	.phy_id_mask	= 0x0ffffff0,
 	.features	= PHY_BASIC_FEATURES | SUPPORTED_Pause |
 			  SUPPORTED_Asym_Pause,
-	.flags		= PHY_HAS_INTERRUPT,
-	.config_init	= &ip101a_g_config_init,
+	.config_init	= &ip101a_config_init,
 	.config_aneg	= &genphy_config_aneg,
 	.read_status	= &genphy_read_status,
 	.suspend	= genphy_suspend,
@@ -236,7 +222,7 @@ static int __init icplus_init(void)
 	if (ret < 0)
 		return -ENODEV;
 
-	ret = phy_driver_register(&ip101a_g_driver);
+	ret = phy_driver_register(&ip101a_driver);
 	if (ret < 0)
 		return -ENODEV;
 
@@ -246,7 +232,7 @@ static int __init icplus_init(void)
 static void __exit icplus_exit(void)
 {
 	phy_driver_unregister(&ip1001_driver);
-	phy_driver_unregister(&ip101a_g_driver);
+	phy_driver_unregister(&ip101a_driver);
 	phy_driver_unregister(&ip175c_driver);
 }
 
@@ -256,7 +242,6 @@ module_exit(icplus_exit);
 static struct mdio_device_id __maybe_unused icplus_tbl[] = {
 	{ 0x02430d80, 0x0ffffff0 },
 	{ 0x02430d90, 0x0ffffff0 },
-	{ 0x02430c54, 0x0ffffff0 },
 	{ }
 };
 

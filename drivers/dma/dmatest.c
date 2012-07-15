@@ -214,18 +214,9 @@ static unsigned int dmatest_verify(u8 **bufs, unsigned int start,
 	return error_count;
 }
 
-/* poor man's completion - we want to use wait_event_freezable() on it */
-struct dmatest_done {
-	bool			done;
-	wait_queue_head_t	*wait;
-};
-
-static void dmatest_callback(void *arg)
+static void dmatest_callback(void *completion)
 {
-	struct dmatest_done *done = arg;
-
-	done->done = true;
-	wake_up_all(done->wait);
+	complete(completion);
 }
 
 /*
@@ -244,9 +235,7 @@ static void dmatest_callback(void *arg)
  */
 static int dmatest_func(void *data)
 {
-	DECLARE_WAIT_QUEUE_HEAD_ONSTACK(done_wait);
 	struct dmatest_thread	*thread = data;
-	struct dmatest_done	done = { .wait = &done_wait };
 	struct dma_chan		*chan;
 	const char		*thread_name;
 	unsigned int		src_off, dst_off, len;
@@ -263,7 +252,7 @@ static int dmatest_func(void *data)
 	int			i;
 
 	thread_name = current->comm;
-	set_freezable();
+	set_freezable_with_signal();
 
 	ret = -ENOMEM;
 
@@ -317,6 +306,9 @@ static int dmatest_func(void *data)
 		struct dma_async_tx_descriptor *tx = NULL;
 		dma_addr_t dma_srcs[src_cnt];
 		dma_addr_t dma_dsts[dst_cnt];
+		struct completion cmp;
+		unsigned long start, tmo, end = 0 /* compiler... */;
+		bool reload = true;
 		u8 align = 0;
 
 		total_tests++;
@@ -399,9 +391,9 @@ static int dmatest_func(void *data)
 			continue;
 		}
 
-		done.done = false;
+		init_completion(&cmp);
 		tx->callback = dmatest_callback;
-		tx->callback_param = &done;
+		tx->callback_param = &cmp;
 		cookie = tx->tx_submit(tx);
 
 		if (dma_submit_error(cookie)) {
@@ -415,20 +407,20 @@ static int dmatest_func(void *data)
 		}
 		dma_async_issue_pending(chan);
 
-		wait_event_freezable_timeout(done_wait, done.done,
-					     msecs_to_jiffies(timeout));
+		do {
+			start = jiffies;
+			if (reload)
+				end = start + msecs_to_jiffies(timeout);
+			else if (end <= start)
+				end = start + 1;
+			tmo = wait_for_completion_interruptible_timeout(&cmp,
+								end - start);
+			reload = try_to_freeze();
+		} while (tmo == -ERESTARTSYS);
 
 		status = dma_async_is_tx_complete(chan, cookie, NULL, NULL);
 
-		if (!done.done) {
-			/*
-			 * We're leaving the timed out dma operation with
-			 * dangling pointer to done_wait.  To make this
-			 * correct, we'll need to allocate wait_done for
-			 * each test iteration and perform "who's gonna
-			 * free it this time?" dancing.  For now, just
-			 * leave it dangling.
-			 */
+		if (tmo == 0) {
 			pr_warning("%s: #%u: test timed out\n",
 				   thread_name, total_tests - 1);
 			failed_tests++;
@@ -599,7 +591,7 @@ static int dmatest_add_channel(struct dma_chan *chan)
 	}
 	if (dma_has_cap(DMA_PQ, dma_dev->cap_mask)) {
 		cnt = dmatest_add_threads(dtc, DMA_PQ);
-		thread_count += cnt > 0 ? cnt : 0;
+		thread_count += cnt > 0 ?: 0;
 	}
 
 	pr_info("dmatest: Started %u threads using %s\n",

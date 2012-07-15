@@ -21,8 +21,6 @@
  * 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": %s: " fmt, __func__
-
 #include <net/genetlink.h>
 #include <linux/nfc.h>
 #include <linux/slab.h>
@@ -46,14 +44,14 @@ static const struct nla_policy nfc_genl_policy[NFC_ATTR_MAX + 1] = {
 	[NFC_ATTR_DEVICE_NAME] = { .type = NLA_STRING,
 				.len = NFC_DEVICE_NAME_MAXSIZE },
 	[NFC_ATTR_PROTOCOLS] = { .type = NLA_U32 },
-	[NFC_ATTR_COMM_MODE] = { .type = NLA_U8 },
-	[NFC_ATTR_RF_MODE] = { .type = NLA_U8 },
 };
 
 static int nfc_genl_send_target(struct sk_buff *msg, struct nfc_target *target,
 					struct netlink_callback *cb, int flags)
 {
 	void *hdr;
+
+	nfc_dbg("entry");
 
 	hdr = genlmsg_put(msg, NETLINK_CB(cb->skb).pid, cb->nlh->nlmsg_seq,
 				&nfc_genl_family, flags, NFC_CMD_GET_TARGET);
@@ -67,9 +65,6 @@ static int nfc_genl_send_target(struct sk_buff *msg, struct nfc_target *target,
 				target->supported_protocols);
 	NLA_PUT_U16(msg, NFC_ATTR_TARGET_SENS_RES, target->sens_res);
 	NLA_PUT_U8(msg, NFC_ATTR_TARGET_SEL_RES, target->sel_res);
-	if (target->nfcid1_len > 0)
-		NLA_PUT(msg, NFC_ATTR_TARGET_NFCID1, target->nfcid1_len,
-				target->nfcid1);
 
 	return genlmsg_end(msg, hdr);
 
@@ -110,6 +105,8 @@ static int nfc_genl_dump_targets(struct sk_buff *skb,
 	struct nfc_dev *dev = (struct nfc_dev *) cb->args[1];
 	int rc;
 
+	nfc_dbg("entry");
+
 	if (!dev) {
 		dev = __get_device_from_cb(cb);
 		if (IS_ERR(dev))
@@ -142,6 +139,8 @@ static int nfc_genl_dump_targets_done(struct netlink_callback *cb)
 {
 	struct nfc_dev *dev = (struct nfc_dev *) cb->args[1];
 
+	nfc_dbg("entry");
+
 	if (dev)
 		nfc_put_device(dev);
 
@@ -152,6 +151,8 @@ int nfc_genl_targets_found(struct nfc_dev *dev)
 {
 	struct sk_buff *msg;
 	void *hdr;
+
+	nfc_dbg("entry");
 
 	dev->genl_data.poll_req_pid = 0;
 
@@ -181,6 +182,8 @@ int nfc_genl_device_added(struct nfc_dev *dev)
 {
 	struct sk_buff *msg;
 	void *hdr;
+
+	nfc_dbg("entry");
 
 	msg = nlmsg_new(NLMSG_GOODSIZE, GFP_KERNEL);
 	if (!msg)
@@ -213,6 +216,8 @@ int nfc_genl_device_removed(struct nfc_dev *dev)
 	struct sk_buff *msg;
 	void *hdr;
 
+	nfc_dbg("entry");
+
 	msg = nlmsg_new(NLMSG_GOODSIZE, GFP_KERNEL);
 	if (!msg)
 		return -ENOMEM;
@@ -244,6 +249,8 @@ static int nfc_genl_send_device(struct sk_buff *msg, struct nfc_dev *dev,
 {
 	void *hdr;
 
+	nfc_dbg("entry");
+
 	hdr = genlmsg_put(msg, pid, seq, &nfc_genl_family, flags,
 							NFC_CMD_GET_DEVICE);
 	if (!hdr)
@@ -269,6 +276,8 @@ static int nfc_genl_dump_devices(struct sk_buff *skb,
 	struct class_dev_iter *iter = (struct class_dev_iter *) cb->args[0];
 	struct nfc_dev *dev = (struct nfc_dev *) cb->args[1];
 	bool first_call = false;
+
+	nfc_dbg("entry");
 
 	if (!iter) {
 		first_call = true;
@@ -310,79 +319,12 @@ static int nfc_genl_dump_devices_done(struct netlink_callback *cb)
 {
 	struct class_dev_iter *iter = (struct class_dev_iter *) cb->args[0];
 
+	nfc_dbg("entry");
+
 	nfc_device_iter_exit(iter);
 	kfree(iter);
 
 	return 0;
-}
-
-int nfc_genl_dep_link_up_event(struct nfc_dev *dev, u32 target_idx,
-						u8 comm_mode, u8 rf_mode)
-{
-	struct sk_buff *msg;
-	void *hdr;
-
-	pr_debug("DEP link is up\n");
-
-	msg = nlmsg_new(NLMSG_GOODSIZE, GFP_ATOMIC);
-	if (!msg)
-		return -ENOMEM;
-
-	hdr = genlmsg_put(msg, 0, 0, &nfc_genl_family, 0,
-				NFC_CMD_DEP_LINK_UP);
-	if (!hdr)
-		goto free_msg;
-
-	NLA_PUT_U32(msg, NFC_ATTR_DEVICE_INDEX, dev->idx);
-	if (rf_mode == NFC_RF_INITIATOR)
-		NLA_PUT_U32(msg, NFC_ATTR_TARGET_INDEX, target_idx);
-	NLA_PUT_U8(msg, NFC_ATTR_COMM_MODE, comm_mode);
-	NLA_PUT_U8(msg, NFC_ATTR_RF_MODE, rf_mode);
-
-	genlmsg_end(msg, hdr);
-
-	dev->dep_link_up = true;
-
-	genlmsg_multicast(msg, 0, nfc_genl_event_mcgrp.id, GFP_ATOMIC);
-
-	return 0;
-
-nla_put_failure:
-	genlmsg_cancel(msg, hdr);
-free_msg:
-	nlmsg_free(msg);
-	return -EMSGSIZE;
-}
-
-int nfc_genl_dep_link_down_event(struct nfc_dev *dev)
-{
-	struct sk_buff *msg;
-	void *hdr;
-
-	pr_debug("DEP link is down\n");
-
-	msg = nlmsg_new(NLMSG_GOODSIZE, GFP_ATOMIC);
-	if (!msg)
-		return -ENOMEM;
-
-	hdr = genlmsg_put(msg, 0, 0, &nfc_genl_family, 0,
-				NFC_CMD_DEP_LINK_DOWN);
-	if (!hdr)
-		goto free_msg;
-
-	NLA_PUT_U32(msg, NFC_ATTR_DEVICE_INDEX, dev->idx);
-
-	genlmsg_end(msg, hdr);
-
-	genlmsg_multicast(msg, 0, nfc_genl_event_mcgrp.id, GFP_ATOMIC);
-
-	return 0;
-
-nla_put_failure:
-	genlmsg_cancel(msg, hdr);
-free_msg:
-	nlmsg_free(msg);
-	return -EMSGSIZE;
 }
 
 static int nfc_genl_get_device(struct sk_buff *skb, struct genl_info *info)
@@ -391,6 +333,8 @@ static int nfc_genl_get_device(struct sk_buff *skb, struct genl_info *info)
 	struct nfc_dev *dev;
 	u32 idx;
 	int rc = -ENOBUFS;
+
+	nfc_dbg("entry");
 
 	if (!info->attrs[NFC_ATTR_DEVICE_INDEX])
 		return -EINVAL;
@@ -429,6 +373,8 @@ static int nfc_genl_dev_up(struct sk_buff *skb, struct genl_info *info)
 	int rc;
 	u32 idx;
 
+	nfc_dbg("entry");
+
 	if (!info->attrs[NFC_ATTR_DEVICE_INDEX])
 		return -EINVAL;
 
@@ -449,6 +395,8 @@ static int nfc_genl_dev_down(struct sk_buff *skb, struct genl_info *info)
 	struct nfc_dev *dev;
 	int rc;
 	u32 idx;
+
+	nfc_dbg("entry");
 
 	if (!info->attrs[NFC_ATTR_DEVICE_INDEX])
 		return -EINVAL;
@@ -472,7 +420,7 @@ static int nfc_genl_start_poll(struct sk_buff *skb, struct genl_info *info)
 	u32 idx;
 	u32 protocols;
 
-	pr_debug("Poll start\n");
+	nfc_dbg("entry");
 
 	if (!info->attrs[NFC_ATTR_DEVICE_INDEX] ||
 		!info->attrs[NFC_ATTR_PROTOCOLS])
@@ -503,6 +451,8 @@ static int nfc_genl_stop_poll(struct sk_buff *skb, struct genl_info *info)
 	int rc;
 	u32 idx;
 
+	nfc_dbg("entry");
+
 	if (!info->attrs[NFC_ATTR_DEVICE_INDEX])
 		return -EINVAL;
 
@@ -524,67 +474,6 @@ static int nfc_genl_stop_poll(struct sk_buff *skb, struct genl_info *info)
 
 out:
 	mutex_unlock(&dev->genl_data.genl_data_mutex);
-	nfc_put_device(dev);
-	return rc;
-}
-
-static int nfc_genl_dep_link_up(struct sk_buff *skb, struct genl_info *info)
-{
-	struct nfc_dev *dev;
-	int rc, tgt_idx;
-	u32 idx;
-	u8 comm, rf;
-
-	pr_debug("DEP link up\n");
-
-	if (!info->attrs[NFC_ATTR_DEVICE_INDEX] ||
-			!info->attrs[NFC_ATTR_COMM_MODE] ||
-			!info->attrs[NFC_ATTR_RF_MODE])
-		return -EINVAL;
-
-	idx = nla_get_u32(info->attrs[NFC_ATTR_DEVICE_INDEX]);
-	if (!info->attrs[NFC_ATTR_TARGET_INDEX])
-		tgt_idx = NFC_TARGET_IDX_ANY;
-	else
-		tgt_idx = nla_get_u32(info->attrs[NFC_ATTR_TARGET_INDEX]);
-
-	comm = nla_get_u8(info->attrs[NFC_ATTR_COMM_MODE]);
-	rf = nla_get_u8(info->attrs[NFC_ATTR_RF_MODE]);
-
-	if (comm != NFC_COMM_ACTIVE && comm != NFC_COMM_PASSIVE)
-		return -EINVAL;
-
-	if (rf != NFC_RF_INITIATOR && comm != NFC_RF_TARGET)
-		return -EINVAL;
-
-	dev = nfc_get_device(idx);
-	if (!dev)
-		return -ENODEV;
-
-	rc = nfc_dep_link_up(dev, tgt_idx, comm, rf);
-
-	nfc_put_device(dev);
-
-	return rc;
-}
-
-static int nfc_genl_dep_link_down(struct sk_buff *skb, struct genl_info *info)
-{
-	struct nfc_dev *dev;
-	int rc;
-	u32 idx;
-
-	if (!info->attrs[NFC_ATTR_DEVICE_INDEX])
-		return -EINVAL;
-
-	idx = nla_get_u32(info->attrs[NFC_ATTR_DEVICE_INDEX]);
-
-	dev = nfc_get_device(idx);
-	if (!dev)
-		return -ENODEV;
-
-	rc = nfc_dep_link_down(dev);
-
 	nfc_put_device(dev);
 	return rc;
 }
@@ -618,16 +507,6 @@ static struct genl_ops nfc_genl_ops[] = {
 		.policy = nfc_genl_policy,
 	},
 	{
-		.cmd = NFC_CMD_DEP_LINK_UP,
-		.doit = nfc_genl_dep_link_up,
-		.policy = nfc_genl_policy,
-	},
-	{
-		.cmd = NFC_CMD_DEP_LINK_DOWN,
-		.doit = nfc_genl_dep_link_down,
-		.policy = nfc_genl_policy,
-	},
-	{
 		.cmd = NFC_CMD_GET_TARGET,
 		.dumpit = nfc_genl_dump_targets,
 		.done = nfc_genl_dump_targets_done,
@@ -645,16 +524,18 @@ static int nfc_genl_rcv_nl_event(struct notifier_block *this,
 	if (event != NETLINK_URELEASE || n->protocol != NETLINK_GENERIC)
 		goto out;
 
-	pr_debug("NETLINK_URELEASE event from id %d\n", n->pid);
+	nfc_dbg("NETLINK_URELEASE event from id %d", n->pid);
 
 	nfc_device_iter_init(&iter);
 	dev = nfc_device_iter_next(&iter);
 
 	while (dev) {
+		mutex_lock(&dev->genl_data.genl_data_mutex);
 		if (dev->genl_data.poll_req_pid == n->pid) {
 			nfc_stop_poll(dev);
 			dev->genl_data.poll_req_pid = 0;
 		}
+		mutex_unlock(&dev->genl_data.genl_data_mutex);
 		dev = nfc_device_iter_next(&iter);
 	}
 

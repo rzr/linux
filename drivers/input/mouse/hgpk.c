@@ -789,14 +789,11 @@ static ssize_t hgpk_set_powered(struct psmouse *psmouse, void *data,
 				const char *buf, size_t count)
 {
 	struct hgpk_data *priv = psmouse->private;
-	unsigned int value;
+	unsigned long value;
 	int err;
 
-	err = kstrtouint(buf, 10, &value);
-	if (err)
-		return err;
-
-	if (value > 1)
+	err = strict_strtoul(buf, 10, &value);
+	if (err || value > 1)
 		return -EINVAL;
 
 	if (value != priv->powered) {
@@ -884,14 +881,11 @@ static ssize_t hgpk_trigger_recal(struct psmouse *psmouse, void *data,
 				const char *buf, size_t count)
 {
 	struct hgpk_data *priv = psmouse->private;
-	unsigned int value;
+	unsigned long value;
 	int err;
 
-	err = kstrtouint(buf, 10, &value);
-	if (err)
-		return err;
-
-	if (value != 1)
+	err = strict_strtoul(buf, 10, &value);
+	if (err || value != 1)
 		return -EINVAL;
 
 	/*

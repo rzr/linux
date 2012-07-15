@@ -17,9 +17,7 @@
     defined(CONFIG_ARCH_SH73A0) || \
     defined(CONFIG_ARCH_SH7367) || \
     defined(CONFIG_ARCH_SH7377) || \
-    defined(CONFIG_ARCH_SH7372) || \
-    defined(CONFIG_ARCH_R8A7740)
-
+    defined(CONFIG_ARCH_SH7372)
 # define SCxSR_RDxF_CLEAR(port)	 (sci_in(port, SCxSR) & 0xfffc)
 # define SCxSR_ERROR_CLEAR(port) (sci_in(port, SCxSR) & 0xfd73)
 # define SCxSR_TDxE_CLEAR(port)	 (sci_in(port, SCxSR) & 0xffdf)

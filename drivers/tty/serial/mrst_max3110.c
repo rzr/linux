@@ -876,6 +876,7 @@ static int __devexit serial_m3110_remove(struct spi_device *dev)
 static struct spi_driver uart_max3110_driver = {
 	.driver = {
 			.name	= "spi_max3111",
+			.bus	= &spi_bus_type,
 			.owner	= THIS_MODULE,
 	},
 	.probe		= serial_m3110_probe,

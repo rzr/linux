@@ -17,7 +17,6 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
-#include <linux/videodev2.h>
 #include <linux/vmalloc.h>
 #include <linux/ioctl.h>
 #include <linux/slab.h>
@@ -103,7 +102,7 @@ struct sh_mobile_lcdc_priv {
 	struct sh_mobile_lcdc_chan ch[2];
 	struct notifier_block notifier;
 	int started;
-	int forced_fourcc; /* 2 channel LCDC must share fourcc setting */
+	int forced_bpp; /* 2 channel LCDC must share bpp setting */
 	struct sh_mobile_meram_info *meram_dev;
 };
 
@@ -215,47 +214,6 @@ struct sh_mobile_lcdc_sys_bus_ops sh_mobile_lcdc_sys_bus_ops = {
 	lcdc_sys_write_data,
 	lcdc_sys_read_data,
 };
-
-static int sh_mobile_format_fourcc(const struct fb_var_screeninfo *var)
-{
-	if (var->grayscale > 1)
-		return var->grayscale;
-
-	switch (var->bits_per_pixel) {
-	case 16:
-		return V4L2_PIX_FMT_RGB565;
-	case 24:
-		return V4L2_PIX_FMT_BGR24;
-	case 32:
-		return V4L2_PIX_FMT_BGR32;
-	default:
-		return 0;
-	}
-}
-
-static int sh_mobile_format_is_fourcc(const struct fb_var_screeninfo *var)
-{
-	return var->grayscale > 1;
-}
-
-static bool sh_mobile_format_is_yuv(const struct fb_var_screeninfo *var)
-{
-	if (var->grayscale <= 1)
-		return false;
-
-	switch (var->grayscale) {
-	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_NV21:
-	case V4L2_PIX_FMT_NV16:
-	case V4L2_PIX_FMT_NV61:
-	case V4L2_PIX_FMT_NV24:
-	case V4L2_PIX_FMT_NV42:
-		return true;
-
-	default:
-		return false;
-	}
-}
 
 static void sh_mobile_lcdc_clk_on(struct sh_mobile_lcdc_priv *priv)
 {
@@ -462,7 +420,7 @@ static void sh_mobile_lcdc_geometry(struct sh_mobile_lcdc_chan *ch)
 	tmp = ((display_var->xres & 7) << 24) |
 		((display_h_total & 7) << 16) |
 		((display_var->hsync_len & 7) << 8) |
-		(hsync_pos & 7);
+		hsync_pos;
 	lcdc_write_chan(ch, LDHAJR, tmp);
 }
 
@@ -477,6 +435,7 @@ static void __sh_mobile_lcdc_start(struct sh_mobile_lcdc_priv *priv)
 {
 	struct sh_mobile_lcdc_chan *ch;
 	unsigned long tmp;
+	int bpp = 0;
 	int k, m;
 
 	/* Enable LCDC channels. Read data from external memory, avoid using the
@@ -494,6 +453,9 @@ static void __sh_mobile_lcdc_start(struct sh_mobile_lcdc_priv *priv)
 		ch = &priv->ch[k];
 		if (!ch->enabled)
 			continue;
+
+		if (!bpp)
+			bpp = ch->info->var.bits_per_pixel;
 
 		/* Power supply */
 		lcdc_write_chan(ch, LDPMR, 0);
@@ -525,37 +487,31 @@ static void __sh_mobile_lcdc_start(struct sh_mobile_lcdc_priv *priv)
 
 		sh_mobile_lcdc_geometry(ch);
 
-		switch (sh_mobile_format_fourcc(&ch->info->var)) {
-		case V4L2_PIX_FMT_RGB565:
-			tmp = LDDFR_PKF_RGB16;
-			break;
-		case V4L2_PIX_FMT_BGR24:
-			tmp = LDDFR_PKF_RGB24;
-			break;
-		case V4L2_PIX_FMT_BGR32:
-			tmp = LDDFR_PKF_ARGB32;
-			break;
-		case V4L2_PIX_FMT_NV12:
-		case V4L2_PIX_FMT_NV21:
-			tmp = LDDFR_CC | LDDFR_YF_420;
-			break;
-		case V4L2_PIX_FMT_NV16:
-		case V4L2_PIX_FMT_NV61:
-			tmp = LDDFR_CC | LDDFR_YF_422;
-			break;
-		case V4L2_PIX_FMT_NV24:
-		case V4L2_PIX_FMT_NV42:
-			tmp = LDDFR_CC | LDDFR_YF_444;
-			break;
-		}
-
-		if (sh_mobile_format_is_yuv(&ch->info->var)) {
-			switch (ch->info->var.colorspace) {
-			case V4L2_COLORSPACE_REC709:
-				tmp |= LDDFR_CF1;
+		if (ch->info->var.nonstd) {
+			tmp = (ch->info->var.nonstd << 16);
+			switch (ch->info->var.bits_per_pixel) {
+			case 12:
+				tmp |= LDDFR_YF_420;
 				break;
-			case V4L2_COLORSPACE_JPEG:
-				tmp |= LDDFR_CF0;
+			case 16:
+				tmp |= LDDFR_YF_422;
+				break;
+			case 24:
+			default:
+				tmp |= LDDFR_YF_444;
+				break;
+			}
+		} else {
+			switch (ch->info->var.bits_per_pixel) {
+			case 16:
+				tmp = LDDFR_PKF_RGB16;
+				break;
+			case 24:
+				tmp = LDDFR_PKF_RGB24;
+				break;
+			case 32:
+			default:
+				tmp = LDDFR_PKF_ARGB32;
 				break;
 			}
 		}
@@ -563,7 +519,7 @@ static void __sh_mobile_lcdc_start(struct sh_mobile_lcdc_priv *priv)
 		lcdc_write_chan(ch, LDDFR, tmp);
 		lcdc_write_chan(ch, LDMLSR, ch->pitch);
 		lcdc_write_chan(ch, LDSA1R, ch->base_addr_y);
-		if (sh_mobile_format_is_yuv(&ch->info->var))
+		if (ch->info->var.nonstd)
 			lcdc_write_chan(ch, LDSA2R, ch->base_addr_c);
 
 		/* When using deferred I/O mode, configure the LCDC for one-shot
@@ -580,23 +536,21 @@ static void __sh_mobile_lcdc_start(struct sh_mobile_lcdc_priv *priv)
 	}
 
 	/* Word and long word swap. */
-	switch (sh_mobile_format_fourcc(&priv->ch[0].info->var)) {
-	case V4L2_PIX_FMT_RGB565:
-	case V4L2_PIX_FMT_NV21:
-	case V4L2_PIX_FMT_NV61:
-	case V4L2_PIX_FMT_NV42:
-		tmp = LDDDSR_LS | LDDDSR_WS;
-		break;
-	case V4L2_PIX_FMT_BGR24:
-	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_NV16:
-	case V4L2_PIX_FMT_NV24:
+	if  (priv->ch[0].info->var.nonstd)
 		tmp = LDDDSR_LS | LDDDSR_WS | LDDDSR_BS;
-		break;
-	case V4L2_PIX_FMT_BGR32:
-	default:
-		tmp = LDDDSR_LS;
-		break;
+	else {
+		switch (bpp) {
+		case 16:
+			tmp = LDDDSR_LS | LDDDSR_WS;
+			break;
+		case 24:
+			tmp = LDDDSR_LS | LDDDSR_WS | LDDDSR_BS;
+			break;
+		case 32:
+		default:
+			tmp = LDDDSR_LS;
+			break;
+		}
 	}
 	lcdc_write(priv, _LDDDSR, tmp);
 
@@ -668,24 +622,12 @@ static int sh_mobile_lcdc_start(struct sh_mobile_lcdc_priv *priv)
 			ch->meram_enabled = 0;
 		}
 
-		switch (sh_mobile_format_fourcc(&ch->info->var)) {
-		case V4L2_PIX_FMT_NV12:
-		case V4L2_PIX_FMT_NV21:
-		case V4L2_PIX_FMT_NV16:
-		case V4L2_PIX_FMT_NV61:
-			pixelformat = SH_MOBILE_MERAM_PF_NV;
-			break;
-		case V4L2_PIX_FMT_NV24:
-		case V4L2_PIX_FMT_NV42:
-			pixelformat = SH_MOBILE_MERAM_PF_NV24;
-			break;
-		case V4L2_PIX_FMT_RGB565:
-		case V4L2_PIX_FMT_BGR24:
-		case V4L2_PIX_FMT_BGR32:
-		default:
+		if (!ch->info->var.nonstd)
 			pixelformat = SH_MOBILE_MERAM_PF_RGB;
-			break;
-		}
+		else if (ch->info->var.bits_per_pixel == 24)
+			pixelformat = SH_MOBILE_MERAM_PF_NV24;
+		else
+			pixelformat = SH_MOBILE_MERAM_PF_NV;
 
 		ret = mdev->ops->meram_register(mdev, cfg, ch->pitch,
 					ch->info->var.yres, pixelformat,
@@ -903,7 +845,6 @@ static struct fb_fix_screeninfo sh_mobile_lcdc_fix  = {
 	.xpanstep =	0,
 	.ypanstep =	1,
 	.ywrapstep =	0,
-	.capabilities =	FB_CAP_FOURCC,
 };
 
 static void sh_mobile_lcdc_fillrect(struct fb_info *info,
@@ -936,9 +877,8 @@ static int sh_mobile_fb_pan_display(struct fb_var_screeninfo *var,
 	unsigned long new_pan_offset;
 	unsigned long base_addr_y, base_addr_c;
 	unsigned long c_offset;
-	bool yuv = sh_mobile_format_is_yuv(&info->var);
 
-	if (!yuv)
+	if (!info->var.nonstd)
 		new_pan_offset = var->yoffset * info->fix.line_length
 			       + var->xoffset * (info->var.bits_per_pixel / 8);
 	else
@@ -952,7 +892,7 @@ static int sh_mobile_fb_pan_display(struct fb_var_screeninfo *var,
 
 	/* Set the source address for the next refresh */
 	base_addr_y = ch->dma_handle + new_pan_offset;
-	if (yuv) {
+	if (info->var.nonstd) {
 		/* Set y offset */
 		c_offset = var->yoffset * info->fix.line_length
 			 * (info->var.bits_per_pixel - 8) / 8;
@@ -960,7 +900,7 @@ static int sh_mobile_fb_pan_display(struct fb_var_screeninfo *var,
 			    + info->var.xres * info->var.yres_virtual
 			    + c_offset;
 		/* Set x offset */
-		if (sh_mobile_format_fourcc(&info->var) == V4L2_PIX_FMT_NV24)
+		if (info->var.bits_per_pixel == 24)
 			base_addr_c += 2 * var->xoffset;
 		else
 			base_addr_c += var->xoffset;
@@ -984,7 +924,7 @@ static int sh_mobile_fb_pan_display(struct fb_var_screeninfo *var,
 	ch->base_addr_c = base_addr_c;
 
 	lcdc_write_chan_mirror(ch, LDSA1R, base_addr_y);
-	if (yuv)
+	if (info->var.nonstd)
 		lcdc_write_chan_mirror(ch, LDSA2R, base_addr_c);
 
 	if (lcdc_chan_is_sublcd(ch))
@@ -1160,84 +1100,51 @@ static int sh_mobile_check_var(struct fb_var_screeninfo *var, struct fb_info *in
 	if (var->yres_virtual < var->yres)
 		var->yres_virtual = var->yres;
 
-	if (sh_mobile_format_is_fourcc(var)) {
-		switch (var->grayscale) {
-		case V4L2_PIX_FMT_NV12:
-		case V4L2_PIX_FMT_NV21:
-			var->bits_per_pixel = 12;
-			break;
-		case V4L2_PIX_FMT_RGB565:
-		case V4L2_PIX_FMT_NV16:
-		case V4L2_PIX_FMT_NV61:
-			var->bits_per_pixel = 16;
-			break;
-		case V4L2_PIX_FMT_BGR24:
-		case V4L2_PIX_FMT_NV24:
-		case V4L2_PIX_FMT_NV42:
-			var->bits_per_pixel = 24;
-			break;
-		case V4L2_PIX_FMT_BGR32:
-			var->bits_per_pixel = 32;
-			break;
-		default:
-			return -EINVAL;
-		}
+	if (var->bits_per_pixel <= 16) {		/* RGB 565 */
+		var->bits_per_pixel = 16;
+		var->red.offset = 11;
+		var->red.length = 5;
+		var->green.offset = 5;
+		var->green.length = 6;
+		var->blue.offset = 0;
+		var->blue.length = 5;
+		var->transp.offset = 0;
+		var->transp.length = 0;
+	} else if (var->bits_per_pixel <= 24) {		/* RGB 888 */
+		var->bits_per_pixel = 24;
+		var->red.offset = 16;
+		var->red.length = 8;
+		var->green.offset = 8;
+		var->green.length = 8;
+		var->blue.offset = 0;
+		var->blue.length = 8;
+		var->transp.offset = 0;
+		var->transp.length = 0;
+	} else if (var->bits_per_pixel <= 32) {		/* RGBA 888 */
+		var->bits_per_pixel = 32;
+		var->red.offset = 16;
+		var->red.length = 8;
+		var->green.offset = 8;
+		var->green.length = 8;
+		var->blue.offset = 0;
+		var->blue.length = 8;
+		var->transp.offset = 24;
+		var->transp.length = 8;
+	} else
+		return -EINVAL;
 
-		/* Default to RGB and JPEG color-spaces for RGB and YUV formats
-		 * respectively.
-		 */
-		if (!sh_mobile_format_is_yuv(var))
-			var->colorspace = V4L2_COLORSPACE_SRGB;
-		else if (var->colorspace != V4L2_COLORSPACE_REC709)
-			var->colorspace = V4L2_COLORSPACE_JPEG;
-	} else {
-		if (var->bits_per_pixel <= 16) {		/* RGB 565 */
-			var->bits_per_pixel = 16;
-			var->red.offset = 11;
-			var->red.length = 5;
-			var->green.offset = 5;
-			var->green.length = 6;
-			var->blue.offset = 0;
-			var->blue.length = 5;
-			var->transp.offset = 0;
-			var->transp.length = 0;
-		} else if (var->bits_per_pixel <= 24) {		/* RGB 888 */
-			var->bits_per_pixel = 24;
-			var->red.offset = 16;
-			var->red.length = 8;
-			var->green.offset = 8;
-			var->green.length = 8;
-			var->blue.offset = 0;
-			var->blue.length = 8;
-			var->transp.offset = 0;
-			var->transp.length = 0;
-		} else if (var->bits_per_pixel <= 32) {		/* RGBA 888 */
-			var->bits_per_pixel = 32;
-			var->red.offset = 16;
-			var->red.length = 8;
-			var->green.offset = 8;
-			var->green.length = 8;
-			var->blue.offset = 0;
-			var->blue.length = 8;
-			var->transp.offset = 24;
-			var->transp.length = 8;
-		} else
-			return -EINVAL;
-
-		var->red.msb_right = 0;
-		var->green.msb_right = 0;
-		var->blue.msb_right = 0;
-		var->transp.msb_right = 0;
-	}
+	var->red.msb_right = 0;
+	var->green.msb_right = 0;
+	var->blue.msb_right = 0;
+	var->transp.msb_right = 0;
 
 	/* Make sure we don't exceed our allocated memory. */
 	if (var->xres_virtual * var->yres_virtual * var->bits_per_pixel / 8 >
 	    info->fix.smem_len)
 		return -EINVAL;
 
-	/* only accept the forced_fourcc for dual channel configurations */
-	if (p->forced_fourcc &&
-	    p->forced_fourcc != sh_mobile_format_fourcc(var))
+	/* only accept the forced_bpp for dual channel configurations */
+	if (p->forced_bpp && p->forced_bpp != var->bits_per_pixel)
 		return -EINVAL;
 
 	return 0;
@@ -1251,7 +1158,7 @@ static int sh_mobile_set_par(struct fb_info *info)
 
 	sh_mobile_lcdc_stop(ch->lcdc);
 
-	if (sh_mobile_format_is_yuv(&info->var))
+	if (info->var.nonstd)
 		info->fix.line_length = info->var.xres;
 	else
 		info->fix.line_length = info->var.xres
@@ -1261,14 +1168,6 @@ static int sh_mobile_set_par(struct fb_info *info)
 	if (ret < 0) {
 		dev_err(info->dev, "%s: unable to restart LCDC\n", __func__);
 		info->fix.line_length = line_length;
-	}
-
-	if (sh_mobile_format_is_fourcc(&info->var)) {
-		info->fix.type = FB_TYPE_FOURCC;
-		info->fix.visual = FB_VISUAL_FOURCC;
-	} else {
-		info->fix.type = FB_TYPE_PACKED_PIXELS;
-		info->fix.visual = FB_VISUAL_TRUECOLOR;
 	}
 
 	return ret;
@@ -1565,9 +1464,9 @@ static int __devinit sh_mobile_lcdc_channel_init(struct sh_mobile_lcdc_chan *ch,
 	for (i = 0, mode = cfg->lcd_cfg; i < cfg->num_cfg; i++, mode++) {
 		unsigned int size = mode->yres * mode->xres;
 
-		/* NV12/NV21 buffers must have even number of lines */
-		if ((cfg->fourcc == V4L2_PIX_FMT_NV12 ||
-		     cfg->fourcc == V4L2_PIX_FMT_NV21) && (mode->yres & 0x1)) {
+		/* NV12 buffers must have even number of lines */
+		if ((cfg->nonstd) && cfg->bpp == 12 &&
+				(mode->yres & 0x1)) {
 			dev_err(dev, "yres must be multiple of 2 for YCbCr420 "
 				"mode.\n");
 			return -EINVAL;
@@ -1584,6 +1483,14 @@ static int __devinit sh_mobile_lcdc_channel_init(struct sh_mobile_lcdc_chan *ch,
 	else
 		dev_dbg(dev, "Found largest videomode %ux%u\n",
 			max_mode->xres, max_mode->yres);
+
+	/* Initialize fixed screen information. Restrict pan to 2 lines steps
+	 * for NV12.
+	 */
+	info->fix = sh_mobile_lcdc_fix;
+	info->fix.smem_len = max_size * 2 * cfg->bpp / 8;
+	if (cfg->nonstd && cfg->bpp == 12)
+		info->fix.ypanstep = 2;
 
 	/* Create the mode list. */
 	if (cfg->lcd_cfg == NULL) {
@@ -1602,38 +1509,19 @@ static int __devinit sh_mobile_lcdc_channel_init(struct sh_mobile_lcdc_chan *ch,
 	 */
 	var = &info->var;
 	fb_videomode_to_var(var, mode);
+	var->bits_per_pixel = cfg->bpp;
 	var->width = cfg->lcd_size_cfg.width;
 	var->height = cfg->lcd_size_cfg.height;
 	var->yres_virtual = var->yres * 2;
 	var->activate = FB_ACTIVATE_NOW;
 
-	switch (cfg->fourcc) {
-	case V4L2_PIX_FMT_RGB565:
-		var->bits_per_pixel = 16;
-		break;
-	case V4L2_PIX_FMT_BGR24:
-		var->bits_per_pixel = 24;
-		break;
-	case V4L2_PIX_FMT_BGR32:
-		var->bits_per_pixel = 32;
-		break;
-	default:
-		var->grayscale = cfg->fourcc;
-		break;
-	}
-
-	/* Make sure the memory size check won't fail. smem_len is initialized
-	 * later based on var.
-	 */
-	info->fix.smem_len = UINT_MAX;
 	ret = sh_mobile_check_var(var, info);
 	if (ret)
 		return ret;
 
-	max_size = max_size * var->bits_per_pixel / 8 * 2;
-
 	/* Allocate frame buffer memory and color map. */
-	buf = dma_alloc_coherent(dev, max_size, &ch->dma_handle, GFP_KERNEL);
+	buf = dma_alloc_coherent(dev, info->fix.smem_len, &ch->dma_handle,
+				 GFP_KERNEL);
 	if (!buf) {
 		dev_err(dev, "unable to allocate buffer\n");
 		return -ENOMEM;
@@ -1642,27 +1530,16 @@ static int __devinit sh_mobile_lcdc_channel_init(struct sh_mobile_lcdc_chan *ch,
 	ret = fb_alloc_cmap(&info->cmap, PALETTE_NR, 0);
 	if (ret < 0) {
 		dev_err(dev, "unable to allocate cmap\n");
-		dma_free_coherent(dev, max_size, buf, ch->dma_handle);
+		dma_free_coherent(dev, info->fix.smem_len,
+				  buf, ch->dma_handle);
 		return ret;
 	}
 
-	/* Initialize fixed screen information. Restrict pan to 2 lines steps
-	 * for NV12 and NV21.
-	 */
-	info->fix = sh_mobile_lcdc_fix;
 	info->fix.smem_start = ch->dma_handle;
-	info->fix.smem_len = max_size;
-	if (cfg->fourcc == V4L2_PIX_FMT_NV12 ||
-	    cfg->fourcc == V4L2_PIX_FMT_NV21)
-		info->fix.ypanstep = 2;
-
-	if (sh_mobile_format_is_yuv(var)) {
+	if (var->nonstd)
 		info->fix.line_length = var->xres;
-		info->fix.visual = FB_VISUAL_FOURCC;
-	} else {
-		info->fix.line_length = var->xres * var->bits_per_pixel / 8;
-		info->fix.visual = FB_VISUAL_TRUECOLOR;
-	}
+	else
+		info->fix.line_length = var->xres * (cfg->bpp / 8);
 
 	info->screen_base = buf;
 	info->device = dev;
@@ -1749,9 +1626,9 @@ static int __devinit sh_mobile_lcdc_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	/* for dual channel LCDC (MAIN + SUB) force shared format setting */
+	/* for dual channel LCDC (MAIN + SUB) force shared bpp setting */
 	if (num_channels == 2)
-		priv->forced_fourcc = pdata->ch[0].fourcc;
+		priv->forced_bpp = pdata->ch[0].bpp;
 
 	priv->base = ioremap_nocache(res->start, resource_size(res));
 	if (!priv->base)
@@ -1798,10 +1675,13 @@ static int __devinit sh_mobile_lcdc_probe(struct platform_device *pdev)
 		if (error < 0)
 			goto err1;
 
-		dev_info(info->dev, "registered %s/%s as %dx%d %dbpp.\n",
-			 pdev->name, (ch->cfg.chan == LCDC_CHAN_MAINLCD) ?
-			 "mainlcd" : "sublcd", info->var.xres, info->var.yres,
-			 info->var.bits_per_pixel);
+		dev_info(info->dev,
+			 "registered %s/%s as %dx%d %dbpp.\n",
+			 pdev->name,
+			 (ch->cfg.chan == LCDC_CHAN_MAINLCD) ?
+			 "mainlcd" : "sublcd",
+			 info->var.xres, info->var.yres,
+			 ch->cfg.bpp);
 
 		/* deferred io mode: disable clock to save power */
 		if (info->fbdefio || info->state == FBINFO_STATE_SUSPENDED)
@@ -1829,7 +1709,18 @@ static struct platform_driver sh_mobile_lcdc_driver = {
 	.remove		= sh_mobile_lcdc_remove,
 };
 
-module_platform_driver(sh_mobile_lcdc_driver);
+static int __init sh_mobile_lcdc_init(void)
+{
+	return platform_driver_register(&sh_mobile_lcdc_driver);
+}
+
+static void __exit sh_mobile_lcdc_exit(void)
+{
+	platform_driver_unregister(&sh_mobile_lcdc_driver);
+}
+
+module_init(sh_mobile_lcdc_init);
+module_exit(sh_mobile_lcdc_exit);
 
 MODULE_DESCRIPTION("SuperH Mobile LCDC Framebuffer driver");
 MODULE_AUTHOR("Magnus Damm <damm@opensource.se>");

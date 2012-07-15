@@ -18,7 +18,6 @@
 
 typedef void (*e_vector)(void);
 extern e_vector vectors[];
-extern e_vector *_ramvec;
 
 asmlinkage void auto_inthandler(void);
 asmlinkage void user_inthandler(void);

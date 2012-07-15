@@ -5,8 +5,8 @@
 config HAVE_NET_MACB
 	bool
 
-config NET_CADENCE
-	bool "Cadence devices"
+config NET_ATMEL
+	bool "Atmel devices"
 	default y
 	depends on HAVE_NET_MACB || (ARM && ARCH_AT91RM9200)
 	---help---
@@ -21,7 +21,7 @@ config NET_CADENCE
 	  the remaining Atmel network card questions. If you say Y, you will be
 	  asked for your specific card in the following questions.
 
-if NET_CADENCE
+if NET_ATMEL
 
 config ARM_AT91_ETHER
 	tristate "AT91RM9200 Ethernet support"
@@ -33,16 +33,14 @@ config ARM_AT91_ETHER
 	  ethernet support, then you should always answer Y to this.
 
 config MACB
-	tristate "Cadence MACB/GEM support"
+	tristate "Atmel MACB support"
 	depends on HAVE_NET_MACB
 	select PHYLIB
 	---help---
-	  The Cadence MACB ethernet interface is found on many Atmel AT32 and
-	  AT91 parts.  This driver also supports the Cadence GEM (Gigabit
-	  Ethernet MAC found in some ARM SoC devices).  Note: the Gigabit mode
-	  is not yet supported.  Say Y to include support for the MACB/GEM chip.
+	  The Atmel MACB ethernet interface is found on many AT32 and AT91
+	  parts. Say Y to include support for the MACB chip.
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called macb.
 
-endif # NET_CADENCE
+endif # NET_ATMEL

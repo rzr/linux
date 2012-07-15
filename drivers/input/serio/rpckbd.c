@@ -143,4 +143,16 @@ static struct platform_driver rpckbd_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-module_platform_driver(rpckbd_driver);
+
+static int __init rpckbd_init(void)
+{
+	return platform_driver_register(&rpckbd_driver);
+}
+
+static void __exit rpckbd_exit(void)
+{
+	platform_driver_unregister(&rpckbd_driver);
+}
+
+module_init(rpckbd_init);
+module_exit(rpckbd_exit);

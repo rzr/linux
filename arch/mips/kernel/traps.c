@@ -91,7 +91,6 @@ int (*board_be_handler)(struct pt_regs *regs, int is_fixup);
 void (*board_nmi_handler_setup)(void);
 void (*board_ejtag_handler_setup)(void);
 void (*board_bind_eic_interrupt)(int irq, int regset);
-void (*board_ebase_setup)(void);
 
 
 static void show_raw_backtrace(unsigned long reg29)
@@ -401,7 +400,7 @@ void __noreturn die(const char *str, struct pt_regs *regs)
 		panic("Fatal exception in interrupt");
 
 	if (panic_on_oops) {
-		printk(KERN_EMERG "Fatal exception: panic in 5 seconds");
+		printk(KERN_EMERG "Fatal exception: panic in 5 seconds\n");
 		ssleep(5);
 		panic("Fatal exception");
 	}
@@ -1135,7 +1134,7 @@ asmlinkage void do_mt(struct pt_regs *regs)
 		printk(KERN_DEBUG "YIELD Scheduler Exception\n");
 		break;
 	case 5:
-		printk(KERN_DEBUG "Gating Storage Scheduler Exception\n");
+		printk(KERN_DEBUG "Gating Storage Schedulier Exception\n");
 		break;
 	default:
 		printk(KERN_DEBUG "*** UNKNOWN THREAD EXCEPTION %d ***\n",
@@ -1151,7 +1150,7 @@ asmlinkage void do_mt(struct pt_regs *regs)
 asmlinkage void do_dsp(struct pt_regs *regs)
 {
 	if (cpu_has_dsp)
-		panic("Unexpected DSP exception");
+		panic("Unexpected DSP exception\n");
 
 	force_sig(SIGILL, current);
 }
@@ -1340,18 +1339,9 @@ void ejtag_exception_handler(struct pt_regs *regs)
 
 /*
  * NMI exception handler.
- * No lock; only written during early bootup by CPU 0.
  */
-static RAW_NOTIFIER_HEAD(nmi_chain);
-
-int register_nmi_notifier(struct notifier_block *nb)
+NORET_TYPE void ATTRIB_NORET nmi_exception_handler(struct pt_regs *regs)
 {
-	return raw_notifier_chain_register(&nmi_chain, nb);
-}
-
-void __noreturn nmi_exception_handler(struct pt_regs *regs)
-{
-	raw_notifier_call_chain(&nmi_chain, 0, regs);
 	bust_spinlocks(1);
 	printk("NMI taken!!!!\n");
 	die("NMI", regs);
@@ -1692,8 +1682,6 @@ void __init trap_init(void)
 			ebase += (read_c0_ebase() & 0x3ffff000);
 	}
 
-	if (board_ebase_setup)
-		board_ebase_setup();
 	per_cpu_trap_init();
 
 	/*

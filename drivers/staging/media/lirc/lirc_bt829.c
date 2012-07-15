@@ -53,7 +53,7 @@ static unsigned char do_get_bits(void);
 
 #define DRIVER_NAME "lirc_bt829"
 
-static bool debug;
+static int debug;
 #define dprintk(fmt, args...)						 \
 	do {								 \
 		if (debug)						 \

@@ -115,8 +115,7 @@ module_param(mpt_fwfault_debug, int, 0600);
 MODULE_PARM_DESC(mpt_fwfault_debug,
 		 "Enable detection of Firmware fault and halt Firmware on fault - (default=0)");
 
-static char	MptCallbacksName[MPT_MAX_PROTOCOL_DRIVERS]
-				[MPT_MAX_CALLBACKNAME_LEN+1];
+static char	MptCallbacksName[MPT_MAX_PROTOCOL_DRIVERS][50];
 
 #ifdef MFCNT
 static int mfcounter = 0;
@@ -718,8 +717,8 @@ mpt_register(MPT_CALLBACK cbfunc, MPT_DRIVER_CLASS dclass, char *func_name)
 			MptDriverClass[cb_idx] = dclass;
 			MptEvHandlers[cb_idx] = NULL;
 			last_drv_idx = cb_idx;
-			strlcpy(MptCallbacksName[cb_idx], func_name,
-				MPT_MAX_CALLBACKNAME_LEN+1);
+			memcpy(MptCallbacksName[cb_idx], func_name,
+			    strlen(func_name) > 50 ? 50 : strlen(func_name));
 			break;
 		}
 	}

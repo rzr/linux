@@ -42,12 +42,15 @@ static struct xhci_segment *xhci_segment_alloc(struct xhci_hcd *xhci, gfp_t flag
 	seg = kzalloc(sizeof *seg, flags);
 	if (!seg)
 		return NULL;
+	xhci_dbg(xhci, "Allocating priv segment structure at %p\n", seg);
 
 	seg->trbs = dma_pool_alloc(xhci->segment_pool, flags, &dma);
 	if (!seg->trbs) {
 		kfree(seg);
 		return NULL;
 	}
+	xhci_dbg(xhci, "// Allocating segment at %p (virtual) 0x%llx (DMA)\n",
+			seg->trbs, (unsigned long long)dma);
 
 	memset(seg->trbs, 0, SEGMENT_SIZE);
 	seg->dma = dma;
@@ -59,9 +62,12 @@ static struct xhci_segment *xhci_segment_alloc(struct xhci_hcd *xhci, gfp_t flag
 static void xhci_segment_free(struct xhci_hcd *xhci, struct xhci_segment *seg)
 {
 	if (seg->trbs) {
+		xhci_dbg(xhci, "Freeing DMA segment at %p (virtual) 0x%llx (DMA)\n",
+				seg->trbs, (unsigned long long)seg->dma);
 		dma_pool_free(xhci->segment_pool, seg->trbs, seg->dma);
 		seg->trbs = NULL;
 	}
+	xhci_dbg(xhci, "Freeing priv segment structure at %p\n", seg);
 	kfree(seg);
 }
 
@@ -95,6 +101,9 @@ static void xhci_link_segments(struct xhci_hcd *xhci, struct xhci_segment *prev,
 			val |= TRB_CHAIN;
 		prev->trbs[TRBS_PER_SEGMENT-1].link.control = cpu_to_le32(val);
 	}
+	xhci_dbg(xhci, "Linking segment 0x%llx to segment 0x%llx (DMA)\n",
+			(unsigned long long)prev->dma,
+			(unsigned long long)next->dma);
 }
 
 /* XXX: Do we need the hcd structure in all these functions? */
@@ -108,6 +117,7 @@ void xhci_ring_free(struct xhci_hcd *xhci, struct xhci_ring *ring)
 	if (ring->first_seg) {
 		first_seg = ring->first_seg;
 		seg = first_seg->next;
+		xhci_dbg(xhci, "Freeing ring at %p\n", ring);
 		while (seg != first_seg) {
 			struct xhci_segment *next = seg->next;
 			xhci_segment_free(xhci, seg);
@@ -150,6 +160,7 @@ static struct xhci_ring *xhci_ring_alloc(struct xhci_hcd *xhci,
 	struct xhci_segment	*prev;
 
 	ring = kzalloc(sizeof *(ring), flags);
+	xhci_dbg(xhci, "Allocating ring at %p\n", ring);
 	if (!ring)
 		return NULL;
 
@@ -180,6 +191,9 @@ static struct xhci_ring *xhci_ring_alloc(struct xhci_hcd *xhci,
 		/* See section 4.9.2.1 and 6.4.4.1 */
 		prev->trbs[TRBS_PER_SEGMENT-1].link.control |=
 			cpu_to_le32(LINK_TOGGLE);
+		xhci_dbg(xhci, "Wrote link toggle flag to"
+				" segment %p (virtual), 0x%llx (DMA)\n",
+				prev, (unsigned long long)prev->dma);
 	}
 	xhci_initialize_ring_info(ring);
 	return ring;
@@ -679,10 +693,9 @@ static void xhci_free_tt_info(struct xhci_hcd *xhci,
 		struct xhci_virt_device *virt_dev,
 		int slot_id)
 {
-	struct list_head *tt;
 	struct list_head *tt_list_head;
-	struct list_head *tt_next;
-	struct xhci_tt_bw_info *tt_info;
+	struct xhci_tt_bw_info *tt_info, *next;
+	bool slot_found = false;
 
 	/* If the device never made it past the Set Address stage,
 	 * it may not have the real_port set correctly.
@@ -694,34 +707,16 @@ static void xhci_free_tt_info(struct xhci_hcd *xhci,
 	}
 
 	tt_list_head = &(xhci->rh_bw[virt_dev->real_port - 1].tts);
-	if (list_empty(tt_list_head))
-		return;
-
-	list_for_each(tt, tt_list_head) {
-		tt_info = list_entry(tt, struct xhci_tt_bw_info, tt_list);
-		if (tt_info->slot_id == slot_id)
+	list_for_each_entry_safe(tt_info, next, tt_list_head, tt_list) {
+		/* Multi-TT hubs will have more than one entry */
+		if (tt_info->slot_id == slot_id) {
+			slot_found = true;
+			list_del(&tt_info->tt_list);
+			kfree(tt_info);
+		} else if (slot_found) {
 			break;
+		}
 	}
-	/* Cautionary measure in case the hub was disconnected before we
-	 * stored the TT information.
-	 */
-	if (tt_info->slot_id != slot_id)
-		return;
-
-	tt_next = tt->next;
-	tt_info = list_entry(tt, struct xhci_tt_bw_info,
-			tt_list);
-	/* Multi-TT hubs will have more than one entry */
-	do {
-		list_del(tt);
-		kfree(tt_info);
-		tt = tt_next;
-		if (list_empty(tt_list_head))
-			break;
-		tt_next = tt->next;
-		tt_info = list_entry(tt, struct xhci_tt_bw_info,
-				tt_list);
-	} while (tt_info->slot_id == slot_id);
 }
 
 int xhci_alloc_tt_info(struct xhci_hcd *xhci,
@@ -1687,7 +1682,7 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	struct dev_info	*dev_info, *next;
 	unsigned long	flags;
 	int size;
-	int i;
+	int i, j, num_ports;
 
 	/* Free the Event Ring Segment Table and the actual Event Ring */
 	size = sizeof(struct xhci_erst_entry)*(xhci->erst.num_entries);
@@ -1701,6 +1696,7 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	xhci->event_ring = NULL;
 	xhci_dbg(xhci, "Freed event ring\n");
 
+	xhci->cmd_ring_reserved_trbs = 0;
 	if (xhci->cmd_ring)
 		xhci_ring_free(xhci, xhci->cmd_ring);
 	xhci->cmd_ring = NULL;
@@ -1743,8 +1739,27 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	}
 	spin_unlock_irqrestore(&xhci->lock, flags);
 
+	num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
+	for (i = 0; i < num_ports; i++) {
+		struct xhci_interval_bw_table *bwt = &xhci->rh_bw[i].bw_table;
+		for (j = 0; j < XHCI_MAX_INTERVAL; j++) {
+			struct list_head *ep = &bwt->interval_bw[j].endpoints;
+			while (!list_empty(ep))
+				list_del_init(ep->next);
+		}
+	}
+
+	for (i = 0; i < num_ports; i++) {
+		struct xhci_tt_bw_info *tt, *n;
+		list_for_each_entry_safe(tt, n, &xhci->rh_bw[i].tts, tt_list) {
+			list_del(&tt->tt_list);
+			kfree(tt);
+		}
+	}
+
 	xhci->num_usb2_ports = 0;
 	xhci->num_usb3_ports = 0;
+	xhci->num_active_eps = 0;
 	kfree(xhci->usb2_ports);
 	kfree(xhci->usb3_ports);
 	kfree(xhci->port_array);

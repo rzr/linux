@@ -18,6 +18,7 @@
 #include <linux/pm.h>
 #include <linux/i2c.h>
 #include <linux/spi/spi.h>
+#include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/of_device.h>
@@ -85,12 +86,23 @@ SND_SOC_DAPM_OUTPUT("VOUTRP"),
 SND_SOC_DAPM_OUTPUT("VOUTRN"),
 };
 
-static const struct snd_soc_dapm_route wm8741_dapm_routes[] = {
+static const struct snd_soc_dapm_route intercon[] = {
 	{ "VOUTLP", NULL, "DACL" },
 	{ "VOUTLN", NULL, "DACL" },
 	{ "VOUTRP", NULL, "DACR" },
 	{ "VOUTRN", NULL, "DACR" },
 };
+
+static int wm8741_add_widgets(struct snd_soc_codec *codec)
+{
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	snd_soc_dapm_new_controls(dapm, wm8741_dapm_widgets,
+				  ARRAY_SIZE(wm8741_dapm_widgets));
+	snd_soc_dapm_add_routes(dapm, intercon, ARRAY_SIZE(intercon));
+
+	return 0;
+}
 
 static struct {
 	int value;
@@ -370,7 +382,7 @@ static int wm8741_set_dai_fmt(struct snd_soc_dai *codec_dai,
 #define WM8741_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-static const struct snd_soc_dai_ops wm8741_dai_ops = {
+static struct snd_soc_dai_ops wm8741_dai_ops = {
 	.startup	= wm8741_startup,
 	.hw_params	= wm8741_hw_params,
 	.set_sysclk	= wm8741_set_dai_sysclk,
@@ -445,6 +457,10 @@ static int wm8741_probe(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, WM8741_DACRMSB_ATTENUATION,
 			    WM8741_UPDATERM, WM8741_UPDATERM);
 
+	snd_soc_add_controls(codec, wm8741_snd_controls,
+			     ARRAY_SIZE(wm8741_snd_controls));
+	wm8741_add_widgets(codec);
+
 	dev_dbg(codec->dev, "Successful registration\n");
 	return ret;
 
@@ -473,13 +489,6 @@ static struct snd_soc_codec_driver soc_codec_dev_wm8741 = {
 	.reg_cache_size = ARRAY_SIZE(wm8741_reg_defaults),
 	.reg_word_size = sizeof(u16),
 	.reg_cache_default = wm8741_reg_defaults,
-
-	.controls = wm8741_snd_controls,
-	.num_controls = ARRAY_SIZE(wm8741_snd_controls),
-	.dapm_widgets = wm8741_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(wm8741_dapm_widgets),
-	.dapm_routes = wm8741_dapm_routes,
-	.num_dapm_routes = ARRAY_SIZE(wm8741_dapm_routes),
 };
 
 static const struct of_device_id wm8741_of_match[] = {
@@ -495,8 +504,7 @@ static int wm8741_i2c_probe(struct i2c_client *i2c,
 	struct wm8741_priv *wm8741;
 	int ret;
 
-	wm8741 = devm_kzalloc(&i2c->dev, sizeof(struct wm8741_priv),
-			      GFP_KERNEL);
+	wm8741 = kzalloc(sizeof(struct wm8741_priv), GFP_KERNEL);
 	if (wm8741 == NULL)
 		return -ENOMEM;
 
@@ -505,13 +513,20 @@ static int wm8741_i2c_probe(struct i2c_client *i2c,
 
 	ret = snd_soc_register_codec(&i2c->dev,
 				     &soc_codec_dev_wm8741, &wm8741_dai, 1);
+	if (ret != 0)
+		goto err;
 
+	return ret;
+
+err:
+	kfree(wm8741);
 	return ret;
 }
 
 static int wm8741_i2c_remove(struct i2c_client *client)
 {
 	snd_soc_unregister_codec(&client->dev);
+	kfree(i2c_get_clientdata(client));
 	return 0;
 }
 
@@ -539,8 +554,7 @@ static int __devinit wm8741_spi_probe(struct spi_device *spi)
 	struct wm8741_priv *wm8741;
 	int ret;
 
-	wm8741 = devm_kzalloc(&spi->dev, sizeof(struct wm8741_priv),
-			     GFP_KERNEL);
+	wm8741 = kzalloc(sizeof(struct wm8741_priv), GFP_KERNEL);
 	if (wm8741 == NULL)
 		return -ENOMEM;
 
@@ -549,12 +563,15 @@ static int __devinit wm8741_spi_probe(struct spi_device *spi)
 
 	ret = snd_soc_register_codec(&spi->dev,
 			&soc_codec_dev_wm8741, &wm8741_dai, 1);
+	if (ret < 0)
+		kfree(wm8741);
 	return ret;
 }
 
 static int __devexit wm8741_spi_remove(struct spi_device *spi)
 {
 	snd_soc_unregister_codec(&spi->dev);
+	kfree(spi_get_drvdata(spi));
 	return 0;
 }
 

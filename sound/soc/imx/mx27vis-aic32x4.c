@@ -86,7 +86,6 @@ static struct snd_soc_dai_link mx27vis_aic32x4_dai = {
 
 static struct snd_soc_card mx27vis_aic32x4 = {
 	.name		= "visstrim_m10-audio",
-	.owner		= THIS_MODULE,
 	.dai_link	= &mx27vis_aic32x4_dai,
 	.num_links	= 1,
 };

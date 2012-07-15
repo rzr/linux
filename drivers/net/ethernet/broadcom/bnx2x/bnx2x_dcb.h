@@ -90,7 +90,6 @@ struct bnx2x_admin_priority_app_table {
 		u32 app_id;
 };
 
-#define DCBX_CONFIG_MAX_APP_PROTOCOL 4
 struct bnx2x_config_dcbx_params {
 	u32 overwrite_settings;
 	u32 admin_dcbx_version;
@@ -110,8 +109,7 @@ struct bnx2x_config_dcbx_params {
 	u32 admin_recommendation_bw_precentage[8];
 	u32 admin_recommendation_ets_pg[8];
 	u32 admin_pfc_bitmap;
-	struct bnx2x_admin_priority_app_table
-		admin_priority_app_table[DCBX_CONFIG_MAX_APP_PROTOCOL];
+	struct bnx2x_admin_priority_app_table admin_priority_app_table[4];
 	u32 admin_default_priority;
 };
 

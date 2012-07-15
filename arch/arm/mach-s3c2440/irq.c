@@ -23,7 +23,7 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/io.h>
 
 #include <mach/hardware.h>
@@ -92,7 +92,7 @@ static struct irq_chip s3c_irq_wdtac97 = {
 	.irq_ack	= s3c_irq_wdtac97_ack,
 };
 
-static int s3c2440_irq_add(struct device *dev, struct subsys_interface *sif)
+static int s3c2440_irq_add(struct sys_device *sysdev)
 {
 	unsigned int irqno;
 
@@ -113,15 +113,13 @@ static int s3c2440_irq_add(struct device *dev, struct subsys_interface *sif)
 	return 0;
 }
 
-static struct subsys_interface s3c2440_irq_interface = {
-	.name		= "s3c2440_irq",
-	.subsys		= &s3c2440_subsys,
-	.add_dev	= s3c2440_irq_add,
+static struct sysdev_driver s3c2440_irq_driver = {
+	.add		= s3c2440_irq_add,
 };
 
 static int s3c2440_irq_init(void)
 {
-	return subsys_interface_register(&s3c2440_irq_interface);
+	return sysdev_driver_register(&s3c2440_sysclass, &s3c2440_irq_driver);
 }
 
 arch_initcall(s3c2440_irq_init);

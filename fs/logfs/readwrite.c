@@ -244,7 +244,8 @@ static void preunlock_page(struct super_block *sb, struct page *page, int lock)
  * is waiting for s_write_mutex.  We annotate this fact by setting PG_pre_locked
  * in addition to PG_locked.
  */
-void logfs_get_wblocks(struct super_block *sb, struct page *page, int lock)
+static void logfs_get_wblocks(struct super_block *sb, struct page *page,
+		int lock)
 {
 	struct logfs_super *super = logfs_super(sb);
 
@@ -259,7 +260,8 @@ void logfs_get_wblocks(struct super_block *sb, struct page *page, int lock)
 	}
 }
 
-void logfs_put_wblocks(struct super_block *sb, struct page *page, int lock)
+static void logfs_put_wblocks(struct super_block *sb, struct page *page,
+		int lock)
 {
 	struct logfs_super *super = logfs_super(sb);
 
@@ -422,7 +424,7 @@ static void inode_write_block(struct logfs_block *block)
 	if (inode->i_ino == LOGFS_INO_MASTER)
 		logfs_write_anchor(inode->i_sb);
 	else {
-		ret = __logfs_write_inode(inode, NULL, 0);
+		ret = __logfs_write_inode(inode, 0);
 		/* see indirect_write_block comment */
 		BUG_ON(ret);
 	}
@@ -558,13 +560,8 @@ static void inode_free_block(struct super_block *sb, struct logfs_block *block)
 static void indirect_free_block(struct super_block *sb,
 		struct logfs_block *block)
 {
-	struct page *page = block->page;
-
-	if (PagePrivate(page)) {
-		ClearPagePrivate(page);
-		page_cache_release(page);
-		set_page_private(page, 0);
-	}
+	ClearPagePrivate(block->page);
+	block->page->private = 0;
 	__free_block(sb, block);
 }
 
@@ -653,11 +650,8 @@ static void alloc_data_block(struct inode *inode, struct page *page)
 	logfs_unpack_index(page->index, &bix, &level);
 	block = __alloc_block(inode->i_sb, inode->i_ino, bix, level);
 	block->page = page;
-
 	SetPagePrivate(page);
-	page_cache_get(page);
-	set_page_private(page, (unsigned long) block);
-
+	page->private = (unsigned long)block;
 	block->ops = &indirect_block_ops;
 }
 
@@ -1576,15 +1570,11 @@ int logfs_write_buf(struct inode *inode, struct page *page, long flags)
 static int __logfs_delete(struct inode *inode, struct page *page)
 {
 	long flags = WF_DELETE;
-	int err;
 
 	inode->i_ctime = inode->i_mtime = CURRENT_TIME;
 
 	if (page->index < I0_BLOCKS)
 		return logfs_write_direct(inode, page, flags);
-	err = grow_inode(inode, page->index, 0);
-	if (err)
-		return err;
 	return logfs_write_rec(inode, page, page->index, 0, flags);
 }
 
@@ -1633,7 +1623,7 @@ int logfs_rewrite_block(struct inode *inode, u64 bix, u64 ofs,
 			if (inode->i_ino == LOGFS_INO_MASTER)
 				logfs_write_anchor(inode->i_sb);
 			else {
-				err = __logfs_write_inode(inode, page, flags);
+				err = __logfs_write_inode(inode, flags);
 			}
 		}
 	}
@@ -1883,7 +1873,7 @@ int logfs_truncate(struct inode *inode, u64 target)
 		logfs_get_wblocks(sb, NULL, 1);
 		err = __logfs_truncate(inode, size);
 		if (!err)
-			err = __logfs_write_inode(inode, NULL, 0);
+			err = __logfs_write_inode(inode, 0);
 		logfs_put_wblocks(sb, NULL, 1);
 	}
 
@@ -1911,11 +1901,8 @@ static void move_page_to_inode(struct inode *inode, struct page *page)
 	li->li_block = block;
 
 	block->page = NULL;
-	if (PagePrivate(page)) {
-		ClearPagePrivate(page);
-		page_cache_release(page);
-		set_page_private(page, 0);
-	}
+	page->private = 0;
+	ClearPagePrivate(page);
 }
 
 static void move_inode_to_page(struct page *page, struct inode *inode)
@@ -1931,12 +1918,8 @@ static void move_inode_to_page(struct page *page, struct inode *inode)
 	BUG_ON(PagePrivate(page));
 	block->ops = &indirect_block_ops;
 	block->page = page;
-
-	if (!PagePrivate(page)) {
-		SetPagePrivate(page);
-		page_cache_get(page);
-		set_page_private(page, (unsigned long) block);
-	}
+	page->private = (unsigned long)block;
+	SetPagePrivate(page);
 
 	block->inode = NULL;
 	li->li_block = NULL;
@@ -2123,14 +2106,14 @@ void logfs_set_segment_unreserved(struct super_block *sb, u32 segno, u32 ec)
 			ec_level);
 }
 
-int __logfs_write_inode(struct inode *inode, struct page *page, long flags)
+int __logfs_write_inode(struct inode *inode, long flags)
 {
 	struct super_block *sb = inode->i_sb;
 	int ret;
 
-	logfs_get_wblocks(sb, page, flags & WF_LOCK);
+	logfs_get_wblocks(sb, NULL, flags & WF_LOCK);
 	ret = do_write_inode(inode);
-	logfs_put_wblocks(sb, page, flags & WF_LOCK);
+	logfs_put_wblocks(sb, NULL, flags & WF_LOCK);
 	return ret;
 }
 

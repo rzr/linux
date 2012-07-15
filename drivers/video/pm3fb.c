@@ -57,11 +57,11 @@
  */
 static int hwcursor = 1;
 static char *mode_option __devinitdata;
-static bool noaccel __devinitdata;
+static int noaccel __devinitdata;
 
 /* mtrr option */
 #ifdef CONFIG_MTRR
-static bool nomtrr __devinitdata;
+static int nomtrr __devinitdata;
 #endif
 
 /*

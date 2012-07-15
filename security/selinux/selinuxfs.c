@@ -749,6 +749,14 @@ out:
 	return length;
 }
 
+static inline int hexcode_to_int(int code) {
+	if (code == '\0' || !isxdigit(code))
+		return -1;
+	if (isdigit(code))
+		return code - '0';
+	return tolower(code) - 'a' + 10;
+}
+
 static ssize_t sel_write_create(struct file *file, char *buf, size_t size)
 {
 	char *scon = NULL, *tcon = NULL;
@@ -800,11 +808,9 @@ static ssize_t sel_write_create(struct file *file, char *buf, size_t size)
 			if (c1 == '+')
 				c1 = ' ';
 			else if (c1 == '%') {
-				c1 = hex_to_bin(*r++);
-				if (c1 < 0)
+				if ((c1 = hexcode_to_int(*r++)) < 0)
 					goto out;
-				c2 = hex_to_bin(*r++);
-				if (c2 < 0)
+				if ((c2 = hexcode_to_int(*r++)) < 0)
 					goto out;
 				c1 = (c1 << 4) | c2;
 			}
@@ -1232,6 +1238,7 @@ static int sel_make_bools(void)
 		kfree(bool_pending_names[i]);
 	kfree(bool_pending_names);
 	kfree(bool_pending_values);
+	bool_num = 0;
 	bool_pending_names = NULL;
 	bool_pending_values = NULL;
 

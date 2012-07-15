@@ -14,9 +14,6 @@ struct blackfin_cpudata {
 	struct cpu cpu;
 	unsigned int imemctl;
 	unsigned int dmemctl;
-#ifdef CONFIG_SMP
-	struct task_struct *idle;
-#endif
 };
 
 DECLARE_PER_CPU(struct blackfin_cpudata, cpu_data);

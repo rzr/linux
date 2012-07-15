@@ -95,15 +95,25 @@ struct usbhs_priv *usbhs_pdev_to_priv(struct platform_device *pdev)
 /*
  *		syscfg functions
  */
-static void usbhs_sys_clock_ctrl(struct usbhs_priv *priv, int enable)
+void usbhs_sys_clock_ctrl(struct usbhs_priv *priv, int enable)
 {
 	usbhs_bset(priv, SYSCFG, SCKE, enable ? SCKE : 0);
 }
 
+void usbhs_sys_hispeed_ctrl(struct usbhs_priv *priv, int enable)
+{
+	usbhs_bset(priv, SYSCFG, HSE, enable ? HSE : 0);
+}
+
+void usbhs_sys_usb_ctrl(struct usbhs_priv *priv, int enable)
+{
+	usbhs_bset(priv, SYSCFG, USBE, enable ? USBE : 0);
+}
+
 void usbhs_sys_host_ctrl(struct usbhs_priv *priv, int enable)
 {
-	u16 mask = DCFM | DRPD | DPRPU | HSE | USBE;
-	u16 val  = DCFM | DRPD | HSE | USBE;
+	u16 mask = DCFM | DRPD | DPRPU;
+	u16 val  = DCFM | DRPD;
 	int has_otg = usbhs_get_dparam(priv, has_otg);
 
 	if (has_otg)
@@ -120,8 +130,8 @@ void usbhs_sys_host_ctrl(struct usbhs_priv *priv, int enable)
 
 void usbhs_sys_function_ctrl(struct usbhs_priv *priv, int enable)
 {
-	u16 mask = DCFM | DRPD | DPRPU | HSE | USBE;
-	u16 val  = DPRPU | HSE | USBE;
+	u16 mask = DCFM | DRPD | DPRPU;
+	u16 val  = DPRPU;
 
 	/*
 	 * if enable
@@ -130,11 +140,6 @@ void usbhs_sys_function_ctrl(struct usbhs_priv *priv, int enable)
 	 * - D+ Line Pull-up
 	 */
 	usbhs_bset(priv, SYSCFG, mask, enable ? val : 0);
-}
-
-void usbhs_sys_set_test_mode(struct usbhs_priv *priv, u16 mode)
-{
-	usbhs_write(priv, TESTMODE, mode);
 }
 
 /*
@@ -224,7 +229,7 @@ static void usbhsc_bus_init(struct usbhs_priv *priv)
 /*
  *		device configuration
  */
-int usbhs_set_device_config(struct usbhs_priv *priv, int devnum,
+int usbhs_set_device_speed(struct usbhs_priv *priv, int devnum,
 			   u16 upphub, u16 hubport, u16 speed)
 {
 	struct device *dev = usbhs_priv_to_dev(priv);
@@ -296,24 +301,17 @@ static u32 usbhsc_default_pipe_type[] = {
  */
 static void usbhsc_power_ctrl(struct usbhs_priv *priv, int enable)
 {
-	struct platform_device *pdev = usbhs_priv_to_pdev(priv);
 	struct device *dev = usbhs_priv_to_dev(priv);
 
 	if (enable) {
 		/* enable PM */
 		pm_runtime_get_sync(dev);
 
-		/* enable platform power */
-		usbhs_platform_call(priv, power_ctrl, pdev, priv->base, enable);
-
 		/* USB on */
 		usbhs_sys_clock_ctrl(priv, enable);
 	} else {
 		/* USB off */
 		usbhs_sys_clock_ctrl(priv, enable);
-
-		/* disable platform power */
-		usbhs_platform_call(priv, power_ctrl, pdev, priv->base, enable);
 
 		/* disable PM */
 		pm_runtime_put_sync(dev);
@@ -390,7 +388,7 @@ static void usbhsc_notify_hotplug(struct work_struct *work)
 	usbhsc_hotplug(priv);
 }
 
-static int usbhsc_drvcllbck_notify_hotplug(struct platform_device *pdev)
+int usbhsc_drvcllbck_notify_hotplug(struct platform_device *pdev)
 {
 	struct usbhs_priv *priv = usbhs_pdev_to_priv(pdev);
 	int delay = usbhs_get_dparam(priv, detection_delay);
@@ -400,8 +398,7 @@ static int usbhsc_drvcllbck_notify_hotplug(struct platform_device *pdev)
 	 * To make sure safety context,
 	 * use workqueue for usbhs_notify_hotplug
 	 */
-	schedule_delayed_work(&priv->notify_hotplug_work,
-			      msecs_to_jiffies(delay));
+	schedule_delayed_work(&priv->notify_hotplug_work, delay);
 	return 0;
 }
 
@@ -640,7 +637,18 @@ static struct platform_driver renesas_usbhs_driver = {
 	.remove		= __devexit_p(usbhs_remove),
 };
 
-module_platform_driver(renesas_usbhs_driver);
+static int __init usbhs_init(void)
+{
+	return platform_driver_register(&renesas_usbhs_driver);
+}
+
+static void __exit usbhs_exit(void)
+{
+	platform_driver_unregister(&renesas_usbhs_driver);
+}
+
+module_init(usbhs_init);
+module_exit(usbhs_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Renesas USB driver");

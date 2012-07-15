@@ -85,6 +85,7 @@ static struct inode *isofs_alloc_inode(struct super_block *sb)
 static void isofs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
+	INIT_LIST_HEAD(&inode->i_dentry);
 	kmem_cache_free(isofs_inode_cachep, ISOFS_I(inode));
 }
 
@@ -169,8 +170,8 @@ struct iso9660_options{
 	unsigned char map;
 	unsigned char check;
 	unsigned int blocksize;
-	umode_t fmode;
-	umode_t dmode;
+	mode_t fmode;
+	mode_t dmode;
 	gid_t gid;
 	uid_t uid;
 	char *iocharset;
@@ -948,11 +949,8 @@ root_found:
 
 	/* get the root dentry */
 	s->s_root = d_alloc_root(inode);
-	if (!(s->s_root)) {
-		iput(inode);
-		error = -ENOMEM;
-		goto out_no_inode;
-	}
+	if (!(s->s_root))
+		goto out_no_root;
 
 	kfree(opt.iocharset);
 

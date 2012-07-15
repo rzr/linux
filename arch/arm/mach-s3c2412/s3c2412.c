@@ -18,7 +18,7 @@
 #include <linux/init.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/syscore_ops.h>
 #include <linux/serial_core.h>
 #include <linux/platform_device.h>
@@ -32,6 +32,7 @@
 #include <asm/proc-fns.h>
 #include <asm/irq.h>
 
+#include <mach/reset.h>
 #include <mach/idle.h>
 
 #include <plat/cpu-freq.h>
@@ -130,11 +131,8 @@ static void s3c2412_idle(void)
 	cpu_do_idle();
 }
 
-void s3c2412_restart(char mode, const char *cmd)
+static void s3c2412_hard_reset(void)
 {
-	if (mode == 's')
-		soft_restart(0);
-
 	/* errata "Watch-dog/Software Reset Problem" specifies that
 	 * this reset must be done with the SYSCLK sourced from
 	 * EXTCLK instead of FOUT to avoid a glitch in the reset
@@ -165,6 +163,10 @@ void __init s3c2412_map_io(void)
 	/* set our idle function */
 
 	s3c24xx_idle = s3c2412_idle;
+
+	/* set custom reset hook */
+
+	s3c24xx_reset_hook = s3c2412_hard_reset;
 
 	/* register our io-tables */
 
@@ -218,26 +220,25 @@ void __init s3c2412_init_clocks(int xtal)
 	s3c2412_baseclk_add();
 }
 
-/* need to register the subsystem before we actually register the device, and
+/* need to register class before we actually register the device, and
  * we also need to ensure that it has been initialised before any of the
  * drivers even try to use it (even if not on an s3c2412 based system)
  * as a driver which may support both 2410 and 2440 may try and use it.
 */
 
-struct bus_type s3c2412_subsys = {
+struct sysdev_class s3c2412_sysclass = {
 	.name = "s3c2412-core",
-	.dev_name = "s3c2412-core",
 };
 
 static int __init s3c2412_core_init(void)
 {
-	return subsys_system_register(&s3c2412_subsys, NULL);
+	return sysdev_class_register(&s3c2412_sysclass);
 }
 
 core_initcall(s3c2412_core_init);
 
-static struct device s3c2412_dev = {
-	.bus		= &s3c2412_subsys,
+static struct sys_device s3c2412_sysdev = {
+	.cls		= &s3c2412_sysclass,
 };
 
 int __init s3c2412_init(void)
@@ -249,5 +250,5 @@ int __init s3c2412_init(void)
 #endif
 	register_syscore_ops(&s3c24xx_irq_syscore_ops);
 
-	return device_register(&s3c2412_dev);
+	return sysdev_register(&s3c2412_sysdev);
 }

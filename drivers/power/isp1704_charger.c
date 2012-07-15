@@ -79,7 +79,7 @@ static void isp1704_charger_set_power(struct isp1704_charger *isp, bool on)
 {
 	struct isp1704_charger_data	*board = isp->dev->platform_data;
 
-	if (board && board->set_power)
+	if (board->set_power)
 		board->set_power(on);
 }
 
@@ -494,7 +494,17 @@ static struct platform_driver isp1704_charger_driver = {
 	.remove = __devexit_p(isp1704_charger_remove),
 };
 
-module_platform_driver(isp1704_charger_driver);
+static int __init isp1704_charger_init(void)
+{
+	return platform_driver_register(&isp1704_charger_driver);
+}
+module_init(isp1704_charger_init);
+
+static void __exit isp1704_charger_exit(void)
+{
+	platform_driver_unregister(&isp1704_charger_driver);
+}
+module_exit(isp1704_charger_exit);
 
 MODULE_ALIAS("platform:isp1704_charger");
 MODULE_AUTHOR("Nokia Corporation");

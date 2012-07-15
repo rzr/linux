@@ -53,7 +53,11 @@ struct watchdog_info {
 
 #ifdef __KERNEL__
 
-#include <linux/bitops.h>
+#ifdef CONFIG_WATCHDOG_NOWAYOUT
+#define WATCHDOG_NOWAYOUT	1
+#else
+#define WATCHDOG_NOWAYOUT	0
+#endif
 
 struct watchdog_ops;
 struct watchdog_device;
@@ -117,21 +121,6 @@ struct watchdog_device {
 #define WDOG_ALLOW_RELEASE	2	/* Did we receive the magic char ? */
 #define WDOG_NO_WAY_OUT		3	/* Is 'nowayout' feature set ? */
 };
-
-#ifdef CONFIG_WATCHDOG_NOWAYOUT
-#define WATCHDOG_NOWAYOUT		1
-#define WATCHDOG_NOWAYOUT_INIT_STATUS	(1 << WDOG_NO_WAY_OUT)
-#else
-#define WATCHDOG_NOWAYOUT		0
-#define WATCHDOG_NOWAYOUT_INIT_STATUS	0
-#endif
-
-/* Use the following function to set the nowayout feature */
-static inline void watchdog_set_nowayout(struct watchdog_device *wdd, int nowayout)
-{
-	if (nowayout)
-		set_bit(WDOG_NO_WAY_OUT, &wdd->status);
-}
 
 /* Use the following functions to manipulate watchdog driver specific data */
 static inline void watchdog_set_drvdata(struct watchdog_device *wdd, void *data)

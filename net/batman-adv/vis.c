@@ -66,7 +66,7 @@ static int vis_info_cmp(const struct hlist_node *node, const void *data2)
 
 /* hash function to choose an entry in a hash table of given size */
 /* hash algorithm from http://en.wikipedia.org/wiki/Hash_table */
-static uint32_t vis_info_choose(const void *data, uint32_t size)
+static int vis_info_choose(const void *data, int size)
 {
 	const struct vis_info *vis_info = data;
 	const struct vis_packet *packet;
@@ -96,7 +96,7 @@ static struct vis_info *vis_hash_find(struct bat_priv *bat_priv,
 	struct hlist_head *head;
 	struct hlist_node *node;
 	struct vis_info *vis_info, *vis_info_tmp = NULL;
-	uint32_t index;
+	int index;
 
 	if (!hash)
 		return NULL;
@@ -202,8 +202,7 @@ int vis_seq_print_text(struct seq_file *seq, void *offset)
 	HLIST_HEAD(vis_if_list);
 	struct if_list_entry *entry;
 	struct hlist_node *pos, *n;
-	uint32_t i;
-	int j, ret = 0;
+	int i, j, ret = 0;
 	int vis_server = atomic_read(&bat_priv->vis_mode);
 	size_t buff_pos, buf_size;
 	char *buff;
@@ -557,8 +556,7 @@ static int find_best_vis_server(struct bat_priv *bat_priv,
 	struct hlist_head *head;
 	struct orig_node *orig_node;
 	struct vis_packet *packet;
-	int best_tq = -1;
-	uint32_t i;
+	int best_tq = -1, i;
 
 	packet = (struct vis_packet *)info->skb_packet->data;
 
@@ -609,9 +607,8 @@ static int generate_vis_packet(struct bat_priv *bat_priv)
 	struct vis_info *info = bat_priv->my_vis_info;
 	struct vis_packet *packet = (struct vis_packet *)info->skb_packet->data;
 	struct vis_info_entry *entry;
-	struct tt_common_entry *tt_common_entry;
-	int best_tq = -1;
-	uint32_t i;
+	struct tt_local_entry *tt_local_entry;
+	int best_tq = -1, i;
 
 	info->first_seen = jiffies;
 	packet->vis_type = atomic_read(&bat_priv->vis_mode);
@@ -672,13 +669,13 @@ next:
 		head = &hash->table[i];
 
 		rcu_read_lock();
-		hlist_for_each_entry_rcu(tt_common_entry, node, head,
+		hlist_for_each_entry_rcu(tt_local_entry, node, head,
 					 hash_entry) {
 			entry = (struct vis_info_entry *)
 					skb_put(info->skb_packet,
 						sizeof(*entry));
 			memset(entry->src, 0, ETH_ALEN);
-			memcpy(entry->dest, tt_common_entry->addr, ETH_ALEN);
+			memcpy(entry->dest, tt_local_entry->addr, ETH_ALEN);
 			entry->quality = 0; /* 0 means TT */
 			packet->entries++;
 
@@ -699,7 +696,7 @@ unlock:
  * held */
 static void purge_vis_packets(struct bat_priv *bat_priv)
 {
-	uint32_t i;
+	int i;
 	struct hashtable_t *hash = bat_priv->vis_hash;
 	struct hlist_node *node, *node_tmp;
 	struct hlist_head *head;
@@ -736,7 +733,7 @@ static void broadcast_vis_packet(struct bat_priv *bat_priv,
 	struct sk_buff *skb;
 	struct hard_iface *hard_iface;
 	uint8_t dstaddr[ETH_ALEN];
-	uint32_t i;
+	int i;
 
 
 	packet = (struct vis_packet *)info->skb_packet->data;

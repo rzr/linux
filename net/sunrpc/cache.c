@@ -1643,7 +1643,6 @@ int cache_register_net(struct cache_detail *cd, struct net *net)
 		sunrpc_destroy_cache_detail(cd);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(cache_register_net);
 
 int cache_register(struct cache_detail *cd)
 {
@@ -1656,7 +1655,6 @@ void cache_unregister_net(struct cache_detail *cd, struct net *net)
 	remove_cache_proc_entries(cd, net);
 	sunrpc_destroy_cache_detail(cd);
 }
-EXPORT_SYMBOL_GPL(cache_unregister_net);
 
 void cache_unregister(struct cache_detail *cd)
 {
@@ -1782,7 +1780,7 @@ const struct file_operations cache_flush_operations_pipefs = {
 };
 
 int sunrpc_cache_register_pipefs(struct dentry *parent,
-				 const char *name, umode_t umode,
+				 const char *name, mode_t umode,
 				 struct cache_detail *cd)
 {
 	struct qstr q;

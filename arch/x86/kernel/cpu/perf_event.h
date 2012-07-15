@@ -45,7 +45,6 @@ struct event_constraint {
 	u64	code;
 	u64	cmask;
 	int	weight;
-	int	overlap;
 };
 
 struct amd_nb {
@@ -154,40 +153,15 @@ struct cpu_hw_events {
 	void				*kfree_on_online;
 };
 
-#define __EVENT_CONSTRAINT(c, n, m, w, o) {\
+#define __EVENT_CONSTRAINT(c, n, m, w) {\
 	{ .idxmsk64 = (n) },		\
 	.code = (c),			\
 	.cmask = (m),			\
 	.weight = (w),			\
-	.overlap = (o),			\
 }
 
 #define EVENT_CONSTRAINT(c, n, m)	\
-	__EVENT_CONSTRAINT(c, n, m, HWEIGHT(n), 0)
-
-/*
- * The overlap flag marks event constraints with overlapping counter
- * masks. This is the case if the counter mask of such an event is not
- * a subset of any other counter mask of a constraint with an equal or
- * higher weight, e.g.:
- *
- *  c_overlaps = EVENT_CONSTRAINT_OVERLAP(0, 0x09, 0);
- *  c_another1 = EVENT_CONSTRAINT(0, 0x07, 0);
- *  c_another2 = EVENT_CONSTRAINT(0, 0x38, 0);
- *
- * The event scheduler may not select the correct counter in the first
- * cycle because it needs to know which subsequent events will be
- * scheduled. It may fail to schedule the events then. So we set the
- * overlap flag for such constraints to give the scheduler a hint which
- * events to select for counter rescheduling.
- *
- * Care must be taken as the rescheduling algorithm is O(n!) which
- * will increase scheduling cycles for an over-commited system
- * dramatically.  The number of such EVENT_CONSTRAINT_OVERLAP() macros
- * and its counter masks must be kept at a minimum.
- */
-#define EVENT_CONSTRAINT_OVERLAP(c, n, m)	\
-	__EVENT_CONSTRAINT(c, n, m, HWEIGHT(n), 1)
+	__EVENT_CONSTRAINT(c, n, m, HWEIGHT(n))
 
 /*
  * Constraint on the Event code.
@@ -263,11 +237,6 @@ union perf_capabilities {
 	u64	capabilities;
 };
 
-struct x86_pmu_quirk {
-	struct x86_pmu_quirk *next;
-	void (*func)(void);
-};
-
 /*
  * struct x86_pmu - generic x86 pmu
  */
@@ -292,11 +261,6 @@ struct x86_pmu {
 	int		num_counters_fixed;
 	int		cntval_bits;
 	u64		cntval_mask;
-	union {
-			unsigned long events_maskl;
-			unsigned long events_mask[BITS_TO_LONGS(ARCH_PERFMON_EVENTS_COUNT)];
-	};
-	int		events_mask_len;
 	int		apic;
 	u64		max_period;
 	struct event_constraint *
@@ -306,7 +270,7 @@ struct x86_pmu {
 	void		(*put_event_constraints)(struct cpu_hw_events *cpuc,
 						 struct perf_event *event);
 	struct event_constraint *event_constraints;
-	struct x86_pmu_quirk *quirks;
+	void		(*quirks)(void);
 	int		perfctr_second_write;
 
 	int		(*cpu_prepare)(int cpu);
@@ -346,15 +310,6 @@ struct x86_pmu {
 	 */
 	struct perf_guest_switch_msr *(*guest_get_msrs)(int *nr);
 };
-
-#define x86_add_quirk(func_)						\
-do {									\
-	static struct x86_pmu_quirk __quirk __initdata = {		\
-		.func = func_,						\
-	};								\
-	__quirk.next = x86_pmu.quirks;					\
-	x86_pmu.quirks = &__quirk;					\
-} while (0)
 
 #define ERF_NO_HT_SHARING	1
 #define ERF_HAS_RSP_1		2

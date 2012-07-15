@@ -301,9 +301,9 @@ static struct fb_ops atyfb_ops = {
 	.fb_sync	= atyfb_sync,
 };
 
-static bool noaccel;
+static int noaccel;
 #ifdef CONFIG_MTRR
-static bool nomtrr;
+static int nomtrr;
 #endif
 static int vram;
 static int pll;

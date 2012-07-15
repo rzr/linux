@@ -438,7 +438,9 @@ static bool radeon_atom_apply_quirks(struct drm_device *dev,
 	 */
 	if ((dev->pdev->device == 0x9498) &&
 	    (dev->pdev->subsystem_vendor == 0x1682) &&
-	    (dev->pdev->subsystem_device == 0x2452)) {
+	    (dev->pdev->subsystem_device == 0x2452) &&
+	    (i2c_bus->valid == false) &&
+	    !(supported_device & (ATOM_DEVICE_TV_SUPPORT | ATOM_DEVICE_CV_SUPPORT))) {
 		struct radeon_device *rdev = dev->dev_private;
 		*i2c_bus = radeon_lookup_i2c_gpio(rdev, 0x93);
 	}
@@ -2945,20 +2947,6 @@ radeon_atombios_connected_scratch_regs(struct drm_connector *connector,
 			bios_6_scratch &= ~ATOM_S6_ACC_REQ_DFP5;
 		}
 	}
-	if ((radeon_encoder->devices & ATOM_DEVICE_DFP6_SUPPORT) &&
-	    (radeon_connector->devices & ATOM_DEVICE_DFP6_SUPPORT)) {
-		if (connected) {
-			DRM_DEBUG_KMS("DFP6 connected\n");
-			bios_0_scratch |= ATOM_S0_DFP6;
-			bios_3_scratch |= ATOM_S3_DFP6_ACTIVE;
-			bios_6_scratch |= ATOM_S6_ACC_REQ_DFP6;
-		} else {
-			DRM_DEBUG_KMS("DFP6 disconnected\n");
-			bios_0_scratch &= ~ATOM_S0_DFP6;
-			bios_3_scratch &= ~ATOM_S3_DFP6_ACTIVE;
-			bios_6_scratch &= ~ATOM_S6_ACC_REQ_DFP6;
-		}
-	}
 
 	if (rdev->family >= CHIP_R600) {
 		WREG32(R600_BIOS_0_SCRATCH, bios_0_scratch);
@@ -2978,9 +2966,6 @@ radeon_atombios_encoder_crtc_scratch_regs(struct drm_encoder *encoder, int crtc)
 	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
 	uint32_t bios_3_scratch;
-
-	if (ASIC_IS_DCE4(rdev))
-		return;
 
 	if (rdev->family >= CHIP_R600)
 		bios_3_scratch = RREG32(R600_BIOS_3_SCRATCH);
@@ -3033,9 +3018,6 @@ radeon_atombios_encoder_dpms_scratch_regs(struct drm_encoder *encoder, bool on)
 	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
 	uint32_t bios_2_scratch;
-
-	if (ASIC_IS_DCE4(rdev))
-		return;
 
 	if (rdev->family >= CHIP_R600)
 		bios_2_scratch = RREG32(R600_BIOS_2_SCRATCH);

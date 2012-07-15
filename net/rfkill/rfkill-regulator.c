@@ -36,12 +36,12 @@ static int rfkill_regulator_set_block(void *data, bool blocked)
 	if (blocked) {
 		if (rfkill_data->reg_enabled) {
 			regulator_disable(rfkill_data->vcc);
-			rfkill_data->reg_enabled = false;
+			rfkill_data->reg_enabled = 0;
 		}
 	} else {
 		if (!rfkill_data->reg_enabled) {
 			regulator_enable(rfkill_data->vcc);
-			rfkill_data->reg_enabled = true;
+			rfkill_data->reg_enabled = 1;
 		}
 	}
 
@@ -96,7 +96,7 @@ static int __devinit rfkill_regulator_probe(struct platform_device *pdev)
 
 	if (regulator_is_enabled(vcc)) {
 		dev_dbg(&pdev->dev, "Regulator already enabled\n");
-		rfkill_data->reg_enabled = true;
+		rfkill_data->reg_enabled = 1;
 	}
 	rfkill_data->vcc = vcc;
 	rfkill_data->rf_kill = rf_kill;
@@ -144,7 +144,17 @@ static struct platform_driver rfkill_regulator_driver = {
 	},
 };
 
-module_platform_driver(rfkill_regulator_driver);
+static int __init rfkill_regulator_init(void)
+{
+	return platform_driver_register(&rfkill_regulator_driver);
+}
+module_init(rfkill_regulator_init);
+
+static void __exit rfkill_regulator_exit(void)
+{
+	platform_driver_unregister(&rfkill_regulator_driver);
+}
+module_exit(rfkill_regulator_exit);
 
 MODULE_AUTHOR("Guiming Zhuo <gmzhuo@gmail.com>");
 MODULE_AUTHOR("Antonio Ospite <ospite@studenti.unina.it>");

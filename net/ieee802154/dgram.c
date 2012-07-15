@@ -209,7 +209,6 @@ static int dgram_sendmsg(struct kiocb *iocb, struct sock *sk,
 	unsigned mtu;
 	struct sk_buff *skb;
 	struct dgram_sock *ro = dgram_sk(sk);
-	int hlen, tlen;
 	int err;
 
 	if (msg->msg_flags & MSG_OOB) {
@@ -230,15 +229,13 @@ static int dgram_sendmsg(struct kiocb *iocb, struct sock *sk,
 	mtu = dev->mtu;
 	pr_debug("name = %s, mtu = %u\n", dev->name, mtu);
 
-	hlen = LL_RESERVED_SPACE(dev);
-	tlen = dev->needed_tailroom;
-	skb = sock_alloc_send_skb(sk, hlen + tlen + size,
+	skb = sock_alloc_send_skb(sk, LL_ALLOCATED_SPACE(dev) + size,
 			msg->msg_flags & MSG_DONTWAIT,
 			&err);
 	if (!skb)
 		goto out_dev;
 
-	skb_reserve(skb, hlen);
+	skb_reserve(skb, LL_RESERVED_SPACE(dev));
 
 	skb_reset_network_header(skb);
 

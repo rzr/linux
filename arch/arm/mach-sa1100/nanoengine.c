@@ -19,7 +19,6 @@
 
 #include <asm/mach-types.h>
 #include <asm/setup.h>
-#include <asm/page.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/flash.h>
@@ -117,5 +116,4 @@ MACHINE_START(NANOENGINE, "BSE nanoEngine")
 	.init_irq	= sa1100_init_irq,
 	.timer		= &sa1100_timer,
 	.init_machine	= nanoengine_init,
-	.restart	= sa11x0_restart,
 MACHINE_END

@@ -32,10 +32,14 @@
 #endif
 
 static DEFINE_PCI_DEVICE_TABLE(xgifb_pci_table) = {
-	{PCI_DEVICE(PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_20)},
-	{PCI_DEVICE(PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_27)},
-	{PCI_DEVICE(PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_40)},
-	{PCI_DEVICE(PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_42)},
+	{PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_20, PCI_ANY_ID, PCI_ANY_ID,
+	 0, 0, 0},
+	{PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_27, PCI_ANY_ID, PCI_ANY_ID,
+	 0, 0, 1},
+	{PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_40, PCI_ANY_ID, PCI_ANY_ID,
+	 0, 0, 2},
+	{PCI_VENDOR_ID_XG, PCI_DEVICE_ID_XG_42, PCI_ANY_ID, PCI_ANY_ID,
+	 0, 0, 3},
 	{0}
 };
 
@@ -124,6 +128,7 @@ MODULE_DEVICE_TABLE(pci, xgifb_pci_table);
 /* display status */
 static int XGIfb_crt1off;
 static int XGIfb_forcecrt1 = -1;
+static int XGIfb_userom ;
 
 /* global flags */
 static int XGIfb_tvmode;

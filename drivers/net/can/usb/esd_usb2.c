@@ -1108,4 +1108,25 @@ static struct usb_driver esd_usb2_driver = {
 	.id_table = esd_usb2_table,
 };
 
-module_usb_driver(esd_usb2_driver);
+static int __init esd_usb2_init(void)
+{
+	int err;
+
+	/* register this driver with the USB subsystem */
+	err = usb_register(&esd_usb2_driver);
+
+	if (err) {
+		err("usb_register failed. Error number %d\n", err);
+		return err;
+	}
+
+	return 0;
+}
+module_init(esd_usb2_init);
+
+static void __exit esd_usb2_exit(void)
+{
+	/* deregister this driver with the USB subsystem */
+	usb_deregister(&esd_usb2_driver);
+}
+module_exit(esd_usb2_exit);

@@ -1,8 +1,5 @@
 /*
- * usage.c
- *
- * Various reporting routines.
- * Originally copied from GIT source.
+ * GIT - The information manager from hell
  *
  * Copyright (C) Linus Torvalds, 2005
  */

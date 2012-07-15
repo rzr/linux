@@ -8,7 +8,7 @@ static inline void arch_idle(void)
 
 static inline void arch_reset(char mode, const char *cmd)
 {
-	soft_restart(0);
+	cpu_reset(0);
 }
 
 #endif

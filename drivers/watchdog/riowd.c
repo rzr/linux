@@ -247,4 +247,15 @@ static struct platform_driver riowd_driver = {
 	.remove		= __devexit_p(riowd_remove),
 };
 
-module_platform_driver(riowd_driver);
+static int __init riowd_init(void)
+{
+	return platform_driver_register(&riowd_driver);
+}
+
+static void __exit riowd_exit(void)
+{
+	platform_driver_unregister(&riowd_driver);
+}
+
+module_init(riowd_init);
+module_exit(riowd_exit);

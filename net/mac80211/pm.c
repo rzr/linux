@@ -125,7 +125,7 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		ieee80211_bss_info_change_notify(sdata,
 			BSS_CHANGED_BEACON_ENABLED);
 
-		drv_remove_interface(local, sdata);
+		drv_remove_interface(local, &sdata->vif);
 	}
 
 	/* stop hardware - this must stop RX */

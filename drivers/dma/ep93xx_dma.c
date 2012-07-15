@@ -246,9 +246,6 @@ static void ep93xx_dma_set_active(struct ep93xx_dma_chan *edmac,
 static struct ep93xx_dma_desc *
 ep93xx_dma_get_active(struct ep93xx_dma_chan *edmac)
 {
-	if (list_empty(&edmac->active))
-		return NULL;
-
 	return list_first_entry(&edmac->active, struct ep93xx_dma_desc, node);
 }
 
@@ -266,22 +263,16 @@ ep93xx_dma_get_active(struct ep93xx_dma_chan *edmac)
  */
 static bool ep93xx_dma_advance_active(struct ep93xx_dma_chan *edmac)
 {
-	struct ep93xx_dma_desc *desc;
-
 	list_rotate_left(&edmac->active);
 
 	if (test_bit(EP93XX_DMA_IS_CYCLIC, &edmac->flags))
 		return true;
 
-	desc = ep93xx_dma_get_active(edmac);
-	if (!desc)
-		return false;
-
 	/*
 	 * If txd.cookie is set it means that we are back in the first
 	 * descriptor in the chain and hence done with it.
 	 */
-	return !desc->txd.cookie;
+	return !ep93xx_dma_get_active(edmac)->txd.cookie;
 }
 
 /*
@@ -336,16 +327,10 @@ static void m2p_hw_shutdown(struct ep93xx_dma_chan *edmac)
 
 static void m2p_fill_desc(struct ep93xx_dma_chan *edmac)
 {
-	struct ep93xx_dma_desc *desc;
+	struct ep93xx_dma_desc *desc = ep93xx_dma_get_active(edmac);
 	u32 bus_addr;
 
-	desc = ep93xx_dma_get_active(edmac);
-	if (!desc) {
-		dev_warn(chan2dev(edmac), "M2P: empty descriptor list\n");
-		return;
-	}
-
-	if (ep93xx_dma_chan_direction(&edmac->chan) == DMA_MEM_TO_DEV)
+	if (ep93xx_dma_chan_direction(&edmac->chan) == DMA_TO_DEVICE)
 		bus_addr = desc->src_addr;
 	else
 		bus_addr = desc->dst_addr;
@@ -458,7 +443,7 @@ static int m2m_hw_setup(struct ep93xx_dma_chan *edmac)
 		control = (5 << M2M_CONTROL_PWSC_SHIFT);
 		control |= M2M_CONTROL_NO_HDSK;
 
-		if (data->direction == DMA_MEM_TO_DEV) {
+		if (data->direction == DMA_TO_DEVICE) {
 			control |= M2M_CONTROL_DAH;
 			control |= M2M_CONTROL_TM_TX;
 			control |= M2M_CONTROL_RSS_SSPTX;
@@ -474,7 +459,11 @@ static int m2m_hw_setup(struct ep93xx_dma_chan *edmac)
 		 * This IDE part is totally untested. Values below are taken
 		 * from the EP93xx Users's Guide and might not be correct.
 		 */
-		if (data->direction == DMA_MEM_TO_DEV) {
+		control |= M2M_CONTROL_NO_HDSK;
+		control |= M2M_CONTROL_RSS_IDE;
+		control |= M2M_CONTROL_PW_16;
+
+		if (data->direction == DMA_TO_DEVICE) {
 			/* Worst case from the UG */
 			control = (3 << M2M_CONTROL_PWSC_SHIFT);
 			control |= M2M_CONTROL_DAH;
@@ -484,10 +473,6 @@ static int m2m_hw_setup(struct ep93xx_dma_chan *edmac)
 			control |= M2M_CONTROL_SAH;
 			control |= M2M_CONTROL_TM_RX;
 		}
-
-		control |= M2M_CONTROL_NO_HDSK;
-		control |= M2M_CONTROL_RSS_IDE;
-		control |= M2M_CONTROL_PW_16;
 		break;
 
 	default:
@@ -506,13 +491,7 @@ static void m2m_hw_shutdown(struct ep93xx_dma_chan *edmac)
 
 static void m2m_fill_desc(struct ep93xx_dma_chan *edmac)
 {
-	struct ep93xx_dma_desc *desc;
-
-	desc = ep93xx_dma_get_active(edmac);
-	if (!desc) {
-		dev_warn(chan2dev(edmac), "M2M: empty descriptor list\n");
-		return;
-	}
+	struct ep93xx_dma_desc *desc = ep93xx_dma_get_active(edmac);
 
 	if (edmac->buffer == 0) {
 		writel(desc->src_addr, edmac->regs + M2M_SAR_BASE0);
@@ -690,29 +669,23 @@ static void ep93xx_dma_tasklet(unsigned long data)
 {
 	struct ep93xx_dma_chan *edmac = (struct ep93xx_dma_chan *)data;
 	struct ep93xx_dma_desc *desc, *d;
-	dma_async_tx_callback callback = NULL;
-	void *callback_param = NULL;
+	dma_async_tx_callback callback;
+	void *callback_param;
 	LIST_HEAD(list);
 
 	spin_lock_irq(&edmac->lock);
-	/*
-	 * If dma_terminate_all() was called before we get to run, the active
-	 * list has become empty. If that happens we aren't supposed to do
-	 * anything more than call ep93xx_dma_advance_work().
-	 */
 	desc = ep93xx_dma_get_active(edmac);
-	if (desc) {
-		if (desc->complete) {
-			edmac->last_completed = desc->txd.cookie;
-			list_splice_init(&edmac->active, &list);
-		}
-		callback = desc->txd.callback;
-		callback_param = desc->txd.callback_param;
+	if (desc->complete) {
+		edmac->last_completed = desc->txd.cookie;
+		list_splice_init(&edmac->active, &list);
 	}
 	spin_unlock_irq(&edmac->lock);
 
 	/* Pick up the next descriptor from the queue */
 	ep93xx_dma_advance_work(edmac);
+
+	callback = desc->txd.callback;
+	callback_param = desc->txd.callback_param;
 
 	/* Now we can release all the chained descriptors */
 	list_for_each_entry_safe(desc, d, &list, node) {
@@ -733,22 +706,13 @@ static void ep93xx_dma_tasklet(unsigned long data)
 static irqreturn_t ep93xx_dma_interrupt(int irq, void *dev_id)
 {
 	struct ep93xx_dma_chan *edmac = dev_id;
-	struct ep93xx_dma_desc *desc;
 	irqreturn_t ret = IRQ_HANDLED;
 
 	spin_lock(&edmac->lock);
 
-	desc = ep93xx_dma_get_active(edmac);
-	if (!desc) {
-		dev_warn(chan2dev(edmac),
-			 "got interrupt while active list is empty\n");
-		spin_unlock(&edmac->lock);
-		return IRQ_NONE;
-	}
-
 	switch (edmac->edma->hw_interrupt(edmac)) {
 	case INTERRUPT_DONE:
-		desc->complete = true;
+		ep93xx_dma_get_active(edmac)->complete = true;
 		tasklet_schedule(&edmac->tasklet);
 		break;
 
@@ -839,8 +803,8 @@ static int ep93xx_dma_alloc_chan_resources(struct dma_chan *chan)
 			switch (data->port) {
 			case EP93XX_DMA_SSP:
 			case EP93XX_DMA_IDE:
-				if (data->direction != DMA_MEM_TO_DEV &&
-				    data->direction != DMA_DEV_TO_MEM)
+				if (data->direction != DMA_TO_DEVICE &&
+				    data->direction != DMA_FROM_DEVICE)
 					return -EINVAL;
 				break;
 			default:
@@ -988,7 +952,7 @@ fail:
  */
 static struct dma_async_tx_descriptor *
 ep93xx_dma_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
-			 unsigned int sg_len, enum dma_transfer_direction dir,
+			 unsigned int sg_len, enum dma_data_direction dir,
 			 unsigned long flags)
 {
 	struct ep93xx_dma_chan *edmac = to_ep93xx_dma_chan(chan);
@@ -1024,7 +988,7 @@ ep93xx_dma_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
 			goto fail;
 		}
 
-		if (dir == DMA_MEM_TO_DEV) {
+		if (dir == DMA_TO_DEVICE) {
 			desc->src_addr = sg_dma_address(sg);
 			desc->dst_addr = edmac->runtime_addr;
 		} else {
@@ -1068,7 +1032,7 @@ fail:
 static struct dma_async_tx_descriptor *
 ep93xx_dma_prep_dma_cyclic(struct dma_chan *chan, dma_addr_t dma_addr,
 			   size_t buf_len, size_t period_len,
-			   enum dma_transfer_direction dir)
+			   enum dma_data_direction dir)
 {
 	struct ep93xx_dma_chan *edmac = to_ep93xx_dma_chan(chan);
 	struct ep93xx_dma_desc *desc, *first;
@@ -1101,7 +1065,7 @@ ep93xx_dma_prep_dma_cyclic(struct dma_chan *chan, dma_addr_t dma_addr,
 			goto fail;
 		}
 
-		if (dir == DMA_MEM_TO_DEV) {
+		if (dir == DMA_TO_DEVICE) {
 			desc->src_addr = dma_addr + offset;
 			desc->dst_addr = edmac->runtime_addr;
 		} else {
@@ -1169,12 +1133,12 @@ static int ep93xx_dma_slave_config(struct ep93xx_dma_chan *edmac,
 		return -EINVAL;
 
 	switch (config->direction) {
-	case DMA_DEV_TO_MEM:
+	case DMA_FROM_DEVICE:
 		width = config->src_addr_width;
 		addr = config->src_addr;
 		break;
 
-	case DMA_MEM_TO_DEV:
+	case DMA_TO_DEVICE:
 		width = config->dst_addr_width;
 		addr = config->dst_addr;
 		break;

@@ -12,4 +12,6 @@ static inline void arch_idle(void)
 	cpu_do_idle();
 }
 
+extern void (*arch_reset)(char, const char *);
+
 #endif

@@ -26,7 +26,6 @@
 #include <linux/skbuff.h>
 #include <linux/dma-mapping.h>
 #include <linux/ethtool.h>
-#include <linux/platform_data/macb.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/gfp.h>
@@ -256,7 +255,8 @@ static void enable_phyirq(struct net_device *dev)
 	unsigned int dsintr, irq_number;
 	int status;
 
-	if (!gpio_is_valid(lp->board_data.phy_irq_pin)) {
+	irq_number = lp->board_data.phy_irq_pin;
+	if (!irq_number) {
 		/*
 		 * PHY doesn't have an IRQ pin (RTL8201, DP83847, AC101L),
 		 * or board does not have it connected.
@@ -265,7 +265,6 @@ static void enable_phyirq(struct net_device *dev)
 		return;
 	}
 
-	irq_number = lp->board_data.phy_irq_pin;
 	status = request_irq(irq_number, at91ether_phy_interrupt, 0, dev->name, dev);
 	if (status) {
 		printk(KERN_ERR "at91_ether: PHY IRQ %d request failed - status %d!\n", irq_number, status);
@@ -320,7 +319,8 @@ static void disable_phyirq(struct net_device *dev)
 	unsigned int dsintr;
 	unsigned int irq_number;
 
-	if (!gpio_is_valid(lp->board_data.phy_irq_pin)) {
+	irq_number = lp->board_data.phy_irq_pin;
+	if (!irq_number) {
 		del_timer_sync(&lp->check_timer);
 		return;
 	}
@@ -365,7 +365,6 @@ static void disable_phyirq(struct net_device *dev)
 	disable_mdi();
 	spin_unlock_irq(&lp->lock);
 
-	irq_number = lp->board_data.phy_irq_pin;
 	free_irq(irq_number, dev);			/* Free interrupt handler */
 }
 
@@ -985,7 +984,7 @@ static const struct net_device_ops at91ether_netdev_ops = {
 static int __init at91ether_setup(unsigned long phy_type, unsigned short phy_address,
 			struct platform_device *pdev, struct clk *ether_clk)
 {
-	struct macb_platform_data *board_data = pdev->dev.platform_data;
+	struct at91_eth_data *board_data = pdev->dev.platform_data;
 	struct net_device *dev;
 	struct at91_private *lp;
 	unsigned int val;
@@ -1078,7 +1077,7 @@ static int __init at91ether_setup(unsigned long phy_type, unsigned short phy_add
 	netif_carrier_off(dev);		/* will be enabled in open() */
 
 	/* If board has no PHY IRQ, use a timer to poll the PHY */
-	if (!gpio_is_valid(lp->board_data.phy_irq_pin)) {
+	if (!lp->board_data.phy_irq_pin) {
 		init_timer(&lp->check_timer);
 		lp->check_timer.data = (unsigned long)dev;
 		lp->check_timer.function = at91ether_check_link;
@@ -1170,8 +1169,7 @@ static int __devexit at91ether_remove(struct platform_device *pdev)
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct at91_private *lp = netdev_priv(dev);
 
-	if (gpio_is_valid(lp->board_data.phy_irq_pin) &&
-	    lp->board_data.phy_irq_pin >= 32)
+	if (lp->board_data.phy_irq_pin >= 32)
 		gpio_free(lp->board_data.phy_irq_pin);
 
 	unregister_netdev(dev);
@@ -1190,12 +1188,11 @@ static int at91ether_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
 	struct net_device *net_dev = platform_get_drvdata(pdev);
 	struct at91_private *lp = netdev_priv(net_dev);
+	int phy_irq = lp->board_data.phy_irq_pin;
 
 	if (netif_running(net_dev)) {
-		if (gpio_is_valid(lp->board_data.phy_irq_pin)) {
-			int phy_irq = lp->board_data.phy_irq_pin;
+		if (phy_irq)
 			disable_irq(phy_irq);
-		}
 
 		netif_stop_queue(net_dev);
 		netif_device_detach(net_dev);
@@ -1209,6 +1206,7 @@ static int at91ether_resume(struct platform_device *pdev)
 {
 	struct net_device *net_dev = platform_get_drvdata(pdev);
 	struct at91_private *lp = netdev_priv(net_dev);
+	int phy_irq = lp->board_data.phy_irq_pin;
 
 	if (netif_running(net_dev)) {
 		clk_enable(lp->ether_clk);
@@ -1216,10 +1214,8 @@ static int at91ether_resume(struct platform_device *pdev)
 		netif_device_attach(net_dev);
 		netif_start_queue(net_dev);
 
-		if (gpio_is_valid(lp->board_data.phy_irq_pin)) {
-			int phy_irq = lp->board_data.phy_irq_pin;
+		if (phy_irq)
 			enable_irq(phy_irq);
-		}
 	}
 	return 0;
 }

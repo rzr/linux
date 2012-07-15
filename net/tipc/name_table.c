@@ -251,8 +251,8 @@ static struct publication *tipc_nameseq_insert_publ(struct name_seq *nseq,
 						    u32 type, u32 lower, u32 upper,
 						    u32 scope, u32 node, u32 port, u32 key)
 {
-	struct tipc_subscription *s;
-	struct tipc_subscription *st;
+	struct subscription *s;
+	struct subscription *st;
 	struct publication *publ;
 	struct sub_seq *sseq;
 	struct name_info *info;
@@ -381,7 +381,7 @@ static struct publication *tipc_nameseq_remove_publ(struct name_seq *nseq, u32 i
 	struct sub_seq *sseq = nameseq_find_subseq(nseq, inst);
 	struct name_info *info;
 	struct sub_seq *free;
-	struct tipc_subscription *s, *st;
+	struct subscription *s, *st;
 	int removed_subseq = 0;
 
 	if (!sseq)
@@ -448,8 +448,7 @@ found:
  * sequence overlapping with the requested sequence
  */
 
-static void tipc_nameseq_subscribe(struct name_seq *nseq,
-					struct tipc_subscription *s)
+static void tipc_nameseq_subscribe(struct name_seq *nseq, struct subscription *s)
 {
 	struct sub_seq *sseq = nseq->sseqs;
 
@@ -626,7 +625,7 @@ not_found:
  */
 
 int tipc_nametbl_mc_translate(u32 type, u32 lower, u32 upper, u32 limit,
-			      struct tipc_port_list *dports)
+			      struct port_list *dports)
 {
 	struct name_seq *seq;
 	struct sub_seq *sseq;
@@ -740,7 +739,7 @@ int tipc_nametbl_withdraw(u32 type, u32 lower, u32 ref, u32 key)
  * tipc_nametbl_subscribe - add a subscription object to the name table
  */
 
-void tipc_nametbl_subscribe(struct tipc_subscription *s)
+void tipc_nametbl_subscribe(struct subscription *s)
 {
 	u32 type = s->seq.type;
 	struct name_seq *seq;
@@ -764,7 +763,7 @@ void tipc_nametbl_subscribe(struct tipc_subscription *s)
  * tipc_nametbl_unsubscribe - remove a subscription object from name table
  */
 
-void tipc_nametbl_unsubscribe(struct tipc_subscription *s)
+void tipc_nametbl_unsubscribe(struct subscription *s)
 {
 	struct name_seq *seq;
 

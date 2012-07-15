@@ -257,13 +257,6 @@ void usbhs_pipe_stall(struct usbhs_pipe *pipe)
 	}
 }
 
-int usbhs_pipe_is_stall(struct usbhs_pipe *pipe)
-{
-	u16 pid = usbhsp_pipectrl_get(pipe) & PID_MASK;
-
-	return (int)(pid == PID_STALL10 || pid == PID_STALL11);
-}
-
 /*
  *		pipe setup
  */
@@ -330,7 +323,8 @@ static u16 usbhsp_setup_pipecfg(struct usbhs_pipe *pipe,
 	if (dir_in)
 		usbhsp_flags_set(pipe, IS_DIR_HOST);
 
-	if (!!is_host ^ !!dir_in)
+	if ((is_host  && !dir_in) ||
+	    (!is_host && dir_in))
 		dir |= DIR_OUT;
 
 	if (!dir)
@@ -477,27 +471,10 @@ int usbhs_pipe_is_dir_host(struct usbhs_pipe *pipe)
 	return usbhsp_flags_has(pipe, IS_DIR_HOST);
 }
 
-void usbhs_pipe_data_sequence(struct usbhs_pipe *pipe, int sequence)
+void usbhs_pipe_data_sequence(struct usbhs_pipe *pipe, int data)
 {
 	u16 mask = (SQCLR | SQSET);
-	u16 val;
-
-	/*
-	 * sequence
-	 *  0  : data0
-	 *  1  : data1
-	 *  -1 : no change
-	 */
-	switch (sequence) {
-	case 0:
-		val = SQCLR;
-		break;
-	case 1:
-		val = SQSET;
-		break;
-	default:
-		return;
-	}
+	u16 val = (data) ? SQSET : SQCLR;
 
 	usbhsp_pipectrl_set(pipe, mask, val);
 }

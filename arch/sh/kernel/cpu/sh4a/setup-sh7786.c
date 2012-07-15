@@ -518,7 +518,7 @@ static struct resource dmac0_resources[] = {
 		.end	= 0xfe00900b,
 		.flags	= IORESOURCE_MEM,
 	}, {
-		.name	= "error_irq",
+		/* DMA error IRQ */
 		.start	= evt2irq(0x5c0),
 		.end	= evt2irq(0x5c0),
 		.flags	= IORESOURCE_IRQ,

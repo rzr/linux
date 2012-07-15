@@ -9,7 +9,7 @@
  */
 #include <linux/export.h>
 #include <linux/init.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/syscore_ops.h>
 #include <linux/string.h>
 
@@ -34,8 +34,8 @@ static const struct leds_evt_name evt_names[] = {
 	{ "red",   led_red_on,   led_red_off   },
 };
 
-static ssize_t leds_store(struct device *dev,
-			struct device_attribute *attr,
+static ssize_t leds_store(struct sys_device *dev,
+			struct sysdev_attribute *attr,
 			const char *buf, size_t size)
 {
 	int ret = -EINVAL, len = strcspn(buf, " ");
@@ -69,16 +69,15 @@ static ssize_t leds_store(struct device *dev,
 	return ret;
 }
 
-static DEVICE_ATTR(event, 0200, NULL, leds_store);
+static SYSDEV_ATTR(event, 0200, NULL, leds_store);
 
-static struct bus_type leds_subsys = {
+static struct sysdev_class leds_sysclass = {
 	.name		= "leds",
-	.dev_name	= "leds",
 };
 
-static struct device leds_device = {
+static struct sys_device leds_device = {
 	.id		= 0,
-	.bus		= &leds_subsys,
+	.cls		= &leds_sysclass,
 };
 
 static int leds_suspend(void)
@@ -106,11 +105,11 @@ static struct syscore_ops leds_syscore_ops = {
 static int __init leds_init(void)
 {
 	int ret;
-	ret = subsys_system_register(&leds_subsys, NULL);
+	ret = sysdev_class_register(&leds_sysclass);
 	if (ret == 0)
-		ret = device_register(&leds_device);
+		ret = sysdev_register(&leds_device);
 	if (ret == 0)
-		ret = device_create_file(&leds_device, &dev_attr_event);
+		ret = sysdev_create_file(&leds_device, &attr_event);
 	if (ret == 0)
 		register_syscore_ops(&leds_syscore_ops);
 	return ret;

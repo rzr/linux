@@ -799,7 +799,6 @@ struct cm_apr_msg {
 
 	u8 info_length;
 	u8 ap_status;
-	__be16 rsvd;
 	u8 info[IB_CM_APR_INFO_LENGTH];
 
 	u8 private_data[IB_CM_APR_PRIVATE_DATA_SIZE];

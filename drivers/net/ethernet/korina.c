@@ -1230,7 +1230,18 @@ static struct platform_driver korina_driver = {
 	.remove = korina_remove,
 };
 
-module_platform_driver(korina_driver);
+static int __init korina_init_module(void)
+{
+	return platform_driver_register(&korina_driver);
+}
+
+static void korina_cleanup_module(void)
+{
+	return platform_driver_unregister(&korina_driver);
+}
+
+module_init(korina_init_module);
+module_exit(korina_cleanup_module);
 
 MODULE_AUTHOR("Philip Rischel <rischelp@idt.com>");
 MODULE_AUTHOR("Felix Fietkau <nbd@openwrt.org>");

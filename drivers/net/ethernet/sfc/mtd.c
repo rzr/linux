@@ -496,7 +496,7 @@ static int siena_mtd_erase(struct mtd_info *mtd, loff_t start, size_t len)
 		rc = efx_mcdi_nvram_update_start(efx, part->mcdi.nvram_type);
 		if (rc)
 			goto out;
-		part->mcdi.updating = true;
+		part->mcdi.updating = 1;
 	}
 
 	/* The MCDI interface can in fact do multiple erase blocks at once;
@@ -528,7 +528,7 @@ static int siena_mtd_write(struct mtd_info *mtd, loff_t start,
 		rc = efx_mcdi_nvram_update_start(efx, part->mcdi.nvram_type);
 		if (rc)
 			goto out;
-		part->mcdi.updating = true;
+		part->mcdi.updating = 1;
 	}
 
 	while (offset < end) {
@@ -553,7 +553,7 @@ static int siena_mtd_sync(struct mtd_info *mtd)
 	int rc = 0;
 
 	if (part->mcdi.updating) {
-		part->mcdi.updating = false;
+		part->mcdi.updating = 0;
 		rc = efx_mcdi_nvram_update_finish(efx, part->mcdi.nvram_type);
 	}
 

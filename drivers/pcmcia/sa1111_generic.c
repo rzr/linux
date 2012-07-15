@@ -205,8 +205,7 @@ static int __devexit pcmcia_remove(struct sa1111_dev *dev)
 
 	dev_set_drvdata(&dev->dev, NULL);
 
-	for (; s; s = next) {
-		next = s->next;
+	for (; next = s->next, s; s = next) {
 		soc_pcmcia_remove_one(&s->soc);
 		kfree(s);
 	}

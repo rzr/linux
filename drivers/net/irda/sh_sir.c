@@ -808,7 +808,18 @@ static struct platform_driver sh_sir_driver = {
 	},
 };
 
-module_platform_driver(sh_sir_driver);
+static int __init sh_sir_init(void)
+{
+	return platform_driver_register(&sh_sir_driver);
+}
+
+static void __exit sh_sir_exit(void)
+{
+	platform_driver_unregister(&sh_sir_driver);
+}
+
+module_init(sh_sir_init);
+module_exit(sh_sir_exit);
 
 MODULE_AUTHOR("Kuninori Morimoto <morimoto.kuninori@renesas.com>");
 MODULE_DESCRIPTION("SuperH IrDA driver");

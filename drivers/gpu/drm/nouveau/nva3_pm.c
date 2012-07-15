@@ -287,13 +287,12 @@ nva3_pm_grcp_idle(void *data)
 	return false;
 }
 
-int
+void
 nva3_pm_clocks_set(struct drm_device *dev, void *pre_state)
 {
 	struct drm_nouveau_private *dev_priv = dev->dev_private;
 	struct nva3_pm_state *info = pre_state;
 	unsigned long flags;
-	int ret = -EAGAIN;
 
 	/* prevent any new grctx switches from starting */
 	spin_lock_irqsave(&dev_priv->context_switch_lock, flags);
@@ -329,8 +328,6 @@ nva3_pm_clocks_set(struct drm_device *dev, void *pre_state)
 		nv_wr32(dev, 0x100210, 0x80000000);
 	}
 
-	ret = 0;
-
 cleanup:
 	/* unfreeze PFIFO */
 	nv_mask(dev, 0x002504, 0x00000001, 0x00000000);
@@ -342,5 +339,4 @@ cleanup:
 		nv_mask(dev, 0x400824, 0x10000000, 0x10000000);
 	spin_unlock_irqrestore(&dev_priv->context_switch_lock, flags);
 	kfree(info);
-	return ret;
 }

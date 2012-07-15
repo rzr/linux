@@ -111,22 +111,28 @@ static int omapfb_setup_plane(struct fb_info *fbi, struct omapfb_plane_info *pi)
 		set_fb_fix(fbi);
 	}
 
-	if (!pi->enabled) {
-		r = ovl->disable(ovl);
-		if (r)
-			goto undo;
-	}
-
 	if (pi->enabled) {
+		struct omap_overlay_info info;
+
 		r = omapfb_setup_overlay(fbi, ovl, pi->pos_x, pi->pos_y,
 			pi->out_width, pi->out_height);
 		if (r)
 			goto undo;
+
+		ovl->get_overlay_info(ovl, &info);
+
+		if (!info.enabled) {
+			info.enabled = pi->enabled;
+			r = ovl->set_overlay_info(ovl, &info);
+			if (r)
+				goto undo;
+		}
 	} else {
 		struct omap_overlay_info info;
 
 		ovl->get_overlay_info(ovl, &info);
 
+		info.enabled = pi->enabled;
 		info.pos_x = pi->pos_x;
 		info.pos_y = pi->pos_y;
 		info.out_width = pi->out_width;
@@ -139,12 +145,6 @@ static int omapfb_setup_plane(struct fb_info *fbi, struct omapfb_plane_info *pi)
 
 	if (ovl->manager)
 		ovl->manager->apply(ovl->manager);
-
-	if (pi->enabled) {
-		r = ovl->enable(ovl);
-		if (r)
-			goto undo;
-	}
 
 	/* Release the locks in a specific order to keep lockdep happy */
 	if (old_rg->id > new_rg->id) {
@@ -189,19 +189,19 @@ static int omapfb_query_plane(struct fb_info *fbi, struct omapfb_plane_info *pi)
 		memset(pi, 0, sizeof(*pi));
 	} else {
 		struct omap_overlay *ovl;
-		struct omap_overlay_info ovli;
+		struct omap_overlay_info *ovli;
 
 		ovl = ofbi->overlays[0];
-		ovl->get_overlay_info(ovl, &ovli);
+		ovli = &ovl->info;
 
-		pi->pos_x = ovli.pos_x;
-		pi->pos_y = ovli.pos_y;
-		pi->enabled = ovl->is_enabled(ovl);
+		pi->pos_x = ovli->pos_x;
+		pi->pos_y = ovli->pos_y;
+		pi->enabled = ovli->enabled;
 		pi->channel_out = 0; /* xxx */
 		pi->mirror = 0;
 		pi->mem_idx = get_mem_idx(ofbi);
-		pi->out_width = ovli.out_width;
-		pi->out_height = ovli.out_height;
+		pi->out_width = ovli->out_width;
+		pi->out_height = ovli->out_height;
 	}
 
 	return 0;
@@ -238,9 +238,7 @@ static int omapfb_setup_mem(struct fb_info *fbi, struct omapfb_mem_info *mi)
 			continue;
 
 		for (j = 0; j < ofbi2->num_overlays; j++) {
-			struct omap_overlay *ovl;
-			ovl = ofbi2->overlays[j];
-			if (ovl->is_enabled(ovl)) {
+			if (ofbi2->overlays[j]->info.enabled) {
 				r = -EBUSY;
 				goto out;
 			}

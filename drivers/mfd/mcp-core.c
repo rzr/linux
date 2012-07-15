@@ -93,11 +93,9 @@ static struct bus_type mcp_bus_type = {
  */
 void mcp_set_telecom_divisor(struct mcp *mcp, unsigned int div)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&mcp->lock, flags);
+	spin_lock_irq(&mcp->lock);
 	mcp->ops->set_telecom_divisor(mcp, div);
-	spin_unlock_irqrestore(&mcp->lock, flags);
+	spin_unlock_irq(&mcp->lock);
 }
 EXPORT_SYMBOL(mcp_set_telecom_divisor);
 
@@ -110,11 +108,9 @@ EXPORT_SYMBOL(mcp_set_telecom_divisor);
  */
 void mcp_set_audio_divisor(struct mcp *mcp, unsigned int div)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&mcp->lock, flags);
+	spin_lock_irq(&mcp->lock);
 	mcp->ops->set_audio_divisor(mcp, div);
-	spin_unlock_irqrestore(&mcp->lock, flags);
+	spin_unlock_irq(&mcp->lock);
 }
 EXPORT_SYMBOL(mcp_set_audio_divisor);
 
@@ -167,11 +163,10 @@ EXPORT_SYMBOL(mcp_reg_read);
  */
 void mcp_enable(struct mcp *mcp)
 {
-	unsigned long flags;
-	spin_lock_irqsave(&mcp->lock, flags);
+	spin_lock_irq(&mcp->lock);
 	if (mcp->use_count++ == 0)
 		mcp->ops->enable(mcp);
-	spin_unlock_irqrestore(&mcp->lock, flags);
+	spin_unlock_irq(&mcp->lock);
 }
 EXPORT_SYMBOL(mcp_enable);
 

@@ -242,10 +242,10 @@ struct workqueue_struct {
 
 	int			nr_drainers;	/* W: drain in progress */
 	int			saved_max_active; /* W: saved cwq max_active */
+	const char		*name;		/* I: workqueue name */
 #ifdef CONFIG_LOCKDEP
 	struct lockdep_map	lockdep_map;
 #endif
-	char			name[];		/* I: workqueue name */
 };
 
 struct workqueue_struct *system_wq __read_mostly;
@@ -1215,8 +1215,13 @@ static void worker_enter_idle(struct worker *worker)
 	} else
 		wake_up_all(&gcwq->trustee_wait);
 
-	/* sanity check nr_running */
-	WARN_ON_ONCE(gcwq->nr_workers == gcwq->nr_idle &&
+	/*
+	 * Sanity check nr_running.  Because trustee releases gcwq->lock
+	 * between setting %WORKER_ROGUE and zapping nr_running, the
+	 * warning may trigger spuriously.  Check iff trustee is idle.
+	 */
+	WARN_ON_ONCE(gcwq->trustee_state == TRUSTEE_DONE &&
+		     gcwq->nr_workers == gcwq->nr_idle &&
 		     atomic_read(get_gcwq_nr_running(gcwq->cpu)));
 }
 
@@ -2956,29 +2961,14 @@ static int wq_clamp_max_active(int max_active, unsigned int flags,
 	return clamp_val(max_active, 1, lim);
 }
 
-struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
+struct workqueue_struct *__alloc_workqueue_key(const char *name,
 					       unsigned int flags,
 					       int max_active,
 					       struct lock_class_key *key,
-					       const char *lock_name, ...)
+					       const char *lock_name)
 {
-	va_list args, args1;
 	struct workqueue_struct *wq;
 	unsigned int cpu;
-	size_t namelen;
-
-	/* determine namelen, allocate wq and format name */
-	va_start(args, lock_name);
-	va_copy(args1, args);
-	namelen = vsnprintf(NULL, 0, fmt, args) + 1;
-
-	wq = kzalloc(sizeof(*wq) + namelen, GFP_KERNEL);
-	if (!wq)
-		goto err;
-
-	vsnprintf(wq->name, namelen, fmt, args1);
-	va_end(args);
-	va_end(args1);
 
 	/*
 	 * Workqueues which may be used during memory reclaim should
@@ -2995,9 +2985,12 @@ struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
 		flags |= WQ_HIGHPRI;
 
 	max_active = max_active ?: WQ_DFL_ACTIVE;
-	max_active = wq_clamp_max_active(max_active, flags, wq->name);
+	max_active = wq_clamp_max_active(max_active, flags, name);
 
-	/* init wq */
+	wq = kzalloc(sizeof(*wq), GFP_KERNEL);
+	if (!wq)
+		goto err;
+
 	wq->flags = flags;
 	wq->saved_max_active = max_active;
 	mutex_init(&wq->flush_mutex);
@@ -3005,6 +2998,7 @@ struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
 	INIT_LIST_HEAD(&wq->flusher_queue);
 	INIT_LIST_HEAD(&wq->flusher_overflow);
 
+	wq->name = name;
 	lockdep_init_map(&wq->lockdep_map, lock_name, key, 0);
 	INIT_LIST_HEAD(&wq->list);
 
@@ -3033,8 +3027,7 @@ struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
 		if (!rescuer)
 			goto err;
 
-		rescuer->task = kthread_create(rescuer_thread, wq, "%s",
-					       wq->name);
+		rescuer->task = kthread_create(rescuer_thread, wq, "%s", name);
 		if (IS_ERR(rescuer->task))
 			goto err;
 

@@ -396,7 +396,17 @@ static struct platform_driver lpc32xx_rtc_driver = {
 	},
 };
 
-module_platform_driver(lpc32xx_rtc_driver);
+static int __init lpc32xx_rtc_init(void)
+{
+	return platform_driver_register(&lpc32xx_rtc_driver);
+}
+module_init(lpc32xx_rtc_init);
+
+static void __exit lpc32xx_rtc_exit(void)
+{
+	platform_driver_unregister(&lpc32xx_rtc_driver);
+}
+module_exit(lpc32xx_rtc_exit);
 
 MODULE_AUTHOR("Kevin Wells <wellsk40@gmail.com");
 MODULE_DESCRIPTION("RTC driver for the LPC32xx SoC");

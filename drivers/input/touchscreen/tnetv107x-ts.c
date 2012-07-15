@@ -378,7 +378,19 @@ static struct platform_driver tsc_driver = {
 	.driver.name	= "tnetv107x-ts",
 	.driver.owner	= THIS_MODULE,
 };
-module_platform_driver(tsc_driver);
+
+static int __init tsc_init(void)
+{
+	return platform_driver_register(&tsc_driver);
+}
+
+static void __exit tsc_exit(void)
+{
+	platform_driver_unregister(&tsc_driver);
+}
+
+module_init(tsc_init);
+module_exit(tsc_exit);
 
 MODULE_AUTHOR("Cyril Chemparathy");
 MODULE_DESCRIPTION("TNETV107X Touchscreen Driver");

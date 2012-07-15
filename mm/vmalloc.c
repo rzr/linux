@@ -1118,32 +1118,6 @@ void *vm_map_ram(struct page **pages, unsigned int count, int node, pgprot_t pro
 EXPORT_SYMBOL(vm_map_ram);
 
 /**
- * vm_area_add_early - add vmap area early during boot
- * @vm: vm_struct to add
- *
- * This function is used to add fixed kernel vm area to vmlist before
- * vmalloc_init() is called.  @vm->addr, @vm->size, and @vm->flags
- * should contain proper values and the other fields should be zero.
- *
- * DO NOT USE THIS FUNCTION UNLESS YOU KNOW WHAT YOU'RE DOING.
- */
-void __init vm_area_add_early(struct vm_struct *vm)
-{
-	struct vm_struct *tmp, **p;
-
-	BUG_ON(vmap_initialized);
-	for (p = &vmlist; (tmp = *p) != NULL; p = &tmp->next) {
-		if (tmp->addr >= vm->addr) {
-			BUG_ON(tmp->addr < vm->addr + vm->size);
-			break;
-		} else
-			BUG_ON(tmp->addr + tmp->size > vm->addr);
-	}
-	vm->next = *p;
-	*p = vm;
-}
-
-/**
  * vm_area_register_early - register vmap area early during boot
  * @vm: vm_struct to register
  * @align: requested alignment
@@ -1165,7 +1139,8 @@ void __init vm_area_register_early(struct vm_struct *vm, size_t align)
 
 	vm->addr = (void *)addr;
 
-	vm_area_add_early(vm);
+	vm->next = vmlist;
+	vmlist = vm;
 }
 
 void __init vmalloc_init(void)
@@ -1185,9 +1160,10 @@ void __init vmalloc_init(void)
 	/* Import existing vmlist entries. */
 	for (tmp = vmlist; tmp; tmp = tmp->next) {
 		va = kzalloc(sizeof(struct vmap_area), GFP_NOWAIT);
-		va->flags = tmp->flags | VM_VM_AREA;
+		va->flags = VM_VM_AREA;
 		va->va_start = (unsigned long)tmp->addr;
 		va->va_end = va->va_start + tmp->size;
+		va->vm = tmp;
 		__insert_vmap_area(va);
 	}
 
@@ -2378,7 +2354,7 @@ struct vm_struct **pcpu_get_vm_areas(const unsigned long *offsets,
 	vms = kzalloc(sizeof(vms[0]) * nr_vms, GFP_KERNEL);
 	vas = kzalloc(sizeof(vas[0]) * nr_vms, GFP_KERNEL);
 	if (!vas || !vms)
-		goto err_free2;
+		goto err_free;
 
 	for (area = 0; area < nr_vms; area++) {
 		vas[area] = kzalloc(sizeof(struct vmap_area), GFP_KERNEL);
@@ -2476,10 +2452,11 @@ found:
 
 err_free:
 	for (area = 0; area < nr_vms; area++) {
-		kfree(vas[area]);
-		kfree(vms[area]);
+		if (vas)
+			kfree(vas[area]);
+		if (vms)
+			kfree(vms[area]);
 	}
-err_free2:
 	kfree(vas);
 	kfree(vms);
 	return NULL;

@@ -117,7 +117,7 @@ void fimc_hw_set_target_format(struct fimc_ctx *ctx)
 		  S5P_CITRGFMT_VSIZE_MASK);
 
 	switch (frame->fmt->color) {
-	case S5P_FIMC_RGB444...S5P_FIMC_RGB888:
+	case S5P_FIMC_RGB565...S5P_FIMC_RGB888:
 		cfg |= S5P_CITRGFMT_RGB;
 		break;
 	case S5P_FIMC_YCBCR420:
@@ -175,7 +175,6 @@ void fimc_hw_set_out_dma(struct fimc_ctx *ctx)
 	struct fimc_dev *dev = ctx->fimc_dev;
 	struct fimc_frame *frame = &ctx->d_frame;
 	struct fimc_dma_offset *offset = &frame->dma_offset;
-	struct fimc_fmt *fmt = frame->fmt;
 
 	/* Set the input dma offsets. */
 	cfg = 0;
@@ -199,21 +198,14 @@ void fimc_hw_set_out_dma(struct fimc_ctx *ctx)
 	cfg = readl(dev->regs + S5P_CIOCTRL);
 
 	cfg &= ~(S5P_CIOCTRL_ORDER2P_MASK | S5P_CIOCTRL_ORDER422_MASK |
-		 S5P_CIOCTRL_YCBCR_PLANE_MASK | S5P_CIOCTRL_RGB16FMT_MASK);
+		 S5P_CIOCTRL_YCBCR_PLANE_MASK);
 
-	if (fmt->colplanes == 1)
+	if (frame->fmt->colplanes == 1)
 		cfg |= ctx->out_order_1p;
-	else if (fmt->colplanes == 2)
+	else if (frame->fmt->colplanes == 2)
 		cfg |= ctx->out_order_2p | S5P_CIOCTRL_YCBCR_2PLANE;
-	else if (fmt->colplanes == 3)
+	else if (frame->fmt->colplanes == 3)
 		cfg |= S5P_CIOCTRL_YCBCR_3PLANE;
-
-	if (fmt->color == S5P_FIMC_RGB565)
-		cfg |= S5P_CIOCTRL_RGB565;
-	else if (fmt->color == S5P_FIMC_RGB555)
-		cfg |= S5P_CIOCTRL_ARGB1555;
-	else if (fmt->color == S5P_FIMC_RGB444)
-		cfg |= S5P_CIOCTRL_ARGB4444;
 
 	writel(cfg, dev->regs + S5P_CIOCTRL);
 }
@@ -286,28 +278,22 @@ static void fimc_hw_set_scaler(struct fimc_ctx *ctx)
 	if (sc->copy_mode)
 		cfg |= S5P_CISCCTRL_ONE2ONE;
 
+
 	if (ctx->in_path == FIMC_DMA) {
-		switch (src_frame->fmt->color) {
-		case S5P_FIMC_RGB565:
+		if (src_frame->fmt->color == S5P_FIMC_RGB565)
 			cfg |= S5P_CISCCTRL_INRGB_FMT_RGB565;
-			break;
-		case S5P_FIMC_RGB666:
+		else if (src_frame->fmt->color == S5P_FIMC_RGB666)
 			cfg |= S5P_CISCCTRL_INRGB_FMT_RGB666;
-			break;
-		case S5P_FIMC_RGB888:
+		else if (src_frame->fmt->color == S5P_FIMC_RGB888)
 			cfg |= S5P_CISCCTRL_INRGB_FMT_RGB888;
-			break;
-		}
 	}
 
 	if (ctx->out_path == FIMC_DMA) {
-		u32 color = dst_frame->fmt->color;
-
-		if (color >= S5P_FIMC_RGB444 && color <= S5P_FIMC_RGB565)
+		if (dst_frame->fmt->color == S5P_FIMC_RGB565)
 			cfg |= S5P_CISCCTRL_OUTRGB_FMT_RGB565;
-		else if (color == S5P_FIMC_RGB666)
+		else if (dst_frame->fmt->color == S5P_FIMC_RGB666)
 			cfg |= S5P_CISCCTRL_OUTRGB_FMT_RGB666;
-		else if (color == S5P_FIMC_RGB888)
+		else if (dst_frame->fmt->color == S5P_FIMC_RGB888)
 			cfg |= S5P_CISCCTRL_OUTRGB_FMT_RGB888;
 	} else {
 		cfg |= S5P_CISCCTRL_OUTRGB_FMT_RGB888;
@@ -391,21 +377,6 @@ void fimc_hw_set_effect(struct fimc_ctx *ctx, bool active)
 	}
 
 	writel(cfg, dev->regs + S5P_CIIMGEFF);
-}
-
-void fimc_hw_set_rgb_alpha(struct fimc_ctx *ctx)
-{
-	struct fimc_dev *dev = ctx->fimc_dev;
-	struct fimc_frame *frame = &ctx->d_frame;
-	u32 cfg;
-
-	if (!(frame->fmt->flags & FMT_HAS_ALPHA))
-		return;
-
-	cfg = readl(dev->regs + S5P_CIOCTRL);
-	cfg &= ~S5P_CIOCTRL_ALPHA_OUT_MASK;
-	cfg |= (frame->alpha << 4);
-	writel(cfg, dev->regs + S5P_CIOCTRL);
 }
 
 static void fimc_hw_set_in_dma_size(struct fimc_ctx *ctx)

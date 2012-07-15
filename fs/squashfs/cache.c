@@ -70,15 +70,11 @@ struct squashfs_cache_entry *squashfs_cache_get(struct super_block *sb,
 	spin_lock(&cache->lock);
 
 	while (1) {
-		for (i = cache->curr_blk, n = 0; n < cache->entries; n++) {
-			if (cache->entry[i].block == block) {
-				cache->curr_blk = i;
+		for (i = 0; i < cache->entries; i++)
+			if (cache->entry[i].block == block)
 				break;
-			}
-			i = (i + 1) % cache->entries;
-		}
 
-		if (n == cache->entries) {
+		if (i == cache->entries) {
 			/*
 			 * Block not in cache, if all cache entries are used
 			 * go to sleep waiting for one to become available.
@@ -249,7 +245,6 @@ struct squashfs_cache *squashfs_cache_init(char *name, int entries,
 		goto cleanup;
 	}
 
-	cache->curr_blk = 0;
 	cache->next_blk = 0;
 	cache->unused = entries;
 	cache->entries = entries;
@@ -337,20 +332,17 @@ int squashfs_read_metadata(struct super_block *sb, void *buffer,
 		u64 *block, int *offset, int length)
 {
 	struct squashfs_sb_info *msblk = sb->s_fs_info;
-	int bytes, res = length;
+	int bytes, copied = length;
 	struct squashfs_cache_entry *entry;
 
 	TRACE("Entered squashfs_read_metadata [%llx:%x]\n", *block, *offset);
 
 	while (length) {
 		entry = squashfs_cache_get(sb, msblk->block_cache, *block, 0);
-		if (entry->error) {
-			res = entry->error;
-			goto error;
-		} else if (*offset >= entry->length) {
-			res = -EIO;
-			goto error;
-		}
+		if (entry->error)
+			return entry->error;
+		else if (*offset >= entry->length)
+			return -EIO;
 
 		bytes = squashfs_copy_data(buffer, entry, *offset, length);
 		if (buffer)
@@ -366,11 +358,7 @@ int squashfs_read_metadata(struct super_block *sb, void *buffer,
 		squashfs_cache_put(entry);
 	}
 
-	return res;
-
-error:
-	squashfs_cache_put(entry);
-	return res;
+	return copied;
 }
 
 

@@ -1661,7 +1661,18 @@ static struct platform_driver viu_of_platform_driver = {
 	},
 };
 
-module_platform_driver(viu_of_platform_driver);
+static int __init viu_init(void)
+{
+	return platform_driver_register(&viu_of_platform_driver);
+}
+
+static void __exit viu_exit(void)
+{
+	platform_driver_unregister(&viu_of_platform_driver);
+}
+
+module_init(viu_init);
+module_exit(viu_exit);
 
 MODULE_DESCRIPTION("Freescale Video-In(VIU)");
 MODULE_AUTHOR("Hongjun Chen");

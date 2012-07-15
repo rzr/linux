@@ -35,3 +35,4 @@ static inline int kvm_para_has_feature(unsigned int feature)
 }
 #endif /* __KERNEL__ */
 #endif /* __LINUX_KVM_PARA_H */
+

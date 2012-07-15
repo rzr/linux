@@ -37,7 +37,6 @@
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
 #include <asm/traps.h>
-#include <asm/memblock.h>
 
 #include "setup.h"
 
@@ -65,7 +64,7 @@ static char default_command_line[COMMAND_LINE_SIZE] __initdata = CONFIG_CMDLINE;
  */
 static struct resource mem_res[] = {
 	{
-		.name = "Kernel code",
+		.name = "Kernel text",
 		.start = 0,
 		.end = 0,
 		.flags = IORESOURCE_MEM

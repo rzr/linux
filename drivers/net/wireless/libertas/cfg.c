@@ -485,7 +485,6 @@ static int lbs_cfg_set_channel(struct wiphy *wiphy,
 static int lbs_ret_scan(struct lbs_private *priv, unsigned long dummy,
 	struct cmd_header *resp)
 {
-	struct cfg80211_bss *bss;
 	struct cmd_ds_802_11_scan_rsp *scanresp = (void *)resp;
 	int bsssize;
 	const u8 *pos;
@@ -633,14 +632,12 @@ static int lbs_ret_scan(struct lbs_private *priv, unsigned long dummy,
 				     LBS_SCAN_RSSI_TO_MBM(rssi)/100);
 
 			if (channel &&
-			    !(channel->flags & IEEE80211_CHAN_DISABLED)) {
-				bss = cfg80211_inform_bss(wiphy, channel,
+			    !(channel->flags & IEEE80211_CHAN_DISABLED))
+				cfg80211_inform_bss(wiphy, channel,
 					bssid, get_unaligned_le64(tsfdesc),
 					capa, intvl, ie, ielen,
 					LBS_SCAN_RSSI_TO_MBM(rssi),
 					GFP_KERNEL);
-				cfg80211_put_bss(bss);
-			}
 		} else
 			lbs_deb_scan("scan response: missing BSS channel IE\n");
 
@@ -1725,7 +1722,6 @@ static void lbs_join_post(struct lbs_private *priv,
 		   2 + 2 +                      /* atim */
 		   2 + 8];                      /* extended rates */
 	u8 *fake = fake_ie;
-	struct cfg80211_bss *bss;
 
 	lbs_deb_enter(LBS_DEB_CFG80211);
 
@@ -1769,15 +1765,14 @@ static void lbs_join_post(struct lbs_private *priv,
 	*fake++ = 0x6c;
 	lbs_deb_hex(LBS_DEB_CFG80211, "IE", fake_ie, fake - fake_ie);
 
-	bss = cfg80211_inform_bss(priv->wdev->wiphy,
-				  params->channel,
-				  bssid,
-				  0,
-				  capability,
-				  params->beacon_interval,
-				  fake_ie, fake - fake_ie,
-				  0, GFP_KERNEL);
-	cfg80211_put_bss(bss);
+	cfg80211_inform_bss(priv->wdev->wiphy,
+			    params->channel,
+			    bssid,
+			    0,
+			    capability,
+			    params->beacon_interval,
+			    fake_ie, fake - fake_ie,
+			    0, GFP_KERNEL);
 
 	memcpy(priv->wdev->ssid, params->ssid, params->ssid_len);
 	priv->wdev->ssid_len = params->ssid_len;

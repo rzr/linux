@@ -42,7 +42,8 @@
 #include <scsi/scsi_host.h>
 
 #include <target/target_core_base.h>
-#include <target/target_core_backend.h>
+#include <target/target_core_device.h>
+#include <target/target_core_transport.h>
 
 #include "target_core_iblock.h"
 
@@ -129,7 +130,7 @@ static struct se_device *iblock_create_virtdevice(
 	/*
 	 * These settings need to be made tunable..
 	 */
-	ib_dev->ibd_bio_set = bioset_create(32, 0);
+	ib_dev->ibd_bio_set = bioset_create(32, 64);
 	if (!ib_dev->ibd_bio_set) {
 		pr_err("IBLOCK: Unable to create bioset()\n");
 		return ERR_PTR(-ENOMEM);
@@ -181,7 +182,7 @@ static struct se_device *iblock_create_virtdevice(
 		 */
 		dev->se_sub_dev->se_dev_attrib.max_unmap_block_desc_count = 1;
 		dev->se_sub_dev->se_dev_attrib.unmap_granularity =
-				q->limits.discard_granularity >> 9;
+				q->limits.discard_granularity;
 		dev->se_sub_dev->se_dev_attrib.unmap_granularity_alignment =
 				q->limits.discard_alignment;
 
@@ -390,7 +391,7 @@ static ssize_t iblock_set_configfs_dev_params(struct se_hba *hba,
 
 	orig = opts;
 
-	while ((ptr = strsep(&opts, ",\n")) != NULL) {
+	while ((ptr = strsep(&opts, ",")) != NULL) {
 		if (!*ptr)
 			continue;
 
@@ -464,7 +465,7 @@ static ssize_t iblock_show_configfs_dev_params(
 	if (bd) {
 		bl += sprintf(b + bl, "Major: %d Minor: %d  %s\n",
 			MAJOR(bd->bd_dev), MINOR(bd->bd_dev), (!bd->bd_contains) ?
-			"" : (bd->bd_holder == ibd) ?
+			"" : (bd->bd_holder == (struct iblock_dev *)ibd) ?
 			"CLAIMED: IBLOCK" : "CLAIMED: OS");
 	} else {
 		bl += sprintf(b + bl, "Major: 0 Minor: 0\n");
@@ -487,13 +488,6 @@ iblock_get_bio(struct se_task *task, sector_t lba, u32 sg_num)
 	struct iblock_dev *ib_dev = task->task_se_cmd->se_dev->dev_ptr;
 	struct iblock_req *ib_req = IBLOCK_REQ(task);
 	struct bio *bio;
-
-	/*
-	 * Only allocate as many vector entries as the bio code allows us to,
-	 * we'll loop later on until we have handled the whole request.
-	 */
-	if (sg_num > BIO_MAX_PAGES)
-		sg_num = BIO_MAX_PAGES;
 
 	bio = bio_alloc_bioset(GFP_NOIO, sg_num, ib_dev->ibd_bio_set);
 	if (!bio) {

@@ -32,8 +32,7 @@ const struct mxs_saif_data mx28_saif_data[] __initconst = {
 };
 #endif
 
-struct platform_device *__init mxs_add_saif(const struct mxs_saif_data *data,
-				const struct mxs_saif_platform_data *pdata)
+struct platform_device *__init mxs_add_saif(const struct mxs_saif_data *data)
 {
 	struct resource res[] = {
 		{
@@ -57,5 +56,5 @@ struct platform_device *__init mxs_add_saif(const struct mxs_saif_data *data,
 	};
 
 	return mxs_add_platform_device("mxs-saif", data->id, res,
-				ARRAY_SIZE(res), pdata, sizeof(*pdata));
+					ARRAY_SIZE(res), NULL, 0);
 }

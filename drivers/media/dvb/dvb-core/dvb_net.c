@@ -1510,7 +1510,9 @@ int dvb_net_init (struct dvb_adapter *adap, struct dvb_net *dvbnet,
 	for (i=0; i<DVB_NET_DEVICES_MAX; i++)
 		dvbnet->state[i] = 0;
 
-	return dvb_register_device(adap, &dvbnet->dvbdev, &dvbdev_net,
+	dvb_register_device (adap, &dvbnet->dvbdev, &dvbdev_net,
 			     dvbnet, DVB_DEVICE_NET);
+
+	return 0;
 }
 EXPORT_SYMBOL(dvb_net_init);

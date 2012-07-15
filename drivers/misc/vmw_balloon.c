@@ -314,7 +314,7 @@ static bool vmballoon_send_get_target(struct vmballoon *b, u32 *new_target)
  * fear that guest will need it. Host may reject some pages, we need to
  * check the return value and maybe submit a different page.
  */
-static int vmballoon_send_lock_page(struct vmballoon *b, unsigned long pfn,
+static bool vmballoon_send_lock_page(struct vmballoon *b, unsigned long pfn,
 				     unsigned int *hv_status)
 {
 	unsigned long status, dummy;
@@ -322,17 +322,17 @@ static int vmballoon_send_lock_page(struct vmballoon *b, unsigned long pfn,
 
 	pfn32 = (u32)pfn;
 	if (pfn32 != pfn)
-		return -1;
+		return false;
 
 	STATS_INC(b->stats.lock);
 
 	*hv_status = status = VMWARE_BALLOON_CMD(LOCK, pfn, dummy);
 	if (vmballoon_check_status(b, status))
-		return 0;
+		return true;
 
 	pr_debug("%s - ppn %lx, hv returns %ld\n", __func__, pfn, status);
 	STATS_INC(b->stats.lock_fail);
-	return 1;
+	return false;
 }
 
 /*
@@ -411,7 +411,7 @@ static int vmballoon_reserve_page(struct vmballoon *b, bool can_sleep)
 	struct page *page;
 	gfp_t flags;
 	unsigned int hv_status;
-	int locked;
+	bool locked = false;
 	flags = can_sleep ? VMW_PAGE_ALLOC_CANSLEEP : VMW_PAGE_ALLOC_NOSLEEP;
 
 	do {
@@ -431,7 +431,7 @@ static int vmballoon_reserve_page(struct vmballoon *b, bool can_sleep)
 
 		/* inform monitor */
 		locked = vmballoon_send_lock_page(b, page_to_pfn(page), &hv_status);
-		if (locked > 0) {
+		if (!locked) {
 			STATS_INC(b->stats.refused_alloc);
 
 			if (hv_status == VMW_BALLOON_ERROR_RESET ||
@@ -449,7 +449,7 @@ static int vmballoon_reserve_page(struct vmballoon *b, bool can_sleep)
 			if (++b->n_refused_pages >= VMW_BALLOON_MAX_REFUSED)
 				return -EIO;
 		}
-	} while (locked != 0);
+	} while (!locked);
 
 	/* track allocated page */
 	list_add(&page->lru, &b->pages);

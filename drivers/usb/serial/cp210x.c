@@ -52,7 +52,7 @@ static int cp210x_startup(struct usb_serial *);
 static void cp210x_release(struct usb_serial *);
 static void cp210x_dtr_rts(struct usb_serial_port *p, int on);
 
-static bool debug;
+static int debug;
 
 static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x045B, 0x0053) }, /* Renesas RX610 RX-Stick */
@@ -82,6 +82,7 @@ static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x10C4, 0x8066) }, /* Argussoft In-System Programmer */
 	{ USB_DEVICE(0x10C4, 0x806F) }, /* IMS USB to RS422 Converter Cable */
 	{ USB_DEVICE(0x10C4, 0x807A) }, /* Crumb128 board */
+	{ USB_DEVICE(0x10C4, 0x80C4) }, /* Cygnal Integrated Products, Inc., Optris infrared thermometer */
 	{ USB_DEVICE(0x10C4, 0x80CA) }, /* Degree Controls Inc */
 	{ USB_DEVICE(0x10C4, 0x80DD) }, /* Tracient RFID */
 	{ USB_DEVICE(0x10C4, 0x80F6) }, /* Suunto sports instrument */
@@ -298,10 +299,7 @@ static int cp210x_get_config(struct usb_serial_port *port, u8 request,
 		dbg("%s - Unable to send config request, "
 				"request=0x%x size=%d result=%d\n",
 				__func__, request, size, result);
-		if (result > 0)
-			result = -EPROTO;
-
-		return result;
+		return -EPROTO;
 	}
 
 	return 0;
@@ -355,10 +353,7 @@ static int cp210x_set_config(struct usb_serial_port *port, u8 request,
 		dbg("%s - Unable to send request, "
 				"request=0x%x size=%d result=%d\n",
 				__func__, request, size, result);
-		if (result > 0)
-			result = -EPROTO;
-
-		return result;
+		return -EPROTO;
 	}
 
 	return 0;
@@ -418,15 +413,12 @@ static unsigned int cp210x_quantise_baudrate(unsigned int baud) {
 
 static int cp210x_open(struct tty_struct *tty, struct usb_serial_port *port)
 {
-	int result;
-
 	dbg("%s - port %d", __func__, port->number);
 
-	result = cp210x_set_config_single(port, CP210X_IFC_ENABLE,
-								UART_ENABLE);
-	if (result) {
-		dev_err(&port->dev, "%s - Unable to enable UART\n", __func__);
-		return result;
+	if (cp210x_set_config_single(port, CP210X_IFC_ENABLE, UART_ENABLE)) {
+		dev_err(&port->dev, "%s - Unable to enable UART\n",
+				__func__);
+		return -EPROTO;
 	}
 
 	/* Configure the termios structure */
@@ -546,13 +538,18 @@ static void cp210x_get_termios_port(struct usb_serial_port *port,
 		cflag |= PARENB;
 		break;
 	case BITS_PARITY_MARK:
-		dbg("%s - parity = MARK", __func__);
-		cflag |= (PARENB|PARODD|CMSPAR);
+		dbg("%s - parity = MARK (not supported, disabling parity)",
+				__func__);
+		cflag &= ~PARENB;
+		bits &= ~BITS_PARITY_MASK;
+		cp210x_set_config(port, CP210X_SET_LINE_CTL, &bits, 2);
 		break;
 	case BITS_PARITY_SPACE:
-		dbg("%s - parity = SPACE", __func__);
-		cflag &= ~PARODD;
-		cflag |= (PARENB|CMSPAR);
+		dbg("%s - parity = SPACE (not supported, disabling parity)",
+				__func__);
+		cflag &= ~PARENB;
+		bits &= ~BITS_PARITY_MASK;
+		cp210x_set_config(port, CP210X_SET_LINE_CTL, &bits, 2);
 		break;
 	default:
 		dbg("%s - Unknown parity mode, disabling parity", __func__);
@@ -662,6 +659,7 @@ static void cp210x_set_termios(struct tty_struct *tty,
 	if (!tty)
 		return;
 
+	tty->termios->c_cflag &= ~CMSPAR;
 	cflag = tty->termios->c_cflag;
 	old_cflag = old_termios->c_cflag;
 
@@ -705,27 +703,16 @@ static void cp210x_set_termios(struct tty_struct *tty,
 					"not supported by device\n");
 	}
 
-	if ((cflag     & (PARENB|PARODD|CMSPAR)) !=
-	    (old_cflag & (PARENB|PARODD|CMSPAR))) {
+	if ((cflag & (PARENB|PARODD)) != (old_cflag & (PARENB|PARODD))) {
 		cp210x_get_config(port, CP210X_GET_LINE_CTL, &bits, 2);
 		bits &= ~BITS_PARITY_MASK;
 		if (cflag & PARENB) {
-			if (cflag & CMSPAR) {
-			    if (cflag & PARODD) {
-				    bits |= BITS_PARITY_MARK;
-				    dbg("%s - parity = MARK", __func__);
-			    } else {
-				    bits |= BITS_PARITY_SPACE;
-				    dbg("%s - parity = SPACE", __func__);
-			    }
+			if (cflag & PARODD) {
+				bits |= BITS_PARITY_ODD;
+				dbg("%s - parity = ODD", __func__);
 			} else {
-			    if (cflag & PARODD) {
-				    bits |= BITS_PARITY_ODD;
-				    dbg("%s - parity = ODD", __func__);
-			    } else {
-				    bits |= BITS_PARITY_EVEN;
-				    dbg("%s - parity = EVEN", __func__);
-			    }
+				bits |= BITS_PARITY_EVEN;
+				dbg("%s - parity = EVEN", __func__);
 			}
 		}
 		if (cp210x_set_config(port, CP210X_SET_LINE_CTL, &bits, 2))

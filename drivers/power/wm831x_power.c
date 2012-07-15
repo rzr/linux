@@ -27,7 +27,6 @@ struct wm831x_power {
 	char wall_name[20];
 	char usb_name[20];
 	char battery_name[20];
-	bool have_battery;
 };
 
 static int wm831x_power_check_online(struct wm831x *wm831x, int supply,
@@ -450,8 +449,7 @@ static irqreturn_t wm831x_bat_irq(int irq, void *data)
 
 	/* The battery charger is autonomous so we don't need to do
 	 * anything except kick user space */
-	if (wm831x_power->have_battery)
-		power_supply_changed(&wm831x_power->battery);
+	power_supply_changed(&wm831x_power->battery);
 
 	return IRQ_HANDLED;
 }
@@ -481,8 +479,7 @@ static irqreturn_t wm831x_pwr_src_irq(int irq, void *data)
 	dev_dbg(wm831x->dev, "Power source changed\n");
 
 	/* Just notify for everything - little harm in overnotifying. */
-	if (wm831x_power->have_battery)
-		power_supply_changed(&wm831x_power->battery);
+	power_supply_changed(&wm831x_power->battery);
 	power_supply_changed(&wm831x_power->usb);
 	power_supply_changed(&wm831x_power->wall);
 
@@ -540,6 +537,15 @@ static __devinit int wm831x_power_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_kmalloc;
 
+	battery->name = power->battery_name;
+	battery->properties = wm831x_bat_props;
+	battery->num_properties = ARRAY_SIZE(wm831x_bat_props);
+	battery->get_property = wm831x_bat_get_prop;
+	battery->use_for_apm = 1;
+	ret = power_supply_register(&pdev->dev, battery);
+	if (ret)
+		goto err_wall;
+
 	usb->name = power->usb_name,
 	usb->type = POWER_SUPPLY_TYPE_USB;
 	usb->properties = wm831x_usb_props;
@@ -547,23 +553,7 @@ static __devinit int wm831x_power_probe(struct platform_device *pdev)
 	usb->get_property = wm831x_usb_get_prop;
 	ret = power_supply_register(&pdev->dev, usb);
 	if (ret)
-		goto err_wall;
-
-	ret = wm831x_reg_read(wm831x, WM831X_CHARGER_CONTROL_1);
-	if (ret < 0)
-		goto err_wall;
-	power->have_battery = ret & WM831X_CHG_ENA;
-
-	if (power->have_battery) {
-		    battery->name = power->battery_name;
-		    battery->properties = wm831x_bat_props;
-		    battery->num_properties = ARRAY_SIZE(wm831x_bat_props);
-		    battery->get_property = wm831x_bat_get_prop;
-		    battery->use_for_apm = 1;
-		    ret = power_supply_register(&pdev->dev, battery);
-		    if (ret)
-			    goto err_usb;
-	}
+		goto err_battery;
 
 	irq = platform_get_irq_byname(pdev, "SYSLO");
 	ret = request_threaded_irq(irq, NULL, wm831x_syslo_irq,
@@ -572,7 +562,7 @@ static __devinit int wm831x_power_probe(struct platform_device *pdev)
 	if (ret != 0) {
 		dev_err(&pdev->dev, "Failed to request SYSLO IRQ %d: %d\n",
 			irq, ret);
-		goto err_battery;
+		goto err_usb;
 	}
 
 	irq = platform_get_irq_byname(pdev, "PWR SRC");
@@ -611,11 +601,10 @@ err_bat_irq:
 err_syslo:
 	irq = platform_get_irq_byname(pdev, "SYSLO");
 	free_irq(irq, power);
-err_battery:
-	if (power->have_battery)
-		power_supply_unregister(battery);
 err_usb:
 	power_supply_unregister(usb);
+err_battery:
+	power_supply_unregister(battery);
 err_wall:
 	power_supply_unregister(wall);
 err_kmalloc:
@@ -639,8 +628,7 @@ static __devexit int wm831x_power_remove(struct platform_device *pdev)
 	irq = platform_get_irq_byname(pdev, "SYSLO");
 	free_irq(irq, wm831x_power);
 
-	if (wm831x_power->have_battery)
-		power_supply_unregister(&wm831x_power->battery);
+	power_supply_unregister(&wm831x_power->battery);
 	power_supply_unregister(&wm831x_power->wall);
 	power_supply_unregister(&wm831x_power->usb);
 	kfree(wm831x_power);
@@ -655,7 +643,17 @@ static struct platform_driver wm831x_power_driver = {
 	},
 };
 
-module_platform_driver(wm831x_power_driver);
+static int __init wm831x_power_init(void)
+{
+	return platform_driver_register(&wm831x_power_driver);
+}
+module_init(wm831x_power_init);
+
+static void __exit wm831x_power_exit(void)
+{
+	platform_driver_unregister(&wm831x_power_driver);
+}
+module_exit(wm831x_power_exit);
 
 MODULE_DESCRIPTION("Power supply driver for WM831x PMICs");
 MODULE_AUTHOR("Mark Brown <broonie@opensource.wolfsonmicro.com>");

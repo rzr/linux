@@ -373,5 +373,4 @@ MACHINE_START(JORNADA720, "HP Jornada 720")
 #ifdef CONFIG_SA1111
 	.dma_zone_size	= SZ_1M,
 #endif
-	.restart	= sa11x0_restart,
 MACHINE_END

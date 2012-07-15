@@ -1524,17 +1524,15 @@ static int usbdux_ao_inttrig(struct comedi_device *dev,
 		return -EFAULT;
 
 	down(&this_usbduxsub->sem);
-
 	if (!(this_usbduxsub->probed)) {
-		ret = -ENODEV;
-		goto out;
+		up(&this_usbduxsub->sem);
+		return -ENODEV;
 	}
 	if (trignum != 0) {
 		dev_err(&this_usbduxsub->interface->dev,
 			"comedi%d: usbdux_ao_inttrig: invalid trignum\n",
 			dev->minor);
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 	if (!(this_usbduxsub->ao_cmd_running)) {
 		this_usbduxsub->ao_cmd_running = 1;
@@ -1544,7 +1542,8 @@ static int usbdux_ao_inttrig(struct comedi_device *dev,
 				"comedi%d: usbdux_ao_inttrig: submitURB: "
 				"err=%d\n", dev->minor, ret);
 			this_usbduxsub->ao_cmd_running = 0;
-			goto out;
+			up(&this_usbduxsub->sem);
+			return ret;
 		}
 		s->async->inttrig = NULL;
 	} else {
@@ -1552,10 +1551,8 @@ static int usbdux_ao_inttrig(struct comedi_device *dev,
 			"comedi%d: ao_inttrig but acqu is already running.\n",
 			dev->minor);
 	}
-	ret = 1;
-out:
 	up(&this_usbduxsub->sem);
-	return ret;
+	return 1;
 }
 
 static int usbdux_ao_cmdtest(struct comedi_device *dev,
@@ -2692,7 +2689,6 @@ static int usbduxsigma_attach(struct comedi_device *dev,
 	if (ret < 0) {
 		dev_err(&udev->interface->dev,
 			"comedi%d: no space for subdev\n", dev->minor);
-		up(&udev->sem);
 		up(&start_stop_sem);
 		return ret;
 	}

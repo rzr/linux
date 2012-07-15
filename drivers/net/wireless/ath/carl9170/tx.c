@@ -314,7 +314,7 @@ static void carl9170_tx_release(struct kref *ref)
 			 *    feedback either [CTL_REQ_TX_STATUS not set]
 			 */
 
-			ieee80211_free_txskb(ar->hw, skb);
+			dev_kfree_skb_any(skb);
 			return;
 		} else {
 			/*
@@ -1435,7 +1435,7 @@ void carl9170_op_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 
 err_free:
 	ar->tx_dropped++;
-	ieee80211_free_txskb(ar->hw, skb);
+	dev_kfree_skb_any(skb);
 }
 
 void carl9170_tx_scheduler(struct ar9170 *ar)

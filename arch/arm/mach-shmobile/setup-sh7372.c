@@ -445,39 +445,31 @@ static const struct sh_dmae_slave_config sh7372_dmae_slaves[] = {
 	},
 };
 
-#define SH7372_CHCLR 0x220
-
 static const struct sh_dmae_channel sh7372_dmae_channels[] = {
 	{
 		.offset = 0,
 		.dmars = 0,
 		.dmars_bit = 0,
-		.chclr_offset = SH7372_CHCLR + 0,
 	}, {
 		.offset = 0x10,
 		.dmars = 0,
 		.dmars_bit = 8,
-		.chclr_offset = SH7372_CHCLR + 0x10,
 	}, {
 		.offset = 0x20,
 		.dmars = 4,
 		.dmars_bit = 0,
-		.chclr_offset = SH7372_CHCLR + 0x20,
 	}, {
 		.offset = 0x30,
 		.dmars = 4,
 		.dmars_bit = 8,
-		.chclr_offset = SH7372_CHCLR + 0x30,
 	}, {
 		.offset = 0x50,
 		.dmars = 8,
 		.dmars_bit = 0,
-		.chclr_offset = SH7372_CHCLR + 0x50,
 	}, {
 		.offset = 0x60,
 		.dmars = 8,
 		.dmars_bit = 8,
-		.chclr_offset = SH7372_CHCLR + 0x60,
 	}
 };
 
@@ -495,7 +487,6 @@ static struct sh_dmae_pdata dma_platform_data = {
 	.ts_shift	= ts_shift,
 	.ts_shift_num	= ARRAY_SIZE(ts_shift),
 	.dmaor_init	= DMAOR_DME,
-	.chclr_present	= 1,
 };
 
 /* Resource order important! */
@@ -503,7 +494,7 @@ static struct resource sh7372_dmae0_resources[] = {
 	{
 		/* Channel registers and DMAOR */
 		.start	= 0xfe008020,
-		.end	= 0xfe00828f,
+		.end	= 0xfe00808f,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -513,7 +504,7 @@ static struct resource sh7372_dmae0_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name	= "error_irq",
+		/* DMA error IRQ */
 		.start	= evt2irq(0x20c0),
 		.end	= evt2irq(0x20c0),
 		.flags	= IORESOURCE_IRQ,
@@ -531,7 +522,7 @@ static struct resource sh7372_dmae1_resources[] = {
 	{
 		/* Channel registers and DMAOR */
 		.start	= 0xfe018020,
-		.end	= 0xfe01828f,
+		.end	= 0xfe01808f,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -541,7 +532,7 @@ static struct resource sh7372_dmae1_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name	= "error_irq",
+		/* DMA error IRQ */
 		.start	= evt2irq(0x21c0),
 		.end	= evt2irq(0x21c0),
 		.flags	= IORESOURCE_IRQ,
@@ -559,7 +550,7 @@ static struct resource sh7372_dmae2_resources[] = {
 	{
 		/* Channel registers and DMAOR */
 		.start	= 0xfe028020,
-		.end	= 0xfe02828f,
+		.end	= 0xfe02808f,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -569,7 +560,7 @@ static struct resource sh7372_dmae2_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name	= "error_irq",
+		/* DMA error IRQ */
 		.start	= evt2irq(0x22c0),
 		.end	= evt2irq(0x22c0),
 		.flags	= IORESOURCE_IRQ,
@@ -662,7 +653,6 @@ static struct sh_dmae_pdata usb_dma0_platform_data = {
 	.dmaor_is_32bit	= 1,
 	.needs_tend_set	= 1,
 	.no_dmars	= 1,
-	.slave_only	= 1,
 };
 
 static struct resource sh7372_usb_dmae0_resources[] = {
@@ -724,7 +714,6 @@ static struct sh_dmae_pdata usb_dma1_platform_data = {
 	.dmaor_is_32bit	= 1,
 	.needs_tend_set	= 1,
 	.no_dmars	= 1,
-	.slave_only	= 1,
 };
 
 static struct resource sh7372_usb_dmae1_resources[] = {
@@ -1005,15 +994,11 @@ void __init sh7372_add_standard_devices(void)
 	sh7372_init_pm_domain(&sh7372_a4r);
 	sh7372_init_pm_domain(&sh7372_a3rv);
 	sh7372_init_pm_domain(&sh7372_a3ri);
-	sh7372_init_pm_domain(&sh7372_a4s);
-	sh7372_init_pm_domain(&sh7372_a3sp);
 	sh7372_init_pm_domain(&sh7372_a3sg);
+	sh7372_init_pm_domain(&sh7372_a3sp);
 
 	sh7372_pm_add_subdomain(&sh7372_a4lc, &sh7372_a3rv);
 	sh7372_pm_add_subdomain(&sh7372_a4r, &sh7372_a4lc);
-
-	sh7372_pm_add_subdomain(&sh7372_a4s, &sh7372_a3sg);
-	sh7372_pm_add_subdomain(&sh7372_a4s, &sh7372_a3sp);
 
 	platform_add_devices(sh7372_early_devices,
 			    ARRAY_SIZE(sh7372_early_devices));
@@ -1043,8 +1028,6 @@ void __init sh7372_add_standard_devices(void)
 	sh7372_add_device_to_domain(&sh7372_a4r, &veu2_device);
 	sh7372_add_device_to_domain(&sh7372_a4r, &veu3_device);
 	sh7372_add_device_to_domain(&sh7372_a4r, &jpu_device);
-	sh7372_add_device_to_domain(&sh7372_a4r, &tmu00_device);
-	sh7372_add_device_to_domain(&sh7372_a4r, &tmu01_device);
 }
 
 void __init sh7372_add_early_devices(void)

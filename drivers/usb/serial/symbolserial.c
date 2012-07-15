@@ -20,7 +20,7 @@
 #include <linux/usb/serial.h>
 #include <linux/uaccess.h>
 
-static bool debug;
+static int debug;
 
 static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x05e0, 0x0600) },
@@ -182,6 +182,7 @@ static void symbol_unthrottle(struct tty_struct *tty)
 	priv->actually_throttled = false;
 	spin_unlock_irq(&priv->lock);
 
+	priv->int_urb->dev = port->serial->dev;
 	if (was_throttled) {
 		result = usb_submit_urb(priv->int_urb, GFP_KERNEL);
 		if (result)

@@ -25,6 +25,7 @@
 #include <linux/jiffies.h>
 #include <linux/spinlock.h>
 #include <linux/list.h>
+#include <linux/sysdev.h>
 #include <linux/ctype.h>
 #include <linux/edac.h>
 #include <asm/uaccess.h>

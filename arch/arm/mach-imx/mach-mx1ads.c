@@ -147,7 +147,6 @@ MACHINE_START(MX1ADS, "Freescale MX1ADS")
 	.handle_irq = imx1_handle_irq,
 	.timer = &mx1ads_timer,
 	.init_machine = mx1ads_init,
-	.restart	= mxc_restart,
 MACHINE_END
 
 MACHINE_START(MXLADS, "Freescale MXLADS")
@@ -158,5 +157,4 @@ MACHINE_START(MXLADS, "Freescale MXLADS")
 	.handle_irq = imx1_handle_irq,
 	.timer = &mx1ads_timer,
 	.init_machine = mx1ads_init,
-	.restart	= mxc_restart,
 MACHINE_END

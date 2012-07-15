@@ -2,7 +2,6 @@
 #include "drm.h"
 #include "nouveau_drv.h"
 #include "nouveau_drm.h"
-#include "nouveau_hw.h"
 
 int
 nv04_timer_init(struct drm_device *dev)
@@ -18,7 +17,7 @@ nv04_timer_init(struct drm_device *dev)
 
 	/* determine base clock for timer source */
 	if (dev_priv->chipset < 0x40) {
-		n = nouveau_hw_get_clock(dev, PLL_CORE);
+		n = dev_priv->engine.pm.clock_get(dev, PLL_CORE);
 	} else
 	if (dev_priv->chipset == 0x40) {
 		/*XXX: figure this out */

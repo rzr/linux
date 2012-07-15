@@ -23,8 +23,8 @@
  *   o Allow clocksource drivers to be unregistered
  */
 
-#include <linux/device.h>
 #include <linux/clocksource.h>
+#include <linux/sysdev.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/sched.h> /* for spin_unlock_irq() using preempt_count() m68k */
@@ -796,8 +796,8 @@ EXPORT_SYMBOL(clocksource_unregister);
  * Provides sysfs interface for listing current clocksource.
  */
 static ssize_t
-sysfs_show_current_clocksources(struct device *dev,
-				struct device_attribute *attr, char *buf)
+sysfs_show_current_clocksources(struct sys_device *dev,
+				struct sysdev_attribute *attr, char *buf)
 {
 	ssize_t count = 0;
 
@@ -818,8 +818,8 @@ sysfs_show_current_clocksources(struct device *dev,
  * Takes input from sysfs interface for manually overriding the default
  * clocksource selection.
  */
-static ssize_t sysfs_override_clocksource(struct device *dev,
-					  struct device_attribute *attr,
+static ssize_t sysfs_override_clocksource(struct sys_device *dev,
+					  struct sysdev_attribute *attr,
 					  const char *buf, size_t count)
 {
 	size_t ret = count;
@@ -853,8 +853,8 @@ static ssize_t sysfs_override_clocksource(struct device *dev,
  * Provides sysfs interface for listing registered clocksources
  */
 static ssize_t
-sysfs_show_available_clocksources(struct device *dev,
-				  struct device_attribute *attr,
+sysfs_show_available_clocksources(struct sys_device *dev,
+				  struct sysdev_attribute *attr,
 				  char *buf)
 {
 	struct clocksource *src;
@@ -883,36 +883,35 @@ sysfs_show_available_clocksources(struct device *dev,
 /*
  * Sysfs setup bits:
  */
-static DEVICE_ATTR(current_clocksource, 0644, sysfs_show_current_clocksources,
+static SYSDEV_ATTR(current_clocksource, 0644, sysfs_show_current_clocksources,
 		   sysfs_override_clocksource);
 
-static DEVICE_ATTR(available_clocksource, 0444,
+static SYSDEV_ATTR(available_clocksource, 0444,
 		   sysfs_show_available_clocksources, NULL);
 
-static struct bus_type clocksource_subsys = {
+static struct sysdev_class clocksource_sysclass = {
 	.name = "clocksource",
-	.dev_name = "clocksource",
 };
 
-static struct device device_clocksource = {
+static struct sys_device device_clocksource = {
 	.id	= 0,
-	.bus	= &clocksource_subsys,
+	.cls	= &clocksource_sysclass,
 };
 
 static int __init init_clocksource_sysfs(void)
 {
-	int error = subsys_system_register(&clocksource_subsys, NULL);
+	int error = sysdev_class_register(&clocksource_sysclass);
 
 	if (!error)
-		error = device_register(&device_clocksource);
+		error = sysdev_register(&device_clocksource);
 	if (!error)
-		error = device_create_file(
+		error = sysdev_create_file(
 				&device_clocksource,
-				&dev_attr_current_clocksource);
+				&attr_current_clocksource);
 	if (!error)
-		error = device_create_file(
+		error = sysdev_create_file(
 				&device_clocksource,
-				&dev_attr_available_clocksource);
+				&attr_available_clocksource);
 	return error;
 }
 

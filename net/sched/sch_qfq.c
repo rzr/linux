@@ -211,7 +211,6 @@ static int qfq_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 	struct nlattr *tb[TCA_QFQ_MAX + 1];
 	u32 weight, lmax, inv_w;
 	int i, err;
-	int delta_w;
 
 	if (tca[TCA_OPTIONS] == NULL) {
 		pr_notice("qfq: no options\n");
@@ -233,10 +232,9 @@ static int qfq_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 
 	inv_w = ONE_FP / weight;
 	weight = ONE_FP / inv_w;
-	delta_w = weight - (cl ? ONE_FP / cl->inv_w : 0);
-	if (q->wsum + delta_w > QFQ_MAX_WSUM) {
+	if (q->wsum + weight > QFQ_MAX_WSUM) {
 		pr_notice("qfq: total weight out of range (%u + %u)\n",
-			  delta_w, q->wsum);
+			  weight, q->wsum);
 		return -EINVAL;
 	}
 
@@ -258,12 +256,13 @@ static int qfq_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 				return err;
 		}
 
-		if (inv_w != cl->inv_w) {
-			sch_tree_lock(sch);
-			q->wsum += delta_w;
+		sch_tree_lock(sch);
+		if (tb[TCA_QFQ_WEIGHT]) {
+			q->wsum = weight - ONE_FP / cl->inv_w;
 			cl->inv_w = inv_w;
-			sch_tree_unlock(sch);
 		}
+		sch_tree_unlock(sch);
+
 		return 0;
 	}
 
@@ -278,6 +277,7 @@ static int qfq_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 	i = qfq_calc_index(cl->inv_w, cl->lmax);
 
 	cl->grp = &q->groups[i];
+	q->wsum += weight;
 
 	cl->qdisc = qdisc_create_dflt(sch->dev_queue,
 				      &pfifo_qdisc_ops, classid);
@@ -294,7 +294,6 @@ static int qfq_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 			return err;
 		}
 	}
-	q->wsum += weight;
 
 	sch_tree_lock(sch);
 	qdisc_class_hash_insert(&q->clhash, &cl->common);

@@ -711,14 +711,12 @@ static void pcnet32_get_drvinfo(struct net_device *dev,
 {
 	struct pcnet32_private *lp = netdev_priv(dev);
 
-	strlcpy(info->driver, DRV_NAME, sizeof(info->driver));
-	strlcpy(info->version, DRV_VERSION, sizeof(info->version));
+	strcpy(info->driver, DRV_NAME);
+	strcpy(info->version, DRV_VERSION);
 	if (lp->pci_dev)
-		strlcpy(info->bus_info, pci_name(lp->pci_dev),
-			sizeof(info->bus_info));
+		strcpy(info->bus_info, pci_name(lp->pci_dev));
 	else
-		snprintf(info->bus_info, sizeof(info->bus_info),
-			"VLB 0x%lx", dev->base_addr);
+		sprintf(info->bus_info, "VLB 0x%lx", dev->base_addr);
 }
 
 static u32 pcnet32_get_link(struct net_device *dev)

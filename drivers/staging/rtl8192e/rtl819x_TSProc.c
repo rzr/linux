@@ -497,7 +497,6 @@ void RemovePeerTS(struct rtllib_device *ieee, u8 *Addr)
 		}
 	}
 }
-EXPORT_SYMBOL(RemovePeerTS);
 
 void RemoveAllTS(struct rtllib_device *ieee)
 {

@@ -143,9 +143,19 @@ static struct spi_driver ad5930_driver = {
 	.probe = ad5930_probe,
 	.remove = __devexit_p(ad5930_remove),
 };
-module_spi_driver(ad5930_driver);
+
+static __init int ad5930_spi_init(void)
+{
+	return spi_register_driver(&ad5930_driver);
+}
+module_init(ad5930_spi_init);
+
+static __exit void ad5930_spi_exit(void)
+{
+	spi_unregister_driver(&ad5930_driver);
+}
+module_exit(ad5930_spi_exit);
 
 MODULE_AUTHOR("Cliff Cai");
 MODULE_DESCRIPTION("Analog Devices ad5930 driver");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("spi:" DRV_NAME);

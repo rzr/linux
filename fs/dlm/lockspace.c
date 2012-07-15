@@ -2,7 +2,7 @@
 *******************************************************************************
 **
 **  Copyright (C) Sistina Software, Inc.  1997-2003  All rights reserved.
-**  Copyright (C) 2004-2011 Red Hat, Inc.  All rights reserved.
+**  Copyright (C) 2004-2008 Red Hat, Inc.  All rights reserved.
 **
 **  This copyrighted material is made available to anyone wishing to use,
 **  modify, copy, or redistribute it subject to the terms and conditions
@@ -386,15 +386,12 @@ static void threads_stop(void)
 	dlm_lowcomms_stop();
 }
 
-static int new_lockspace(const char *name, const char *cluster,
-			 uint32_t flags, int lvblen,
-			 const struct dlm_lockspace_ops *ops, void *ops_arg,
-			 int *ops_result, dlm_lockspace_t **lockspace)
+static int new_lockspace(const char *name, int namelen, void **lockspace,
+			 uint32_t flags, int lvblen)
 {
 	struct dlm_ls *ls;
 	int i, size, error;
 	int do_unreg = 0;
-	int namelen = strlen(name);
 
 	if (namelen > DLM_LOCKSPACE_LEN)
 		return -EINVAL;
@@ -406,24 +403,8 @@ static int new_lockspace(const char *name, const char *cluster,
 		return -EINVAL;
 
 	if (!dlm_user_daemon_available()) {
-		log_print("dlm user daemon not available");
-		error = -EUNATCH;
-		goto out;
-	}
-
-	if (ops && ops_result) {
-	       	if (!dlm_config.ci_recover_callbacks)
-			*ops_result = -EOPNOTSUPP;
-		else
-			*ops_result = 0;
-	}
-
-	if (dlm_config.ci_recover_callbacks && cluster &&
-	    strncmp(cluster, dlm_config.ci_cluster_name, DLM_LOCKSPACE_LEN)) {
-		log_print("dlm cluster name %s mismatch %s",
-			  dlm_config.ci_cluster_name, cluster);
-		error = -EBADR;
-		goto out;
+		module_put(THIS_MODULE);
+		return -EUNATCH;
 	}
 
 	error = 0;
@@ -461,11 +442,6 @@ static int new_lockspace(const char *name, const char *cluster,
 	ls->ls_flags = 0;
 	ls->ls_scan_time = jiffies;
 
-	if (ops && dlm_config.ci_recover_callbacks) {
-		ls->ls_ops = ops;
-		ls->ls_ops_arg = ops_arg;
-	}
-
 	if (flags & DLM_LSFL_TIMEWARN)
 		set_bit(LSFL_TIMEWARN, &ls->ls_flags);
 
@@ -481,8 +457,8 @@ static int new_lockspace(const char *name, const char *cluster,
 	if (!ls->ls_rsbtbl)
 		goto out_lsfree;
 	for (i = 0; i < size; i++) {
-		ls->ls_rsbtbl[i].keep.rb_node = NULL;
-		ls->ls_rsbtbl[i].toss.rb_node = NULL;
+		INIT_LIST_HEAD(&ls->ls_rsbtbl[i].list);
+		INIT_LIST_HEAD(&ls->ls_rsbtbl[i].toss);
 		spin_lock_init(&ls->ls_rsbtbl[i].lock);
 	}
 
@@ -548,11 +524,6 @@ static int new_lockspace(const char *name, const char *cluster,
 	ls->ls_recover_buf = kmalloc(dlm_config.ci_buffer_size, GFP_NOFS);
 	if (!ls->ls_recover_buf)
 		goto out_dirfree;
-
-	ls->ls_slot = 0;
-	ls->ls_num_slots = 0;
-	ls->ls_slots_size = 0;
-	ls->ls_slots = NULL;
 
 	INIT_LIST_HEAD(&ls->ls_recover_list);
 	spin_lock_init(&ls->ls_recover_list_lock);
@@ -643,10 +614,8 @@ static int new_lockspace(const char *name, const char *cluster,
 	return error;
 }
 
-int dlm_new_lockspace(const char *name, const char *cluster,
-		      uint32_t flags, int lvblen,
-		      const struct dlm_lockspace_ops *ops, void *ops_arg,
-		      int *ops_result, dlm_lockspace_t **lockspace)
+int dlm_new_lockspace(const char *name, int namelen, void **lockspace,
+		      uint32_t flags, int lvblen)
 {
 	int error = 0;
 
@@ -656,8 +625,7 @@ int dlm_new_lockspace(const char *name, const char *cluster,
 	if (error)
 		goto out;
 
-	error = new_lockspace(name, cluster, flags, lvblen, ops, ops_arg,
-			      ops_result, lockspace);
+	error = new_lockspace(name, namelen, lockspace, flags, lvblen);
 	if (!error)
 		ls_count++;
 	if (error > 0)
@@ -717,7 +685,7 @@ static int lockspace_busy(struct dlm_ls *ls, int force)
 static int release_lockspace(struct dlm_ls *ls, int force)
 {
 	struct dlm_rsb *rsb;
-	struct rb_node *n;
+	struct list_head *head;
 	int i, busy, rv;
 
 	busy = lockspace_busy(ls, force);
@@ -778,15 +746,20 @@ static int release_lockspace(struct dlm_ls *ls, int force)
 	 */
 
 	for (i = 0; i < ls->ls_rsbtbl_size; i++) {
-		while ((n = rb_first(&ls->ls_rsbtbl[i].keep))) {
-			rsb = rb_entry(n, struct dlm_rsb, res_hashnode);
-			rb_erase(n, &ls->ls_rsbtbl[i].keep);
+		head = &ls->ls_rsbtbl[i].list;
+		while (!list_empty(head)) {
+			rsb = list_entry(head->next, struct dlm_rsb,
+					 res_hashchain);
+
+			list_del(&rsb->res_hashchain);
 			dlm_free_rsb(rsb);
 		}
 
-		while ((n = rb_first(&ls->ls_rsbtbl[i].toss))) {
-			rsb = rb_entry(n, struct dlm_rsb, res_hashnode);
-			rb_erase(n, &ls->ls_rsbtbl[i].toss);
+		head = &ls->ls_rsbtbl[i].toss;
+		while (!list_empty(head)) {
+			rsb = list_entry(head->next, struct dlm_rsb,
+					 res_hashchain);
+			list_del(&rsb->res_hashchain);
 			dlm_free_rsb(rsb);
 		}
 	}

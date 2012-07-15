@@ -79,7 +79,7 @@ struct sysfs_dirent {
 	};
 
 	unsigned int		s_flags;
-	umode_t 		s_mode;
+	unsigned short		s_mode;
 	ino_t			s_ino;
 	struct sysfs_inode_attrs *s_iattr;
 };
@@ -229,7 +229,7 @@ int sysfs_add_file(struct sysfs_dirent *dir_sd,
 		   const struct attribute *attr, int type);
 
 int sysfs_add_file_mode(struct sysfs_dirent *dir_sd,
-			const struct attribute *attr, int type, umode_t amode);
+			const struct attribute *attr, int type, mode_t amode);
 /*
  * bin.c
  */

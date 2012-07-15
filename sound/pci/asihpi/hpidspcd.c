@@ -25,13 +25,15 @@ hotplug firmware loader from individual dsp code files
 #define SOURCEFILE_NAME "hpidspcd.c"
 #include "hpidspcd.h"
 #include "hpidebug.h"
-#include "hpi_version.h"
 
 struct dsp_code_private {
 	/**  Firmware descriptor */
 	const struct firmware *firmware;
 	struct pci_dev *dev;
 };
+
+#define HPI_VER_DECIMAL ((int)(HPI_VER_MAJOR(HPI_VER) * 10000 + \
+	    HPI_VER_MINOR(HPI_VER) * 100 + HPI_VER_RELEASE(HPI_VER)))
 
 /*-------------------------------------------------------------------*/
 short hpi_dsp_code_open(u32 adapter, void *os_data, struct dsp_code *dsp_code,
@@ -64,25 +66,22 @@ short hpi_dsp_code_open(u32 adapter, void *os_data, struct dsp_code *dsp_code,
 	if ((header.type != 0x45444F43) ||	/* "CODE" */
 		(header.adapter != adapter)
 		|| (header.size != firmware->size)) {
-		dev_printk(KERN_ERR, &dev->dev,
-			"Invalid firmware header size %d != file %zd\n",
-			header.size, firmware->size);
+		dev_printk(KERN_ERR, &dev->dev, "Invalid firmware file\n");
 		goto error2;
 	}
 
-	if ((header.version >> 9) != (HPI_VER >> 9)) {
-		/* Consider even and subsequent odd minor versions to be compatible */
+	if ((header.version / 100 & ~1) != (HPI_VER_DECIMAL / 100 & ~1)) {
 		dev_printk(KERN_ERR, &dev->dev,
 			"Incompatible firmware version "
-			"DSP image %X != Driver %X\n", header.version,
-			HPI_VER);
+			"DSP image %d != Driver %d\n", header.version,
+			HPI_VER_DECIMAL);
 		goto error2;
 	}
 
-	if (header.version != HPI_VER) {
-		dev_printk(KERN_INFO, &dev->dev,
-			"Firmware: release version mismatch  DSP image %X != Driver %X\n",
-			header.version, HPI_VER);
+	if (header.version != HPI_VER_DECIMAL) {
+		dev_printk(KERN_WARNING, &dev->dev,
+			"Firmware: release version mismatch  DSP image %d != Driver %d\n",
+			header.version, HPI_VER_DECIMAL);
 	}
 
 	HPI_DEBUG_LOG(DEBUG, "dsp code %s opened\n", fw_name);
@@ -109,8 +108,11 @@ error1:
 /*-------------------------------------------------------------------*/
 void hpi_dsp_code_close(struct dsp_code *dsp_code)
 {
-	HPI_DEBUG_LOG(DEBUG, "dsp code closed\n");
-	release_firmware(dsp_code->pvt->firmware);
+	if (dsp_code->pvt->firmware) {
+		HPI_DEBUG_LOG(DEBUG, "dsp code closed\n");
+		release_firmware(dsp_code->pvt->firmware);
+		dsp_code->pvt->firmware = NULL;
+	}
 	kfree(dsp_code->pvt);
 }
 

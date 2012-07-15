@@ -177,7 +177,7 @@ struct qib_qsfp_data {
 	struct qib_pportdata *ppd;
 	struct work_struct work;
 	struct qib_qsfp_cache cache;
-	unsigned long t_insert;
+	u64 t_insert;
 	u8 modpresent;
 };
 

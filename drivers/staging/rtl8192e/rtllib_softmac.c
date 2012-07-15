@@ -15,9 +15,11 @@
 
 
 #include "rtllib.h"
+#include "rtl_core.h"
 
 #include <linux/random.h>
 #include <linux/delay.h>
+#include <linux/version.h>
 #include <linux/uaccess.h>
 #include "dot11d.h"
 
@@ -26,9 +28,9 @@ short rtllib_is_54g(struct rtllib_network *net)
 	return (net->rates_ex_len > 0) || (net->rates_len > 4);
 }
 
-short rtllib_is_shortslot(const struct rtllib_network *net)
+short rtllib_is_shortslot(struct rtllib_network net)
 {
-	return net->capability & WLAN_CAPABILITY_SHORT_SLOT_TIME;
+	return net.capability & WLAN_CAPABILITY_SHORT_SLOT_TIME;
 }
 
 /* returns the total length needed for pleacing the RATE MFIE
@@ -466,7 +468,6 @@ void rtllib_EnableIntelPromiscuousMode(struct net_device *dev,
 
 	ieee->bNetPromiscuousMode = true;
 }
-EXPORT_SYMBOL(rtllib_EnableIntelPromiscuousMode);
 
 
 /*
@@ -489,7 +490,6 @@ void rtllib_DisableIntelPromiscuousMode(struct net_device *dev,
 
 	ieee->bNetPromiscuousMode = false;
 }
-EXPORT_SYMBOL(rtllib_DisableIntelPromiscuousMode);
 
 static void rtllib_send_probe(struct rtllib_device *ieee, u8 is_mesh)
 {
@@ -685,7 +685,6 @@ void rtllib_stop_send_beacons(struct rtllib_device *ieee)
 	if (ieee->softmac_features & IEEE_SOFTMAC_BEACONS)
 		rtllib_beacons_stop(ieee);
 }
-EXPORT_SYMBOL(rtllib_stop_send_beacons);
 
 
 void rtllib_start_send_beacons(struct rtllib_device *ieee)
@@ -695,7 +694,6 @@ void rtllib_start_send_beacons(struct rtllib_device *ieee)
 	if (ieee->softmac_features & IEEE_SOFTMAC_BEACONS)
 		rtllib_beacons_start(ieee);
 }
-EXPORT_SYMBOL(rtllib_start_send_beacons);
 
 
 static void rtllib_softmac_stop_scan(struct rtllib_device *ieee)
@@ -721,7 +719,6 @@ void rtllib_stop_scan(struct rtllib_device *ieee)
 			ieee->rtllib_stop_hw_scan(ieee->dev);
 	}
 }
-EXPORT_SYMBOL(rtllib_stop_scan);
 
 void rtllib_stop_scan_syncro(struct rtllib_device *ieee)
 {
@@ -732,7 +729,6 @@ void rtllib_stop_scan_syncro(struct rtllib_device *ieee)
 			ieee->rtllib_stop_hw_scan(ieee->dev);
 	}
 }
-EXPORT_SYMBOL(rtllib_stop_scan_syncro);
 
 bool rtllib_act_scanning(struct rtllib_device *ieee, bool sync_scan)
 {
@@ -745,7 +741,6 @@ bool rtllib_act_scanning(struct rtllib_device *ieee, bool sync_scan)
 		return test_bit(STATUS_SCANNING, &ieee->status);
 	}
 }
-EXPORT_SYMBOL(rtllib_act_scanning);
 
 /* called with ieee->lock held */
 static void rtllib_start_scan(struct rtllib_device *ieee)
@@ -786,7 +781,6 @@ void rtllib_start_scan_syncro(struct rtllib_device *ieee, u8 is_mesh)
 			ieee->rtllib_start_hw_scan(ieee->dev);
 	}
 }
-EXPORT_SYMBOL(rtllib_start_scan_syncro);
 
 inline struct sk_buff *rtllib_authentication_req(struct rtllib_network *beacon,
 	struct rtllib_device *ieee, int challengelen, u8 *daddr)
@@ -836,7 +830,7 @@ static struct sk_buff *rtllib_probe_resp(struct rtllib_device *ieee, u8 *dest)
 	struct sk_buff *skb = NULL;
 	int encrypt;
 	int atim_len, erp_len;
-	struct lib80211_crypt_data *crypt;
+	struct rtllib_crypt_data *crypt;
 
 	char *ssid = ieee->current_network.ssid;
 	int ssid_len = ieee->current_network.ssid_len;
@@ -871,9 +865,9 @@ static struct sk_buff *rtllib_probe_resp(struct rtllib_device *ieee, u8 *dest)
 	} else
 		erp_len = 0;
 
-	crypt = ieee->crypt_info.crypt[ieee->crypt_info.tx_keyidx];
+	crypt = ieee->crypt[ieee->tx_keyidx];
 	encrypt = ieee->host_encrypt && crypt && crypt->ops &&
-		((0 == strcmp(crypt->ops->name, "R-WEP") || wpa_ie_len));
+		((0 == strcmp(crypt->ops->name, "WEP") || wpa_ie_len));
 	if (ieee->pHTInfo->bCurrentHTSupport) {
 		tmp_ht_cap_buf = (u8 *) &(ieee->pHTInfo->SelfHTCap);
 		tmp_ht_cap_len = sizeof(ieee->pHTInfo->SelfHTCap);
@@ -923,7 +917,7 @@ static struct sk_buff *rtllib_probe_resp(struct rtllib_device *ieee, u8 *dest)
 		cpu_to_le16((beacon_buf->capability |=
 				 WLAN_CAPABILITY_SHORT_SLOT_TIME));
 
-	crypt = ieee->crypt_info.crypt[ieee->crypt_info.tx_keyidx];
+	crypt = ieee->crypt[ieee->tx_keyidx];
 	if (encrypt)
 		beacon_buf->capability |= cpu_to_le16(WLAN_CAPABILITY_PRIVACY);
 
@@ -982,7 +976,7 @@ static struct sk_buff *rtllib_assoc_resp(struct rtllib_device *ieee, u8 *dest)
 	struct sk_buff *skb;
 	u8 *tag;
 
-	struct lib80211_crypt_data *crypt;
+	struct rtllib_crypt_data *crypt;
 	struct rtllib_assoc_response_frame *assoc;
 	short encrypt;
 
@@ -1013,7 +1007,7 @@ static struct sk_buff *rtllib_assoc_resp(struct rtllib_device *ieee, u8 *dest)
 				 cpu_to_le16(WLAN_CAPABILITY_SHORT_SLOT_TIME);
 
 	if (ieee->host_encrypt)
-		crypt = ieee->crypt_info.crypt[ieee->crypt_info.tx_keyidx];
+		crypt = ieee->crypt[ieee->tx_keyidx];
 	else
 		crypt = NULL;
 
@@ -1178,7 +1172,7 @@ inline struct sk_buff *rtllib_association_req(struct rtllib_network *beacon,
 	unsigned int ckip_ie_len = 0;
 	unsigned int ccxrm_ie_len = 0;
 	unsigned int cxvernum_ie_len = 0;
-	struct lib80211_crypt_data *crypt;
+	struct rtllib_crypt_data *crypt;
 	int encrypt;
 	int	PMKCacheIdx;
 
@@ -1191,10 +1185,10 @@ inline struct sk_buff *rtllib_association_req(struct rtllib_network *beacon,
 	unsigned int turbo_info_len = beacon->Turbo_Enable ? 9 : 0;
 
 	int len = 0;
-	crypt = ieee->crypt_info.crypt[ieee->crypt_info.tx_keyidx];
+	crypt = ieee->crypt[ieee->tx_keyidx];
 	if (crypt != NULL)
 		encrypt = ieee->host_encrypt && crypt && crypt->ops &&
-			  ((0 == strcmp(crypt->ops->name, "R-WEP") ||
+			  ((0 == strcmp(crypt->ops->name, "WEP") ||
 			  wpa_ie_len));
 	else
 		encrypt = 0;
@@ -1962,7 +1956,6 @@ void rtllib_sta_ps_send_null_frame(struct rtllib_device *ieee, short pwr)
 	if (buf)
 		softmac_ps_mgmt_xmit(buf, ieee);
 }
-EXPORT_SYMBOL(rtllib_sta_ps_send_null_frame);
 
 void rtllib_sta_ps_send_pspoll_frame(struct rtllib_device *ieee)
 {
@@ -2175,7 +2168,6 @@ void rtllib_ps_tx_ack(struct rtllib_device *ieee, short success)
 	}
 	spin_unlock_irqrestore(&ieee->lock, flags);
 }
-EXPORT_SYMBOL(rtllib_ps_tx_ack);
 
 static void rtllib_process_action(struct rtllib_device *ieee, struct sk_buff *skb)
 {
@@ -2548,7 +2540,6 @@ void rtllib_reset_queue(struct rtllib_device *ieee)
 	spin_unlock_irqrestore(&ieee->lock, flags);
 
 }
-EXPORT_SYMBOL(rtllib_reset_queue);
 
 void rtllib_wake_queue(struct rtllib_device *ieee)
 {
@@ -2937,7 +2928,6 @@ struct sk_buff *rtllib_get_beacon(struct rtllib_device *ieee)
 
 	return skb;
 }
-EXPORT_SYMBOL(rtllib_get_beacon);
 
 void rtllib_softmac_stop_protocol(struct rtllib_device *ieee, u8 mesh_flag,
 				  u8 shutdown)
@@ -2947,7 +2937,6 @@ void rtllib_softmac_stop_protocol(struct rtllib_device *ieee, u8 mesh_flag,
 	rtllib_stop_protocol(ieee, shutdown);
 	up(&ieee->wx_sem);
 }
-EXPORT_SYMBOL(rtllib_softmac_stop_protocol);
 
 
 void rtllib_stop_protocol(struct rtllib_device *ieee, u8 shutdown)
@@ -2996,7 +2985,6 @@ void rtllib_softmac_start_protocol(struct rtllib_device *ieee, u8 mesh_flag)
 	rtllib_start_protocol(ieee);
 	up(&ieee->wx_sem);
 }
-EXPORT_SYMBOL(rtllib_softmac_start_protocol);
 
 void rtllib_start_protocol(struct rtllib_device *ieee)
 {
@@ -3060,9 +3048,10 @@ void rtllib_softmac_init(struct rtllib_device *ieee)
 	ieee->state = RTLLIB_NOLINK;
 	for (i = 0; i < 5; i++)
 		ieee->seq_ctrl[i] = 0;
-	ieee->pDot11dInfo = kzalloc(sizeof(struct rt_dot11d_info), GFP_ATOMIC);
+	ieee->pDot11dInfo = kmalloc(sizeof(struct rt_dot11d_info), GFP_ATOMIC);
 	if (!ieee->pDot11dInfo)
 		RTLLIB_DEBUG(RTLLIB_DL_ERR, "can't alloc memory for DOT11D\n");
+	memset(ieee->pDot11dInfo, 0, sizeof(struct rt_dot11d_info));
 	ieee->LinkDetectInfo.SlotIndex = 0;
 	ieee->LinkDetectInfo.SlotNum = 2;
 	ieee->LinkDetectInfo.NumRecvBcnInPeriod = 0;
@@ -3218,11 +3207,11 @@ static int rtllib_wpa_set_wpa_ie(struct rtllib_device *ieee,
 		return -EINVAL;
 
 	if (param->u.wpa_ie.len) {
-		buf = kmemdup(param->u.wpa_ie.data, param->u.wpa_ie.len,
-			      GFP_KERNEL);
+		buf = kmalloc(param->u.wpa_ie.len, GFP_KERNEL);
 		if (buf == NULL)
 			return -ENOMEM;
 
+		memcpy(buf, param->u.wpa_ie.data, param->u.wpa_ie.len);
 		kfree(ieee->wpa_ie);
 		ieee->wpa_ie = buf;
 		ieee->wpa_ie_len = param->u.wpa_ie.len;
@@ -3345,8 +3334,8 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 				  u8 is_mesh)
 {
 	int ret = 0;
-	struct lib80211_crypto_ops *ops;
-	struct lib80211_crypt_data **crypt;
+	struct rtllib_crypto_ops *ops;
+	struct rtllib_crypt_data **crypt;
 
 	struct rtllib_security sec = {
 		.flags = 0,
@@ -3365,9 +3354,9 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 	if (param->sta_addr[0] == 0xff && param->sta_addr[1] == 0xff &&
 	    param->sta_addr[2] == 0xff && param->sta_addr[3] == 0xff &&
 	    param->sta_addr[4] == 0xff && param->sta_addr[5] == 0xff) {
-		if (param->u.crypt.idx >= NUM_WEP_KEYS)
+		if (param->u.crypt.idx >= WEP_KEYS)
 			return -EINVAL;
-		crypt = &ieee->crypt_info.crypt[param->u.crypt.idx];
+		crypt = &ieee->crypt[param->u.crypt.idx];
 	} else {
 		return -EINVAL;
 	}
@@ -3377,7 +3366,7 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 			sec.enabled = 0;
 			sec.level = SEC_LEVEL_0;
 			sec.flags |= SEC_ENABLED | SEC_LEVEL;
-			lib80211_crypt_delayed_deinit(&ieee->crypt_info, crypt);
+			rtllib_crypt_delayed_deinit(ieee, crypt);
 		}
 		goto done;
 	}
@@ -3386,19 +3375,19 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 
 	/* IPW HW cannot build TKIP MIC, host decryption still needed. */
 	if (!(ieee->host_encrypt || ieee->host_decrypt) &&
-	    strcmp(param->u.crypt.alg, "R-TKIP"))
+	    strcmp(param->u.crypt.alg, "TKIP"))
 		goto skip_host_crypt;
 
-	ops = lib80211_get_crypto_ops(param->u.crypt.alg);
-	if (ops == NULL && strcmp(param->u.crypt.alg, "R-WEP") == 0) {
+	ops = rtllib_get_crypto_ops(param->u.crypt.alg);
+	if (ops == NULL && strcmp(param->u.crypt.alg, "WEP") == 0) {
 		request_module("rtllib_crypt_wep");
-		ops = lib80211_get_crypto_ops(param->u.crypt.alg);
-	} else if (ops == NULL && strcmp(param->u.crypt.alg, "R-TKIP") == 0) {
+		ops = rtllib_get_crypto_ops(param->u.crypt.alg);
+	} else if (ops == NULL && strcmp(param->u.crypt.alg, "TKIP") == 0) {
 		request_module("rtllib_crypt_tkip");
-		ops = lib80211_get_crypto_ops(param->u.crypt.alg);
-	} else if (ops == NULL && strcmp(param->u.crypt.alg, "R-CCMP") == 0) {
+		ops = rtllib_get_crypto_ops(param->u.crypt.alg);
+	} else if (ops == NULL && strcmp(param->u.crypt.alg, "CCMP") == 0) {
 		request_module("rtllib_crypt_ccmp");
-		ops = lib80211_get_crypto_ops(param->u.crypt.alg);
+		ops = rtllib_get_crypto_ops(param->u.crypt.alg);
 	}
 	if (ops == NULL) {
 		printk(KERN_INFO "unknown crypto alg '%s'\n",
@@ -3408,17 +3397,17 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 		goto done;
 	}
 	if (*crypt == NULL || (*crypt)->ops != ops) {
-		struct lib80211_crypt_data *new_crypt;
+		struct rtllib_crypt_data *new_crypt;
 
-		lib80211_crypt_delayed_deinit(&ieee->crypt_info, crypt);
+		rtllib_crypt_delayed_deinit(ieee, crypt);
 
-		new_crypt = (struct lib80211_crypt_data *)
+		new_crypt = (struct rtllib_crypt_data *)
 			kmalloc(sizeof(*new_crypt), GFP_KERNEL);
 		if (new_crypt == NULL) {
 			ret = -ENOMEM;
 			goto done;
 		}
-		memset(new_crypt, 0, sizeof(struct lib80211_crypt_data));
+		memset(new_crypt, 0, sizeof(struct rtllib_crypt_data));
 		new_crypt->ops = ops;
 		if (new_crypt->ops)
 			new_crypt->priv =
@@ -3446,7 +3435,7 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 
  skip_host_crypt:
 	if (param->u.crypt.set_tx) {
-		ieee->crypt_info.tx_keyidx = param->u.crypt.idx;
+		ieee->tx_keyidx = param->u.crypt.idx;
 		sec.active_key = param->u.crypt.idx;
 		sec.flags |= SEC_ACTIVE_KEY;
 	} else
@@ -3459,13 +3448,13 @@ static int rtllib_wpa_set_encryption(struct rtllib_device *ieee,
 		sec.key_sizes[param->u.crypt.idx] = param->u.crypt.key_len;
 		sec.flags |= (1 << param->u.crypt.idx);
 
-		if (strcmp(param->u.crypt.alg, "R-WEP") == 0) {
+		if (strcmp(param->u.crypt.alg, "WEP") == 0) {
 			sec.flags |= SEC_LEVEL;
 			sec.level = SEC_LEVEL_1;
-		} else if (strcmp(param->u.crypt.alg, "R-TKIP") == 0) {
+		} else if (strcmp(param->u.crypt.alg, "TKIP") == 0) {
 			sec.flags |= SEC_LEVEL;
 			sec.level = SEC_LEVEL_2;
-		} else if (strcmp(param->u.crypt.alg, "R-CCMP") == 0) {
+		} else if (strcmp(param->u.crypt.alg, "CCMP") == 0) {
 			sec.flags |= SEC_LEVEL;
 			sec.level = SEC_LEVEL_3;
 		}
@@ -3562,13 +3551,13 @@ u8 rtllib_ap_sec_type(struct rtllib_device *ieee)
 	static u8 ccmp_ie[4] = {0x00, 0x50, 0xf2, 0x04};
 	static u8 ccmp_rsn_ie[4] = {0x00, 0x0f, 0xac, 0x04};
 	int wpa_ie_len = ieee->wpa_ie_len;
-	struct lib80211_crypt_data *crypt;
+	struct rtllib_crypt_data *crypt;
 	int encrypt;
 
-	crypt = ieee->crypt_info.crypt[ieee->crypt_info.tx_keyidx];
+	crypt = ieee->crypt[ieee->tx_keyidx];
 	encrypt = (ieee->current_network.capability & WLAN_CAPABILITY_PRIVACY)
 		  || (ieee->host_encrypt && crypt && crypt->ops &&
-		  (0 == strcmp(crypt->ops->name, "R-WEP")));
+		  (0 == strcmp(crypt->ops->name, "WEP")));
 
 	/* simply judge  */
 	if (encrypt && (wpa_ie_len == 0)) {
@@ -3645,7 +3634,6 @@ out:
 
 	return ret;
 }
-EXPORT_SYMBOL(rtllib_wpa_supplicant_ioctl);
 
 void rtllib_MgntDisconnectIBSS(struct rtllib_device *rtllib)
 {
@@ -3731,7 +3719,6 @@ bool rtllib_MgntDisconnect(struct rtllib_device *rtllib, u8 asRsn)
 
 	return true;
 }
-EXPORT_SYMBOL(rtllib_MgntDisconnect);
 
 void notify_wx_assoc_event(struct rtllib_device *ieee)
 {
@@ -3752,4 +3739,3 @@ void notify_wx_assoc_event(struct rtllib_device *ieee)
 	}
 	wireless_send_event(ieee->dev, SIOCGIWAP, &wrqu, NULL);
 }
-EXPORT_SYMBOL(notify_wx_assoc_event);

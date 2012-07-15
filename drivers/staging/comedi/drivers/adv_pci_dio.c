@@ -1106,10 +1106,13 @@ static int pci_dio_attach(struct comedi_device *dev,
 	unsigned long iobase;
 	struct pci_dev *pcidev = NULL;
 
+	printk("comedi%d: adv_pci_dio: ", dev->minor);
 
 	ret = alloc_private(dev, sizeof(struct pci_dio_private));
-	if (ret < 0)
+	if (ret < 0) {
+		printk(", Error: Cann't allocate private memory!\n");
 		return -ENOMEM;
+	}
 
 	for_each_pci_dev(pcidev) {
 		/*  loop through cards supported by this driver */
@@ -1137,18 +1140,19 @@ static int pci_dio_attach(struct comedi_device *dev,
 	}
 
 	if (!dev->board_ptr) {
-		dev_err(dev->hw_dev, "Error: Requested type of the card was not found!\n");
+		printk(", Error: Requested type of the card was not found!\n");
 		return -EIO;
 	}
 
 	if (comedi_pci_enable(pcidev, driver_pci_dio.driver_name)) {
-		dev_err(dev->hw_dev, "Error: Can't enable PCI device and request regions!\n");
+		printk
+		    (", Error: Can't enable PCI device and request regions!\n");
 		return -EIO;
 	}
 	iobase = pci_resource_start(pcidev, this_board->main_pci_region);
-	dev_dbg(dev->hw_dev, "b:s:f=%d:%d:%d, io=0x%4lx\n",
-		pcidev->bus->number, PCI_SLOT(pcidev->devfn),
-		PCI_FUNC(pcidev->devfn), iobase);
+	printk(", b:s:f=%d:%d:%d, io=0x%4lx",
+	       pcidev->bus->number, PCI_SLOT(pcidev->devfn),
+	       PCI_FUNC(pcidev->devfn), iobase);
 
 	dev->iobase = iobase;
 	dev->board_name = this_board->name;
@@ -1173,10 +1177,15 @@ static int pci_dio_attach(struct comedi_device *dev,
 	}
 
 	ret = alloc_subdevices(dev, n_subdevices);
-	if (ret < 0)
+	if (ret < 0) {
+		printk(", Error: Cann't allocate subdevice memory!\n");
 		return ret;
+	}
+
+	printk(".\n");
 
 	subdev = 0;
+
 	for (i = 0; i < MAX_DI_SUBDEVS; i++)
 		if (this_board->sdi[i].chans) {
 			s = dev->subdevices + subdev;

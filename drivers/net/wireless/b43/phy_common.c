@@ -145,7 +145,7 @@ void b43_radio_lock(struct b43_wldev *dev)
 
 #if B43_DEBUG
 	B43_WARN_ON(dev->phy.radio_locked);
-	dev->phy.radio_locked = true;
+	dev->phy.radio_locked = 1;
 #endif
 
 	macctl = b43_read32(dev, B43_MMIO_MACCTL);
@@ -163,7 +163,7 @@ void b43_radio_unlock(struct b43_wldev *dev)
 
 #if B43_DEBUG
 	B43_WARN_ON(!dev->phy.radio_locked);
-	dev->phy.radio_locked = false;
+	dev->phy.radio_locked = 0;
 #endif
 
 	/* Commit any write */
@@ -178,7 +178,7 @@ void b43_phy_lock(struct b43_wldev *dev)
 {
 #if B43_DEBUG
 	B43_WARN_ON(dev->phy.phy_locked);
-	dev->phy.phy_locked = true;
+	dev->phy.phy_locked = 1;
 #endif
 	B43_WARN_ON(dev->dev->core_rev < 3);
 
@@ -190,7 +190,7 @@ void b43_phy_unlock(struct b43_wldev *dev)
 {
 #if B43_DEBUG
 	B43_WARN_ON(!dev->phy.phy_locked);
-	dev->phy.phy_locked = false;
+	dev->phy.phy_locked = 0;
 #endif
 	B43_WARN_ON(dev->dev->core_rev < 3);
 

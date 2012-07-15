@@ -276,7 +276,18 @@ static struct platform_driver stmp3xxx_rtcdrv = {
 	},
 };
 
-module_platform_driver(stmp3xxx_rtcdrv);
+static int __init stmp3xxx_rtc_init(void)
+{
+	return platform_driver_register(&stmp3xxx_rtcdrv);
+}
+
+static void __exit stmp3xxx_rtc_exit(void)
+{
+	platform_driver_unregister(&stmp3xxx_rtcdrv);
+}
+
+module_init(stmp3xxx_rtc_init);
+module_exit(stmp3xxx_rtc_exit);
 
 MODULE_DESCRIPTION("STMP3xxx RTC Driver");
 MODULE_AUTHOR("dmitry pervushin <dpervushin@embeddedalley.com> and "

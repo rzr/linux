@@ -13,7 +13,8 @@
  * iio_device_register_trigger_consumer() - set up an iio_dev to use triggers
  * @indio_dev: iio_dev associated with the device that will consume the trigger
  **/
-void iio_device_register_trigger_consumer(struct iio_dev *indio_dev);
+
+int iio_device_register_trigger_consumer(struct iio_dev *indio_dev);
 
 /**
  * iio_device_unregister_trigger_consumer() - reverse the registration process

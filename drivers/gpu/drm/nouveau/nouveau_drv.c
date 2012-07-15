@@ -124,10 +124,6 @@ MODULE_PARM_DESC(ctxfw, "Use external HUB/GPC ucode (fermi)\n");
 int nouveau_ctxfw;
 module_param_named(ctxfw, nouveau_ctxfw, int, 0400);
 
-MODULE_PARM_DESC(mxmdcb, "Santise DCB table according to MXM-SIS\n");
-int nouveau_mxmdcb = 1;
-module_param_named(mxmdcb, nouveau_mxmdcb, int, 0400);
-
 int nouveau_fbpercrtc;
 #if 0
 module_param_named(fbpercrtc, nouveau_fbpercrtc, int, 0400);
@@ -182,11 +178,8 @@ nouveau_pci_suspend(struct pci_dev *pdev, pm_message_t pm_state)
 	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF)
 		return 0;
 
-	NV_INFO(dev, "Disabling display...\n");
-	nouveau_display_fini(dev);
-
-	NV_INFO(dev, "Disabling fbcon...\n");
-	nouveau_fbcon_set_suspend(dev, 1);
+	NV_INFO(dev, "Disabling fbcon acceleration...\n");
+	nouveau_fbcon_save_disable_accel(dev);
 
 	NV_INFO(dev, "Unpinning framebuffer(s)...\n");
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
@@ -227,7 +220,7 @@ nouveau_pci_suspend(struct pci_dev *pdev, pm_message_t pm_state)
 
 		ret = dev_priv->eng[e]->fini(dev, e, true);
 		if (ret) {
-			NV_ERROR(dev, "... engine %d failed: %d\n", e, ret);
+			NV_ERROR(dev, "... engine %d failed: %d\n", i, ret);
 			goto out_abort;
 		}
 	}
@@ -253,6 +246,10 @@ nouveau_pci_suspend(struct pci_dev *pdev, pm_message_t pm_state)
 		pci_set_power_state(pdev, PCI_D3hot);
 	}
 
+	console_lock();
+	nouveau_fbcon_set_suspend(dev, 1);
+	console_unlock();
+	nouveau_fbcon_restore_accel(dev);
 	return 0;
 
 out_abort:
@@ -278,6 +275,8 @@ nouveau_pci_resume(struct pci_dev *pdev)
 	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF)
 		return 0;
 
+	nouveau_fbcon_save_disable_accel(dev);
+
 	NV_INFO(dev, "We're back, enabling device...\n");
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
@@ -296,6 +295,8 @@ nouveau_pci_resume(struct pci_dev *pdev)
 	ret = nouveau_run_vbios_init(dev);
 	if (ret)
 		return ret;
+
+	nouveau_pm_resume(dev);
 
 	if (dev_priv->gart_info.type == NOUVEAU_GART_AGP) {
 		ret = nouveau_mem_init_agp(dev);
@@ -336,8 +337,6 @@ nouveau_pci_resume(struct pci_dev *pdev)
 		}
 	}
 
-	nouveau_pm_resume(dev);
-
 	NV_INFO(dev, "Restoring mode...\n");
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		struct nouveau_framebuffer *nouveau_fb;
@@ -359,19 +358,7 @@ nouveau_pci_resume(struct pci_dev *pdev)
 			NV_ERROR(dev, "Could not pin/map cursor.\n");
 	}
 
-	nouveau_fbcon_set_suspend(dev, 0);
-	nouveau_fbcon_zfill_all(dev);
-
-	nouveau_display_init(dev);
-
-	/* Force CLUT to get re-loaded during modeset */
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		struct nouveau_crtc *nv_crtc = nouveau_crtc(crtc);
-
-		nv_crtc->lut.depth = 0;
-	}
-
-	drm_helper_resume_force_mode(dev);
+	engine->display.init(dev);
 
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		struct nouveau_crtc *nv_crtc = nouveau_crtc(crtc);
@@ -382,23 +369,24 @@ nouveau_pci_resume(struct pci_dev *pdev)
 						 nv_crtc->cursor_saved_y);
 	}
 
+	/* Force CLUT to get re-loaded during modeset */
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		struct nouveau_crtc *nv_crtc = nouveau_crtc(crtc);
+
+		nv_crtc->lut.depth = 0;
+	}
+
+	console_lock();
+	nouveau_fbcon_set_suspend(dev, 0);
+	console_unlock();
+
+	nouveau_fbcon_zfill_all(dev);
+
+	drm_helper_resume_force_mode(dev);
+
+	nouveau_fbcon_restore_accel(dev);
 	return 0;
 }
-
-static const struct file_operations nouveau_driver_fops = {
-	.owner = THIS_MODULE,
-	.open = drm_open,
-	.release = drm_release,
-	.unlocked_ioctl = drm_ioctl,
-	.mmap = nouveau_ttm_mmap,
-	.poll = drm_poll,
-	.fasync = drm_fasync,
-	.read = drm_read,
-#if defined(CONFIG_COMPAT)
-	.compat_ioctl = nouveau_compat_ioctl,
-#endif
-	.llseek = noop_llseek,
-};
 
 static struct drm_driver driver = {
 	.driver_features =
@@ -425,7 +413,21 @@ static struct drm_driver driver = {
 	.disable_vblank = nouveau_vblank_disable,
 	.reclaim_buffers = drm_core_reclaim_buffers,
 	.ioctls = nouveau_ioctls,
-	.fops = &nouveau_driver_fops,
+	.fops = {
+		.owner = THIS_MODULE,
+		.open = drm_open,
+		.release = drm_release,
+		.unlocked_ioctl = drm_ioctl,
+		.mmap = nouveau_ttm_mmap,
+		.poll = drm_poll,
+		.fasync = drm_fasync,
+		.read = drm_read,
+#if defined(CONFIG_COMPAT)
+		.compat_ioctl = nouveau_compat_ioctl,
+#endif
+		.llseek = noop_llseek,
+	},
+
 	.gem_init_object = nouveau_gem_object_new,
 	.gem_free_object = nouveau_gem_object_del,
 	.gem_open_object = nouveau_gem_object_open,

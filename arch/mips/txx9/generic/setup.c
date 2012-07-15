@@ -22,7 +22,7 @@
 #include <linux/serial_core.h>
 #include <linux/mtd/physmap.h>
 #include <linux/leds.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <asm/bootinfo.h>
@@ -897,13 +897,10 @@ void __init txx9_aclc_init(unsigned long baseaddr, int irq,
 #endif
 }
 
-static struct bus_type txx9_sramc_subsys = {
-	.name = "txx9_sram",
-	.dev_name = "txx9_sram",
-};
+static struct sysdev_class txx9_sramc_sysdev_class;
 
-struct txx9_sramc_dev {
-	struct device dev;
+struct txx9_sramc_sysdev {
+	struct sys_device dev;
 	struct bin_attribute bindata_attr;
 	void __iomem *base;
 };
@@ -912,7 +909,7 @@ static ssize_t txx9_sram_read(struct file *filp, struct kobject *kobj,
 			      struct bin_attribute *bin_attr,
 			      char *buf, loff_t pos, size_t size)
 {
-	struct txx9_sramc_dev *dev = bin_attr->private;
+	struct txx9_sramc_sysdev *dev = bin_attr->private;
 	size_t ramsize = bin_attr->size;
 
 	if (pos >= ramsize)
@@ -927,7 +924,7 @@ static ssize_t txx9_sram_write(struct file *filp, struct kobject *kobj,
 			       struct bin_attribute *bin_attr,
 			       char *buf, loff_t pos, size_t size)
 {
-	struct txx9_sramc_dev *dev = bin_attr->private;
+	struct txx9_sramc_sysdev *dev = bin_attr->private;
 	size_t ramsize = bin_attr->size;
 
 	if (pos >= ramsize)
@@ -940,13 +937,18 @@ static ssize_t txx9_sram_write(struct file *filp, struct kobject *kobj,
 
 void __init txx9_sramc_init(struct resource *r)
 {
-	struct txx9_sramc_dev *dev;
+	struct txx9_sramc_sysdev *dev;
 	size_t size;
 	int err;
 
-	err = subsys_system_register(&txx9_sramc_subsys, NULL);
-	if (err)
-		return;
+	if (!txx9_sramc_sysdev_class.name) {
+		txx9_sramc_sysdev_class.name = "txx9_sram";
+		err = sysdev_class_register(&txx9_sramc_sysdev_class);
+		if (err) {
+			txx9_sramc_sysdev_class.name = NULL;
+			return;
+		}
+	}
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)
 		return;
@@ -954,7 +956,7 @@ void __init txx9_sramc_init(struct resource *r)
 	dev->base = ioremap(r->start, size);
 	if (!dev->base)
 		goto exit;
-	dev->dev.bus = &txx9_sramc_subsys;
+	dev->dev.cls = &txx9_sramc_sysdev_class;
 	sysfs_bin_attr_init(&dev->bindata_attr);
 	dev->bindata_attr.attr.name = "bindata";
 	dev->bindata_attr.attr.mode = S_IRUSR | S_IWUSR;
@@ -962,12 +964,12 @@ void __init txx9_sramc_init(struct resource *r)
 	dev->bindata_attr.write = txx9_sram_write;
 	dev->bindata_attr.size = size;
 	dev->bindata_attr.private = dev;
-	err = device_register(&dev->dev);
+	err = sysdev_register(&dev->dev);
 	if (err)
 		goto exit;
 	err = sysfs_create_bin_file(&dev->dev.kobj, &dev->bindata_attr);
 	if (err) {
-		device_unregister(&dev->dev);
+		sysdev_unregister(&dev->dev);
 		goto exit;
 	}
 	return;

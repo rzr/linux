@@ -112,7 +112,7 @@ static int erase_eraseblock(int ebnum)
 	ei.addr = addr;
 	ei.len  = mtd->erasesize;
 
-	err = mtd_erase(mtd, &ei);
+	err = mtd->erase(mtd, &ei);
 	if (unlikely(err)) {
 		printk(PRINT_PREF "error %d while erasing EB %d\n", err, ebnum);
 		return err;
@@ -132,7 +132,7 @@ static int is_block_bad(int ebnum)
 	loff_t addr = ebnum * mtd->erasesize;
 	int ret;
 
-	ret = mtd_block_isbad(mtd, addr);
+	ret = mtd->block_isbad(mtd, addr);
 	if (ret)
 		printk(PRINT_PREF "block %d is bad\n", ebnum);
 	return ret;
@@ -140,7 +140,7 @@ static int is_block_bad(int ebnum)
 
 static int do_read(void)
 {
-	size_t read;
+	size_t read = 0;
 	int eb = rand_eb();
 	int offs = rand_offs();
 	int len = rand_len(offs), err;
@@ -153,7 +153,7 @@ static int do_read(void)
 			len = mtd->erasesize - offs;
 	}
 	addr = eb * mtd->erasesize + offs;
-	err = mtd_read(mtd, addr, len, &read, readbuf);
+	err = mtd->read(mtd, addr, len, &read, readbuf);
 	if (mtd_is_bitflip(err))
 		err = 0;
 	if (unlikely(err || read != len)) {
@@ -169,7 +169,7 @@ static int do_read(void)
 static int do_write(void)
 {
 	int eb = rand_eb(), offs, err, len;
-	size_t written;
+	size_t written = 0;
 	loff_t addr;
 
 	offs = offsets[eb];
@@ -192,7 +192,7 @@ static int do_write(void)
 		}
 	}
 	addr = eb * mtd->erasesize + offs;
-	err = mtd_write(mtd, addr, len, &written, writebuf);
+	err = mtd->write(mtd, addr, len, &written, writebuf);
 	if (unlikely(err || written != len)) {
 		printk(PRINT_PREF "error: write failed at 0x%llx\n",
 		       (long long)addr);
@@ -227,7 +227,8 @@ static int scan_for_bad_eraseblocks(void)
 		return -ENOMEM;
 	}
 
-	if (!mtd_can_have_bb(mtd))
+	/* NOR flash does not implement block_isbad */
+	if (mtd->block_isbad == NULL)
 		return 0;
 
 	printk(PRINT_PREF "scanning for bad eraseblocks\n");

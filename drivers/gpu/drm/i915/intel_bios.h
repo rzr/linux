@@ -467,12 +467,8 @@ struct edp_link_params {
 struct bdb_edp {
 	struct edp_power_seq power_seqs[16];
 	u32 color_depth;
-	struct edp_link_params link_params[16];
 	u32 sdrrs_msa_timing_delay;
-
-	/* ith bit indicates enabled/disabled for (i+1)th panel */
-	u16 edp_s3d_feature;
-	u16 edp_t3_optimization;
+	struct edp_link_params link_params[16];
 } __attribute__ ((packed));
 
 void intel_setup_bios(struct drm_device *dev);

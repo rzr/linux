@@ -25,7 +25,6 @@
 #include "transaction.h"
 #include "backref.h"
 #include "extent_io.h"
-#include "check-integrity.h"
 
 /*
  * This is only the first step towards a full-features scrub. It reads all
@@ -310,7 +309,7 @@ static void scrub_print_warning(const char *errstr, struct scrub_bio *sbio,
 	u8 ref_level;
 	unsigned long ptr = 0;
 	const int bufsize = 4096;
-	u64 extent_item_pos;
+	u64 extent_offset;
 
 	path = btrfs_alloc_path();
 
@@ -330,13 +329,12 @@ static void scrub_print_warning(const char *errstr, struct scrub_bio *sbio,
 	if (ret < 0)
 		goto out;
 
-	extent_item_pos = swarn.logical - found_key.objectid;
+	extent_offset = swarn.logical - found_key.objectid;
 	swarn.extent_item_size = found_key.offset;
 
 	eb = path->nodes[0];
 	ei = btrfs_item_ptr(eb, path->slots[0], struct btrfs_extent_item);
 	item_size = btrfs_item_size_nr(eb, path->slots[0]);
-	btrfs_release_path(path);
 
 	if (ret & BTRFS_EXTENT_FLAG_TREE_BLOCK) {
 		do {
@@ -352,8 +350,8 @@ static void scrub_print_warning(const char *errstr, struct scrub_bio *sbio,
 		} while (ret != 1);
 	} else {
 		swarn.path = path;
-		iterate_extent_inodes(fs_info, found_key.objectid,
-					extent_item_pos, 1,
+		iterate_extent_inodes(fs_info, path, found_key.objectid,
+					extent_offset,
 					scrub_print_warning_inode, &swarn);
 	}
 
@@ -734,7 +732,7 @@ static int scrub_fixup_io(int rw, struct block_device *bdev, sector_t sector,
 	bio_add_page(bio, page, PAGE_SIZE, 0);
 	bio->bi_end_io = scrub_fixup_end_io;
 	bio->bi_private = &complete;
-	btrfsic_submit_bio(rw, bio);
+	submit_bio(rw, bio);
 
 	/* this will also unplug the queue */
 	wait_for_completion(&complete);
@@ -960,7 +958,7 @@ static int scrub_submit(struct scrub_dev *sdev)
 	sdev->curr = -1;
 	atomic_inc(&sdev->in_flight);
 
-	btrfsic_submit_bio(READ, sbio->bio);
+	submit_bio(READ, sbio->bio);
 
 	return 0;
 }
@@ -1367,8 +1365,7 @@ out:
 }
 
 static noinline_for_stack int scrub_chunk(struct scrub_dev *sdev,
-	u64 chunk_tree, u64 chunk_objectid, u64 chunk_offset, u64 length,
-	u64 dev_offset)
+	u64 chunk_tree, u64 chunk_objectid, u64 chunk_offset, u64 length)
 {
 	struct btrfs_mapping_tree *map_tree =
 		&sdev->dev->dev_root->fs_info->mapping_tree;
@@ -1392,8 +1389,7 @@ static noinline_for_stack int scrub_chunk(struct scrub_dev *sdev,
 		goto out;
 
 	for (i = 0; i < map->num_stripes; ++i) {
-		if (map->stripes[i].dev == sdev->dev &&
-		    map->stripes[i].physical == dev_offset) {
+		if (map->stripes[i].dev == sdev->dev) {
 			ret = scrub_stripe(sdev, map, i, chunk_offset, length);
 			if (ret)
 				goto out;
@@ -1489,7 +1485,7 @@ int scrub_enumerate_chunks(struct scrub_dev *sdev, u64 start, u64 end)
 			break;
 		}
 		ret = scrub_chunk(sdev, chunk_tree, chunk_objectid,
-				  chunk_offset, length, found_key.offset);
+				  chunk_offset, length);
 		btrfs_put_block_group(cache);
 		if (ret)
 			break;

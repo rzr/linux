@@ -123,13 +123,10 @@ again:
 						smallest_size = tb->num_owners;
 						smallest_rover = rover;
 						if (atomic_read(&hashinfo->bsockets) > (high - low) + 1) {
+							spin_unlock(&head->lock);
 							snum = smallest_rover;
-							goto tb_found;
+							goto have_snum;
 						}
-					}
-					if (!inet_csk(sk)->icsk_af_ops->bind_conflict(sk, tb)) {
-						snum = rover;
-						goto tb_found;
 					}
 					goto next;
 				}
@@ -421,7 +418,7 @@ static inline u32 inet_synq_hash(const __be32 raddr, const __be16 rport,
 	return jhash_2words((__force u32)raddr, (__force u32)rport, rnd) & (synq_hsize - 1);
 }
 
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 #define AF_INET_FAMILY(fam) ((fam) == AF_INET)
 #else
 #define AF_INET_FAMILY(fam) 1
@@ -591,19 +588,10 @@ void inet_csk_reqsk_queue_prune(struct sock *parent,
 }
 EXPORT_SYMBOL_GPL(inet_csk_reqsk_queue_prune);
 
-/**
- *	inet_csk_clone_lock - clone an inet socket, and lock its clone
- *	@sk: the socket to clone
- *	@req: request_sock
- *	@priority: for allocation (%GFP_KERNEL, %GFP_ATOMIC, etc)
- *
- *	Caller must unlock socket even in error path (bh_unlock_sock(newsk))
- */
-struct sock *inet_csk_clone_lock(const struct sock *sk,
-				 const struct request_sock *req,
-				 const gfp_t priority)
+struct sock *inet_csk_clone(struct sock *sk, const struct request_sock *req,
+			    const gfp_t priority)
 {
-	struct sock *newsk = sk_clone_lock(sk, priority);
+	struct sock *newsk = sk_clone(sk, priority);
 
 	if (newsk != NULL) {
 		struct inet_connection_sock *newicsk = inet_csk(newsk);
@@ -627,7 +615,7 @@ struct sock *inet_csk_clone_lock(const struct sock *sk,
 	}
 	return newsk;
 }
-EXPORT_SYMBOL_GPL(inet_csk_clone_lock);
+EXPORT_SYMBOL_GPL(inet_csk_clone);
 
 /*
  * At this point, there should be no process reference to this

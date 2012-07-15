@@ -476,21 +476,21 @@ static int cx24113_init(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int cx24113_set_params(struct dvb_frontend *fe)
+static int cx24113_set_params(struct dvb_frontend *fe,
+		struct dvb_frontend_parameters *p)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct cx24113_state *state = fe->tuner_priv;
 	/* for a ROLL-OFF factor of 0.35, 0.2: 600, 0.25: 625 */
 	u32 roll_off = 675;
 	u32 bw;
 
-	bw  = ((c->symbol_rate/100) * roll_off) / 1000;
+	bw  = ((p->u.qpsk.symbol_rate/100) * roll_off) / 1000;
 	bw += (10000000/100) + 5;
 	bw /= 10;
 	bw += 1000;
 	cx24113_set_bandwidth(state, bw);
 
-	cx24113_set_frequency(state, c->frequency);
+	cx24113_set_frequency(state, p->frequency);
 	msleep(5);
 	return cx24113_get_status(fe, &bw);
 }
@@ -547,9 +547,11 @@ static const struct dvb_tuner_ops cx24113_tuner_ops = {
 	.release       = cx24113_release,
 
 	.init          = cx24113_init,
+	.sleep         = NULL,
 
 	.set_params    = cx24113_set_params,
 	.get_frequency = cx24113_get_frequency,
+	.get_bandwidth = NULL,
 	.get_status    = cx24113_get_status,
 };
 

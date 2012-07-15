@@ -392,9 +392,8 @@ static int device_create_lockspace(struct dlm_lspace_params *params)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
-	error = dlm_new_lockspace(params->name, NULL, params->flags,
-				  DLM_USER_LVB_LEN, NULL, NULL, NULL,
-				  &lockspace);
+	error = dlm_new_lockspace(params->name, strlen(params->name),
+				  &lockspace, params->flags, DLM_USER_LVB_LEN);
 	if (error)
 		return error;
 

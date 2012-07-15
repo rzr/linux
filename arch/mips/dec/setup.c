@@ -110,6 +110,7 @@ static struct irqaction fpuirq = {
 };
 
 static struct irqaction busirq = {
+	.flags = IRQF_DISABLED,
 	.name = "bus error",
 	.flags = IRQF_NO_THREAD,
 };

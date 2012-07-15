@@ -797,7 +797,25 @@ static struct i2c_driver lp5521_driver = {
 	.id_table	= lp5521_id,
 };
 
-module_i2c_driver(lp5521_driver);
+static int __init lp5521_init(void)
+{
+	int ret;
+
+	ret = i2c_add_driver(&lp5521_driver);
+
+	if (ret < 0)
+		printk(KERN_ALERT "Adding lp5521 driver failed\n");
+
+	return ret;
+}
+
+static void __exit lp5521_exit(void)
+{
+	i2c_del_driver(&lp5521_driver);
+}
+
+module_init(lp5521_init);
+module_exit(lp5521_exit);
 
 MODULE_AUTHOR("Mathias Nyman, Yuri Zaporozhets, Samu Onkalo");
 MODULE_DESCRIPTION("LP5521 LED engine");

@@ -68,7 +68,7 @@ struct netfront_cb {
 
 #define NET_TX_RING_SIZE __CONST_RING_SIZE(xen_netif_tx, PAGE_SIZE)
 #define NET_RX_RING_SIZE __CONST_RING_SIZE(xen_netif_rx, PAGE_SIZE)
-#define TX_MAX_TARGET min_t(int, NET_TX_RING_SIZE, 256)
+#define TX_MAX_TARGET min_t(int, NET_RX_RING_SIZE, 256)
 
 struct netfront_stats {
 	u64			rx_packets;
@@ -201,7 +201,7 @@ static void xennet_sysfs_delif(struct net_device *netdev);
 #define xennet_sysfs_delif(dev) do { } while (0)
 #endif
 
-static bool xennet_can_sg(struct net_device *dev)
+static int xennet_can_sg(struct net_device *dev)
 {
 	return dev->features & NETIF_F_SG;
 }
@@ -1190,8 +1190,7 @@ static void xennet_uninit(struct net_device *dev)
 	gnttab_free_grant_references(np->gref_rx_head);
 }
 
-static netdev_features_t xennet_fix_features(struct net_device *dev,
-	netdev_features_t features)
+static u32 xennet_fix_features(struct net_device *dev, u32 features)
 {
 	struct netfront_info *np = netdev_priv(dev);
 	int val;
@@ -1217,8 +1216,7 @@ static netdev_features_t xennet_fix_features(struct net_device *dev,
 	return features;
 }
 
-static int xennet_set_features(struct net_device *dev,
-	netdev_features_t features)
+static int xennet_set_features(struct net_device *dev, u32 features)
 {
 	if (!(features & NETIF_F_SG) && dev->mtu > ETH_DATA_LEN) {
 		netdev_info(dev, "Reducing MTU because no SG offload");
@@ -1709,6 +1707,7 @@ static void netback_changed(struct xenbus_device *dev,
 	case XenbusStateInitialised:
 	case XenbusStateReconfiguring:
 	case XenbusStateReconfigured:
+	case XenbusStateConnected:
 	case XenbusStateUnknown:
 	case XenbusStateClosed:
 		break;
@@ -1719,9 +1718,6 @@ static void netback_changed(struct xenbus_device *dev,
 		if (xennet_connect(netdev) != 0)
 			break;
 		xenbus_switch_state(dev, XenbusStateConnected);
-		break;
-
-	case XenbusStateConnected:
 		netif_notify_peers(netdev);
 		break;
 
@@ -1914,7 +1910,7 @@ static void xennet_sysfs_delif(struct net_device *netdev)
 
 #endif /* CONFIG_SYSFS */
 
-static const struct xenbus_device_id netfront_ids[] = {
+static struct xenbus_device_id netfront_ids[] = {
 	{ "vif" },
 	{ "" }
 };
@@ -1941,12 +1937,15 @@ static int __devexit xennet_remove(struct xenbus_device *dev)
 	return 0;
 }
 
-static DEFINE_XENBUS_DRIVER(netfront, ,
+static struct xenbus_driver netfront_driver = {
+	.name = "vif",
+	.owner = THIS_MODULE,
+	.ids = netfront_ids,
 	.probe = netfront_probe,
 	.remove = __devexit_p(xennet_remove),
 	.resume = netfront_resume,
 	.otherend_changed = netback_changed,
-);
+};
 
 static int __init netif_init(void)
 {

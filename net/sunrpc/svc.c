@@ -286,6 +286,7 @@ svc_pool_map_put(void)
 	mutex_lock(&svc_pool_map_mutex);
 
 	if (!--m->count) {
+		m->mode = SVC_POOL_DEFAULT;
 		kfree(m->to_pool);
 		m->to_pool = NULL;
 		kfree(m->pool_to);
@@ -688,8 +689,8 @@ found_pool:
  * Create or destroy enough new threads to make the number
  * of threads the given number.  If `pool' is non-NULL, applies
  * only to threads in that pool, otherwise round-robins between
- * all pools.  Caller must ensure that mutual exclusion between this and
- * server startup or shutdown.
+ * all pools.  Must be called with a svc_get() reference and
+ * the BKL or another lock to protect access to svc_serv fields.
  *
  * Destroying threads relies on the service threads filling in
  * rqstp->rq_task, which only the nfs ones do.  Assumes the serv
@@ -831,7 +832,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
 	return error;
 }
 
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 /*
  * Register an "inet6" protocol family netid with the local
  * rpcbind daemon via an rpcbind v4 SET request.
@@ -877,7 +878,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
 
 	return error;
 }
-#endif	/* IS_ENABLED(CONFIG_IPV6) */
+#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
 
 /*
  * Register a kernel RPC service via rpcbind version 4.
@@ -898,11 +899,11 @@ static int __svc_register(const char *progname,
 		error = __svc_rpcb_register4(program, version,
 						protocol, port);
 		break;
-#if IS_ENABLED(CONFIG_IPV6)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 	case PF_INET6:
 		error = __svc_rpcb_register6(program, version,
 						protocol, port);
-#endif
+#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
 	}
 
 	if (error < 0)
@@ -1357,7 +1358,8 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
 						sizeof(req->rq_snd_buf));
 		return bc_send(req);
 	} else {
-		/* Nothing to do to drop request */
+		/* drop request */
+		xprt_free_bc_request(req);
 		return 0;
 	}
 }

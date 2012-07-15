@@ -4,7 +4,7 @@
  * Author:       Michael Hennerich <hennerich@blackfin.uclinux.org>
  *
  * Created:
- * Description:  Blackfin LCD Framebuffer driver
+ * Description:  Blackfin LCD Framebufer driver
  *
  *
  * Modified:

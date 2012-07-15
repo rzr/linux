@@ -55,8 +55,7 @@ static int wm8958_dsp2_fw(struct snd_soc_codec *codec, const char *name,
 		return 0;
 
 	if (fw->size < 32) {
-		dev_err(codec->dev, "%s: firmware too short (%zd bytes)\n",
-			name, fw->size);
+		dev_err(codec->dev, "%s: firmware too short\n", name);
 		goto err;
 	}
 

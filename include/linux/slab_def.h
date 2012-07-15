@@ -15,6 +15,8 @@
 #include <asm/cache.h>		/* kmalloc_sizes.h needs L1_CACHE_BYTES */
 #include <linux/compiler.h>
 
+#include <trace/events/kmem.h>
+
 /*
  * struct kmem_cache
  *

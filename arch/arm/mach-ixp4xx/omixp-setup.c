@@ -246,7 +246,6 @@ MACHINE_START(DEVIXP, "Omicron DEVIXP")
 	.init_irq	= ixp4xx_init_irq,
 	.timer          = &ixp4xx_timer,
 	.init_machine	= omixp_init,
-	.restart	= ixp4xx_restart,
 MACHINE_END
 #endif
 
@@ -260,7 +259,6 @@ MACHINE_START(MICCPT, "Omicron MICCPT")
 #if defined(CONFIG_PCI)
 	.dma_zone_size	= SZ_64M,
 #endif
-	.restart	= ixp4xx_restart,
 MACHINE_END
 #endif
 
@@ -271,6 +269,5 @@ MACHINE_START(MIC256, "Omicron MIC256")
 	.init_irq	= ixp4xx_init_irq,
 	.timer          = &ixp4xx_timer,
 	.init_machine	= omixp_init,
-	.restart	= ixp4xx_restart,
 MACHINE_END
 #endif

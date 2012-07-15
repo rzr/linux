@@ -353,7 +353,17 @@ static struct platform_driver of_fun_driver = {
 	.remove		= __devexit_p(fun_remove),
 };
 
-module_platform_driver(of_fun_driver);
+static int __init fun_module_init(void)
+{
+	return platform_driver_register(&of_fun_driver);
+}
+module_init(fun_module_init);
+
+static void __exit fun_module_exit(void)
+{
+	platform_driver_unregister(&of_fun_driver);
+}
+module_exit(fun_module_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Anton Vorontsov <avorontsov@ru.mvista.com>");

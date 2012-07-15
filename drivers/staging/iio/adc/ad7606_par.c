@@ -189,3 +189,4 @@ module_exit(ad7606_cleanup);
 MODULE_AUTHOR("Michael Hennerich <hennerich@blackfin.uclinux.org>");
 MODULE_DESCRIPTION("Analog Devices AD7606 ADC");
 MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("platform:ad7606_par");

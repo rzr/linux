@@ -751,16 +751,12 @@ user_work:
 
 	andi.	r0,r4,_TIF_NEED_RESCHED
 	beq	1f
-	li	r5,1
-	TRACE_AND_RESTORE_IRQ(r5);
 	bl	.schedule
 	b	.ret_from_except_lite
 
 1:	bl	.save_nvgprs
-	li	r5,1
-	TRACE_AND_RESTORE_IRQ(r5);
 	addi	r3,r1,STACK_FRAME_OVERHEAD
-	bl	.do_notify_resume
+	bl	.do_signal
 	b	.ret_from_except
 
 unrecov_restore:

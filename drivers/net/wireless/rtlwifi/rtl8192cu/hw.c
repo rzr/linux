@@ -498,7 +498,7 @@ static void _rtl92cu_read_adapter_info(struct ieee80211_hw *hw)
 	}
 	RT_PRINT_DATA(rtlpriv, COMP_INIT, DBG_LOUD, ("MAP\n"),
 		      hwinfo, HWSET_MAX_SIZE);
-	eeprom_id = le16_to_cpu(*((__le16 *)&hwinfo[0]));
+	eeprom_id = *((u16 *)&hwinfo[0]);
 	if (eeprom_id != RTL8190_EEPROM_ID) {
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
 			 ("EEPROM ID(%#x) is invalid!!\n", eeprom_id));
@@ -516,14 +516,13 @@ static void _rtl92cu_read_adapter_info(struct ieee80211_hw *hw)
 	pr_info("MAC address: %pM\n", rtlefuse->dev_addr);
 	_rtl92cu_read_txpower_info_from_hwpg(hw,
 					   rtlefuse->autoload_failflag, hwinfo);
-	rtlefuse->eeprom_vid = le16_to_cpu(*(__le16 *)&hwinfo[EEPROM_VID]);
-	rtlefuse->eeprom_did = le16_to_cpu(*(__le16 *)&hwinfo[EEPROM_DID]);
+	rtlefuse->eeprom_vid = *(u16 *)&hwinfo[EEPROM_VID];
+	rtlefuse->eeprom_did = *(u16 *)&hwinfo[EEPROM_DID];
 	RT_TRACE(rtlpriv, COMP_INIT, DBG_DMESG,
 		 (" VID = 0x%02x PID = 0x%02x\n",
 		 rtlefuse->eeprom_vid, rtlefuse->eeprom_did));
 	rtlefuse->eeprom_channelplan = *(u8 *)&hwinfo[EEPROM_CHANNELPLAN];
-	rtlefuse->eeprom_version =
-			 le16_to_cpu(*(__le16 *)&hwinfo[EEPROM_VERSION]);
+	rtlefuse->eeprom_version = *(u16 *)&hwinfo[EEPROM_VERSION];
 	rtlefuse->txpwr_fromeprom = true;
 	rtlefuse->eeprom_oemid = *(u8 *)&hwinfo[EEPROM_CUSTOMER_ID];
 	RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD,
@@ -1171,7 +1170,10 @@ int rtl92cu_hw_init(struct ieee80211_hw *hw)
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_WARNING,
 			 ("Failed to download FW. Init HW without FW now..\n"));
 		err = 1;
+		rtlhal->fw_ready = false;
 		return err;
+	} else {
+		rtlhal->fw_ready = true;
 	}
 	rtlhal->last_hmeboxnum = 0; /* h2c */
 	_rtl92cu_phy_param_tab_init(hw);
@@ -1267,22 +1269,24 @@ static void  _ResetDigitalProcedure1(struct ieee80211_hw *hw, bool bWithoutHWSM)
 		if (rtl_read_byte(rtlpriv, REG_MCUFWDL) & BIT(1)) {
 			/* reset MCU ready status */
 			rtl_write_byte(rtlpriv, REG_MCUFWDL, 0);
-			/* 8051 reset by self */
-			rtl_write_byte(rtlpriv, REG_HMETFR+3, 0x20);
-			while ((retry_cnts++ < 100) &&
-			       (FEN_CPUEN & rtl_read_word(rtlpriv,
-			       REG_SYS_FUNC_EN))) {
-				udelay(50);
-			}
-			if (retry_cnts >= 100) {
-				RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+			if (rtlhal->fw_ready) {
+				/* 8051 reset by self */
+				rtl_write_byte(rtlpriv, REG_HMETFR+3, 0x20);
+				while ((retry_cnts++ < 100) &&
+				       (FEN_CPUEN & rtl_read_word(rtlpriv,
+				       REG_SYS_FUNC_EN))) {
+					udelay(50);
+				}
+				if (retry_cnts >= 100) {
+					RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
 						("#####=> 8051 reset failed!.."
 						".......................\n"););
-				/* if 8051 reset fail, reset MAC. */
-				rtl_write_byte(rtlpriv,
-					       REG_SYS_FUNC_EN + 1,
-					       0x50);
-				udelay(100);
+					/* if 8051 reset fail, reset MAC. */
+					rtl_write_byte(rtlpriv,
+						       REG_SYS_FUNC_EN + 1,
+						       0x50);
+					udelay(100);
+				}
 			}
 		}
 		/* Reset MAC and Enable 8051 */
@@ -2431,7 +2435,7 @@ bool rtl92cu_gpio_radio_on_off_checking(struct ieee80211_hw *hw, u8 * valid)
 			 "%x\n", ppsc->hwradiooff, e_rfpowerstate_toset));
 	}
 	if (actuallyset) {
-		ppsc->hwradiooff = true;
+		ppsc->hwradiooff = 1;
 		if (e_rfpowerstate_toset == ERFON) {
 			if ((ppsc->reg_rfps_level  & RT_RF_OFF_LEVL_ASPM) &&
 			     RT_IN_PS_LEVEL(ppsc, RT_RF_OFF_LEVL_ASPM))

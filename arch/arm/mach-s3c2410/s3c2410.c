@@ -18,7 +18,7 @@
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/clk.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/syscore_ops.h>
 #include <linux/serial_core.h>
 #include <linux/platform_device.h>
@@ -42,7 +42,6 @@
 #include <plat/clock.h>
 #include <plat/pll.h>
 #include <plat/pm.h>
-#include <plat/watchdog-reset.h>
 
 #include <plat/gpio-core.h>
 #include <plat/gpio-cfg.h>
@@ -124,38 +123,30 @@ static struct clk s3c2410_armclk = {
 	.id	= -1,
 };
 
-static struct clk_lookup s3c2410_clk_lookup[] = {
-	CLKDEV_INIT(NULL, "clk_uart_baud0", &clk_p),
-	CLKDEV_INIT(NULL, "clk_uart_baud1", &s3c24xx_uclk),
-};
-
 void __init s3c2410_init_clocks(int xtal)
 {
 	s3c24xx_register_baseclocks(xtal);
 	s3c2410_setup_clocks();
 	s3c2410_baseclk_add();
 	s3c24xx_register_clock(&s3c2410_armclk);
-	clkdev_add_table(s3c2410_clk_lookup, ARRAY_SIZE(s3c2410_clk_lookup));
 }
 
-struct bus_type s3c2410_subsys = {
+struct sysdev_class s3c2410_sysclass = {
 	.name = "s3c2410-core",
-	.dev_name = "s3c2410-core",
 };
 
 /* Note, we would have liked to name this s3c2410-core, but we cannot
- * register two subsystems with the same name.
+ * register two sysdev_class with the same name.
  */
-struct bus_type s3c2410a_subsys = {
+struct sysdev_class s3c2410a_sysclass = {
 	.name = "s3c2410a-core",
-	.dev_name = "s3c2410a-core",
 };
 
-static struct device s3c2410_dev = {
-	.bus		= &s3c2410_subsys,
+static struct sys_device s3c2410_sysdev = {
+	.cls		= &s3c2410_sysclass,
 };
 
-/* need to register the subsystem before we actually register the device, and
+/* need to register class before we actually register the device, and
  * we also need to ensure that it has been initialised before any of the
  * drivers even try to use it (even if not on an s3c2410 based system)
  * as a driver which may support both 2410 and 2440 may try and use it.
@@ -163,14 +154,14 @@ static struct device s3c2410_dev = {
 
 static int __init s3c2410_core_init(void)
 {
-	return subsys_system_register(&s3c2410_subsys, NULL);
+	return sysdev_class_register(&s3c2410_sysclass);
 }
 
 core_initcall(s3c2410_core_init);
 
 static int __init s3c2410a_core_init(void)
 {
-	return subsys_system_register(&s3c2410a_subsys, NULL);
+	return sysdev_class_register(&s3c2410a_sysclass);
 }
 
 core_initcall(s3c2410a_core_init);
@@ -184,23 +175,11 @@ int __init s3c2410_init(void)
 #endif
 	register_syscore_ops(&s3c24xx_irq_syscore_ops);
 
-	return device_register(&s3c2410_dev);
+	return sysdev_register(&s3c2410_sysdev);
 }
 
 int __init s3c2410a_init(void)
 {
-	s3c2410_dev.bus = &s3c2410a_subsys;
+	s3c2410_sysdev.cls = &s3c2410a_sysclass;
 	return s3c2410_init();
-}
-
-void s3c2410_restart(char mode, const char *cmd)
-{
-	if (mode == 's') {
-		soft_restart(0);
-	}
-
-	arch_wdt_reset();
-
-	/* we'll take a jump through zero as a poor second */
-	soft_restart(0);
 }

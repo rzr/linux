@@ -29,11 +29,9 @@
 #include <linux/input.h>
 #include <linux/input/sh_keysc.h>
 #include <linux/sh_eth.h>
-#include <linux/videodev2.h>
 #include <video/sh_mobile_lcdc.h>
 #include <sound/sh_fsi.h>
 #include <media/sh_mobile_ceu.h>
-#include <media/soc_camera.h>
 #include <media/tw9910.h>
 #include <media/mt9t112.h>
 #include <asm/heartbeat.h>
@@ -158,6 +156,9 @@ static struct platform_device sh_eth_device = {
 	},
 	.num_resources = ARRAY_SIZE(sh_eth_resources),
 	.resource = sh_eth_resources,
+	.archdata = {
+		.hwblk_id = HWBLK_ETHER,
+	},
 };
 
 /* USB0 host */
@@ -277,6 +278,9 @@ static struct platform_device usbhs_device = {
 	},
 	.num_resources	= ARRAY_SIZE(usbhs_resources),
 	.resource	= usbhs_resources,
+	.archdata = {
+		.hwblk_id = HWBLK_USB1,
+	},
 };
 
 /* LCDC */
@@ -326,7 +330,7 @@ static struct sh_mobile_lcdc_info lcdc_info = {
 	.ch[0] = {
 		.interface_type = RGB18,
 		.chan = LCDC_CHAN_MAINLCD,
-		.fourcc = V4L2_PIX_FMT_RGB565,
+		.bpp = 16,
 		.lcd_size_cfg = { /* 7.0 inch */
 			.width = 152,
 			.height = 91,
@@ -362,6 +366,9 @@ static struct platform_device lcdc_device = {
 	.dev		= {
 		.platform_data	= &lcdc_info,
 	},
+	.archdata = {
+		.hwblk_id = HWBLK_LCDC,
+	},
 };
 
 /* CEU0 */
@@ -393,6 +400,9 @@ static struct platform_device ceu0_device = {
 	.dev	= {
 		.platform_data	= &sh_mobile_ceu0_info,
 	},
+	.archdata = {
+		.hwblk_id = HWBLK_CEU0,
+	},
 };
 
 /* CEU1 */
@@ -423,6 +433,9 @@ static struct platform_device ceu1_device = {
 	.resource	= ceu1_resources,
 	.dev	= {
 		.platform_data	= &sh_mobile_ceu1_info,
+	},
+	.archdata = {
+		.hwblk_id = HWBLK_CEU1,
 	},
 };
 
@@ -477,6 +490,9 @@ static struct platform_device keysc_device = {
 	.resource       = keysc_resources,
 	.dev	= {
 		.platform_data	= &keysc_info,
+	},
+	.archdata = {
+		.hwblk_id = HWBLK_KEYSC,
 	},
 };
 
@@ -552,6 +568,9 @@ static struct platform_device sdhi0_device = {
 	.dev	= {
 		.platform_data	= &sdhi0_info,
 	},
+	.archdata = {
+		.hwblk_id = HWBLK_SDHI0,
+	},
 };
 
 #if !defined(CONFIG_MMC_SH_MMCIF) && !defined(CONFIG_MMC_SH_MMCIF_MODULE)
@@ -588,6 +607,9 @@ static struct platform_device sdhi1_device = {
 	.id             = 1,
 	.dev	= {
 		.platform_data	= &sdhi1_info,
+	},
+	.archdata = {
+		.hwblk_id = HWBLK_SDHI1,
 	},
 };
 #endif /* CONFIG_MMC_SH_MMCIF */
@@ -654,6 +676,9 @@ static struct platform_device msiof0_device = {
 	},
 	.num_resources	= ARRAY_SIZE(msiof0_resources),
 	.resource	= msiof0_resources,
+	.archdata = {
+		.hwblk_id = HWBLK_MSIOF0,
+	},
 };
 
 #endif
@@ -793,6 +818,9 @@ static struct platform_device fsi_device = {
 	.dev	= {
 		.platform_data	= &fsi_info,
 	},
+	.archdata = {
+		.hwblk_id = HWBLK_SPU, /* FSI needs SPU hwblk */
+	},
 };
 
 /* IrDA */
@@ -854,6 +882,9 @@ static struct platform_device vou_device = {
 	.dev		= {
 		.platform_data	= &sh_vou_pdata,
 	},
+	.archdata	= {
+		.hwblk_id	= HWBLK_VOU,
+	},
 };
 
 #if defined(CONFIG_MMC_SH_MMCIF) || defined(CONFIG_MMC_SH_MMCIF_MODULE)
@@ -905,6 +936,9 @@ static struct platform_device sh_mmcif_device = {
 	},
 	.num_resources	= ARRAY_SIZE(sh_mmcif_resources),
 	.resource	= sh_mmcif_resources,
+	.archdata = {
+		.hwblk_id = HWBLK_MMC,
+	},
 };
 #endif
 

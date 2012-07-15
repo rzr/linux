@@ -17,7 +17,6 @@
 #ifndef _BRCM_PUB_H_
 #define _BRCM_PUB_H_
 
-#include <linux/bcma/bcma.h>
 #include <brcmu_wifi.h>
 #include "types.h"
 #include "defs.h"
@@ -171,6 +170,22 @@ enum brcms_srom_id {
 	BRCMS_SROM_TSSIPOS2G,
 	BRCMS_SROM_TSSIPOS5G,
 	BRCMS_SROM_TXCHAIN,
+	BRCMS_SROM_TXPID2GA0,
+	BRCMS_SROM_TXPID2GA1,
+	BRCMS_SROM_TXPID2GA2,
+	BRCMS_SROM_TXPID2GA3,
+	BRCMS_SROM_TXPID5GA0,
+	BRCMS_SROM_TXPID5GA1,
+	BRCMS_SROM_TXPID5GA2,
+	BRCMS_SROM_TXPID5GA3,
+	BRCMS_SROM_TXPID5GHA0,
+	BRCMS_SROM_TXPID5GHA1,
+	BRCMS_SROM_TXPID5GHA2,
+	BRCMS_SROM_TXPID5GHA3,
+	BRCMS_SROM_TXPID5GLA0,
+	BRCMS_SROM_TXPID5GLA1,
+	BRCMS_SROM_TXPID5GLA2,
+	BRCMS_SROM_TXPID5GLA3,
 	/*
 	 * per-path identifiers (see srom.c)
 	 */
@@ -210,6 +225,10 @@ enum brcms_srom_id {
 	BRCMS_SROM_PA2GW2A1,
 	BRCMS_SROM_PA2GW2A2,
 	BRCMS_SROM_PA2GW2A3,
+	BRCMS_SROM_PA2GW3A0,
+	BRCMS_SROM_PA2GW3A1,
+	BRCMS_SROM_PA2GW3A2,
+	BRCMS_SROM_PA2GW3A3,
 	BRCMS_SROM_PA5GHW0A0,
 	BRCMS_SROM_PA5GHW0A1,
 	BRCMS_SROM_PA5GHW0A2,
@@ -222,6 +241,10 @@ enum brcms_srom_id {
 	BRCMS_SROM_PA5GHW2A1,
 	BRCMS_SROM_PA5GHW2A2,
 	BRCMS_SROM_PA5GHW2A3,
+	BRCMS_SROM_PA5GHW3A0,
+	BRCMS_SROM_PA5GHW3A1,
+	BRCMS_SROM_PA5GHW3A2,
+	BRCMS_SROM_PA5GHW3A3,
 	BRCMS_SROM_PA5GLW0A0,
 	BRCMS_SROM_PA5GLW0A1,
 	BRCMS_SROM_PA5GLW0A2,
@@ -234,6 +257,10 @@ enum brcms_srom_id {
 	BRCMS_SROM_PA5GLW2A1,
 	BRCMS_SROM_PA5GLW2A2,
 	BRCMS_SROM_PA5GLW2A3,
+	BRCMS_SROM_PA5GLW3A0,
+	BRCMS_SROM_PA5GLW3A1,
+	BRCMS_SROM_PA5GLW3A2,
+	BRCMS_SROM_PA5GLW3A3,
 	BRCMS_SROM_PA5GW0A0,
 	BRCMS_SROM_PA5GW0A1,
 	BRCMS_SROM_PA5GW0A2,
@@ -246,9 +273,14 @@ enum brcms_srom_id {
 	BRCMS_SROM_PA5GW2A1,
 	BRCMS_SROM_PA5GW2A2,
 	BRCMS_SROM_PA5GW2A3,
+	BRCMS_SROM_PA5GW3A0,
+	BRCMS_SROM_PA5GW3A1,
+	BRCMS_SROM_PA5GW3A2,
+	BRCMS_SROM_PA5GW3A3,
 };
 
 #define	BRCMS_NUMRATES	16	/* max # of rates in a rateset */
+#define	D11_PHY_HDR_LEN	6	/* Phy header length - 6 bytes */
 
 /* phy types */
 #define	PHY_TYPE_A	0	/* Phy type A */
@@ -382,6 +414,7 @@ struct brcms_pub {
 	uint _nbands;		/* # bands supported */
 	uint now;		/* # elapsed seconds */
 
+	bool promisc;		/* promiscuous destination address */
 	bool delayed_down;	/* down delayed */
 	bool associated;	/* true:part of [I]BSS, false: not */
 	/* (union of stas_associated, aps_associated) */
@@ -531,14 +564,15 @@ struct brcms_antselcfg {
 
 /* common functions for every port */
 extern struct brcms_c_info *
-brcms_c_attach(struct brcms_info *wl, struct bcma_device *core, uint unit,
-	       bool piomode, uint *perr);
+brcms_c_attach(struct brcms_info *wl, u16 vendor, u16 device, uint unit,
+	       bool piomode, void __iomem *regsva, struct pci_dev *btparam,
+	       uint *perr);
 extern uint brcms_c_detach(struct brcms_c_info *wlc);
 extern int brcms_c_up(struct brcms_c_info *wlc);
 extern uint brcms_c_down(struct brcms_c_info *wlc);
 
 extern bool brcms_c_chipmatch(u16 vendor, u16 device);
-extern void brcms_c_init(struct brcms_c_info *wlc, bool mute_tx);
+extern void brcms_c_init(struct brcms_c_info *wlc);
 extern void brcms_c_reset(struct brcms_c_info *wlc);
 
 extern void brcms_c_intrson(struct brcms_c_info *wlc);
@@ -594,7 +628,7 @@ extern void brcms_c_set_beacon_listen_interval(struct brcms_c_info *wlc,
 					u8 interval);
 extern int brcms_c_set_tx_power(struct brcms_c_info *wlc, int txpwr);
 extern int brcms_c_get_tx_power(struct brcms_c_info *wlc);
+extern void brcms_c_set_radio_mpc(struct brcms_c_info *wlc, bool mpc);
 extern bool brcms_c_check_radio_disabled(struct brcms_c_info *wlc);
-extern void brcms_c_mute(struct brcms_c_info *wlc, bool on);
 
 #endif				/* _BRCM_PUB_H_ */

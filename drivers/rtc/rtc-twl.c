@@ -550,11 +550,6 @@ static int twl_rtc_resume(struct platform_device *pdev)
 #define twl_rtc_resume  NULL
 #endif
 
-static const struct of_device_id twl_rtc_of_match[] = {
-	{.compatible = "ti,twl4030-rtc", },
-	{ },
-};
-MODULE_DEVICE_TABLE(of, twl_rtc_of_match);
 MODULE_ALIAS("platform:twl_rtc");
 
 static struct platform_driver twl4030rtc_driver = {
@@ -564,9 +559,8 @@ static struct platform_driver twl4030rtc_driver = {
 	.suspend	= twl_rtc_suspend,
 	.resume		= twl_rtc_resume,
 	.driver		= {
-		.owner		= THIS_MODULE,
-		.name		= "twl_rtc",
-		.of_match_table = twl_rtc_of_match,
+		.owner	= THIS_MODULE,
+		.name	= "twl_rtc",
 	},
 };
 

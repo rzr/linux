@@ -7,7 +7,6 @@
 #include <linux/statfs.h>
 #include <linux/security.h>
 #include <linux/uaccess.h>
-#include "internal.h"
 
 static int flags_by_mnt(int mnt_flags)
 {
@@ -46,7 +45,7 @@ static int calculate_f_flags(struct vfsmount *mnt)
 		flags_by_sb(mnt->mnt_sb->s_flags);
 }
 
-static int statfs_by_dentry(struct dentry *dentry, struct kstatfs *buf)
+int statfs_by_dentry(struct dentry *dentry, struct kstatfs *buf)
 {
 	int retval;
 
@@ -206,23 +205,19 @@ SYSCALL_DEFINE3(fstatfs64, unsigned int, fd, size_t, sz, struct statfs64 __user 
 	return error;
 }
 
-int vfs_ustat(dev_t dev, struct kstatfs *sbuf)
+SYSCALL_DEFINE2(ustat, unsigned, dev, struct ustat __user *, ubuf)
 {
-	struct super_block *s = user_get_super(dev);
+	struct super_block *s;
+	struct ustat tmp;
+	struct kstatfs sbuf;
 	int err;
+
+	s = user_get_super(new_decode_dev(dev));
 	if (!s)
 		return -EINVAL;
 
-	err = statfs_by_dentry(s->s_root, sbuf);
+	err = statfs_by_dentry(s->s_root, &sbuf);
 	drop_super(s);
-	return err;
-}
-
-SYSCALL_DEFINE2(ustat, unsigned, dev, struct ustat __user *, ubuf)
-{
-	struct ustat tmp;
-	struct kstatfs sbuf;
-	int err = vfs_ustat(new_decode_dev(dev), &sbuf);
 	if (err)
 		return err;
 

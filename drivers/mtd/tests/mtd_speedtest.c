@@ -79,7 +79,7 @@ static int erase_eraseblock(int ebnum)
 	ei.addr = addr;
 	ei.len  = mtd->erasesize;
 
-	err = mtd_erase(mtd, &ei);
+	err = mtd->erase(mtd, &ei);
 	if (err) {
 		printk(PRINT_PREF "error %d while erasing EB %d\n", err, ebnum);
 		return err;
@@ -105,7 +105,7 @@ static int multiblock_erase(int ebnum, int blocks)
 	ei.addr = addr;
 	ei.len  = mtd->erasesize * blocks;
 
-	err = mtd_erase(mtd, &ei);
+	err = mtd->erase(mtd, &ei);
 	if (err) {
 		printk(PRINT_PREF "error %d while erasing EB %d, blocks %d\n",
 		       err, ebnum, blocks);
@@ -139,11 +139,11 @@ static int erase_whole_device(void)
 
 static int write_eraseblock(int ebnum)
 {
-	size_t written;
+	size_t written = 0;
 	int err = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 
-	err = mtd_write(mtd, addr, mtd->erasesize, &written, iobuf);
+	err = mtd->write(mtd, addr, mtd->erasesize, &written, iobuf);
 	if (err || written != mtd->erasesize) {
 		printk(PRINT_PREF "error: write failed at %#llx\n", addr);
 		if (!err)
@@ -155,13 +155,13 @@ static int write_eraseblock(int ebnum)
 
 static int write_eraseblock_by_page(int ebnum)
 {
-	size_t written;
+	size_t written = 0;
 	int i, err = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 	void *buf = iobuf;
 
 	for (i = 0; i < pgcnt; i++) {
-		err = mtd_write(mtd, addr, pgsize, &written, buf);
+		err = mtd->write(mtd, addr, pgsize, &written, buf);
 		if (err || written != pgsize) {
 			printk(PRINT_PREF "error: write failed at %#llx\n",
 			       addr);
@@ -178,13 +178,13 @@ static int write_eraseblock_by_page(int ebnum)
 
 static int write_eraseblock_by_2pages(int ebnum)
 {
-	size_t written, sz = pgsize * 2;
+	size_t written = 0, sz = pgsize * 2;
 	int i, n = pgcnt / 2, err = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 	void *buf = iobuf;
 
 	for (i = 0; i < n; i++) {
-		err = mtd_write(mtd, addr, sz, &written, buf);
+		err = mtd->write(mtd, addr, sz, &written, buf);
 		if (err || written != sz) {
 			printk(PRINT_PREF "error: write failed at %#llx\n",
 			       addr);
@@ -196,7 +196,7 @@ static int write_eraseblock_by_2pages(int ebnum)
 		buf += sz;
 	}
 	if (pgcnt % 2) {
-		err = mtd_write(mtd, addr, pgsize, &written, buf);
+		err = mtd->write(mtd, addr, pgsize, &written, buf);
 		if (err || written != pgsize) {
 			printk(PRINT_PREF "error: write failed at %#llx\n",
 			       addr);
@@ -210,11 +210,11 @@ static int write_eraseblock_by_2pages(int ebnum)
 
 static int read_eraseblock(int ebnum)
 {
-	size_t read;
+	size_t read = 0;
 	int err = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 
-	err = mtd_read(mtd, addr, mtd->erasesize, &read, iobuf);
+	err = mtd->read(mtd, addr, mtd->erasesize, &read, iobuf);
 	/* Ignore corrected ECC errors */
 	if (mtd_is_bitflip(err))
 		err = 0;
@@ -229,13 +229,13 @@ static int read_eraseblock(int ebnum)
 
 static int read_eraseblock_by_page(int ebnum)
 {
-	size_t read;
+	size_t read = 0;
 	int i, err = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 	void *buf = iobuf;
 
 	for (i = 0; i < pgcnt; i++) {
-		err = mtd_read(mtd, addr, pgsize, &read, buf);
+		err = mtd->read(mtd, addr, pgsize, &read, buf);
 		/* Ignore corrected ECC errors */
 		if (mtd_is_bitflip(err))
 			err = 0;
@@ -255,13 +255,13 @@ static int read_eraseblock_by_page(int ebnum)
 
 static int read_eraseblock_by_2pages(int ebnum)
 {
-	size_t read, sz = pgsize * 2;
+	size_t read = 0, sz = pgsize * 2;
 	int i, n = pgcnt / 2, err = 0;
 	loff_t addr = ebnum * mtd->erasesize;
 	void *buf = iobuf;
 
 	for (i = 0; i < n; i++) {
-		err = mtd_read(mtd, addr, sz, &read, buf);
+		err = mtd->read(mtd, addr, sz, &read, buf);
 		/* Ignore corrected ECC errors */
 		if (mtd_is_bitflip(err))
 			err = 0;
@@ -276,7 +276,7 @@ static int read_eraseblock_by_2pages(int ebnum)
 		buf += sz;
 	}
 	if (pgcnt % 2) {
-		err = mtd_read(mtd, addr, pgsize, &read, buf);
+		err = mtd->read(mtd, addr, pgsize, &read, buf);
 		/* Ignore corrected ECC errors */
 		if (mtd_is_bitflip(err))
 			err = 0;
@@ -296,7 +296,7 @@ static int is_block_bad(int ebnum)
 	loff_t addr = ebnum * mtd->erasesize;
 	int ret;
 
-	ret = mtd_block_isbad(mtd, addr);
+	ret = mtd->block_isbad(mtd, addr);
 	if (ret)
 		printk(PRINT_PREF "block %d is bad\n", ebnum);
 	return ret;
@@ -336,7 +336,8 @@ static int scan_for_bad_eraseblocks(void)
 		return -ENOMEM;
 	}
 
-	if (!mtd_can_have_bb(mtd))
+	/* NOR flash does not implement block_isbad */
+	if (mtd->block_isbad == NULL)
 		goto out;
 
 	printk(PRINT_PREF "scanning for bad eraseblocks\n");

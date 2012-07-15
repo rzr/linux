@@ -174,6 +174,11 @@ int	  xfs_log_reserve(struct xfs_mount *mp,
 			  __uint8_t	   clientid,
 			  uint		   flags,
 			  uint		   t_type);
+int	  xfs_log_write(struct xfs_mount *mp,
+			xfs_log_iovec_t  region[],
+			int		 nentries,
+			struct xlog_ticket *ticket,
+			xfs_lsn_t	 *start_lsn);
 int	  xfs_log_unmount_write(struct xfs_mount *mp);
 void      xfs_log_unmount(struct xfs_mount *mp);
 int	  xfs_log_force_umount(struct xfs_mount *mp, int logerror);
@@ -184,7 +189,8 @@ void	  xlog_iodone(struct xfs_buf *);
 struct xlog_ticket *xfs_log_ticket_get(struct xlog_ticket *ticket);
 void	  xfs_log_ticket_put(struct xlog_ticket *ticket);
 
-int	xfs_log_commit_cil(struct xfs_mount *mp, struct xfs_trans *tp,
+void	xfs_log_commit_cil(struct xfs_mount *mp, struct xfs_trans *tp,
+				struct xfs_log_vec *log_vector,
 				xfs_lsn_t *commit_lsn, int flags);
 bool	xfs_log_item_in_current_chkpt(struct xfs_log_item *lip);
 

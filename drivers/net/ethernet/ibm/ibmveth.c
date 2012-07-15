@@ -735,8 +735,7 @@ static void netdev_get_drvinfo(struct net_device *dev,
 		sizeof(info->version) - 1);
 }
 
-static netdev_features_t ibmveth_fix_features(struct net_device *dev,
-	netdev_features_t features)
+static u32 ibmveth_fix_features(struct net_device *dev, u32 features)
 {
 	/*
 	 * Since the ibmveth firmware interface does not have the
@@ -839,8 +838,7 @@ static int ibmveth_set_csum_offload(struct net_device *dev, u32 data)
 	return rc1 ? rc1 : rc2;
 }
 
-static int ibmveth_set_features(struct net_device *dev,
-	netdev_features_t features)
+static int ibmveth_set_features(struct net_device *dev, u32 features)
 {
 	struct ibmveth_adapter *adapter = netdev_priv(dev);
 	int rx_csum = !!(features & NETIF_F_RXCSUM);

@@ -138,6 +138,8 @@ static struct pda_power_pdata collie_power_data = {
 static struct resource collie_power_resource[] = {
 	{
 		.name		= "ac",
+		.start		= gpio_to_irq(COLLIE_GPIO_AC_IN),
+		.end		= gpio_to_irq(COLLIE_GPIO_AC_IN),
 		.flags		= IORESOURCE_IRQ |
 				  IORESOURCE_IRQ_HIGHEDGE |
 				  IORESOURCE_IRQ_LOWEDGE,
@@ -339,8 +341,7 @@ static void __init collie_init(void)
 
 	GPSR |= _COLLIE_GPIO_UCB1x00_RESET;
 
-	collie_power_resource[0].start = gpio_to_irq(COLLIE_GPIO_AC_IN);
-	collie_power_resource[0].end = gpio_to_irq(COLLIE_GPIO_AC_IN);
+
 	platform_scoop_config = &collie_pcmcia_config;
 
 	ret = platform_add_devices(devices, ARRAY_SIZE(devices));
@@ -386,5 +387,4 @@ MACHINE_START(COLLIE, "Sharp-Collie")
 	.init_irq	= sa1100_init_irq,
 	.timer		= &sa1100_timer,
 	.init_machine	= collie_init,
-	.restart	= sa11x0_restart,
 MACHINE_END

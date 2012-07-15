@@ -31,7 +31,6 @@ qla2x00_get_ctx_bsg_sp(scsi_qla_host_t *vha, fc_port_t *fcport, size_t size)
 	memset(sp, 0, sizeof(*sp));
 	sp->fcport = fcport;
 	sp->ctx = ctx;
-	ctx->iocbs = 1;
 done:
 	return sp;
 }
@@ -103,8 +102,15 @@ qla24xx_proc_fcp_prio_cfg_cmd(struct fc_bsg_job *bsg_job)
 
 	bsg_job->reply->reply_payload_rcv_len = 0;
 
-	if (!(IS_QLA24XX_TYPE(ha) || IS_QLA25XX(ha) || IS_QLA82XX(ha))) {
+	if (!(IS_QLA24XX_TYPE(ha) || IS_QLA25XX(ha))) {
 		ret = -EINVAL;
+		goto exit_fcp_prio_cfg;
+	}
+
+	if (test_bit(ISP_ABORT_NEEDED, &vha->dpc_flags) ||
+		test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) ||
+		test_bit(ISP_ABORT_RETRY, &vha->dpc_flags)) {
+		ret = -EBUSY;
 		goto exit_fcp_prio_cfg;
 	}
 
@@ -383,20 +389,6 @@ done:
 	return rval;
 }
 
-inline uint16_t
-qla24xx_calc_ct_iocbs(uint16_t dsds)
-{
-	uint16_t iocbs;
-
-	iocbs = 1;
-	if (dsds > 2) {
-		iocbs += (dsds - 2) / 5;
-		if ((dsds - 2) % 5)
-			iocbs++;
-	}
-	return iocbs;
-}
-
 static int
 qla2x00_process_ct(struct fc_bsg_job *bsg_job)
 {
@@ -497,7 +489,6 @@ qla2x00_process_ct(struct fc_bsg_job *bsg_job)
 	ct = sp->ctx;
 	ct->type = SRB_CT_CMD;
 	ct->name = "bsg_ct";
-	ct->iocbs = qla24xx_calc_ct_iocbs(req_sg_cnt + rsp_sg_cnt);
 	ct->u.bsg_job = bsg_job;
 
 	ql_dbg(ql_dbg_user, vha, 0x7016,
@@ -638,6 +629,13 @@ qla2x00_process_loopback(struct fc_bsg_job *bsg_job)
 	uint8_t *rsp_data = NULL;
 	dma_addr_t rsp_data_dma;
 	uint32_t rsp_data_len;
+
+	if (test_bit(ISP_ABORT_NEEDED, &vha->dpc_flags) ||
+		test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) ||
+		test_bit(ISP_ABORT_RETRY, &vha->dpc_flags)) {
+		ql_log(ql_log_warn, vha, 0x7018, "Abort active or needed.\n");
+		return -EBUSY;
+	}
 
 	if (!vha->flags.online) {
 		ql_log(ql_log_warn, vha, 0x7019, "Host is not online.\n");
@@ -860,6 +858,13 @@ qla84xx_reset(struct fc_bsg_job *bsg_job)
 	int rval = 0;
 	uint32_t flag;
 
+	if (test_bit(ISP_ABORT_NEEDED, &vha->dpc_flags) ||
+	    test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) ||
+	    test_bit(ISP_ABORT_RETRY, &vha->dpc_flags)) {
+		ql_log(ql_log_warn, vha, 0x702e, "Abort active or needed.\n");
+		return -EBUSY;
+	}
+
 	if (!IS_QLA84XX(ha)) {
 		ql_dbg(ql_dbg_user, vha, 0x702f, "Not 84xx, exiting.\n");
 		return -EINVAL;
@@ -900,6 +905,11 @@ qla84xx_updatefw(struct fc_bsg_job *bsg_job)
 	uint16_t options;
 	uint32_t flag;
 	uint32_t fw_ver;
+
+	if (test_bit(ISP_ABORT_NEEDED, &vha->dpc_flags) ||
+		test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) ||
+		test_bit(ISP_ABORT_RETRY, &vha->dpc_flags))
+		return -EBUSY;
 
 	if (!IS_QLA84XX(ha)) {
 		ql_dbg(ql_dbg_user, vha, 0x7032,
@@ -1009,6 +1019,14 @@ qla84xx_mgmt_cmd(struct fc_bsg_job *bsg_job)
 	uint32_t sg_cnt;
 	uint32_t data_len = 0;
 	uint32_t dma_direction = DMA_NONE;
+
+	if (test_bit(ISP_ABORT_NEEDED, &vha->dpc_flags) ||
+		test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) ||
+		test_bit(ISP_ABORT_RETRY, &vha->dpc_flags)) {
+		ql_log(ql_log_warn, vha, 0x7039,
+		    "Abort active or needed.\n");
+		return -EBUSY;
+	}
 
 	if (!IS_QLA84XX(ha)) {
 		ql_log(ql_log_warn, vha, 0x703a,
@@ -1211,6 +1229,13 @@ qla24xx_iidma(struct fc_bsg_job *bsg_job)
 	uint8_t *rsp_ptr = NULL;
 
 	bsg_job->reply->reply_payload_rcv_len = 0;
+
+	if (test_bit(ISP_ABORT_NEEDED, &vha->dpc_flags) ||
+		test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) ||
+		test_bit(ISP_ABORT_RETRY, &vha->dpc_flags)) {
+		ql_log(ql_log_warn, vha, 0x7045, "abort active or needed.\n");
+		return -EBUSY;
+	}
 
 	if (!IS_IIDMA_CAPABLE(vha->hw)) {
 		ql_log(ql_log_info, vha, 0x7046, "iiDMA not supported.\n");
@@ -1627,17 +1652,8 @@ qla24xx_bsg_request(struct fc_bsg_job *bsg_job)
 		vha = shost_priv(host);
 	}
 
-	if (qla2x00_reset_active(vha)) {
-		ql_dbg(ql_dbg_user, vha, 0x709f,
-		    "BSG: ISP abort active/needed -- cmd=%d.\n",
-		    bsg_job->request->msgcode);
-		bsg_job->reply->result = (DID_ERROR << 16);
-		bsg_job->job_done(bsg_job);
-		return -EBUSY;
-	}
-
 	ql_dbg(ql_dbg_user, vha, 0x7000,
-	    "Entered %s msgcode=0x%x.\n", __func__, bsg_job->request->msgcode);
+	    "Entered %s msgcode=%d.\n", __func__, bsg_job->request->msgcode);
 
 	switch (bsg_job->request->msgcode) {
 	case FC_BSG_RPT_ELS:

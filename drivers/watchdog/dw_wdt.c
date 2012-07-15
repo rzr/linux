@@ -300,7 +300,11 @@ static int __devinit dw_wdt_drv_probe(struct platform_device *pdev)
 	if (!mem)
 		return -EINVAL;
 
-	dw_wdt.regs = devm_request_and_ioremap(&pdev->dev, mem);
+	if (!devm_request_mem_region(&pdev->dev, mem->start, resource_size(mem),
+				     "dw_wdt"))
+		return -ENOMEM;
+
+	dw_wdt.regs = devm_ioremap(&pdev->dev, mem->start, resource_size(mem));
 	if (!dw_wdt.regs)
 		return -ENOMEM;
 
@@ -354,7 +358,17 @@ static struct platform_driver dw_wdt_driver = {
 	},
 };
 
-module_platform_driver(dw_wdt_driver);
+static int __init dw_wdt_watchdog_init(void)
+{
+	return platform_driver_register(&dw_wdt_driver);
+}
+module_init(dw_wdt_watchdog_init);
+
+static void __exit dw_wdt_watchdog_exit(void)
+{
+	platform_driver_unregister(&dw_wdt_driver);
+}
+module_exit(dw_wdt_watchdog_exit);
 
 MODULE_AUTHOR("Jamie Iles");
 MODULE_DESCRIPTION("Synopsys DesignWare Watchdog Driver");

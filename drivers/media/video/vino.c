@@ -708,7 +708,7 @@ static int vino_allocate_buffer(struct vino_framebuffer *fb,
 		size, count);
 
 	/* allocate memory for table with virtual (page) addresses */
-	fb->desc_table.virtual =
+	fb->desc_table.virtual = (unsigned long *)
 		kmalloc(count * sizeof(unsigned long), GFP_KERNEL);
 	if (!fb->desc_table.virtual)
 		return -ENOMEM;

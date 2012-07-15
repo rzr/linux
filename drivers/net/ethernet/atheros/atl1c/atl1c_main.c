@@ -411,7 +411,7 @@ static void atl1c_set_multi(struct net_device *netdev)
 	}
 }
 
-static void __atl1c_vlan_mode(netdev_features_t features, u32 *mac_ctrl_data)
+static void __atl1c_vlan_mode(u32 features, u32 *mac_ctrl_data)
 {
 	if (features & NETIF_F_HW_VLAN_RX) {
 		/* enable VLAN tag insert/strip */
@@ -422,8 +422,7 @@ static void __atl1c_vlan_mode(netdev_features_t features, u32 *mac_ctrl_data)
 	}
 }
 
-static void atl1c_vlan_mode(struct net_device *netdev,
-	netdev_features_t features)
+static void atl1c_vlan_mode(struct net_device *netdev, u32 features)
 {
 	struct atl1c_adapter *adapter = netdev_priv(netdev);
 	struct pci_dev *pdev = adapter->pdev;
@@ -483,8 +482,7 @@ static void atl1c_set_rxbufsize(struct atl1c_adapter *adapter,
 		roundup(mtu + ETH_HLEN + ETH_FCS_LEN + VLAN_HLEN, 8) : AT_RX_BUF_SIZE;
 }
 
-static netdev_features_t atl1c_fix_features(struct net_device *netdev,
-	netdev_features_t features)
+static u32 atl1c_fix_features(struct net_device *netdev, u32 features)
 {
 	/*
 	 * Since there is no support for separate rx/tx vlan accel
@@ -501,10 +499,9 @@ static netdev_features_t atl1c_fix_features(struct net_device *netdev,
 	return features;
 }
 
-static int atl1c_set_features(struct net_device *netdev,
-	netdev_features_t features)
+static int atl1c_set_features(struct net_device *netdev, u32 features)
 {
-	netdev_features_t changed = netdev->features ^ features;
+	u32 changed = netdev->features ^ features;
 
 	if (changed & NETIF_F_HW_VLAN_RX)
 		atl1c_vlan_mode(netdev, features);
@@ -1710,7 +1707,7 @@ static irqreturn_t atl1c_intr(int irq, void *data)
 					"atl1c hardware error (status = 0x%x)\n",
 					status & ISR_ERROR);
 			/* reset MAC */
-			set_bit(ATL1C_WORK_EVENT_RESET, &adapter->work_event);
+			adapter->work_event |= ATL1C_WORK_EVENT_RESET;
 			schedule_work(&adapter->common_task);
 			return IRQ_HANDLED;
 		}

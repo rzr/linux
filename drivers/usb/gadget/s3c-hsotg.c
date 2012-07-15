@@ -2586,7 +2586,7 @@ static int s3c_hsotg_start(struct usb_gadget_driver *driver,
 		return -EINVAL;
 	}
 
-	if (driver->max_speed < USB_SPEED_FULL)
+	if (driver->speed < USB_SPEED_FULL)
 		dev_err(hsotg->dev, "%s: bad speed\n", __func__);
 
 	if (!bind || !driver->setup) {
@@ -3362,7 +3362,7 @@ static int __devinit s3c_hsotg_probe(struct platform_device *pdev)
 
 	dev_set_name(&hsotg->gadget.dev, "gadget");
 
-	hsotg->gadget.max_speed = USB_SPEED_HIGH;
+	hsotg->gadget.is_dualspeed = 1;
 	hsotg->gadget.ops = &s3c_hsotg_gadget_ops;
 	hsotg->gadget.name = dev_name(dev);
 
@@ -3467,7 +3467,18 @@ static struct platform_driver s3c_hsotg_driver = {
 	.resume		= s3c_hsotg_resume,
 };
 
-module_platform_driver(s3c_hsotg_driver);
+static int __init s3c_hsotg_modinit(void)
+{
+	return platform_driver_register(&s3c_hsotg_driver);
+}
+
+static void __exit s3c_hsotg_modexit(void)
+{
+	platform_driver_unregister(&s3c_hsotg_driver);
+}
+
+module_init(s3c_hsotg_modinit);
+module_exit(s3c_hsotg_modexit);
 
 MODULE_DESCRIPTION("Samsung S3C USB High-speed/OtG device");
 MODULE_AUTHOR("Ben Dooks <ben@simtec.co.uk>");

@@ -1991,10 +1991,9 @@ static void sis900_get_drvinfo(struct net_device *net_dev,
 {
 	struct sis900_private *sis_priv = netdev_priv(net_dev);
 
-	strlcpy(info->driver, SIS900_MODULE_NAME, sizeof(info->driver));
-	strlcpy(info->version, SIS900_DRV_VERSION, sizeof(info->version));
-	strlcpy(info->bus_info, pci_name(sis_priv->pci_dev),
-		sizeof(info->bus_info));
+	strcpy (info->driver, SIS900_MODULE_NAME);
+	strcpy (info->version, SIS900_DRV_VERSION);
+	strcpy (info->bus_info, pci_name(sis_priv->pci_dev));
 }
 
 static u32 sis900_get_msglevel(struct net_device *net_dev)

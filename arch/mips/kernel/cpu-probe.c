@@ -191,8 +191,6 @@ void __init check_wait(void)
 	case CPU_CAVIUM_OCTEON_PLUS:
 	case CPU_CAVIUM_OCTEON2:
 	case CPU_JZRISC:
-	case CPU_XLR:
-	case CPU_XLP:
 		cpu_wait = r4k_wait;
 		break;
 
@@ -1016,13 +1014,6 @@ static inline void cpu_probe_netlogic(struct cpuinfo_mips *c, int cpu)
 {
 	decode_configs(c);
 
-	if ((c->processor_id & 0xff00) == PRID_IMP_NETLOGIC_AU13XX) {
-		c->cputype = CPU_ALCHEMY;
-		__cpu_name[cpu] = "Au1300";
-		/* following stuff is not for Alchemy */
-		return;
-	}
-
 	c->options = (MIPS_CPU_TLB       |
 			MIPS_CPU_4KEX    |
 			MIPS_CPU_COUNTER |
@@ -1032,12 +1023,6 @@ static inline void cpu_probe_netlogic(struct cpuinfo_mips *c, int cpu)
 			MIPS_CPU_LLSC);
 
 	switch (c->processor_id & 0xff00) {
-	case PRID_IMP_NETLOGIC_XLP8XX:
-	case PRID_IMP_NETLOGIC_XLP3XX:
-		c->cputype = CPU_XLP;
-		__cpu_name[cpu] = "Netlogic XLP";
-		break;
-
 	case PRID_IMP_NETLOGIC_XLR732:
 	case PRID_IMP_NETLOGIC_XLR716:
 	case PRID_IMP_NETLOGIC_XLR532:
@@ -1068,21 +1053,14 @@ static inline void cpu_probe_netlogic(struct cpuinfo_mips *c, int cpu)
 		break;
 
 	default:
-		pr_info("Unknown Netlogic chip id [%02x]!\n",
+		printk(KERN_INFO "Unknown Netlogic chip id [%02x]!\n",
 		       c->processor_id);
 		c->cputype = CPU_XLR;
 		break;
 	}
 
-	if (c->cputype == CPU_XLP) {
-		c->isa_level = MIPS_CPU_ISA_M64R2;
-		c->options |= (MIPS_CPU_FPU | MIPS_CPU_ULRI | MIPS_CPU_MCHECK);
-		/* This will be updated again after all threads are woken up */
-		c->tlbsize = ((read_c0_config6() >> 16) & 0xffff) + 1;
-	} else {
-		c->isa_level = MIPS_CPU_ISA_M64R1;
-		c->tlbsize = ((read_c0_config1() >> 25) & 0x3f) + 1;
-	}
+	c->isa_level = MIPS_CPU_ISA_M64R1;
+	c->tlbsize = ((read_c0_config1() >> 25) & 0x3f) + 1;
 }
 
 #ifdef CONFIG_64BIT

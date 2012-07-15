@@ -62,9 +62,9 @@
 
 /* debugging support */
 #ifdef CONFIG_USB_DEBUG
-static bool debug = 1;
+static int debug = 1;
 #else
-static bool debug;
+static int debug;
 #endif
 
 #define dprintk(fmt, args...)					\
@@ -541,7 +541,26 @@ static struct usb_driver igorplugusb_remote_driver = {
 	.id_table =	igorplugusb_remote_id_table
 };
 
-module_usb_driver(igorplugusb_remote_driver);
+static int __init igorplugusb_remote_init(void)
+{
+	int ret = 0;
+
+	dprintk(DRIVER_NAME ": loaded, debug mode enabled\n");
+
+	ret = usb_register(&igorplugusb_remote_driver);
+	if (ret)
+		printk(KERN_ERR DRIVER_NAME ": usb register failed!\n");
+
+	return ret;
+}
+
+static void __exit igorplugusb_remote_exit(void)
+{
+	usb_deregister(&igorplugusb_remote_driver);
+}
+
+module_init(igorplugusb_remote_init);
+module_exit(igorplugusb_remote_exit);
 
 #include <linux/vermagic.h>
 MODULE_INFO(vermagic, VERMAGIC_STRING);

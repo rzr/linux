@@ -41,6 +41,14 @@ static struct clocksource ccount_clocksource = {
 	.rating = 200,
 	.read = ccount_read,
 	.mask = CLOCKSOURCE_MASK(32),
+	/*
+	 * With a shift of 22 the lower limit of the cpu clock is
+	 * 1MHz, where NSEC_PER_CCOUNT is 1000 or a bit less than
+	 * 2^10: Since we have 32 bits and the multiplicator can
+	 * already take up as much as 10 bits, this leaves us with
+	 * remaining upper 22 bits.
+	 */
+	.shift = 22,
 };
 
 static irqreturn_t timer_interrupt(int irq, void *dev_id);
@@ -58,7 +66,10 @@ void __init time_init(void)
 	printk("%d.%02d MHz\n", (int)ccount_per_jiffy/(1000000/HZ),
 			(int)(ccount_per_jiffy/(10000/HZ))%100);
 #endif
-	clocksource_register_hz(&ccount_clocksource, CCOUNT_PER_JIFFY * HZ);
+	ccount_clocksource.mult =
+		clocksource_hz2mult(CCOUNT_PER_JIFFY * HZ,
+				ccount_clocksource.shift);
+	clocksource_register(&ccount_clocksource);
 
 	/* Initialize the linux timer interrupt. */
 

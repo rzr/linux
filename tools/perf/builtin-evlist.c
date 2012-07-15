@@ -15,7 +15,7 @@
 #include "util/parse-options.h"
 #include "util/session.h"
 
-static const char *input_name;
+static char const *input_name = "perf.data";
 
 static int __cmd_evlist(void)
 {

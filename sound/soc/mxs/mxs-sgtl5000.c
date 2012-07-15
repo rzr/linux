@@ -105,7 +105,6 @@ static struct snd_soc_dai_link mxs_sgtl5000_dai[] = {
 
 static struct snd_soc_card mxs_sgtl5000 = {
 	.name		= "mxs_sgtl5000",
-	.owner		= THIS_MODULE,
 	.dai_link	= mxs_sgtl5000_dai,
 	.num_links	= ARRAY_SIZE(mxs_sgtl5000_dai),
 };
@@ -157,7 +156,17 @@ static struct platform_driver mxs_sgtl5000_audio_driver = {
 	.remove = __devexit_p(mxs_sgtl5000_remove),
 };
 
-module_platform_driver(mxs_sgtl5000_audio_driver);
+static int __init mxs_sgtl5000_init(void)
+{
+	return platform_driver_register(&mxs_sgtl5000_audio_driver);
+}
+module_init(mxs_sgtl5000_init);
+
+static void __exit mxs_sgtl5000_exit(void)
+{
+	platform_driver_unregister(&mxs_sgtl5000_audio_driver);
+}
+module_exit(mxs_sgtl5000_exit);
 
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");
 MODULE_DESCRIPTION("MXS ALSA SoC Machine driver");

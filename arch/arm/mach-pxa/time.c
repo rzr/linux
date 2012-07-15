@@ -16,6 +16,7 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/clockchips.h>
+#include <linux/sched.h>
 
 #include <asm/div64.h>
 #include <asm/mach/irq.h>
@@ -31,10 +32,18 @@
  * long as there is always less than 582 seconds between successive
  * calls to sched_clock() which should always be the case in practice.
  */
+static DEFINE_CLOCK_DATA(cd);
 
-static u32 notrace pxa_read_sched_clock(void)
+unsigned long long notrace sched_clock(void)
 {
-	return OSCR;
+	u32 cyc = OSCR;
+	return cyc_to_sched_clock(&cd, cyc, (u32)~0);
+}
+
+static void notrace pxa_update_sched_clock(void)
+{
+	u32 cyc = OSCR;
+	update_sched_clock(&cd, cyc, (u32)~0);
 }
 
 
@@ -110,7 +119,7 @@ static void __init pxa_timer_init(void)
 	OIER = 0;
 	OSSR = OSSR_M0 | OSSR_M1 | OSSR_M2 | OSSR_M3;
 
-	setup_sched_clock(pxa_read_sched_clock, 32, clock_tick_rate);
+	init_sched_clock(&cd, pxa_update_sched_clock, 32, clock_tick_rate);
 
 	clockevents_calc_mult_shift(&ckevt_pxa_osmr0, clock_tick_rate, 4);
 	ckevt_pxa_osmr0.max_delta_ns =

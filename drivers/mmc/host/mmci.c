@@ -374,7 +374,6 @@ static int mmci_dma_prep_data(struct mmci_host *host, struct mmc_data *data,
 	struct dma_chan *chan;
 	struct dma_device *device;
 	struct dma_async_tx_descriptor *desc;
-	enum dma_data_direction buffer_dirn;
 	int nr_sg;
 
 	/* Check if next job is already prepared */
@@ -388,12 +387,10 @@ static int mmci_dma_prep_data(struct mmci_host *host, struct mmc_data *data,
 	}
 
 	if (data->flags & MMC_DATA_READ) {
-		conf.direction = DMA_DEV_TO_MEM;
-		buffer_dirn = DMA_FROM_DEVICE;
+		conf.direction = DMA_FROM_DEVICE;
 		chan = host->dma_rx_channel;
 	} else {
-		conf.direction = DMA_MEM_TO_DEV;
-		buffer_dirn = DMA_TO_DEVICE;
+		conf.direction = DMA_TO_DEVICE;
 		chan = host->dma_tx_channel;
 	}
 
@@ -406,7 +403,7 @@ static int mmci_dma_prep_data(struct mmci_host *host, struct mmc_data *data,
 		return -EINVAL;
 
 	device = chan->device;
-	nr_sg = dma_map_sg(device->dev, data->sg, data->sg_len, buffer_dirn);
+	nr_sg = dma_map_sg(device->dev, data->sg, data->sg_len, conf.direction);
 	if (nr_sg == 0)
 		return -EINVAL;
 
@@ -429,7 +426,7 @@ static int mmci_dma_prep_data(struct mmci_host *host, struct mmc_data *data,
  unmap_exit:
 	if (!next)
 		dmaengine_terminate_all(chan);
-	dma_unmap_sg(device->dev, data->sg, data->sg_len, buffer_dirn);
+	dma_unmap_sg(device->dev, data->sg, data->sg_len, conf.direction);
 	return -ENOMEM;
 }
 
@@ -1248,7 +1245,6 @@ static int __devinit mmci_probe(struct amba_device *dev,
 	if (host->vcc == NULL)
 		mmc->ocr_avail = plat->ocr_mask;
 	mmc->caps = plat->capabilities;
-	mmc->caps2 = plat->capabilities2;
 
 	/*
 	 * We can do SGIO
@@ -1271,13 +1267,12 @@ static int __devinit mmci_probe(struct amba_device *dev,
 	/*
 	 * Block size can be up to 2048 bytes, but must be a power of two.
 	 */
-	mmc->max_blk_size = 1 << 11;
+	mmc->max_blk_size = 2048;
 
 	/*
-	 * Limit the number of blocks transferred so that we don't overflow
-	 * the maximum request size.
+	 * No limit on the number of blocks transferred.
 	 */
-	mmc->max_blk_count = mmc->max_req_size >> 11;
+	mmc->max_blk_count = mmc->max_req_size;
 
 	spin_lock_init(&host->lock);
 
@@ -1506,8 +1501,6 @@ static struct amba_id mmci_ids[] = {
 	},
 	{ 0, 0 },
 };
-
-MODULE_DEVICE_TABLE(amba, mmci_ids);
 
 static struct amba_driver mmci_driver = {
 	.drv		= {

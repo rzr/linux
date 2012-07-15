@@ -127,5 +127,4 @@ MACHINE_START(GURUPLUG, "Marvell GuruPlug Reference Board")
 	.init_early	= kirkwood_init_early,
 	.init_irq	= kirkwood_init_irq,
 	.timer		= &kirkwood_timer,
-	.restart	= kirkwood_restart,
 MACHINE_END

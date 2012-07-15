@@ -113,11 +113,13 @@ extern irqreturn_t crime_cpuerr_intr(int irq, void *dev_id);
 
 static struct irqaction memerr_irq = {
 	.handler = crime_memerr_intr,
+	.flags = IRQF_DISABLED,
 	.name = "CRIME memory error",
 };
 
 static struct irqaction cpuerr_irq = {
 	.handler = crime_cpuerr_intr,
+	.flags = IRQF_DISABLED,
 	.name = "CRIME CPU error",
 };
 

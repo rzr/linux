@@ -185,7 +185,7 @@ static int ioapic_deliver(struct kvm_ioapic *ioapic, int irq)
 		irqe.dest_mode = 0; /* Physical mode. */
 		/* need to read apic_id from apic regiest since
 		 * it can be rewritten */
-		irqe.dest_id = ioapic->kvm->bsp_vcpu_id;
+		irqe.dest_id = ioapic->kvm->bsp_vcpu->vcpu_id;
 	}
 #endif
 	return kvm_irq_delivery_to_apic(ioapic->kvm, NULL, &irqe);
@@ -332,18 +332,9 @@ static int ioapic_mmio_write(struct kvm_io_device *this, gpa_t addr, int len,
 		     (void*)addr, len, val);
 	ASSERT(!(addr & 0xf));	/* check alignment */
 
-	switch (len) {
-	case 8:
-	case 4:
+	if (len == 4 || len == 8)
 		data = *(u32 *) val;
-		break;
-	case 2:
-		data = *(u16 *) val;
-		break;
-	case 1:
-		data = *(u8  *) val;
-		break;
-	default:
+	else {
 		printk(KERN_WARNING "ioapic: Unsupported size %d\n", len);
 		return 0;
 	}
@@ -352,7 +343,7 @@ static int ioapic_mmio_write(struct kvm_io_device *this, gpa_t addr, int len,
 	spin_lock(&ioapic->lock);
 	switch (addr) {
 	case IOAPIC_REG_SELECT:
-		ioapic->ioregsel = data & 0xFF; /* 8-bit register */
+		ioapic->ioregsel = data;
 		break;
 
 	case IOAPIC_REG_WINDOW:

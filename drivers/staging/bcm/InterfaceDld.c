@@ -62,7 +62,6 @@ int InterfaceFileReadbackFromChip(PVOID arg, struct file *flp, unsigned int on_c
 	static int fw_down;
 	INT Status = STATUS_SUCCESS;
 	PS_INTERFACE_ADAPTER psIntfAdapter = (PS_INTERFACE_ADAPTER)arg;
-	int bytes;
 
 	buff = kmalloc(MAX_TRANSFER_CTRL_BYTE_USB, GFP_DMA);
 	buff_readback = kmalloc(MAX_TRANSFER_CTRL_BYTE_USB , GFP_DMA);
@@ -95,9 +94,8 @@ int InterfaceFileReadbackFromChip(PVOID arg, struct file *flp, unsigned int on_c
 			break;
 		}
 
-		bytes = InterfaceRDM(psIntfAdapter, on_chip_loc, buff_readback, len);
-		if (bytes < 0) {
-			Status = bytes;
+		Status = InterfaceRDM(psIntfAdapter, on_chip_loc, buff_readback, len);
+		if (Status) {
 			BCM_DEBUG_PRINT(psIntfAdapter->psAdapter, DBG_TYPE_INITEXIT, MP_INIT, DBG_LVL_ALL, "RDM of len %d Failed! %d", len, reg);
 			goto exit;
 		}
@@ -304,7 +302,6 @@ static INT buffRdbkVerify(PMINI_ADAPTER Adapter, PUCHAR mappedbuffer, UINT u32Fi
 	UINT len = u32FirmwareLength;
 	INT retval = STATUS_SUCCESS;
 	PUCHAR readbackbuff = kzalloc(MAX_TRANSFER_CTRL_BYTE_USB, GFP_KERNEL);
-	int bytes;
 
 	if (NULL == readbackbuff) {
 		BCM_DEBUG_PRINT(Adapter, DBG_TYPE_INITEXIT, MP_INIT, DBG_LVL_ALL, "MEMORY ALLOCATION FAILED");
@@ -313,10 +310,9 @@ static INT buffRdbkVerify(PMINI_ADAPTER Adapter, PUCHAR mappedbuffer, UINT u32Fi
 
 	while (u32FirmwareLength && !retval) {
 		len = MIN_VAL(u32FirmwareLength, MAX_TRANSFER_CTRL_BYTE_USB);
-		bytes = rdm(Adapter, u32StartingAddress, readbackbuff, len);
+		retval = rdm(Adapter, u32StartingAddress, readbackbuff, len);
 
-		if (bytes < 0) {
-			retval = bytes;
+		if (retval) {
 			BCM_DEBUG_PRINT(Adapter, DBG_TYPE_INITEXIT, MP_INIT, DBG_LVL_ALL, "rdm failed with status %d", retval);
 			break;
 		}

@@ -37,7 +37,6 @@
 
 #include "../iio.h"
 #include "../sysfs.h"
-#include "../events.h"
 #include "tsl2563.h"
 
 /* Use this many bits for fraction part. */
@@ -226,8 +225,6 @@ static int tsl2563_read_id(struct tsl2563_chip *chip, u8 *id)
 	ret = i2c_smbus_read_byte_data(client, TSL2563_CMD | TSL2563_REG_ID);
 	if (ret < 0)
 		return ret;
-
-	*id = ret;
 
 	return 0;
 }
@@ -513,7 +510,7 @@ static int tsl2563_read_raw(struct iio_dev *indio_dev,
 		}
 		break;
 
-	case IIO_CHAN_INFO_CALIBSCALE:
+	case (1 << IIO_CHAN_INFO_CALIBSCALE_SEPARATE):
 		if (chan->channel == 0)
 			*val = calib_to_sysfs(chip->calib0);
 		else
@@ -539,7 +536,7 @@ static const struct iio_chan_spec tsl2563_channels[] = {
 		.type = IIO_INTENSITY,
 		.modified = 1,
 		.channel2 = IIO_MOD_LIGHT_BOTH,
-		.info_mask = IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,
+		.info_mask = (1 << IIO_CHAN_INFO_CALIBSCALE_SEPARATE),
 		.event_mask = (IIO_EV_BIT(IIO_EV_TYPE_THRESH,
 					  IIO_EV_DIR_RISING) |
 			       IIO_EV_BIT(IIO_EV_TYPE_THRESH,
@@ -547,8 +544,8 @@ static const struct iio_chan_spec tsl2563_channels[] = {
 	}, {
 		.type = IIO_INTENSITY,
 		.modified = 1,
-		.channel2 = IIO_MOD_LIGHT_IR,
-		.info_mask = IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,
+		.channel2 = IIO_MOD_LIGHT_BOTH,
+		.info_mask = (1 << IIO_CHAN_INFO_CALIBSCALE_SEPARATE),
 	}
 };
 
@@ -869,8 +866,20 @@ static struct i2c_driver tsl2563_i2c_driver = {
 	.remove		= __devexit_p(tsl2563_remove),
 	.id_table	= tsl2563_id,
 };
-module_i2c_driver(tsl2563_i2c_driver);
+
+static int __init tsl2563_init(void)
+{
+	return i2c_add_driver(&tsl2563_i2c_driver);
+}
+
+static void __exit tsl2563_exit(void)
+{
+	i2c_del_driver(&tsl2563_i2c_driver);
+}
 
 MODULE_AUTHOR("Nokia Corporation");
 MODULE_DESCRIPTION("tsl2563 light sensor driver");
 MODULE_LICENSE("GPL");
+
+module_init(tsl2563_init);
+module_exit(tsl2563_exit);

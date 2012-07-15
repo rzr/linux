@@ -28,6 +28,7 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
 #include <linux/clk.h>
@@ -72,7 +73,7 @@ static struct clk clk_arm = {
 	},
 };
 
-static int s3c244x_clk_add(struct device *dev, struct subsys_interface *sif)
+static int s3c244x_clk_add(struct sys_device *sysdev)
 {
 	unsigned long camdivn = __raw_readl(S3C2440_CAMDIVN);
 	unsigned long clkdivn;
@@ -114,28 +115,24 @@ static int s3c244x_clk_add(struct device *dev, struct subsys_interface *sif)
 	return 0;
 }
 
-static struct subsys_interface s3c2440_clk_interface = {
-	.name		= "s3c2440_clk",
-	.subsys		= &s3c2440_subsys,
-	.add_dev	= s3c244x_clk_add,
+static struct sysdev_driver s3c2440_clk_driver = {
+	.add		= s3c244x_clk_add,
 };
 
 static int s3c2440_clk_init(void)
 {
-	return subsys_interface_register(&s3c2440_clk_interface);
+	return sysdev_driver_register(&s3c2440_sysclass, &s3c2440_clk_driver);
 }
 
 arch_initcall(s3c2440_clk_init);
 
-static struct subsys_interface s3c2442_clk_interface = {
-	.name		= "s3c2442_clk",
-	.subsys		= &s3c2442_subsys,
-	.add_dev	= s3c244x_clk_add,
+static struct sysdev_driver s3c2442_clk_driver = {
+	.add		= s3c244x_clk_add,
 };
 
 static int s3c2442_clk_init(void)
 {
-	return subsys_interface_register(&s3c2442_clk_interface);
+	return sysdev_driver_register(&s3c2442_sysclass, &s3c2442_clk_driver);
 }
 
 arch_initcall(s3c2442_clk_init);

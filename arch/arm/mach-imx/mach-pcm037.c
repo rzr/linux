@@ -39,7 +39,6 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <asm/mach/map.h>
-#include <asm/memblock.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <mach/iomux-mx3.h>
@@ -681,8 +680,10 @@ struct sys_timer pcm037_timer = {
 static void __init pcm037_reserve(void)
 {
 	/* reserve 4 MiB for mx3-camera */
-	mx3_camera_base = arm_memblock_steal(MX3_CAMERA_BUF_SIZE,
+	mx3_camera_base = memblock_alloc(MX3_CAMERA_BUF_SIZE,
 			MX3_CAMERA_BUF_SIZE);
+	memblock_free(mx3_camera_base, MX3_CAMERA_BUF_SIZE);
+	memblock_remove(mx3_camera_base, MX3_CAMERA_BUF_SIZE);
 }
 
 MACHINE_START(PCM037, "Phytec Phycore pcm037")
@@ -695,5 +696,4 @@ MACHINE_START(PCM037, "Phytec Phycore pcm037")
 	.handle_irq = imx31_handle_irq,
 	.timer = &pcm037_timer,
 	.init_machine = pcm037_init,
-	.restart	= mxc_restart,
 MACHINE_END

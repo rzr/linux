@@ -809,7 +809,19 @@ static void mts_usb_disconnect (struct usb_interface *intf)
 	kfree(desc);
 }
 
-module_usb_driver(mts_usb_driver);
+
+static int __init microtek_drv_init(void)
+{
+	return usb_register(&mts_usb_driver);
+}
+
+static void __exit microtek_drv_exit(void)
+{
+	usb_deregister(&mts_usb_driver);
+}
+
+module_init(microtek_drv_init);
+module_exit(microtek_drv_exit);
 
 MODULE_AUTHOR( DRIVER_AUTHOR );
 MODULE_DESCRIPTION( DRIVER_DESC );

@@ -140,7 +140,6 @@ struct dw_dma_chan {
 	u8			mask;
 	u8			priority;
 	bool			paused;
-	bool			initialized;
 
 	spinlock_t		lock;
 

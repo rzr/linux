@@ -18,6 +18,7 @@
 #include <linux/stddef.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
+#include <linux/sysdev.h>
 #include <linux/device.h>
 #include <linux/bootmem.h>
 #include <linux/spinlock.h>

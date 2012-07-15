@@ -282,7 +282,18 @@ static struct platform_driver sh_mobile_sdhi_driver = {
 	.remove		= __devexit_p(sh_mobile_sdhi_remove),
 };
 
-module_platform_driver(sh_mobile_sdhi_driver);
+static int __init sh_mobile_sdhi_init(void)
+{
+	return platform_driver_register(&sh_mobile_sdhi_driver);
+}
+
+static void __exit sh_mobile_sdhi_exit(void)
+{
+	platform_driver_unregister(&sh_mobile_sdhi_driver);
+}
+
+module_init(sh_mobile_sdhi_init);
+module_exit(sh_mobile_sdhi_exit);
 
 MODULE_DESCRIPTION("SuperH Mobile SDHI driver");
 MODULE_AUTHOR("Magnus Damm");

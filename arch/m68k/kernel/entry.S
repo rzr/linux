@@ -1,4 +1,4 @@
-#if defined(CONFIG_MMU) && !defined(CONFIG_COLDFIRE)
+#ifdef CONFIG_MMU
 #include "entry_mm.S"
 #else
 #include "entry_no.S"

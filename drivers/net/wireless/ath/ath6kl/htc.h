@@ -393,7 +393,7 @@ struct htc_endpoint_credit_dist {
 	int cred_per_msg;
 
 	/* reserved for HTC use */
-	struct htc_endpoint *htc_ep;
+	void *htc_rsvd;
 
 	/*
 	 * current depth of TX queue , i.e. messages waiting for credits
@@ -414,11 +414,9 @@ enum htc_credit_dist_reason {
 	HTC_CREDIT_DIST_SEEK_CREDITS,
 };
 
-struct ath6kl_htc_credit_info {
+struct htc_credit_state_info {
 	int total_avail_credits;
 	int cur_free_credits;
-
-	/* list of lowest priority endpoints */
 	struct list_head lowestpri_ep_dist;
 };
 
@@ -510,13 +508,10 @@ struct ath6kl_device;
 /* our HTC target state */
 struct htc_target {
 	struct htc_endpoint endpoint[ENDPOINT_MAX];
-
-	/* contains struct htc_endpoint_credit_dist */
 	struct list_head cred_dist_list;
-
 	struct list_head free_ctrl_txbuf;
 	struct list_head free_ctrl_rxbuf;
-	struct ath6kl_htc_credit_info *credit_info;
+	struct htc_credit_state_info *cred_dist_cntxt;
 	int tgt_creds;
 	unsigned int tgt_cred_sz;
 	spinlock_t htc_lock;
@@ -547,7 +542,7 @@ struct htc_target {
 
 void *ath6kl_htc_create(struct ath6kl *ar);
 void ath6kl_htc_set_credit_dist(struct htc_target *target,
-				struct ath6kl_htc_credit_info *cred_info,
+				struct htc_credit_state_info *cred_info,
 				u16 svc_pri_order[], int len);
 int ath6kl_htc_wait_target(struct htc_target *target);
 int ath6kl_htc_start(struct htc_target *target);
@@ -568,10 +563,7 @@ int ath6kl_htc_get_rxbuf_num(struct htc_target *target,
 int ath6kl_htc_add_rxbuf_multiple(struct htc_target *target,
 				  struct list_head *pktq);
 int ath6kl_htc_rxmsg_pending_handler(struct htc_target *target,
-				     u32 msg_look_ahead, int *n_pkts);
-
-int ath6kl_credit_setup(void *htc_handle,
-			struct ath6kl_htc_credit_info *cred_info);
+				     u32 msg_look_ahead[], int *n_pkts);
 
 static inline void set_htc_pkt_info(struct htc_packet *packet, void *context,
 				    u8 *buf, unsigned int len,

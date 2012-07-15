@@ -466,8 +466,8 @@ void rtl92de_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 		bool int_migration = *(bool *) (val);
 
 		if (int_migration) {
-			/* Set interrupt migration timer and
-			 * corresponding Tx/Rx counter.
+			/* Set interrrupt migration timer and
+			 * corresponging Tx/Rx counter.
 			 * timer 25ns*0xfa0=100us for 0xf packets.
 			 * 0x306:Rx, 0x307:Tx */
 			rtl_write_dword(rtlpriv, REG_INT_MIG, 0xfe000fa0);
@@ -932,7 +932,10 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_WARNING,
 			 ("Failed to download FW. Init HW "
 			 "without FW..\n"));
+		rtlhal->fw_ready = false;
 		return 1;
+	} else {
+		rtlhal->fw_ready = true;
 	}
 	rtlhal->last_hmeboxnum = 0;
 	rtlpriv->psc.fw_current_inpsmode = false;

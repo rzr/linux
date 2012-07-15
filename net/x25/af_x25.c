@@ -232,7 +232,7 @@ static int x25_device_event(struct notifier_block *this, unsigned long event,
 		return NOTIFY_DONE;
 
 	if (dev->type == ARPHRD_X25
-#if IS_ENABLED(CONFIG_LLC)
+#if defined(CONFIG_LLC) || defined(CONFIG_LLC_MODULE)
 	 || dev->type == ARPHRD_ETHER
 #endif
 	 ) {

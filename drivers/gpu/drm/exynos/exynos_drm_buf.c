@@ -73,7 +73,7 @@ struct exynos_drm_gem_buf *exynos_drm_buf_create(struct drm_device *dev,
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
 	if (!buffer) {
 		DRM_ERROR("failed to allocate exynos_drm_gem_buf.\n");
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	buffer->size = size;
@@ -84,7 +84,8 @@ struct exynos_drm_gem_buf *exynos_drm_buf_create(struct drm_device *dev,
 	 */
 	if (lowlevel_buffer_allocate(dev, buffer) < 0) {
 		kfree(buffer);
-		return NULL;
+		buffer = NULL;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	return buffer;

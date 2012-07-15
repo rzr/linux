@@ -14,7 +14,7 @@
 
 #include <linux/types.h>
 #include <linux/kernel.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/clk.h>
 #include <linux/err.h>
 
@@ -79,8 +79,7 @@ static struct cpufreq_frequency_table s3c2440_plls_169344[] __initdata = {
 	{ .frequency = 402192000,	.index = PLLVAL(87, 2, 1), 	}, 	/* FVco 804.384000 */
 };
 
-static int s3c2440_plls169344_add(struct device *dev,
-				  struct subsys_interface *sif)
+static int s3c2440_plls169344_add(struct sys_device *dev)
 {
 	struct clk *xtal_clk;
 	unsigned long xtal;
@@ -101,28 +100,28 @@ static int s3c2440_plls169344_add(struct device *dev,
 	return 0;
 }
 
-static struct subsys_interface s3c2440_plls169344_interface = {
-	.name		= "s3c2440_plls169344",
-	.subsys		= &s3c2440_subsys,
-	.add_dev	= s3c2440_plls169344_add,
+static struct sysdev_driver s3c2440_plls169344_drv = {
+	.add	= s3c2440_plls169344_add,
 };
 
 static int __init s3c2440_pll_16934400(void)
 {
-	return subsys_interface_register(&s3c2440_plls169344_interface);
+	return sysdev_driver_register(&s3c2440_sysclass,
+				      &s3c2440_plls169344_drv);
+
 }
 
 arch_initcall(s3c2440_pll_16934400);
 
-static struct subsys_interface s3c2442_plls169344_interface = {
-	.name		= "s3c2442_plls169344",
-	.subsys		= &s3c2442_subsys,
-	.add_dev	= s3c2440_plls169344_add,
+static struct sysdev_driver s3c2442_plls169344_drv = {
+	.add	= s3c2440_plls169344_add,
 };
 
 static int __init s3c2442_pll_16934400(void)
 {
-	return subsys_interface_register(&s3c2442_plls169344_interface);
+	return sysdev_driver_register(&s3c2442_sysclass,
+				      &s3c2442_plls169344_drv);
+
 }
 
 arch_initcall(s3c2442_pll_16934400);

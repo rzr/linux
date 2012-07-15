@@ -32,7 +32,7 @@
 #include <video/omapdss.h>
 
 #ifdef DEBUG
-extern bool omapfb_debug;
+extern unsigned int omapfb_debug;
 #define DBG(format, ...) \
 	do { \
 		if (omapfb_debug) \
@@ -181,10 +181,13 @@ static inline void omapfb_unlock(struct omapfb2_device *fbdev)
 static inline int omapfb_overlay_enable(struct omap_overlay *ovl,
 		int enable)
 {
-	if (enable)
-		return ovl->enable(ovl);
-	else
-		return ovl->disable(ovl);
+	struct omap_overlay_info info;
+
+	ovl->get_overlay_info(ovl, &info);
+	if (info.enabled == enable)
+		return 0;
+	info.enabled = enable;
+	return ovl->set_overlay_info(ovl, &info);
 }
 
 static inline struct omapfb2_mem_region *

@@ -20,19 +20,14 @@
 #include <linux/sched.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
-#include <linux/pagemap.h>
 #include <linux/kthread.h>
 #include <linux/freezer.h>
 #include <linux/writeback.h>
 #include <linux/blkdev.h>
 #include <linux/backing-dev.h>
+#include <linux/buffer_head.h>
 #include <linux/tracepoint.h>
 #include "internal.h"
-
-/*
- * 4MB minimal write chunk size
- */
-#define MIN_WRITEBACK_PAGES	(4096UL >> (PAGE_CACHE_SHIFT - 10))
 
 /*
  * Passed into wb_writeback(), essentially a subset of writeback_control
@@ -748,17 +743,11 @@ static long wb_writeback(struct bdi_writeback *wb,
 		if (work->for_background && !over_bground_thresh(wb->bdi))
 			break;
 
-		/*
-		 * Kupdate and background works are special and we want to
-		 * include all inodes that need writing. Livelock avoidance is
-		 * handled by these works yielding to any other work so we are
-		 * safe.
-		 */
 		if (work->for_kupdate) {
 			oldest_jif = jiffies -
 				msecs_to_jiffies(dirty_expire_interval * 10);
-		} else if (work->for_background)
-			oldest_jif = jiffies;
+			work->older_than_this = &oldest_jif;
+		}
 
 		trace_writeback_start(wb->bdi, work);
 		if (list_empty(&wb->b_io))
@@ -948,7 +937,7 @@ int bdi_writeback_thread(void *data)
 
 	trace_writeback_thread_start(bdi);
 
-	while (!kthread_freezable_should_stop(NULL)) {
+	while (!kthread_should_stop()) {
 		/*
 		 * Remove own delayed wake-up timer, since we are already awake
 		 * and we'll take care of the preriodic write-back.
@@ -978,6 +967,8 @@ int bdi_writeback_thread(void *data)
 			 */
 			schedule();
 		}
+
+		try_to_freeze();
 	}
 
 	/* Flush any work that raced with us exiting */

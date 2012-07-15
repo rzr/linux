@@ -19,6 +19,5 @@ MACHINE_START(PERSONAL_SERVER, "Compaq-PersonalServer")
 	.map_io		= footbridge_map_io,
 	.init_irq	= footbridge_init_irq,
 	.timer		= &footbridge_timer,
-	.restart	= footbridge_restart,
 MACHINE_END
 

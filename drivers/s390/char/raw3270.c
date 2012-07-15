@@ -75,7 +75,7 @@ static LIST_HEAD(raw3270_devices);
 static int raw3270_registered;
 
 /* Module parameters */
-static bool tubxcorrect = 0;
+static int tubxcorrect = 0;
 module_param(tubxcorrect, bool, 0);
 
 /*

@@ -25,8 +25,7 @@
 
 #include "../iio.h"
 #include "../sysfs.h"
-#include "../events.h"
-#include "../buffer.h"
+#include "../buffer_generic.h"
 
 #include "lis3l02dq.h"
 
@@ -227,14 +226,14 @@ static int lis3l02dq_write_raw(struct iio_dev *indio_dev,
 	u8 uval;
 	s8 sval;
 	switch (mask) {
-	case IIO_CHAN_INFO_CALIBBIAS:
+	case (1 << IIO_CHAN_INFO_CALIBBIAS_SEPARATE):
 		if (val > 255 || val < -256)
 			return -EINVAL;
 		sval = val;
 		reg = lis3l02dq_axis_map[LIS3L02DQ_BIAS][chan->address];
 		ret = lis3l02dq_spi_write_reg_8(indio_dev, reg, sval);
 		break;
-	case IIO_CHAN_INFO_CALIBSCALE:
+	case (1 << IIO_CHAN_INFO_CALIBSCALE_SEPARATE):
 		if (val & ~0xFF)
 			return -EINVAL;
 		uval = val;
@@ -260,20 +259,23 @@ static int lis3l02dq_read_raw(struct iio_dev *indio_dev,
 	case 0:
 		/* Take the iio_dev status lock */
 		mutex_lock(&indio_dev->mlock);
-		if (indio_dev->currentmode == INDIO_BUFFER_TRIGGERED) {
-			ret = -EBUSY;
-		} else {
+		if (indio_dev->currentmode == INDIO_BUFFER_TRIGGERED)
+			ret = lis3l02dq_read_accel_from_buffer(indio_dev->
+							       buffer,
+							       chan->scan_index,
+							       val);
+		else {
 			reg = lis3l02dq_axis_map
 				[LIS3L02DQ_ACCEL][chan->address];
 			ret = lis3l02dq_read_reg_s16(indio_dev, reg, val);
 		}
 		mutex_unlock(&indio_dev->mlock);
 		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_SCALE:
+	case (1 << IIO_CHAN_INFO_SCALE_SHARED):
 		*val = 0;
 		*val2 = 9580;
 		return IIO_VAL_INT_PLUS_MICRO;
-	case IIO_CHAN_INFO_CALIBSCALE:
+	case (1 << IIO_CHAN_INFO_CALIBSCALE_SEPARATE):
 		reg = lis3l02dq_axis_map[LIS3L02DQ_GAIN][chan->address];
 		ret = lis3l02dq_spi_read_reg_8(indio_dev, reg, &utemp);
 		if (ret)
@@ -282,7 +284,7 @@ static int lis3l02dq_read_raw(struct iio_dev *indio_dev,
 		*val = utemp;
 		return IIO_VAL_INT;
 
-	case IIO_CHAN_INFO_CALIBBIAS:
+	case (1 << IIO_CHAN_INFO_CALIBBIAS_SEPARATE):
 		reg = lis3l02dq_axis_map[LIS3L02DQ_BIAS][chan->address];
 		ret = lis3l02dq_spi_read_reg_8(indio_dev, reg, (u8 *)&stemp);
 		/* to match with what previous code does */
@@ -329,11 +331,11 @@ static ssize_t lis3l02dq_write_frequency(struct device *dev,
 					 size_t len)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	unsigned long val;
+	long val;
 	int ret;
 	u8 t;
 
-	ret = kstrtoul(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 
@@ -513,9 +515,9 @@ static irqreturn_t lis3l02dq_event_handler(int irq, void *private)
 }
 
 #define LIS3L02DQ_INFO_MASK				\
-	(IIO_CHAN_INFO_SCALE_SHARED_BIT |		\
-	 IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT |	\
-	 IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT)
+	((1 << IIO_CHAN_INFO_SCALE_SHARED) |		\
+	 (1 << IIO_CHAN_INFO_CALIBSCALE_SEPARATE) |	\
+	 (1 << IIO_CHAN_INFO_CALIBBIAS_SEPARATE))
 
 #define LIS3L02DQ_EVENT_MASK					\
 	(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) |	\
@@ -532,7 +534,7 @@ static struct iio_chan_spec lis3l02dq_channels[] = {
 };
 
 
-static int lis3l02dq_read_event_config(struct iio_dev *indio_dev,
+static ssize_t lis3l02dq_read_event_config(struct iio_dev *indio_dev,
 					   u64 event_code)
 {
 
@@ -802,9 +804,19 @@ static struct spi_driver lis3l02dq_driver = {
 	.probe = lis3l02dq_probe,
 	.remove = __devexit_p(lis3l02dq_remove),
 };
-module_spi_driver(lis3l02dq_driver);
+
+static __init int lis3l02dq_init(void)
+{
+	return spi_register_driver(&lis3l02dq_driver);
+}
+module_init(lis3l02dq_init);
+
+static __exit void lis3l02dq_exit(void)
+{
+	spi_unregister_driver(&lis3l02dq_driver);
+}
+module_exit(lis3l02dq_exit);
 
 MODULE_AUTHOR("Jonathan Cameron <jic23@cam.ac.uk>");
 MODULE_DESCRIPTION("ST LIS3L02DQ Accelerometer SPI driver");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("spi:lis3l02dq");

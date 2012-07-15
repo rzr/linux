@@ -522,7 +522,10 @@ static int uvc_v4l2_release(struct file *file)
 	/* Only free resources if this is a privileged handle. */
 	if (uvc_has_privileges(handle)) {
 		uvc_video_enable(stream, 0);
-		uvc_free_buffers(&stream->queue);
+
+		if (uvc_free_buffers(&stream->queue) < 0)
+			uvc_printk(KERN_ERR, "uvc_v4l2_release: Unable to "
+					"free buffers.\n");
 	}
 
 	/* Release the file handle. */
@@ -686,7 +689,7 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 					break;
 			}
 			pin = iterm->id;
-		} else if (pin < selector->bNrInPins) {
+		} else if (index < selector->bNrInPins) {
 			pin = selector->baSourceID[index];
 			list_for_each_entry(iterm, &chain->entities, chain) {
 				if (!UVC_ENTITY_IS_ITERM(iterm))
@@ -920,11 +923,19 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 	/* Buffers & streaming */
 	case VIDIOC_REQBUFS:
+	{
+		struct v4l2_requestbuffers *rb = arg;
+
+		if (rb->type != stream->type ||
+		    rb->memory != V4L2_MEMORY_MMAP)
+			return -EINVAL;
+
 		if ((ret = uvc_acquire_privileges(handle)) < 0)
 			return ret;
 
 		mutex_lock(&stream->mutex);
-		ret = uvc_alloc_buffers(&stream->queue, arg);
+		ret = uvc_alloc_buffers(&stream->queue, rb->count,
+					stream->ctrl.dwMaxVideoFrameSize);
 		mutex_unlock(&stream->mutex);
 		if (ret < 0)
 			return ret;
@@ -932,12 +943,17 @@ static long uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		if (ret == 0)
 			uvc_dismiss_privileges(handle);
 
+		rb->count = ret;
 		ret = 0;
 		break;
+	}
 
 	case VIDIOC_QUERYBUF:
 	{
 		struct v4l2_buffer *buf = arg;
+
+		if (buf->type != stream->type)
+			return -EINVAL;
 
 		if (!uvc_has_privileges(handle))
 			return -EBUSY;

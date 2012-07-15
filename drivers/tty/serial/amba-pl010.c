@@ -795,8 +795,6 @@ static struct amba_id pl010_ids[] = {
 	{ 0, 0 },
 };
 
-MODULE_DEVICE_TABLE(amba, pl010_ids);
-
 static struct amba_driver pl010_driver = {
 	.drv = {
 		.name	= "uart-pl010",

@@ -235,7 +235,6 @@ static void ep_reset(struct goku_udc_regs __iomem *regs, struct goku_ep *ep)
 
 	ep->ep.maxpacket = MAX_FIFO_SIZE;
 	ep->desc = NULL;
-	ep->ep.desc = NULL;
 	ep->stopped = 1;
 	ep->irqs = 0;
 	ep->dma = 0;
@@ -1358,7 +1357,7 @@ static int goku_start(struct usb_gadget_driver *driver,
 	int			retval;
 
 	if (!driver
-			|| driver->max_speed < USB_SPEED_FULL
+			|| driver->speed < USB_SPEED_FULL
 			|| !bind
 			|| !driver->disconnect
 			|| !driver->setup)
@@ -1797,7 +1796,6 @@ static int goku_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	spin_lock_init(&dev->lock);
 	dev->pdev = pdev;
 	dev->gadget.ops = &goku_ops;
-	dev->gadget.max_speed = USB_SPEED_FULL;
 
 	/* the "gadget" abstracts/virtualizes the controller */
 	dev_set_name(&dev->gadget.dev, "gadget");

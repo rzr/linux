@@ -37,7 +37,7 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 
-static bool debug;
+static int debug;
 /*
  * Version information
  */

@@ -24,7 +24,19 @@
 .global _ramstart
 .global _ramend
 
-.global bootlogo_bits
+.global penguin_bits
+
+#ifdef CONFIG_PILOT
+
+#define IMR 0xFFFFF304
+
+	.data
+	.align 16
+
+penguin_bits:	
+#include "bootlogo.rh"
+
+#endif
 
 /*****************************************************************************/
 
@@ -173,6 +185,9 @@ L3:
 	moveq	#79, %d7
 	movel	%d0, _ramend
 
+	movel	%a3, %d0
+	movel	%d0, rom_length
+
 	pea	0
 	pea	env
 	pea	%sp@(4)
@@ -181,7 +196,7 @@ L3:
 	DBG_PUTC('H')
 
 #ifdef CONFIG_PILOT
-	movel	#bootlogo_bits, 0xFFFFFA00
+	movel	#penguin_bits, 0xFFFFFA00
 	moveb	#10, 0xFFFFFA05
 	movew	#160, 0xFFFFFA08
 	movew	#160, 0xFFFFFA0A

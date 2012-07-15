@@ -47,9 +47,9 @@ static unsigned int	def_rotate;
 static unsigned int	def_mirror;
 
 #ifdef CONFIG_FB_OMAP_MANUAL_UPDATE
-static bool		manual_update = 1;
+static int		manual_update = 1;
 #else
-static bool		manual_update;
+static int		manual_update;
 #endif
 
 static struct platform_device	*fbdev_pdev;

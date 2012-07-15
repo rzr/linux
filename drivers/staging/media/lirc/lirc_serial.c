@@ -107,13 +107,13 @@ struct lirc_serial {
 static int type;
 static int io;
 static int irq;
-static bool iommap;
+static int iommap;
 static int ioshift;
-static bool softcarrier = 1;
-static bool share_irq;
-static bool debug;
+static int softcarrier = 1;
+static int share_irq;
+static int debug;
 static int sense = -1;	/* -1 = auto, 0 = active high, 1 = active low */
-static bool txsense;	/* 0 = active high, 1 = active low */
+static int txsense;	/* 0 = active high, 1 = active low */
 
 #define dprintk(fmt, args...)					\
 	do {							\
@@ -773,7 +773,7 @@ static int hardware_init_port(void)
 		/* we fail, there's nothing here */
 		printk(KERN_ERR LIRC_DRIVER_NAME ": port existence test "
 		       "failed, cannot continue\n");
-		return -ENODEV;
+		return -EINVAL;
 	}
 
 
@@ -876,9 +876,10 @@ static int __devinit lirc_serial_probe(struct platform_device *dev)
 		goto exit_free_irq;
 	}
 
-	result = hardware_init_port();
-	if (result < 0)
+	if (hardware_init_port() < 0) {
+		result = -EINVAL;
 		goto exit_release_region;
+	}
 
 	/* Initialize pulse/space widths */
 	init_timing_params(duty_cycle, freq);
@@ -976,7 +977,7 @@ static ssize_t lirc_write(struct file *file, const char *buf,
 	int *wbuf;
 
 	if (!(hardware[type].features & LIRC_CAN_SEND_PULSE))
-		return -EPERM;
+		return -EBADF;
 
 	count = n / sizeof(int);
 	if (n % sizeof(int) || count % 2 == 0)
@@ -1027,11 +1028,11 @@ static long lirc_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 			return result;
 		/* only LIRC_MODE_PULSE supported */
 		if (value != LIRC_MODE_PULSE)
-			return -EINVAL;
+			return -ENOSYS;
 		break;
 
 	case LIRC_GET_LENGTH:
-		return -ENOIOCTLCMD;
+		return -ENOSYS;
 		break;
 
 	case LIRC_SET_SEND_DUTY_CYCLE:
@@ -1122,11 +1123,9 @@ static void lirc_serial_exit(void);
 static int lirc_serial_resume(struct platform_device *dev)
 {
 	unsigned long flags;
-	int result;
 
-	result = hardware_init_port();
-	if (result < 0)
-		return result;
+	if (hardware_init_port() < 0)
+		return -EINVAL;
 
 	spin_lock_irqsave(&hardware[type].lock, flags);
 	/* Enable Interrupt */
@@ -1159,7 +1158,7 @@ static int __init lirc_serial_init(void)
 	/* Init read buffer. */
 	result = lirc_buffer_init(&rbuf, sizeof(int), RBUF_LEN);
 	if (result < 0)
-		return result;
+		return -ENOMEM;
 
 	result = platform_driver_register(&lirc_serial_driver);
 	if (result) {
@@ -1245,7 +1244,7 @@ static int __init lirc_serial_init_module(void)
 		printk(KERN_ERR  LIRC_DRIVER_NAME
 		       ": register_chrdev failed!\n");
 		lirc_serial_exit();
-		return driver.minor;
+		return -EIO;
 	}
 	return 0;
 }

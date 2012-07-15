@@ -67,14 +67,6 @@ struct renesas_usbhs_platform_callback {
 	/*
 	 * option:
 	 *
-	 * for board specific clock control
-	 */
-	void (*power_ctrl)(struct platform_device *pdev,
-			   void __iomem *base, int enable);
-
-	/*
-	 * option:
-	 *
 	 * Phy reset for platform
 	 */
 	void (*phy_reset)(struct platform_device *pdev);
@@ -126,7 +118,7 @@ struct renesas_usbhs_driver_param {
 	 *
 	 * delay time from notify_hotplug callback
 	 */
-	int detection_delay; /* msec */
+	int detection_delay;
 
 	/*
 	 * option:

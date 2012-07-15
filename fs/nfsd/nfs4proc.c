@@ -231,15 +231,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
 		 */
 		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
 			open->op_bmval[1] = (FATTR4_WORD1_TIME_ACCESS |
-						FATTR4_WORD1_TIME_MODIFY);
+							FATTR4_WORD1_TIME_MODIFY);
 	} else {
 		status = nfsd_lookup(rqstp, current_fh,
 				     open->op_fname.data, open->op_fname.len, &resfh);
 		fh_unlock(current_fh);
-		if (status)
-			goto out;
-		status = nfsd_check_obj_isreg(&resfh);
 	}
+	if (status)
+		goto out;
+	status = nfsd_check_obj_isreg(&resfh);
 	if (status)
 		goto out;
 
@@ -265,6 +265,10 @@ static __be32
 do_open_fhandle(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
 {
 	__be32 status;
+
+	/* Only reclaims from previously confirmed clients are valid */
+	if ((status = nfs4_check_open_reclaim(&open->op_clientid)))
+		return status;
 
 	/* We don't know the target directory, and therefore can not
 	* set the change info
@@ -369,9 +373,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
 			break;
 		case NFS4_OPEN_CLAIM_PREVIOUS:
 			open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
-			status = nfs4_check_open_reclaim(&open->op_clientid);
-			if (status)
-				goto out;
 		case NFS4_OPEN_CLAIM_FH:
 		case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
 			status = do_open_fhandle(rqstp, &cstate->current_fh,
@@ -838,7 +839,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
 			return status;
 		}
 	}
-	err = fh_want_write(&cstate->current_fh);
+	err = mnt_want_write(cstate->current_fh.fh_export->ex_path.mnt);
 	if (err)
 		return nfserrno(err);
 	status = nfs_ok;
@@ -856,7 +857,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
 	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
 				0, (time_t)0);
 out:
-	fh_drop_write(&cstate->current_fh);
+	mnt_drop_write(cstate->current_fh.fh_export->ex_path.mnt);
 	return status;
 }
 

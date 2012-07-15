@@ -5,6 +5,7 @@
 #include "util.h"
 #include "probe-event.h"
 
+#define MAX_PATH_LEN		 256
 #define MAX_PROBE_BUFFER	1024
 #define MAX_PROBES		 128
 

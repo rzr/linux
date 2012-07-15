@@ -227,7 +227,7 @@ static int wm8350_led_probe(struct platform_device *pdev)
 		goto err_isink;
 	}
 
-	led = devm_kzalloc(&pdev->dev, sizeof(*led), GFP_KERNEL);
+	led = kzalloc(sizeof(*led), GFP_KERNEL);
 	if (led == NULL) {
 		ret = -ENOMEM;
 		goto err_dcdc;
@@ -259,10 +259,12 @@ static int wm8350_led_probe(struct platform_device *pdev)
 
 	ret = led_classdev_register(&pdev->dev, &led->cdev);
 	if (ret < 0)
-		goto err_dcdc;
+		goto err_led;
 
 	return 0;
 
+ err_led:
+	kfree(led);
  err_dcdc:
 	regulator_put(dcdc);
  err_isink:
@@ -279,6 +281,7 @@ static int wm8350_led_remove(struct platform_device *pdev)
 	wm8350_led_disable(led);
 	regulator_put(led->dcdc);
 	regulator_put(led->isink);
+	kfree(led);
 	return 0;
 }
 
@@ -292,7 +295,17 @@ static struct platform_driver wm8350_led_driver = {
 	.shutdown = wm8350_led_shutdown,
 };
 
-module_platform_driver(wm8350_led_driver);
+static int __devinit wm8350_led_init(void)
+{
+	return platform_driver_register(&wm8350_led_driver);
+}
+module_init(wm8350_led_init);
+
+static void wm8350_led_exit(void)
+{
+	platform_driver_unregister(&wm8350_led_driver);
+}
+module_exit(wm8350_led_exit);
 
 MODULE_AUTHOR("Mark Brown");
 MODULE_DESCRIPTION("WM8350 LED driver");

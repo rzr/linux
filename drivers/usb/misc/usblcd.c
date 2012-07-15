@@ -450,7 +450,25 @@ static struct usb_driver lcd_driver = {
 	.supports_autosuspend = 1,
 };
 
-module_usb_driver(lcd_driver);
+static int __init usb_lcd_init(void)
+{
+	int result;
+
+	result = usb_register(&lcd_driver);
+	if (result)
+		err("usb_register failed. Error number %d", result);
+
+	return result;
+}
+
+
+static void __exit usb_lcd_exit(void)
+{
+	usb_deregister(&lcd_driver);
+}
+
+module_init(usb_lcd_init);
+module_exit(usb_lcd_exit);
 
 MODULE_AUTHOR("Georges Toth <g.toth@e-biz.lu>");
 MODULE_DESCRIPTION(DRIVER_VERSION);

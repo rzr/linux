@@ -337,7 +337,7 @@ static inline int cx231xx_isoc_copy(struct cx231xx *dev, struct urb *urb)
 	if (!dev)
 		return 0;
 
-	if (dev->state & DEV_DISCONNECTED)
+	if ((dev->state & DEV_DISCONNECTED) || (dev->state & DEV_MISCONFIGURED))
 		return 0;
 
 	if (urb->status < 0) {
@@ -440,7 +440,7 @@ static inline int cx231xx_bulk_copy(struct cx231xx *dev, struct urb *urb)
 	if (!dev)
 		return 0;
 
-	if (dev->state & DEV_DISCONNECTED)
+	if ((dev->state & DEV_DISCONNECTED) || (dev->state & DEV_MISCONFIGURED))
 		return 0;
 
 	if (urb->status < 0) {
@@ -999,6 +999,12 @@ static int check_dev(struct cx231xx *dev)
 	if (dev->state & DEV_DISCONNECTED) {
 		cx231xx_errdev("v4l2 ioctl: device not present\n");
 		return -ENODEV;
+	}
+
+	if (dev->state & DEV_MISCONFIGURED) {
+		cx231xx_errdev("v4l2 ioctl: device is misconfigured; "
+			       "close and open it again\n");
+		return -EIO;
 	}
 	return 0;
 }
@@ -2341,8 +2347,7 @@ static int cx231xx_v4l2_close(struct file *filp)
 			return 0;
 		}
 
-	dev->users--;
-	if (!dev->users) {
+	if (dev->users == 1) {
 		videobuf_stop(&fh->vb_vidq);
 		videobuf_mmap_free(&fh->vb_vidq);
 
@@ -2369,6 +2374,7 @@ static int cx231xx_v4l2_close(struct file *filp)
 		cx231xx_set_alt_setting(dev, INDEX_VIDEO, 0);
 	}
 	kfree(fh);
+	dev->users--;
 	wake_up_interruptible_nr(&dev->open, 1);
 	return 0;
 }

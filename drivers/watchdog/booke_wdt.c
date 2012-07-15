@@ -198,13 +198,9 @@ static long booke_wdt_ioctl(struct file *file,
 		booke_wdt_period = tmp;
 #endif
 		booke_wdt_set();
-		/* Fall */
+		return 0;
 	case WDIOC_GETTIMEOUT:
-#ifdef	CONFIG_FSL_BOOKE
-		return put_user(period_to_sec(booke_wdt_period), p);
-#else
 		return put_user(booke_wdt_period, p);
-#endif
 	default:
 		return -ENOTTY;
 	}

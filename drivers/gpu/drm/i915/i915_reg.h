@@ -164,6 +164,14 @@
 #define MI_DISPLAY_FLIP		MI_INSTR(0x14, 2)
 #define MI_DISPLAY_FLIP_I915	MI_INSTR(0x14, 1)
 #define   MI_DISPLAY_FLIP_PLANE(n) ((n) << 20)
+/* IVB has funny definitions for which plane to flip. */
+#define   MI_DISPLAY_FLIP_IVB_PLANE_A  (0 << 19)
+#define   MI_DISPLAY_FLIP_IVB_PLANE_B  (1 << 19)
+#define   MI_DISPLAY_FLIP_IVB_SPRITE_A (2 << 19)
+#define   MI_DISPLAY_FLIP_IVB_SPRITE_B (3 << 19)
+#define   MI_DISPLAY_FLIP_IVB_PLANE_C  (4 << 19)
+#define   MI_DISPLAY_FLIP_IVB_SPRITE_C (5 << 19)
+
 #define MI_SET_CONTEXT		MI_INSTR(0x18, 0)
 #define   MI_MM_SPACE_GTT		(1<<8)
 #define   MI_MM_SPACE_PHYSICAL		(0<<8)
@@ -523,6 +531,7 @@
 #define   CM0_MASK_SHIFT          16
 #define   CM0_IZ_OPT_DISABLE      (1<<6)
 #define   CM0_ZR_OPT_DISABLE      (1<<5)
+#define	  CM0_STC_EVICT_DISABLE_LRA_SNB	(1<<5)
 #define   CM0_DEPTH_EVICT_DISABLE (1<<4)
 #define   CM0_COLOR_EVICT_DISABLE (1<<3)
 #define   CM0_DEPTH_WRITE_DISABLE (1<<1)
@@ -568,6 +577,21 @@
 #define   GEN6_BSD_USER_INTERRUPT	(1 << 12)
 
 #define GEN6_BSD_RNCID			0x12198
+
+#define GEN7_FF_THREAD_MODE		0x20a0
+#define   GEN7_FF_SCHED_MASK		0x0077070
+#define   GEN7_FF_TS_SCHED_HS1		(0x5<<16)
+#define   GEN7_FF_TS_SCHED_HS0		(0x3<<16)
+#define   GEN7_FF_TS_SCHED_LOAD_BALANCE	(0x1<<16)
+#define   GEN7_FF_TS_SCHED_HW		(0x0<<16) /* Default */
+#define   GEN7_FF_VS_SCHED_HS1		(0x5<<12)
+#define   GEN7_FF_VS_SCHED_HS0		(0x3<<12)
+#define   GEN7_FF_VS_SCHED_LOAD_BALANCE	(0x1<<12) /* Default */
+#define   GEN7_FF_VS_SCHED_HW		(0x0<<12)
+#define   GEN7_FF_DS_SCHED_HS1		(0x5<<4)
+#define   GEN7_FF_DS_SCHED_HS0		(0x3<<4)
+#define   GEN7_FF_DS_SCHED_LOAD_BALANCE	(0x1<<4)  /* Default */
+#define   GEN7_FF_DS_SCHED_HW		(0x0<<4)
 
 /*
  * Framebuffer compression (915+ only)
@@ -2323,7 +2347,6 @@
 #define   PIPECONF_PROGRESSIVE	(0 << 21)
 #define   PIPECONF_INTERLACE_W_FIELD_INDICATION	(6 << 21)
 #define   PIPECONF_INTERLACE_FIELD_0_ONLY		(7 << 21)
-#define   PIPECONF_INTERLACE_MASK	(7 << 21)
 #define   PIPECONF_CXSR_DOWNCLOCK	(1<<16)
 #define   PIPECONF_BPP_MASK	(0x000000e0)
 #define   PIPECONF_BPP_8	(0<<5)
@@ -2462,8 +2485,6 @@
 #define WM3_LP_ILK		0x45110
 #define  WM3_LP_EN		(1<<31)
 #define WM1S_LP_ILK		0x45120
-#define WM2S_LP_IVB		0x45124
-#define WM3S_LP_IVB		0x45128
 #define  WM1S_LP_EN		(1<<31)
 
 /* Memory latency timer register */
@@ -2680,140 +2701,6 @@
 #define _DSPBSURF		0x7119C
 #define _DSPBTILEOFF		0x711A4
 
-/* Sprite A control */
-#define _DVSACNTR		0x72180
-#define   DVS_ENABLE		(1<<31)
-#define   DVS_GAMMA_ENABLE	(1<<30)
-#define   DVS_PIXFORMAT_MASK	(3<<25)
-#define   DVS_FORMAT_YUV422	(0<<25)
-#define   DVS_FORMAT_RGBX101010	(1<<25)
-#define   DVS_FORMAT_RGBX888	(2<<25)
-#define   DVS_FORMAT_RGBX161616	(3<<25)
-#define   DVS_SOURCE_KEY	(1<<22)
-#define   DVS_RGB_ORDER_XBGR	(1<<20)
-#define   DVS_YUV_BYTE_ORDER_MASK (3<<16)
-#define   DVS_YUV_ORDER_YUYV	(0<<16)
-#define   DVS_YUV_ORDER_UYVY	(1<<16)
-#define   DVS_YUV_ORDER_YVYU	(2<<16)
-#define   DVS_YUV_ORDER_VYUY	(3<<16)
-#define   DVS_DEST_KEY		(1<<2)
-#define   DVS_TRICKLE_FEED_DISABLE (1<<14)
-#define   DVS_TILED		(1<<10)
-#define _DVSALINOFF		0x72184
-#define _DVSASTRIDE		0x72188
-#define _DVSAPOS		0x7218c
-#define _DVSASIZE		0x72190
-#define _DVSAKEYVAL		0x72194
-#define _DVSAKEYMSK		0x72198
-#define _DVSASURF		0x7219c
-#define _DVSAKEYMAXVAL		0x721a0
-#define _DVSATILEOFF		0x721a4
-#define _DVSASURFLIVE		0x721ac
-#define _DVSASCALE		0x72204
-#define   DVS_SCALE_ENABLE	(1<<31)
-#define   DVS_FILTER_MASK	(3<<29)
-#define   DVS_FILTER_MEDIUM	(0<<29)
-#define   DVS_FILTER_ENHANCING	(1<<29)
-#define   DVS_FILTER_SOFTENING	(2<<29)
-#define   DVS_VERTICAL_OFFSET_HALF (1<<28) /* must be enabled below */
-#define   DVS_VERTICAL_OFFSET_ENABLE (1<<27)
-#define _DVSAGAMC		0x72300
-
-#define _DVSBCNTR		0x73180
-#define _DVSBLINOFF		0x73184
-#define _DVSBSTRIDE		0x73188
-#define _DVSBPOS		0x7318c
-#define _DVSBSIZE		0x73190
-#define _DVSBKEYVAL		0x73194
-#define _DVSBKEYMSK		0x73198
-#define _DVSBSURF		0x7319c
-#define _DVSBKEYMAXVAL		0x731a0
-#define _DVSBTILEOFF		0x731a4
-#define _DVSBSURFLIVE		0x731ac
-#define _DVSBSCALE		0x73204
-#define _DVSBGAMC		0x73300
-
-#define DVSCNTR(pipe) _PIPE(pipe, _DVSACNTR, _DVSBCNTR)
-#define DVSLINOFF(pipe) _PIPE(pipe, _DVSALINOFF, _DVSBLINOFF)
-#define DVSSTRIDE(pipe) _PIPE(pipe, _DVSASTRIDE, _DVSBSTRIDE)
-#define DVSPOS(pipe) _PIPE(pipe, _DVSAPOS, _DVSBPOS)
-#define DVSSURF(pipe) _PIPE(pipe, _DVSASURF, _DVSBSURF)
-#define DVSKEYMAX(pipe) _PIPE(pipe, _DVSAKEYMAXVAL, _DVSBKEYMAXVAL)
-#define DVSSIZE(pipe) _PIPE(pipe, _DVSASIZE, _DVSBSIZE)
-#define DVSSCALE(pipe) _PIPE(pipe, _DVSASCALE, _DVSBSCALE)
-#define DVSTILEOFF(pipe) _PIPE(pipe, _DVSATILEOFF, _DVSBTILEOFF)
-#define DVSKEYVAL(pipe) _PIPE(pipe, _DVSAKEYVAL, _DVSBKEYVAL)
-#define DVSKEYMSK(pipe) _PIPE(pipe, _DVSAKEYMSK, _DVSBKEYMSK)
-
-#define _SPRA_CTL		0x70280
-#define   SPRITE_ENABLE			(1<<31)
-#define   SPRITE_GAMMA_ENABLE		(1<<30)
-#define   SPRITE_PIXFORMAT_MASK		(7<<25)
-#define   SPRITE_FORMAT_YUV422		(0<<25)
-#define   SPRITE_FORMAT_RGBX101010	(1<<25)
-#define   SPRITE_FORMAT_RGBX888		(2<<25)
-#define   SPRITE_FORMAT_RGBX161616	(3<<25)
-#define   SPRITE_FORMAT_YUV444		(4<<25)
-#define   SPRITE_FORMAT_XR_BGR101010	(5<<25) /* Extended range */
-#define   SPRITE_CSC_ENABLE		(1<<24)
-#define   SPRITE_SOURCE_KEY		(1<<22)
-#define   SPRITE_RGB_ORDER_RGBX		(1<<20) /* only for 888 and 161616 */
-#define   SPRITE_YUV_TO_RGB_CSC_DISABLE	(1<<19)
-#define   SPRITE_YUV_CSC_FORMAT_BT709	(1<<18) /* 0 is BT601 */
-#define   SPRITE_YUV_BYTE_ORDER_MASK	(3<<16)
-#define   SPRITE_YUV_ORDER_YUYV		(0<<16)
-#define   SPRITE_YUV_ORDER_UYVY		(1<<16)
-#define   SPRITE_YUV_ORDER_YVYU		(2<<16)
-#define   SPRITE_YUV_ORDER_VYUY		(3<<16)
-#define   SPRITE_TRICKLE_FEED_DISABLE	(1<<14)
-#define   SPRITE_INT_GAMMA_ENABLE	(1<<13)
-#define   SPRITE_TILED			(1<<10)
-#define   SPRITE_DEST_KEY		(1<<2)
-#define _SPRA_LINOFF		0x70284
-#define _SPRA_STRIDE		0x70288
-#define _SPRA_POS		0x7028c
-#define _SPRA_SIZE		0x70290
-#define _SPRA_KEYVAL		0x70294
-#define _SPRA_KEYMSK		0x70298
-#define _SPRA_SURF		0x7029c
-#define _SPRA_KEYMAX		0x702a0
-#define _SPRA_TILEOFF		0x702a4
-#define _SPRA_SCALE		0x70304
-#define   SPRITE_SCALE_ENABLE	(1<<31)
-#define   SPRITE_FILTER_MASK	(3<<29)
-#define   SPRITE_FILTER_MEDIUM	(0<<29)
-#define   SPRITE_FILTER_ENHANCING	(1<<29)
-#define   SPRITE_FILTER_SOFTENING	(2<<29)
-#define   SPRITE_VERTICAL_OFFSET_HALF	(1<<28) /* must be enabled below */
-#define   SPRITE_VERTICAL_OFFSET_ENABLE	(1<<27)
-#define _SPRA_GAMC		0x70400
-
-#define _SPRB_CTL		0x71280
-#define _SPRB_LINOFF		0x71284
-#define _SPRB_STRIDE		0x71288
-#define _SPRB_POS		0x7128c
-#define _SPRB_SIZE		0x71290
-#define _SPRB_KEYVAL		0x71294
-#define _SPRB_KEYMSK		0x71298
-#define _SPRB_SURF		0x7129c
-#define _SPRB_KEYMAX		0x712a0
-#define _SPRB_TILEOFF		0x712a4
-#define _SPRB_SCALE		0x71304
-#define _SPRB_GAMC		0x71400
-
-#define SPRCTL(pipe) _PIPE(pipe, _SPRA_CTL, _SPRB_CTL)
-#define SPRLINOFF(pipe) _PIPE(pipe, _SPRA_LINOFF, _SPRB_LINOFF)
-#define SPRSTRIDE(pipe) _PIPE(pipe, _SPRA_STRIDE, _SPRB_STRIDE)
-#define SPRPOS(pipe) _PIPE(pipe, _SPRA_POS, _SPRB_POS)
-#define SPRSIZE(pipe) _PIPE(pipe, _SPRA_SIZE, _SPRB_SIZE)
-#define SPRKEYVAL(pipe) _PIPE(pipe, _SPRA_KEYVAL, _SPRB_KEYVAL)
-#define SPRKEYMSK(pipe) _PIPE(pipe, _SPRA_KEYMSK, _SPRB_KEYMSK)
-#define SPRSURF(pipe) _PIPE(pipe, _SPRA_SURF, _SPRB_SURF)
-#define SPRKEYMAX(pipe) _PIPE(pipe, _SPRA_KEYMAX, _SPRB_KEYMAX)
-#define SPRTILEOFF(pipe) _PIPE(pipe, _SPRA_TILEOFF, _SPRB_TILEOFF)
-#define SPRSCALE(pipe) _PIPE(pipe, _SPRA_SCALE, _SPRB_SCALE)
-#define SPRGAMC(pipe) _PIPE(pipe, _SPRA_GAMC, _SPRB_GAMC)
-
 /* VBIOS regs */
 #define VGACNTRL		0x71400
 # define VGA_DISP_DISABLE			(1 << 31)
@@ -3020,10 +2907,6 @@
 #define   ILK_CLK_FBC		(1<<7)
 #define   ILK_DPFC_DIS1		(1<<8)
 #define   ILK_DPFC_DIS2		(1<<9)
-
-#define IVB_CHICKEN3	0x4200c
-# define CHICKEN3_DGMG_REQ_OUT_FIX_DISABLE	(1 << 5)
-# define CHICKEN3_DGMG_DONE_FIX_DISABLE		(1 << 2)
 
 #define DISP_ARB_CTL	0x45000
 #define  DISP_TILE_SURFACE_SWIZZLING	(1<<13)
@@ -3719,14 +3602,6 @@
 #define GEN6_PCODE_DATA				0x138128
 #define   GEN6_PCODE_FREQ_IA_RATIO_SHIFT	8
 
-#define GEN6_GT_CORE_STATUS		0x138060
-#define   GEN6_CORE_CPD_STATE_MASK	(7<<4)
-#define   GEN6_RCn_MASK			7
-#define   GEN6_RC0			0
-#define   GEN6_RC3			2
-#define   GEN6_RC6			3
-#define   GEN6_RC7			4
-
 #define G4X_AUD_VID_DID			0x62020
 #define INTEL_AUDIO_DEVCL		0x808629FB
 #define INTEL_AUDIO_DEVBLC		0x80862801
@@ -3739,23 +3614,17 @@
 #define G4X_ELD_ACK			(1 << 4)
 #define G4X_HDMIW_HDMIEDID		0x6210C
 
-#define IBX_HDMIW_HDMIEDID_A		0xE2050
-#define IBX_AUD_CNTL_ST_A		0xE20B4
-#define IBX_ELD_BUFFER_SIZE		(0x1f << 10)
-#define IBX_ELD_ADDRESS			(0x1f << 5)
-#define IBX_ELD_ACK			(1 << 4)
-#define IBX_AUD_CNTL_ST2		0xE20C0
-#define IBX_ELD_VALIDB			(1 << 0)
-#define IBX_CP_READYB			(1 << 1)
+#define GEN5_HDMIW_HDMIEDID_A		0xE2050
+#define GEN5_AUD_CNTL_ST_A		0xE20B4
+#define GEN5_ELD_BUFFER_SIZE		(0x1f << 10)
+#define GEN5_ELD_ADDRESS		(0x1f << 5)
+#define GEN5_ELD_ACK			(1 << 4)
+#define GEN5_AUD_CNTL_ST2		0xE20C0
+#define GEN5_ELD_VALIDB			(1 << 0)
+#define GEN5_CP_READYB			(1 << 1)
 
-#define CPT_HDMIW_HDMIEDID_A		0xE5050
-#define CPT_AUD_CNTL_ST_A		0xE50B4
-#define CPT_AUD_CNTRL_ST2		0xE50C0
-
-/* These are the 4 32-bit write offset registers for each stream
- * output buffer.  It determines the offset from the
- * 3DSTATE_SO_BUFFERs that the next streamed vertex output goes to.
- */
-#define GEN7_SO_WRITE_OFFSET(n)		(0x5280 + (n) * 4)
+#define GEN7_HDMIW_HDMIEDID_A		0xE5050
+#define GEN7_AUD_CNTRL_ST_A		0xE50B4
+#define GEN7_AUD_CNTRL_ST2		0xE50C0
 
 #endif /* _I915_REG_H_ */

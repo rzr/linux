@@ -222,6 +222,9 @@ ltq_wdt_remove(struct platform_device *pdev)
 {
 	misc_deregister(&ltq_wdt_miscdev);
 
+	if (ltq_wdt_membase)
+		iounmap(ltq_wdt_membase);
+
 	return 0;
 }
 

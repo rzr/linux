@@ -410,7 +410,18 @@ static struct platform_driver twl6040_vibra_driver = {
 		.pm	= &twl6040_vibra_pm_ops,
 	},
 };
-module_platform_driver(twl6040_vibra_driver);
+
+static int __init twl6040_vibra_init(void)
+{
+	return platform_driver_register(&twl6040_vibra_driver);
+}
+module_init(twl6040_vibra_init);
+
+static void __exit twl6040_vibra_exit(void)
+{
+	platform_driver_unregister(&twl6040_vibra_driver);
+}
+module_exit(twl6040_vibra_exit);
 
 MODULE_ALIAS("platform:twl6040-vibra");
 MODULE_DESCRIPTION("TWL6040 Vibra driver");

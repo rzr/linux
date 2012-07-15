@@ -17,7 +17,7 @@
 #include <linux/init.h>
 #include <linux/clk.h>
 #include <linux/io.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/serial_core.h>
 #include <linux/platform_device.h>
 
@@ -38,8 +38,7 @@
 #include <plat/sdhci.h>
 #include <plat/iic-core.h>
 #include <plat/onenand-core.h>
-
-#include "common.h"
+#include <plat/s3c6400.h>
 
 void __init s3c6400_map_io(void)
 {
@@ -61,7 +60,7 @@ void __init s3c6400_map_io(void)
 void __init s3c6400_init_clocks(int xtal)
 {
 	s3c64xx_register_clocks(xtal, S3C6400_CLKDIV0_ARM_MASK);
-	s3c64xx_setup_clocks();
+	s3c6400_setup_clocks();
 }
 
 void __init s3c6400_init_irq(void)
@@ -71,18 +70,17 @@ void __init s3c6400_init_irq(void)
 	s3c64xx_init_irq(~0 & ~(0xf << 5), ~0);
 }
 
-static struct bus_type s3c6400_subsys = {
-	.name		= "s3c6400-core",
-	.dev_name	= "s3c6400-core",
+static struct sysdev_class s3c6400_sysclass = {
+	.name	= "s3c6400-core",
 };
 
-static struct device s3c6400_dev = {
-	.bus	= &s3c6400_subsys,
+static struct sys_device s3c6400_sysdev = {
+	.cls	= &s3c6400_sysclass,
 };
 
 static int __init s3c6400_core_init(void)
 {
-	return subsys_system_register(&s3c6400_subsys, NULL);
+	return sysdev_class_register(&s3c6400_sysclass);
 }
 
 core_initcall(s3c6400_core_init);
@@ -91,5 +89,5 @@ int __init s3c6400_init(void)
 {
 	printk("S3C6400: Initialising architecture\n");
 
-	return device_register(&s3c6400_dev);
+	return sysdev_register(&s3c6400_sysdev);
 }

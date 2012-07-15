@@ -31,7 +31,6 @@
  * SOFTWARE.
  */
 
-#include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/io-mapping.h>
@@ -86,8 +85,7 @@ int mlx4_init_pd_table(struct mlx4_dev *dev)
 	struct mlx4_priv *priv = mlx4_priv(dev);
 
 	return mlx4_bitmap_init(&priv->pd_bitmap, dev->caps.num_pds,
-				(1 << NOT_MASKED_PD_BITS) - 1,
-				 dev->caps.reserved_pds, 0);
+				(1 << 24) - 1, dev->caps.reserved_pds, 0);
 }
 
 void mlx4_cleanup_pd_table(struct mlx4_dev *dev)
@@ -110,19 +108,13 @@ void mlx4_cleanup_xrcd_table(struct mlx4_dev *dev)
 
 int mlx4_uar_alloc(struct mlx4_dev *dev, struct mlx4_uar *uar)
 {
-	int offset;
-
 	uar->index = mlx4_bitmap_alloc(&mlx4_priv(dev)->uar_table.bitmap);
 	if (uar->index == -1)
 		return -ENOMEM;
 
-	if (mlx4_is_slave(dev))
-		offset = uar->index % ((int) pci_resource_len(dev->pdev, 2) /
-				       dev->caps.uar_page_size);
-	else
-		offset = uar->index;
-	uar->pfn = (pci_resource_start(dev->pdev, 2) >> PAGE_SHIFT) + offset;
+	uar->pfn = (pci_resource_start(dev->pdev, 2) >> PAGE_SHIFT) + uar->index;
 	uar->map = NULL;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mlx4_uar_alloc);
@@ -240,7 +232,7 @@ int mlx4_init_uar_table(struct mlx4_dev *dev)
 
 	return mlx4_bitmap_init(&mlx4_priv(dev)->uar_table.bitmap,
 				dev->caps.num_uars, dev->caps.num_uars - 1,
-				dev->caps.reserved_uars, 0);
+				max(128, dev->caps.reserved_uars), 0);
 }
 
 void mlx4_cleanup_uar_table(struct mlx4_dev *dev)

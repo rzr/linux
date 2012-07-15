@@ -364,7 +364,18 @@ static struct platform_driver max63xx_wdt_driver = {
 	},
 };
 
-module_platform_driver(max63xx_wdt_driver);
+static int __init max63xx_wdt_init(void)
+{
+	return platform_driver_register(&max63xx_wdt_driver);
+}
+
+static void __exit max63xx_wdt_exit(void)
+{
+	platform_driver_unregister(&max63xx_wdt_driver);
+}
+
+module_init(max63xx_wdt_init);
+module_exit(max63xx_wdt_exit);
 
 MODULE_AUTHOR("Marc Zyngier <maz@misterjones.org>");
 MODULE_DESCRIPTION("max63xx Watchdog Driver");

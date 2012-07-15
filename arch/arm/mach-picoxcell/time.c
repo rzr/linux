@@ -11,6 +11,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/sched.h>
 
 #include <asm/mach/time.h>
 #include <asm/sched_clock.h>
@@ -65,11 +66,21 @@ static void picoxcell_add_clocksource(struct device_node *source_timer)
 	dw_apb_clocksource_register(cs);
 }
 
+static DEFINE_CLOCK_DATA(cd);
 static void __iomem *sched_io_base;
 
-static u32 picoxcell_read_sched_clock(void)
+unsigned long long notrace sched_clock(void)
 {
-	return __raw_readl(sched_io_base);
+	cycle_t cyc = sched_io_base ? __raw_readl(sched_io_base) : 0;
+
+	return cyc_to_sched_clock(&cd, cyc, (u32)~0);
+}
+
+static void notrace picoxcell_update_sched_clock(void)
+{
+	cycle_t cyc = sched_io_base ? __raw_readl(sched_io_base) : 0;
+
+	update_sched_clock(&cd, cyc, (u32)~0);
 }
 
 static const struct of_device_id picoxcell_rtc_ids[] __initconst = {
@@ -89,7 +100,7 @@ static void picoxcell_init_sched_clock(void)
 	timer_get_base_and_rate(sched_timer, &sched_io_base, &rate);
 	of_node_put(sched_timer);
 
-	setup_sched_clock(picoxcell_read_sched_clock, 32, rate);
+	init_sched_clock(&cd, picoxcell_update_sched_clock, 32, rate);
 }
 
 static const struct of_device_id picoxcell_timer_ids[] __initconst = {

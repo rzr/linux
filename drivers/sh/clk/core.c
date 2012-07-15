@@ -355,7 +355,7 @@ static int clk_establish_mapping(struct clk *clk)
 		 */
 		if (!clk->parent) {
 			clk->mapping = &dummy_mapping;
-			goto out;
+			return 0;
 		}
 
 		/*
@@ -384,9 +384,6 @@ static int clk_establish_mapping(struct clk *clk)
 	}
 
 	clk->mapping = mapping;
-out:
-	clk->mapped_reg = clk->mapping->base;
-	clk->mapped_reg += (phys_addr_t)clk->enable_reg - clk->mapping->phys;
 	return 0;
 }
 
@@ -405,12 +402,10 @@ static void clk_teardown_mapping(struct clk *clk)
 
 	/* Nothing to do */
 	if (mapping == &dummy_mapping)
-		goto out;
+		return;
 
 	kref_put(&mapping->ref, clk_destroy_mapping);
 	clk->mapping = NULL;
-out:
-	clk->mapped_reg = NULL;
 }
 
 int clk_register(struct clk *clk)

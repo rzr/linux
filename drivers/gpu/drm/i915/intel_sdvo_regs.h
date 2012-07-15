@@ -1,5 +1,5 @@
 /*
- * Copyright Â© 2006-2007 Intel Corporation
+ * Copyright © 2006-2007 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -60,6 +60,11 @@ struct intel_sdvo_caps {
 	unsigned int pad:1;
 	u16 output_flags;
 } __attribute__((packed));
+
+/* Note: SDVO detailed timing flags match EDID misc flags. */
+#define DTD_FLAG_HSYNC_POSITIVE (1 << 1)
+#define DTD_FLAG_VSYNC_POSITIVE (1 << 2)
+#define DTD_FLAG_INTERLACE	(1 << 7)
 
 /** This matches the EDID DTD structure, more or less */
 struct intel_sdvo_dtd {

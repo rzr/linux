@@ -59,7 +59,7 @@ struct usb_context {
 	struct usbnet *dev;
 };
 
-static bool turbo_mode = true;
+static int turbo_mode = true;
 module_param(turbo_mode, bool, 0644);
 MODULE_PARM_DESC(turbo_mode, "Enable multiple frames per Rx transaction");
 
@@ -516,8 +516,7 @@ static void smsc95xx_status(struct usbnet *dev, struct urb *urb)
 }
 
 /* Enable or disable Tx & Rx checksum offload engines */
-static int smsc95xx_set_features(struct net_device *netdev,
-	netdev_features_t features)
+static int smsc95xx_set_features(struct net_device *netdev, u32 features)
 {
 	struct usbnet *dev = netdev_priv(netdev);
 	u32 read_buf;
@@ -1191,7 +1190,7 @@ static const struct driver_info smsc95xx_info = {
 	.rx_fixup	= smsc95xx_rx_fixup,
 	.tx_fixup	= smsc95xx_tx_fixup,
 	.status		= smsc95xx_status,
-	.flags		= FLAG_ETHER | FLAG_SEND_ZLP,
+	.flags		= FLAG_ETHER | FLAG_SEND_ZLP | FLAG_LINK_INTR,
 };
 
 static const struct usb_device_id products[] = {
@@ -1298,7 +1297,17 @@ static struct usb_driver smsc95xx_driver = {
 	.disconnect	= usbnet_disconnect,
 };
 
-module_usb_driver(smsc95xx_driver);
+static int __init smsc95xx_init(void)
+{
+	return usb_register(&smsc95xx_driver);
+}
+module_init(smsc95xx_init);
+
+static void __exit smsc95xx_exit(void)
+{
+	usb_deregister(&smsc95xx_driver);
+}
+module_exit(smsc95xx_exit);
 
 MODULE_AUTHOR("Nancy Lin");
 MODULE_AUTHOR("Steve Glendinning <steve.glendinning@smsc.com>");

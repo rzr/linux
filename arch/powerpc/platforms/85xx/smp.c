@@ -27,7 +27,6 @@
 
 #include <sysdev/fsl_soc.h>
 #include <sysdev/mpic.h>
-#include "smp.h"
 
 extern void __early_start(void);
 

@@ -325,9 +325,9 @@ static ssize_t beiscsi_show_boot_eth_info(void *data, int type, char *buf)
 }
 
 
-static umode_t beiscsi_tgt_get_attr_visibility(void *data, int type)
+static mode_t beiscsi_tgt_get_attr_visibility(void *data, int type)
 {
-	umode_t rc;
+	int rc;
 
 	switch (type) {
 	case ISCSI_BOOT_TGT_NAME:
@@ -348,9 +348,9 @@ static umode_t beiscsi_tgt_get_attr_visibility(void *data, int type)
 	return rc;
 }
 
-static umode_t beiscsi_ini_get_attr_visibility(void *data, int type)
+static mode_t beiscsi_ini_get_attr_visibility(void *data, int type)
 {
-	umode_t rc;
+	int rc;
 
 	switch (type) {
 	case ISCSI_BOOT_INI_INITIATOR_NAME:
@@ -364,9 +364,9 @@ static umode_t beiscsi_ini_get_attr_visibility(void *data, int type)
 }
 
 
-static umode_t beiscsi_eth_get_attr_visibility(void *data, int type)
+static mode_t beiscsi_eth_get_attr_visibility(void *data, int type)
 {
-	umode_t rc;
+	int rc;
 
 	switch (type) {
 	case ISCSI_BOOT_ETH_FLAGS:
@@ -1105,6 +1105,7 @@ be_complete_io(struct beiscsi_conn *beiscsi_conn,
 	struct be_status_bhs *sts_bhs =
 				(struct be_status_bhs *)io_task->cmd_bhs;
 	struct iscsi_conn *conn = beiscsi_conn->conn;
+	unsigned int sense_len;
 	unsigned char *sense;
 	u32 resid = 0, exp_cmdsn, max_cmdsn;
 	u8 rsp, status, flags;
@@ -1152,11 +1153,9 @@ be_complete_io(struct beiscsi_conn *beiscsi_conn,
 	}
 
 	if (status == SAM_STAT_CHECK_CONDITION) {
-		u16 sense_len;
 		unsigned short *slen = (unsigned short *)sts_bhs->sense_info;
-
 		sense = sts_bhs->sense_info + sizeof(unsigned short);
-		sense_len = be16_to_cpu(*slen);
+		sense_len =  cpu_to_be16(*slen);
 		memcpy(task->sc->sense_buffer, sense,
 		       min_t(u16, sense_len, SCSI_SENSE_BUFFERSIZE));
 	}

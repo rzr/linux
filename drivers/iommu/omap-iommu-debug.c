@@ -44,8 +44,7 @@ static ssize_t debug_read_ver(struct file *file, char __user *userbuf,
 static ssize_t debug_read_regs(struct file *file, char __user *userbuf,
 			       size_t count, loff_t *ppos)
 {
-	struct device *dev = file->private_data;
-	struct omap_iommu *obj = dev_to_omap_iommu(dev);
+	struct omap_iommu *obj = file->private_data;
 	char *p, *buf;
 	ssize_t bytes;
 
@@ -68,8 +67,7 @@ static ssize_t debug_read_regs(struct file *file, char __user *userbuf,
 static ssize_t debug_read_tlb(struct file *file, char __user *userbuf,
 			      size_t count, loff_t *ppos)
 {
-	struct device *dev = file->private_data;
-	struct omap_iommu *obj = dev_to_omap_iommu(dev);
+	struct omap_iommu *obj = file->private_data;
 	char *p, *buf;
 	ssize_t bytes, rest;
 
@@ -99,8 +97,7 @@ static ssize_t debug_write_pagetable(struct file *file,
 	struct iotlb_entry e;
 	struct cr_regs cr;
 	int err;
-	struct device *dev = file->private_data;
-	struct omap_iommu *obj = dev_to_omap_iommu(dev);
+	struct omap_iommu *obj = file->private_data;
 	char buf[MAXCOLUMN], *p = buf;
 
 	count = min(count, sizeof(buf));
@@ -187,8 +184,7 @@ out:
 static ssize_t debug_read_pagetable(struct file *file, char __user *userbuf,
 				    size_t count, loff_t *ppos)
 {
-	struct device *dev = file->private_data;
-	struct omap_iommu *obj = dev_to_omap_iommu(dev);
+	struct omap_iommu *obj = file->private_data;
 	char *p, *buf;
 	size_t bytes;
 
@@ -216,8 +212,7 @@ static ssize_t debug_read_pagetable(struct file *file, char __user *userbuf,
 static ssize_t debug_read_mmap(struct file *file, char __user *userbuf,
 			       size_t count, loff_t *ppos)
 {
-	struct device *dev = file->private_data;
-	struct omap_iommu *obj = dev_to_omap_iommu(dev);
+	struct omap_iommu *obj = file->private_data;
 	char *p, *buf;
 	struct iovm_struct *tmp;
 	int uninitialized_var(i);
@@ -259,7 +254,7 @@ static ssize_t debug_read_mmap(struct file *file, char __user *userbuf,
 static ssize_t debug_read_mem(struct file *file, char __user *userbuf,
 			      size_t count, loff_t *ppos)
 {
-	struct device *dev = file->private_data;
+	struct omap_iommu *obj = file->private_data;
 	char *p, *buf;
 	struct iovm_struct *area;
 	ssize_t bytes;
@@ -273,8 +268,8 @@ static ssize_t debug_read_mem(struct file *file, char __user *userbuf,
 
 	mutex_lock(&iommu_debug_lock);
 
-	area = omap_find_iovm_area(dev, (u32)ppos);
-	if (!area) {
+	area = omap_find_iovm_area(obj, (u32)ppos);
+	if (IS_ERR(area)) {
 		bytes = -EINVAL;
 		goto err_out;
 	}
@@ -292,7 +287,7 @@ err_out:
 static ssize_t debug_write_mem(struct file *file, const char __user *userbuf,
 			       size_t count, loff_t *ppos)
 {
-	struct device *dev = file->private_data;
+	struct omap_iommu *obj = file->private_data;
 	struct iovm_struct *area;
 	char *p, *buf;
 
@@ -310,8 +305,8 @@ static ssize_t debug_write_mem(struct file *file, const char __user *userbuf,
 		goto err_out;
 	}
 
-	area = omap_find_iovm_area(dev, (u32)ppos);
-	if (!area) {
+	area = omap_find_iovm_area(obj, (u32)ppos);
+	if (IS_ERR(area)) {
 		count = -EINVAL;
 		goto err_out;
 	}
@@ -355,7 +350,7 @@ DEBUG_FOPS(mem);
 	{								\
 		struct dentry *dent;					\
 		dent = debugfs_create_file(#attr, mode, parent,		\
-					   dev, &debug_##attr##_fops);	\
+					   obj, &debug_##attr##_fops);	\
 		if (!dent)						\
 			return -ENOMEM;					\
 	}
@@ -367,29 +362,20 @@ static int iommu_debug_register(struct device *dev, void *data)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct omap_iommu *obj = platform_get_drvdata(pdev);
-	struct omap_iommu_arch_data *arch_data;
 	struct dentry *d, *parent;
 
 	if (!obj || !obj->dev)
 		return -EINVAL;
 
-	arch_data = kzalloc(sizeof(*arch_data), GFP_KERNEL);
-	if (!arch_data)
-		return -ENOMEM;
-
-	arch_data->iommu_dev = obj;
-
-	dev->archdata.iommu = arch_data;
-
 	d = debugfs_create_dir(obj->name, iommu_debug_root);
 	if (!d)
-		goto nomem;
+		return -ENOMEM;
 	parent = d;
 
 	d = debugfs_create_u8("nr_tlb_entries", 400, parent,
 			      (u8 *)&obj->nr_tlb_entries);
 	if (!d)
-		goto nomem;
+		return -ENOMEM;
 
 	DEBUG_ADD_FILE_RO(ver);
 	DEBUG_ADD_FILE_RO(regs);
@@ -397,22 +383,6 @@ static int iommu_debug_register(struct device *dev, void *data)
 	DEBUG_ADD_FILE(pagetable);
 	DEBUG_ADD_FILE_RO(mmap);
 	DEBUG_ADD_FILE(mem);
-
-	return 0;
-
-nomem:
-	kfree(arch_data);
-	return -ENOMEM;
-}
-
-static int iommu_debug_unregister(struct device *dev, void *data)
-{
-	if (!dev->archdata.iommu)
-		return 0;
-
-	kfree(dev->archdata.iommu);
-
-	dev->archdata.iommu = NULL;
 
 	return 0;
 }
@@ -441,7 +411,6 @@ module_init(iommu_debug_init)
 static void __exit iommu_debugfs_exit(void)
 {
 	debugfs_remove_recursive(iommu_debug_root);
-	omap_foreach_iommu_device(NULL, iommu_debug_unregister);
 }
 module_exit(iommu_debugfs_exit)
 

@@ -13,9 +13,8 @@
 #include <linux/init.h>
 #include <linux/serial_core.h>
 #include <linux/i2c.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 
-#include <asm/hardware/vic.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/setup.h>
@@ -25,14 +24,13 @@
 #include <mach/regs-clock.h>
 
 #include <plat/regs-serial.h>
+#include <plat/s5pv210.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
 #include <plat/ata.h>
 #include <plat/iic.h>
 #include <plat/pm.h>
 #include <plat/s5p-time.h>
-
-#include "common.h"
 
 /* Following are default values for UCON, ULCON and UFCON UART registers */
 #define SMDKC110_UCON_DEFAULT	(S3C2410_UCON_TXILEVEL |	\
@@ -111,7 +109,7 @@ static struct i2c_board_info smdkc110_i2c_devs2[] __initdata = {
 
 static void __init smdkc110_map_io(void)
 {
-	s5pv210_init_io(NULL, 0);
+	s5p_init_io(NULL, 0, S5P_VA_CHIPID);
 	s3c24xx_init_clocks(24000000);
 	s3c24xx_init_uarts(smdkv210_uartcfgs, ARRAY_SIZE(smdkv210_uartcfgs));
 	s5p_set_timer_source(S5P_PWM3, S5P_PWM4);
@@ -140,9 +138,7 @@ MACHINE_START(SMDKC110, "SMDKC110")
 	/* Maintainer: Kukjin Kim <kgene.kim@samsung.com> */
 	.atag_offset	= 0x100,
 	.init_irq	= s5pv210_init_irq,
-	.handle_irq	= vic_handle_irq,
 	.map_io		= smdkc110_map_io,
 	.init_machine	= smdkc110_machine_init,
 	.timer		= &s5p_timer,
-	.restart	= s5pv210_restart,
 MACHINE_END

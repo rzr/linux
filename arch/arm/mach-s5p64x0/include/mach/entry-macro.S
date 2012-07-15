@@ -10,8 +10,7 @@
  * published by the Free Software Foundation.
 */
 
-		.macro  disable_fiq
-		.endm
+#include <mach/map.h>
+#include <plat/irqs.h>
 
-		.macro  arch_ret_to_user, tmp1, tmp2
-		.endm
+#include <asm/entry-macro-vic2.S>

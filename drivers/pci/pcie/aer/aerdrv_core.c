@@ -27,8 +27,8 @@
 #include <linux/kfifo.h>
 #include "aerdrv.h"
 
-static bool forceload;
-static bool nosourceid;
+static int forceload;
+static int nosourceid;
 module_param(forceload, bool, 0);
 module_param(nosourceid, bool, 0);
 

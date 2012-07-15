@@ -98,7 +98,7 @@ ath5k_pci_eeprom_read(struct ath_common *common, u32 offset, u16 *data)
 					0xffff);
 			return true;
 		}
-		usleep_range(15, 20);
+		udelay(15);
 	}
 
 	return false;

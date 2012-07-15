@@ -63,7 +63,7 @@ MODULE_LICENSE("GPL");
 #define TVP7002_CL_MASK		0x0f
 
 /* Debug functions */
-static bool debug;
+static int debug;
 module_param(debug, bool, 0644);
 MODULE_PARM_DESC(debug, "Debug level (0-2)");
 

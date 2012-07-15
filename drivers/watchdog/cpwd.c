@@ -687,4 +687,15 @@ static struct platform_driver cpwd_driver = {
 	.remove		= __devexit_p(cpwd_remove),
 };
 
-module_platform_driver(cpwd_driver);
+static int __init cpwd_init(void)
+{
+	return platform_driver_register(&cpwd_driver);
+}
+
+static void __exit cpwd_exit(void)
+{
+	platform_driver_unregister(&cpwd_driver);
+}
+
+module_init(cpwd_init);
+module_exit(cpwd_exit);

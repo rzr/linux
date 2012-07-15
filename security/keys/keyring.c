@@ -319,7 +319,7 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
 	struct key *keyring, *key;
 	key_ref_t key_ref;
 	long err;
-	int sp, nkeys, kix;
+	int sp, kix;
 
 	keyring = key_ref_to_ptr(keyring_ref);
 	possessed = is_key_possessed(keyring_ref);
@@ -380,9 +380,7 @@ descend:
 		goto not_this_keyring;
 
 	/* iterate through the keys in this keyring first */
-	nkeys = keylist->nkeys;
-	smp_rmb();
-	for (kix = 0; kix < nkeys; kix++) {
+	for (kix = 0; kix < keylist->nkeys; kix++) {
 		key = keylist->keys[kix];
 		kflags = key->flags;
 
@@ -423,9 +421,7 @@ descend:
 	/* search through the keyrings nested in this one */
 	kix = 0;
 ascend:
-	nkeys = keylist->nkeys;
-	smp_rmb();
-	for (; kix < nkeys; kix++) {
+	for (; kix < keylist->nkeys; kix++) {
 		key = keylist->keys[kix];
 		if (key->type != &key_type_keyring)
 			continue;
@@ -519,7 +515,7 @@ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
 	struct keyring_list *klist;
 	unsigned long possessed;
 	struct key *keyring, *key;
-	int nkeys, loop;
+	int loop;
 
 	keyring = key_ref_to_ptr(keyring_ref);
 	possessed = is_key_possessed(keyring_ref);
@@ -528,9 +524,7 @@ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
 
 	klist = rcu_dereference(keyring->payload.subscriptions);
 	if (klist) {
-		nkeys = klist->nkeys;
-		smp_rmb();
-		for (loop = 0; loop < nkeys ; loop++) {
+		for (loop = 0; loop < klist->nkeys; loop++) {
 			key = klist->keys[loop];
 
 			if (key->type == ktype &&
@@ -628,7 +622,7 @@ static int keyring_detect_cycle(struct key *A, struct key *B)
 
 	struct keyring_list *keylist;
 	struct key *subtree, *key;
-	int sp, nkeys, kix, ret;
+	int sp, kix, ret;
 
 	rcu_read_lock();
 
@@ -651,9 +645,7 @@ descend:
 
 ascend:
 	/* iterate through the remaining keys in this keyring */
-	nkeys = keylist->nkeys;
-	smp_rmb();
-	for (; kix < nkeys; kix++) {
+	for (; kix < keylist->nkeys; kix++) {
 		key = keylist->keys[kix];
 
 		if (key == A)

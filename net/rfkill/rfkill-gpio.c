@@ -105,7 +105,7 @@ static int rfkill_gpio_probe(struct platform_device *pdev)
 		ret = pdata->gpio_runtime_setup(pdev);
 		if (ret) {
 			pr_warn("%s: can't set up gpio\n", __func__);
-			goto fail_alloc;
+			return ret;
 		}
 	}
 
@@ -220,7 +220,18 @@ static struct platform_driver rfkill_gpio_driver = {
 	},
 };
 
-module_platform_driver(rfkill_gpio_driver);
+static int __init rfkill_gpio_init(void)
+{
+	return platform_driver_register(&rfkill_gpio_driver);
+}
+
+static void __exit rfkill_gpio_exit(void)
+{
+	platform_driver_unregister(&rfkill_gpio_driver);
+}
+
+module_init(rfkill_gpio_init);
+module_exit(rfkill_gpio_exit);
 
 MODULE_DESCRIPTION("gpio rfkill");
 MODULE_AUTHOR("NVIDIA");

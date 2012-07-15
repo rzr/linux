@@ -175,6 +175,9 @@ config PPC_INDIRECT_MMIO
 config PPC_IO_WORKAROUNDS
 	bool
 
+config GENERIC_IOMAP
+	bool
+
 source "drivers/cpufreq/Kconfig"
 
 menu "CPU Frequency drivers"
@@ -205,12 +208,6 @@ config PPC_PASEMI_CPUFREQ
 	help
 	  This adds the support for frequency switching on PA Semi
 	  PWRficient processors.
-
-endmenu
-
-menu "CPUIdle driver"
-
-source "drivers/cpuidle/Kconfig"
 
 endmenu
 

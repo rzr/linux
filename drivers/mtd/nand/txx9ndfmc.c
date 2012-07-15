@@ -298,7 +298,11 @@ static int __init txx9ndfmc_probe(struct platform_device *dev)
 	drvdata = devm_kzalloc(&dev->dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata)
 		return -ENOMEM;
-	drvdata->base = devm_request_and_ioremap(&dev->dev, res);
+	if (!devm_request_mem_region(&dev->dev, res->start,
+				     resource_size(res), dev_name(&dev->dev)))
+		return -EBUSY;
+	drvdata->base = devm_ioremap(&dev->dev, res->start,
+				     resource_size(res));
 	if (!drvdata->base)
 		return -EBUSY;
 

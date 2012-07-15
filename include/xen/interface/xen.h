@@ -523,8 +523,6 @@ struct tmem_op {
 	} u;
 };
 
-DEFINE_GUEST_HANDLE(u64);
-
 #else /* __ASSEMBLY__ */
 
 /* In assembly code we cannot use C numeric constant suffixes. */

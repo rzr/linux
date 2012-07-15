@@ -226,7 +226,7 @@ static long pnx4008_wdt_ioctl(struct file *file, unsigned int cmd,
 static int pnx4008_wdt_release(struct inode *inode, struct file *file)
 {
 	if (!test_bit(WDT_OK_TO_CLOSE, &wdt_status))
-		printk(KERN_WARNING "WATCHDOG: Device closed unexpectedly\n");
+		printk(KERN_WARNING "WATCHDOG: Device closed unexpectdly\n");
 
 	wdt_disable();
 	clk_disable(wdt_clk);
@@ -264,7 +264,7 @@ static int __devinit pnx4008_wdt_probe(struct platform_device *pdev)
 	wdt_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (wdt_mem == NULL) {
 		printk(KERN_INFO MODULE_NAME
-			"failed to get memory region resource\n");
+			"failed to get memory region resouce\n");
 		return -ENOENT;
 	}
 
@@ -334,7 +334,18 @@ static struct platform_driver platform_wdt_driver = {
 	.remove = __devexit_p(pnx4008_wdt_remove),
 };
 
-module_platform_driver(platform_wdt_driver);
+static int __init pnx4008_wdt_init(void)
+{
+	return platform_driver_register(&platform_wdt_driver);
+}
+
+static void __exit pnx4008_wdt_exit(void)
+{
+	platform_driver_unregister(&platform_wdt_driver);
+}
+
+module_init(pnx4008_wdt_init);
+module_exit(pnx4008_wdt_exit);
 
 MODULE_AUTHOR("MontaVista Software, Inc. <source@mvista.com>");
 MODULE_DESCRIPTION("PNX4008 Watchdog Driver");

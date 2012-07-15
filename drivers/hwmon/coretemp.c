@@ -51,21 +51,22 @@ module_param_named(tjmax, force_tjmax, int, 0444);
 MODULE_PARM_DESC(tjmax, "TjMax value in degrees Celsius");
 
 #define BASE_SYSFS_ATTR_NO	2	/* Sysfs Base attr no for coretemp */
-#define NUM_REAL_CORES		16	/* Number of Real cores per cpu */
+#define NUM_REAL_CORES		32	/* Number of Real cores per cpu */
 #define CORETEMP_NAME_LENGTH	17	/* String Length of attrs */
 #define MAX_CORE_ATTRS		4	/* Maximum no of basic attrs */
 #define TOTAL_ATTRS		(MAX_CORE_ATTRS + 1)
 #define MAX_CORE_DATA		(NUM_REAL_CORES + BASE_SYSFS_ATTR_NO)
 
+#ifdef CONFIG_SMP
 #define TO_PHYS_ID(cpu)		cpu_data(cpu).phys_proc_id
 #define TO_CORE_ID(cpu)		cpu_data(cpu).cpu_core_id
-#define TO_ATTR_NO(cpu)		(TO_CORE_ID(cpu) + BASE_SYSFS_ATTR_NO)
-
-#ifdef CONFIG_SMP
 #define for_each_sibling(i, cpu)	for_each_cpu(i, cpu_sibling_mask(cpu))
 #else
+#define TO_PHYS_ID(cpu)		(cpu)
+#define TO_CORE_ID(cpu)		(cpu)
 #define for_each_sibling(i, cpu)	for (i = 0; false; )
 #endif
+#define TO_ATTR_NO(cpu)		(TO_CORE_ID(cpu) + BASE_SYSFS_ATTR_NO)
 
 /*
  * Per-Core Temperature Data
@@ -190,8 +191,7 @@ static ssize_t show_temp(struct device *dev,
 	return tdata->valid ? sprintf(buf, "%d\n", tdata->temp) : -EAGAIN;
 }
 
-static int __cpuinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id,
-				  struct device *dev)
+static int adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *dev)
 {
 	/* The 100C is default for both mobile and non mobile CPUs */
 
@@ -285,8 +285,7 @@ static int __cpuinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id,
 	return tjmax;
 }
 
-static int __cpuinit get_tjmax(struct cpuinfo_x86 *c, u32 id,
-			       struct device *dev)
+static int get_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *dev)
 {
 	int err;
 	u32 eax, edx;
@@ -325,8 +324,7 @@ static int __cpuinit get_tjmax(struct cpuinfo_x86 *c, u32 id,
 	return adjust_tjmax(c, id, dev);
 }
 
-static int __devinit create_name_attr(struct platform_data *pdata,
-				      struct device *dev)
+static int create_name_attr(struct platform_data *pdata, struct device *dev)
 {
 	sysfs_attr_init(&pdata->name_attr.attr);
 	pdata->name_attr.attr.name = "name";
@@ -335,8 +333,8 @@ static int __devinit create_name_attr(struct platform_data *pdata,
 	return device_create_file(dev, &pdata->name_attr);
 }
 
-static int __cpuinit create_core_attrs(struct temp_data *tdata,
-				       struct device *dev, int attr_no)
+static int create_core_attrs(struct temp_data *tdata, struct device *dev,
+				int attr_no)
 {
 	int err, i;
 	static ssize_t (*const rd_ptr[TOTAL_ATTRS]) (struct device *dev,
@@ -386,7 +384,7 @@ static int __cpuinit chk_ucode_version(unsigned int cpu)
 	return 0;
 }
 
-static struct platform_device __cpuinit *coretemp_get_pdev(unsigned int cpu)
+static struct platform_device *coretemp_get_pdev(unsigned int cpu)
 {
 	u16 phys_proc_id = TO_PHYS_ID(cpu);
 	struct pdev_entry *p;
@@ -403,8 +401,7 @@ static struct platform_device __cpuinit *coretemp_get_pdev(unsigned int cpu)
 	return NULL;
 }
 
-static struct temp_data __cpuinit *init_temp_data(unsigned int cpu,
-						  int pkg_flag)
+static struct temp_data *init_temp_data(unsigned int cpu, int pkg_flag)
 {
 	struct temp_data *tdata;
 
@@ -422,7 +419,7 @@ static struct temp_data __cpuinit *init_temp_data(unsigned int cpu,
 	return tdata;
 }
 
-static int __cpuinit create_core_data(struct platform_device *pdev,
+static int create_core_data(struct platform_device *pdev,
 				unsigned int cpu, int pkg_flag)
 {
 	struct temp_data *tdata;
@@ -493,7 +490,7 @@ exit_free:
 	return err;
 }
 
-static void __cpuinit coretemp_add_core(unsigned int cpu, int pkg_flag)
+static void coretemp_add_core(unsigned int cpu, int pkg_flag)
 {
 	struct platform_device *pdev = coretemp_get_pdev(cpu);
 	int err;
@@ -622,7 +619,7 @@ exit:
 	return err;
 }
 
-static void __cpuinit coretemp_device_remove(unsigned int cpu)
+static void coretemp_device_remove(unsigned int cpu)
 {
 	struct pdev_entry *p, *n;
 	u16 phys_proc_id = TO_PHYS_ID(cpu);
@@ -638,7 +635,7 @@ static void __cpuinit coretemp_device_remove(unsigned int cpu)
 	mutex_unlock(&pdev_list_mutex);
 }
 
-static bool __cpuinit is_any_core_online(struct platform_data *pdata)
+static bool is_any_core_online(struct platform_data *pdata)
 {
 	int i;
 
@@ -707,6 +704,10 @@ static void __cpuinit put_core_offline(unsigned int cpu)
 	pdata = platform_get_drvdata(pdev);
 
 	indx = TO_ATTR_NO(cpu);
+
+	/* The core id is too big, just return */
+	if (indx > MAX_CORE_DATA - 1)
+		return;
 
 	if (pdata->core_data[indx] && pdata->core_data[indx]->cpu == cpu)
 		coretemp_remove_core(pdata, &pdev->dev, indx);

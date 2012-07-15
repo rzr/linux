@@ -486,7 +486,7 @@ static int __devinit db8500_regulator_probe(struct platform_device *pdev)
 
 		/* register with the regulator framework */
 		info->rdev = regulator_register(&info->desc, &pdev->dev,
-				init_data, info, NULL);
+				init_data, info);
 		if (IS_ERR(info->rdev)) {
 			err = PTR_ERR(info->rdev);
 			dev_err(&pdev->dev, "failed to register %s: err %i\n",

@@ -624,6 +624,8 @@ int gigaset_isdn_regdev(struct cardstate *cs, const char *isdnid)
 {
 	isdn_if *iif;
 
+	pr_info("ISDN4Linux interface\n");
+
 	iif = kmalloc(sizeof *iif, GFP_KERNEL);
 	if (!iif) {
 		pr_err("out of memory\n");
@@ -682,7 +684,6 @@ void gigaset_isdn_unregdev(struct cardstate *cs)
  */
 void gigaset_isdn_regdrv(void)
 {
-	pr_info("ISDN4Linux interface\n");
 	/* nothing to do */
 }
 

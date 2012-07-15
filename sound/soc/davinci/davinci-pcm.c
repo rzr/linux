@@ -831,6 +831,7 @@ static u64 davinci_pcm_dmamask = 0xffffffff;
 static int davinci_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
+	struct snd_soc_dai *dai = rtd->cpu_dai;
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret;
 
@@ -839,7 +840,7 @@ static int davinci_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = 0xffffffff;
 
-	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
+	if (dai->driver->playback.channels_min) {
 		ret = davinci_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK,
 			pcm_hardware_playback.buffer_bytes_max);
@@ -847,7 +848,7 @@ static int davinci_pcm_new(struct snd_soc_pcm_runtime *rtd)
 			return ret;
 	}
 
-	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+	if (dai->driver->capture.channels_min) {
 		ret = davinci_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE,
 			pcm_hardware_capture.buffer_bytes_max);
@@ -885,7 +886,17 @@ static struct platform_driver davinci_pcm_driver = {
 	.remove = __devexit_p(davinci_soc_platform_remove),
 };
 
-module_platform_driver(davinci_pcm_driver);
+static int __init snd_davinci_pcm_init(void)
+{
+	return platform_driver_register(&davinci_pcm_driver);
+}
+module_init(snd_davinci_pcm_init);
+
+static void __exit snd_davinci_pcm_exit(void)
+{
+	platform_driver_unregister(&davinci_pcm_driver);
+}
+module_exit(snd_davinci_pcm_exit);
 
 MODULE_AUTHOR("Vladimir Barinov");
 MODULE_DESCRIPTION("TI DAVINCI PCM DMA module");

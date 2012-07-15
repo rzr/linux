@@ -36,7 +36,6 @@
 #include <linux/rwsem.h>
 #include <linux/uio.h>
 #include <linux/atomic.h>
-#include <linux/prefetch.h>
 
 /*
  * How many user pages to map in one call to get_user_pages().  This determines
@@ -173,7 +172,7 @@ void inode_dio_wait(struct inode *inode)
 	if (atomic_read(&inode->i_dio_count))
 		__inode_dio_wait(inode);
 }
-EXPORT_SYMBOL(inode_dio_wait);
+EXPORT_SYMBOL_GPL(inode_dio_wait);
 
 /*
  * inode_dio_done - signal finish of a direct I/O requests
@@ -187,7 +186,7 @@ void inode_dio_done(struct inode *inode)
 	if (atomic_dec_and_test(&inode->i_dio_count))
 		wake_up_bit(&inode->i_state, __I_DIO_WAKEUP);
 }
-EXPORT_SYMBOL(inode_dio_done);
+EXPORT_SYMBOL_GPL(inode_dio_done);
 
 /*
  * How many pages are in the queue?
@@ -581,8 +580,9 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
 {
 	int ret;
 	sector_t fs_startblk;	/* Into file, in filesystem-sized blocks */
-	sector_t fs_endblk;	/* Into file, in filesystem-sized blocks */
 	unsigned long fs_count;	/* Number of filesystem-sized blocks */
+	unsigned long dio_count;/* Number of dio_block-sized blocks */
+	unsigned long blkmask;
 	int create;
 
 	/*
@@ -593,9 +593,11 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
 	if (ret == 0) {
 		BUG_ON(sdio->block_in_file >= sdio->final_block_in_request);
 		fs_startblk = sdio->block_in_file >> sdio->blkfactor;
-		fs_endblk = (sdio->final_block_in_request - 1) >>
-					sdio->blkfactor;
-		fs_count = fs_endblk - fs_startblk + 1;
+		dio_count = sdio->final_block_in_request - sdio->block_in_file;
+		fs_count = dio_count >> sdio->blkfactor;
+		blkmask = (1 << sdio->blkfactor) - 1;
+		if (dio_count & blkmask)	
+			fs_count++;
 
 		map_bh->b_state = 0;
 		map_bh->b_size = fs_count << dio->inode->i_blkbits;
@@ -1088,8 +1090,8 @@ static inline int drop_refcount(struct dio *dio)
  * individual fields and will generate much worse code. This is important
  * for the whole file.
  */
-static inline ssize_t
-do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ssize_t
+__blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 	struct block_device *bdev, const struct iovec *iov, loff_t offset, 
 	unsigned long nr_segs, get_block_t get_block, dio_iodone_t end_io,
 	dio_submit_t submit_io,	int flags)
@@ -1098,6 +1100,7 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 	size_t size;
 	unsigned long addr;
 	unsigned blkbits = inode->i_blkbits;
+	unsigned bdev_blkbits = 0;
 	unsigned blocksize_mask = (1 << blkbits) - 1;
 	ssize_t retval = -EINVAL;
 	loff_t end = offset;
@@ -1110,14 +1113,12 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 	if (rw & WRITE)
 		rw = WRITE_ODIRECT;
 
-	/*
-	 * Avoid references to bdev if not absolutely needed to give
-	 * the early prefetch in the caller enough time.
-	 */
+	if (bdev)
+		bdev_blkbits = blksize_bits(bdev_logical_block_size(bdev));
 
 	if (offset & blocksize_mask) {
 		if (bdev)
-			blkbits = blksize_bits(bdev_logical_block_size(bdev));
+			 blkbits = bdev_blkbits;
 		blocksize_mask = (1 << blkbits) - 1;
 		if (offset & blocksize_mask)
 			goto out;
@@ -1128,13 +1129,11 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 		addr = (unsigned long)iov[seg].iov_base;
 		size = iov[seg].iov_len;
 		end += size;
-		if (unlikely((addr & blocksize_mask) ||
-			     (size & blocksize_mask))) {
+		if ((addr & blocksize_mask) || (size & blocksize_mask))  {
 			if (bdev)
-				blkbits = blksize_bits(
-					 bdev_logical_block_size(bdev));
+				 blkbits = bdev_blkbits;
 			blocksize_mask = (1 << blkbits) - 1;
-			if ((addr & blocksize_mask) || (size & blocksize_mask))
+			if ((addr & blocksize_mask) || (size & blocksize_mask))  
 				goto out;
 		}
 	}
@@ -1317,30 +1316,6 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
 out:
 	return retval;
 }
-
-ssize_t
-__blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
-	struct block_device *bdev, const struct iovec *iov, loff_t offset,
-	unsigned long nr_segs, get_block_t get_block, dio_iodone_t end_io,
-	dio_submit_t submit_io,	int flags)
-{
-	/*
-	 * The block device state is needed in the end to finally
-	 * submit everything.  Since it's likely to be cache cold
-	 * prefetch it here as first thing to hide some of the
-	 * latency.
-	 *
-	 * Attempt to prefetch the pieces we likely need later.
-	 */
-	prefetch(&bdev->bd_disk->part_tbl);
-	prefetch(bdev->bd_queue);
-	prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
-
-	return do_blockdev_direct_IO(rw, iocb, inode, bdev, iov, offset,
-				     nr_segs, get_block, end_io,
-				     submit_io, flags);
-}
-
 EXPORT_SYMBOL(__blockdev_direct_IO);
 
 static __init int dio_init(void)

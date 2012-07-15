@@ -169,9 +169,10 @@ static int pwm_backlight_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int pwm_backlight_suspend(struct device *dev)
+static int pwm_backlight_suspend(struct platform_device *pdev,
+				 pm_message_t state)
 {
-	struct backlight_device *bl = dev_get_drvdata(dev);
+	struct backlight_device *bl = platform_get_drvdata(pdev);
 	struct pwm_bl_data *pb = dev_get_drvdata(&bl->dev);
 
 	if (pb->notify)
@@ -183,32 +184,40 @@ static int pwm_backlight_suspend(struct device *dev)
 	return 0;
 }
 
-static int pwm_backlight_resume(struct device *dev)
+static int pwm_backlight_resume(struct platform_device *pdev)
 {
-	struct backlight_device *bl = dev_get_drvdata(dev);
+	struct backlight_device *bl = platform_get_drvdata(pdev);
 
 	backlight_update_status(bl);
 	return 0;
 }
-
-static SIMPLE_DEV_PM_OPS(pwm_backlight_pm_ops, pwm_backlight_suspend,
-			 pwm_backlight_resume);
-
+#else
+#define pwm_backlight_suspend	NULL
+#define pwm_backlight_resume	NULL
 #endif
 
 static struct platform_driver pwm_backlight_driver = {
 	.driver		= {
 		.name	= "pwm-backlight",
 		.owner	= THIS_MODULE,
-#ifdef CONFIG_PM
-		.pm	= &pwm_backlight_pm_ops,
-#endif
 	},
 	.probe		= pwm_backlight_probe,
 	.remove		= pwm_backlight_remove,
+	.suspend	= pwm_backlight_suspend,
+	.resume		= pwm_backlight_resume,
 };
 
-module_platform_driver(pwm_backlight_driver);
+static int __init pwm_backlight_init(void)
+{
+	return platform_driver_register(&pwm_backlight_driver);
+}
+module_init(pwm_backlight_init);
+
+static void __exit pwm_backlight_exit(void)
+{
+	platform_driver_unregister(&pwm_backlight_driver);
+}
+module_exit(pwm_backlight_exit);
 
 MODULE_DESCRIPTION("PWM based Backlight Driver");
 MODULE_LICENSE("GPL");

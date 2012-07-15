@@ -203,11 +203,11 @@ void b43legacy_leds_init(struct b43legacy_wldev *dev)
 		if (sprom[i] == 0xFF) {
 			/* There is no LED information in the SPROM
 			 * for this LED. Hardcode it here. */
-			activelow = false;
+			activelow = 0;
 			switch (i) {
 			case 0:
 				behaviour = B43legacy_LED_ACTIVITY;
-				activelow = true;
+				activelow = 1;
 				if (bus->boardinfo.vendor == PCI_VENDOR_ID_COMPAQ)
 					behaviour = B43legacy_LED_RADIO_ALL;
 				break;

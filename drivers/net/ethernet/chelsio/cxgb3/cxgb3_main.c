@@ -1576,11 +1576,12 @@ static void get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 	t3_get_tp_version(adapter, &tp_vers);
 	spin_unlock(&adapter->stats_lock);
 
-	strlcpy(info->driver, DRV_NAME, sizeof(info->driver));
-	strlcpy(info->version, DRV_VERSION, sizeof(info->version));
-	strlcpy(info->bus_info, pci_name(adapter->pdev),
-		sizeof(info->bus_info));
-	if (fw_vers)
+	strcpy(info->driver, DRV_NAME);
+	strcpy(info->version, DRV_VERSION);
+	strcpy(info->bus_info, pci_name(adapter->pdev));
+	if (!fw_vers)
+		strcpy(info->fw_version, "N/A");
+	else {
 		snprintf(info->fw_version, sizeof(info->fw_version),
 			 "%s %u.%u.%u TP %u.%u.%u",
 			 G_FW_VERSION_TYPE(fw_vers) ? "T" : "N",
@@ -1590,6 +1591,7 @@ static void get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 			 G_TP_VERSION_MAJOR(tp_vers),
 			 G_TP_VERSION_MINOR(tp_vers),
 			 G_TP_VERSION_MICRO(tp_vers));
+	}
 }
 
 static void get_strings(struct net_device *dev, u32 stringset, u8 * data)
@@ -2529,7 +2531,7 @@ static void t3_synchronize_rx(struct adapter *adap, const struct port_info *p)
 	}
 }
 
-static void cxgb_vlan_mode(struct net_device *dev, netdev_features_t features)
+static void cxgb_vlan_mode(struct net_device *dev, u32 features)
 {
 	struct port_info *pi = netdev_priv(dev);
 	struct adapter *adapter = pi->adapter;
@@ -2550,8 +2552,7 @@ static void cxgb_vlan_mode(struct net_device *dev, netdev_features_t features)
 	t3_synchronize_rx(adapter, pi);
 }
 
-static netdev_features_t cxgb_fix_features(struct net_device *dev,
-	netdev_features_t features)
+static u32 cxgb_fix_features(struct net_device *dev, u32 features)
 {
 	/*
 	 * Since there is no support for separate rx/tx vlan accel
@@ -2565,9 +2566,9 @@ static netdev_features_t cxgb_fix_features(struct net_device *dev,
 	return features;
 }
 
-static int cxgb_set_features(struct net_device *dev, netdev_features_t features)
+static int cxgb_set_features(struct net_device *dev, u32 features)
 {
-	netdev_features_t changed = dev->features ^ features;
+	u32 changed = dev->features ^ features;
 
 	if (changed & NETIF_F_HW_VLAN_RX)
 		cxgb_vlan_mode(dev, features);

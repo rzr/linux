@@ -241,7 +241,7 @@ static void lg_notify(struct virtqueue *vq)
 }
 
 /* An extern declaration inside a C file is bad form.  Don't do it. */
-extern int lguest_setup_irq(unsigned int irq);
+extern void lguest_setup_irq(unsigned int irq);
 
 /*
  * This routine finds the Nth virtqueue described in the configuration of
@@ -292,21 +292,17 @@ static struct virtqueue *lg_find_vq(struct virtio_device *vdev,
 
 	/*
 	 * OK, tell virtio_ring.c to set up a virtqueue now we know its size
-	 * and we've got a pointer to its pages.  Note that we set weak_barriers
-	 * to 'true': the host just a(nother) SMP CPU, so we only need inter-cpu
-	 * barriers.
+	 * and we've got a pointer to its pages.
 	 */
-	vq = vring_new_virtqueue(lvq->config.num, LGUEST_VRING_ALIGN, vdev,
-				 true, lvq->pages, lg_notify, callback, name);
+	vq = vring_new_virtqueue(lvq->config.num, LGUEST_VRING_ALIGN,
+				 vdev, lvq->pages, lg_notify, callback, name);
 	if (!vq) {
 		err = -ENOMEM;
 		goto unmap;
 	}
 
 	/* Make sure the interrupt is allocated. */
-	err = lguest_setup_irq(lvq->config.irq);
-	if (err)
-		goto destroy_vring;
+	lguest_setup_irq(lvq->config.irq);
 
 	/*
 	 * Tell the interrupt for this virtqueue to go to the virtio_ring
@@ -319,7 +315,7 @@ static struct virtqueue *lg_find_vq(struct virtio_device *vdev,
 	err = request_irq(lvq->config.irq, vring_interrupt, IRQF_SHARED,
 			  dev_name(&vdev->dev), vq);
 	if (err)
-		goto free_desc;
+		goto destroy_vring;
 
 	/*
 	 * Last of all we hook up our 'struct lguest_vq_info" to the
@@ -328,8 +324,6 @@ static struct virtqueue *lg_find_vq(struct virtio_device *vdev,
 	vq->priv = lvq;
 	return vq;
 
-free_desc:
-	irq_free_desc(lvq->config.irq);
 destroy_vring:
 	vring_del_virtqueue(vq);
 unmap:
@@ -387,11 +381,6 @@ error:
 	return PTR_ERR(vqs[i]);
 }
 
-static const char *lg_bus_name(struct virtio_device *vdev)
-{
-	return "";
-}
-
 /* The ops structure which hooks everything together. */
 static struct virtio_config_ops lguest_config_ops = {
 	.get_features = lg_get_features,
@@ -403,7 +392,6 @@ static struct virtio_config_ops lguest_config_ops = {
 	.reset = lg_reset,
 	.find_vqs = lg_find_vqs,
 	.del_vqs = lg_del_vqs,
-	.bus_name = lg_bus_name,
 };
 
 /*

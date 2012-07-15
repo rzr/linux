@@ -22,7 +22,6 @@
 #include <media/v4l2-device.h>
 #include <media/videobuf-core.h>
 #include <media/videobuf-dma-contig.h>
-#include <media/davinci/vpif_types.h>
 
 #include "vpif.h"
 

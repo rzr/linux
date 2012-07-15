@@ -790,7 +790,7 @@ static int find_node(unsigned long addr)
 	return -1;
 }
 
-static u64 memblock_nid_range(u64 start, u64 end, int *nid)
+u64 memblock_nid_range(u64 start, u64 end, int *nid)
 {
 	*nid = find_node(start);
 	start += PAGE_SIZE;
@@ -808,7 +808,7 @@ static u64 memblock_nid_range(u64 start, u64 end, int *nid)
 	return start;
 }
 #else
-static u64 memblock_nid_range(u64 start, u64 end, int *nid)
+u64 memblock_nid_range(u64 start, u64 end, int *nid)
 {
 	*nid = 0;
 	return end;
@@ -816,7 +816,7 @@ static u64 memblock_nid_range(u64 start, u64 end, int *nid)
 #endif
 
 /* This must be invoked after performing all of the necessary
- * memblock_set_node() calls for 'nid'.  We need to be able to get
+ * add_active_range() calls for 'nid'.  We need to be able to get
  * correct data from get_pfn_range_for_nid().
  */
 static void __init allocate_node_data(int nid)
@@ -987,11 +987,14 @@ static void __init add_node_ranges(void)
 
 			this_end = memblock_nid_range(start, end, &nid);
 
-			numadbg("Setting memblock NUMA node nid[%d] "
+			numadbg("Adding active range nid[%d] "
 				"start[%lx] end[%lx]\n",
 				nid, start, this_end);
 
-			memblock_set_node(start, this_end - start, nid);
+			add_active_range(nid,
+					 start >> PAGE_SHIFT,
+					 this_end >> PAGE_SHIFT);
+
 			start = this_end;
 		}
 	}
@@ -1279,6 +1282,7 @@ static void __init bootmem_init_nonnuma(void)
 {
 	unsigned long top_of_ram = memblock_end_of_DRAM();
 	unsigned long total_ram = memblock_phys_mem_size();
+	struct memblock_region *reg;
 
 	numadbg("bootmem_init_nonnuma()\n");
 
@@ -1288,8 +1292,20 @@ static void __init bootmem_init_nonnuma(void)
 	       (top_of_ram - total_ram) >> 20);
 
 	init_node_masks_nonnuma();
-	memblock_set_node(0, (phys_addr_t)ULLONG_MAX, 0);
+
+	for_each_memblock(memory, reg) {
+		unsigned long start_pfn, end_pfn;
+
+		if (!reg->size)
+			continue;
+
+		start_pfn = memblock_region_memory_base_pfn(reg);
+		end_pfn = memblock_region_memory_end_pfn(reg);
+		add_active_range(0, start_pfn, end_pfn);
+	}
+
 	allocate_node_data(0);
+
 	node_set_online(0);
 }
 
@@ -1753,6 +1769,8 @@ void __init paging_init(void)
 		sun4v_ktsb_init();
 	}
 
+	memblock_init();
+
 	/* Find available physical memory...
 	 *
 	 * Read it twice in order to work around a bug in openfirmware.
@@ -1778,7 +1796,7 @@ void __init paging_init(void)
 
 	memblock_enforce_memory_limit(cmdline_memory_size);
 
-	memblock_allow_resize();
+	memblock_analyze();
 	memblock_dump_all();
 
 	set_bit(0, mmu_context_bmap);

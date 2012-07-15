@@ -677,8 +677,7 @@ EXPORT_SYMBOL(fc_set_mfs);
  * @lport: The local port receiving the event
  * @event: The discovery event
  */
-static void fc_lport_disc_callback(struct fc_lport *lport,
-				   enum fc_disc_event event)
+void fc_lport_disc_callback(struct fc_lport *lport, enum fc_disc_event event)
 {
 	switch (event) {
 	case DISC_EV_SUCCESS:
@@ -1569,7 +1568,7 @@ EXPORT_SYMBOL(fc_lport_flogi_resp);
  * Locking Note: The lport lock is expected to be held before calling
  * this routine.
  */
-static void fc_lport_enter_flogi(struct fc_lport *lport)
+void fc_lport_enter_flogi(struct fc_lport *lport)
 {
 	struct fc_frame *fp;
 

@@ -81,7 +81,6 @@ static struct snd_soc_dai_link qi_lb60_dai = {
 
 static struct snd_soc_card qi_lb60 = {
 	.name = "QI LB60",
-	.owner = THIS_MODULE,
 	.dai_link = &qi_lb60_dai,
 	.num_links = 1,
 

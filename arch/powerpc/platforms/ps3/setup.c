@@ -193,12 +193,10 @@ static int ps3_set_dabr(unsigned long dabr)
 
 static void __init ps3_setup_arch(void)
 {
-	u64 tmp;
 
 	DBG(" -> %s:%d\n", __func__, __LINE__);
 
-	lv1_get_version_info(&ps3_firmware_version.raw, &tmp);
-
+	lv1_get_version_info(&ps3_firmware_version.raw);
 	printk(KERN_INFO "PS3 firmware version %u.%u.%u\n",
 	       ps3_firmware_version.major, ps3_firmware_version.minor,
 	       ps3_firmware_version.rev);

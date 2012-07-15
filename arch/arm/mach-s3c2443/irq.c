@@ -23,7 +23,7 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
-#include <linux/device.h>
+#include <linux/sysdev.h>
 #include <linux/io.h>
 
 #include <mach/hardware.h>
@@ -241,8 +241,7 @@ static int __init s3c2443_add_sub(unsigned int base,
 	return 0;
 }
 
-static int __init s3c2443_irq_add(struct device *dev,
-				  struct subsys_interface *sif)
+static int __init s3c2443_irq_add(struct sys_device *sysdev)
 {
 	printk("S3C2443: IRQ Support\n");
 
@@ -266,15 +265,13 @@ static int __init s3c2443_irq_add(struct device *dev,
 	return 0;
 }
 
-static struct subsys_interface s3c2443_irq_interface = {
-	.name		= "s3c2443_irq",
-	.subsys		= &s3c2443_subsys,
-	.add_dev	= s3c2443_irq_add,
+static struct sysdev_driver s3c2443_irq_driver = {
+	.add		= s3c2443_irq_add,
 };
 
 static int __init s3c2443_irq_init(void)
 {
-	return subsys_interface_register(&s3c2443_irq_interface);
+	return sysdev_driver_register(&s3c2443_sysclass, &s3c2443_irq_driver);
 }
 
 arch_initcall(s3c2443_irq_init);

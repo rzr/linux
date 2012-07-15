@@ -151,12 +151,12 @@ static const unsigned short normal_i2c[] = { 0x2c, 0x2d, 0x2e, I2C_CLIENT_END };
 
 /* Insmod parameters */
 
-static bool disable_block;
+static int disable_block;
 module_param(disable_block, bool, 0);
 MODULE_PARM_DESC(disable_block,
 	"Set to non-zero to disable SMBus block data transactions.");
 
-static bool init;
+static int init;
 module_param(init, bool, 0);
 MODULE_PARM_DESC(init, "Set to non-zero to force chip initialization.");
 

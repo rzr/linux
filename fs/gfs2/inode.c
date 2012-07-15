@@ -333,7 +333,7 @@ out:
  */
 
 static int create_ok(struct gfs2_inode *dip, const struct qstr *name,
-		     umode_t mode)
+		     unsigned int mode)
 {
 	int error;
 
@@ -364,7 +364,7 @@ static int create_ok(struct gfs2_inode *dip, const struct qstr *name,
 	return 0;
 }
 
-static void munge_mode_uid_gid(struct gfs2_inode *dip, umode_t *mode,
+static void munge_mode_uid_gid(struct gfs2_inode *dip, unsigned int *mode,
 			       unsigned int *uid, unsigned int *gid)
 {
 	if (GFS2_SB(&dip->i_inode)->sd_args.ar_suiddir &&
@@ -389,9 +389,12 @@ static int alloc_dinode(struct gfs2_inode *dip, u64 *no_addr, u64 *generation)
 {
 	struct gfs2_sbd *sdp = GFS2_SB(&dip->i_inode);
 	int error;
-	int dblocks = 1;
 
-	error = gfs2_inplace_reserve(dip, RES_DINODE);
+	if (gfs2_alloc_get(dip) == NULL)
+		return -ENOMEM;
+
+	dip->i_alloc->al_requested = RES_DINODE;
+	error = gfs2_inplace_reserve(dip);
 	if (error)
 		goto out;
 
@@ -399,13 +402,14 @@ static int alloc_dinode(struct gfs2_inode *dip, u64 *no_addr, u64 *generation)
 	if (error)
 		goto out_ipreserv;
 
-	error = gfs2_alloc_blocks(dip, no_addr, &dblocks, 1, generation);
+	error = gfs2_alloc_di(dip, no_addr, generation);
 
 	gfs2_trans_end(sdp);
 
 out_ipreserv:
 	gfs2_inplace_release(dip);
 out:
+	gfs2_alloc_put(dip);
 	return error;
 }
 
@@ -443,7 +447,7 @@ static void gfs2_init_dir(struct buffer_head *dibh,
  */
 
 static void init_dinode(struct gfs2_inode *dip, struct gfs2_glock *gl,
-			const struct gfs2_inum_host *inum, umode_t mode,
+			const struct gfs2_inum_host *inum, unsigned int mode,
 			unsigned int uid, unsigned int gid,
 			const u64 *generation, dev_t dev, const char *symname,
 			unsigned size, struct buffer_head **bhp)
@@ -512,7 +516,7 @@ static void init_dinode(struct gfs2_inode *dip, struct gfs2_glock *gl,
 }
 
 static int make_dinode(struct gfs2_inode *dip, struct gfs2_glock *gl,
-		       umode_t mode, const struct gfs2_inum_host *inum,
+		       unsigned int mode, const struct gfs2_inum_host *inum,
 		       const u64 *generation, dev_t dev, const char *symname,
 		       unsigned int size, struct buffer_head **bhp)
 {
@@ -521,7 +525,7 @@ static int make_dinode(struct gfs2_inode *dip, struct gfs2_glock *gl,
 	int error;
 
 	munge_mode_uid_gid(dip, &mode, &uid, &gid);
-	if (!gfs2_qadata_get(dip))
+	if (!gfs2_alloc_get(dip))
 		return -ENOMEM;
 
 	error = gfs2_quota_lock(dip, uid, gid);
@@ -543,7 +547,7 @@ static int make_dinode(struct gfs2_inode *dip, struct gfs2_glock *gl,
 out_quota:
 	gfs2_quota_unlock(dip);
 out:
-	gfs2_qadata_put(dip);
+	gfs2_alloc_put(dip);
 	return error;
 }
 
@@ -551,13 +555,13 @@ static int link_dinode(struct gfs2_inode *dip, const struct qstr *name,
 		       struct gfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = GFS2_SB(&dip->i_inode);
-	struct gfs2_qadata *qa;
+	struct gfs2_alloc *al;
 	int alloc_required;
 	struct buffer_head *dibh;
 	int error;
 
-	qa = gfs2_qadata_get(dip);
-	if (!qa)
+	al = gfs2_alloc_get(dip);
+	if (!al)
 		return -ENOMEM;
 
 	error = gfs2_quota_lock(dip, NO_QUOTA_CHANGE, NO_QUOTA_CHANGE);
@@ -572,7 +576,9 @@ static int link_dinode(struct gfs2_inode *dip, const struct qstr *name,
 		if (error)
 			goto fail_quota_locks;
 
-		error = gfs2_inplace_reserve(dip, sdp->sd_max_dirres);
+		al->al_requested = sdp->sd_max_dirres;
+
+		error = gfs2_inplace_reserve(dip);
 		if (error)
 			goto fail_quota_locks;
 
@@ -595,7 +601,9 @@ static int link_dinode(struct gfs2_inode *dip, const struct qstr *name,
 	error = gfs2_meta_inode_buffer(ip, &dibh);
 	if (error)
 		goto fail_end_trans;
-	set_nlink(&ip->i_inode, S_ISDIR(ip->i_inode.i_mode) ? 2 : 1);
+	inc_nlink(&ip->i_inode);
+	if (S_ISDIR(ip->i_inode.i_mode))
+		inc_nlink(&ip->i_inode);
 	gfs2_trans_add_bh(ip->i_gl, dibh, 1);
 	gfs2_dinode_out(ip, dibh->b_data);
 	brelse(dibh);
@@ -611,11 +619,11 @@ fail_quota_locks:
 	gfs2_quota_unlock(dip);
 
 fail:
-	gfs2_qadata_put(dip);
+	gfs2_alloc_put(dip);
 	return error;
 }
 
-static int gfs2_initxattrs(struct inode *inode, const struct xattr *xattr_array,
+int gfs2_initxattrs(struct inode *inode, const struct xattr *xattr_array,
 		    void *fs_info)
 {
 	const struct xattr *xattr;
@@ -651,7 +659,7 @@ static int gfs2_security_init(struct gfs2_inode *dip, struct gfs2_inode *ip,
  */
 
 static int gfs2_create_inode(struct inode *dir, struct dentry *dentry,
-			     umode_t mode, dev_t dev, const char *symname,
+			     unsigned int mode, dev_t dev, const char *symname,
 			     unsigned int size, int excl)
 {
 	const struct qstr *name = &dentry->d_name;
@@ -720,12 +728,9 @@ static int gfs2_create_inode(struct inode *dir, struct dentry *dentry,
 		brelse(bh);
 
 	gfs2_trans_end(sdp);
-	/* Check if we reserved space in the rgrp. Function link_dinode may
-	   not, depending on whether alloc is required. */
-	if (dip->i_res)
-		gfs2_inplace_release(dip);
+	gfs2_inplace_release(dip);
 	gfs2_quota_unlock(dip);
-	gfs2_qadata_put(dip);
+	gfs2_alloc_put(dip);
 	mark_inode_dirty(inode);
 	gfs2_glock_dq_uninit_m(2, ghs);
 	d_instantiate(dentry, inode);
@@ -755,7 +760,7 @@ fail:
  */
 
 static int gfs2_create(struct inode *dir, struct dentry *dentry,
-		       umode_t mode, struct nameidata *nd)
+		       int mode, struct nameidata *nd)
 {
 	int excl = 0;
 	if (nd && (nd->flags & LOOKUP_EXCL))
@@ -870,9 +875,8 @@ static int gfs2_link(struct dentry *old_dentry, struct inode *dir,
 	error = 0;
 
 	if (alloc_required) {
-		struct gfs2_qadata *qa = gfs2_qadata_get(dip);
-
-		if (!qa) {
+		struct gfs2_alloc *al = gfs2_alloc_get(dip);
+		if (!al) {
 			error = -ENOMEM;
 			goto out_gunlock;
 		}
@@ -881,7 +885,9 @@ static int gfs2_link(struct dentry *old_dentry, struct inode *dir,
 		if (error)
 			goto out_alloc;
 
-		error = gfs2_inplace_reserve(dip, sdp->sd_max_dirres);
+		al->al_requested = sdp->sd_max_dirres;
+
+		error = gfs2_inplace_reserve(dip);
 		if (error)
 			goto out_gunlock_q;
 
@@ -924,7 +930,7 @@ out_gunlock_q:
 		gfs2_quota_unlock(dip);
 out_alloc:
 	if (alloc_required)
-		gfs2_qadata_put(dip);
+		gfs2_alloc_put(dip);
 out_gunlock:
 	gfs2_glock_dq(ghs + 1);
 out_child:
@@ -1031,15 +1037,12 @@ static int gfs2_unlink(struct inode *dir, struct dentry *dentry)
 	struct buffer_head *bh;
 	struct gfs2_holder ghs[3];
 	struct gfs2_rgrpd *rgd;
-	int error = -EROFS;
+	int error;
 
 	gfs2_holder_init(dip->i_gl, LM_ST_EXCLUSIVE, 0, ghs);
 	gfs2_holder_init(ip->i_gl,  LM_ST_EXCLUSIVE, 0, ghs + 1);
 
 	rgd = gfs2_blk2rgrpd(sdp, ip->i_no_addr);
-	if (!rgd)
-		goto out_inodes;
-
 	gfs2_holder_init(rgd->rd_gl, LM_ST_EXCLUSIVE, 0, ghs + 2);
 
 
@@ -1085,13 +1088,12 @@ out_end_trans:
 out_gunlock:
 	gfs2_glock_dq(ghs + 2);
 out_rgrp:
+	gfs2_holder_uninit(ghs + 2);
 	gfs2_glock_dq(ghs + 1);
 out_child:
+	gfs2_holder_uninit(ghs + 1);
 	gfs2_glock_dq(ghs);
 out_parent:
-	gfs2_holder_uninit(ghs + 2);
-out_inodes:
-	gfs2_holder_uninit(ghs + 1);
 	gfs2_holder_uninit(ghs);
 	return error;
 }
@@ -1127,7 +1129,7 @@ static int gfs2_symlink(struct inode *dir, struct dentry *dentry,
  * Returns: errno
  */
 
-static int gfs2_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+static int gfs2_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 {
 	return gfs2_create_inode(dir, dentry, S_IFDIR | mode, 0, NULL, 0, 0);
 }
@@ -1141,7 +1143,7 @@ static int gfs2_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
  *
  */
 
-static int gfs2_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
+static int gfs2_mknod(struct inode *dir, struct dentry *dentry, int mode,
 		      dev_t dev)
 {
 	return gfs2_create_inode(dir, dentry, mode, dev, NULL, 0, 0);
@@ -1348,9 +1350,8 @@ static int gfs2_rename(struct inode *odir, struct dentry *odentry,
 	error = 0;
 
 	if (alloc_required) {
-		struct gfs2_qadata *qa = gfs2_qadata_get(ndip);
-
-		if (!qa) {
+		struct gfs2_alloc *al = gfs2_alloc_get(ndip);
+		if (!al) {
 			error = -ENOMEM;
 			goto out_gunlock;
 		}
@@ -1359,7 +1360,9 @@ static int gfs2_rename(struct inode *odir, struct dentry *odentry,
 		if (error)
 			goto out_alloc;
 
-		error = gfs2_inplace_reserve(ndip, sdp->sd_max_dirres);
+		al->al_requested = sdp->sd_max_dirres;
+
+		error = gfs2_inplace_reserve(ndip);
 		if (error)
 			goto out_gunlock_q;
 
@@ -1420,7 +1423,7 @@ out_gunlock_q:
 		gfs2_quota_unlock(ndip);
 out_alloc:
 	if (alloc_required)
-		gfs2_qadata_put(ndip);
+		gfs2_alloc_put(ndip);
 out_gunlock:
 	while (x--) {
 		gfs2_glock_dq(ghs + x);
@@ -1581,7 +1584,7 @@ static int setattr_chown(struct inode *inode, struct iattr *attr)
 	if (!(attr->ia_valid & ATTR_GID) || ogid == ngid)
 		ogid = ngid = NO_QUOTA_CHANGE;
 
-	if (!gfs2_qadata_get(ip))
+	if (!gfs2_alloc_get(ip))
 		return -ENOMEM;
 
 	error = gfs2_quota_lock(ip, nuid, ngid);
@@ -1613,7 +1616,7 @@ out_end_trans:
 out_gunlock_q:
 	gfs2_quota_unlock(ip);
 out_alloc:
-	gfs2_qadata_put(ip);
+	gfs2_alloc_put(ip);
 	return error;
 }
 

@@ -250,6 +250,7 @@ static void hostfs_evict_inode(struct inode *inode)
 static void hostfs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
+	INIT_LIST_HEAD(&inode->i_dentry);
 	kfree(HOSTFS_I(inode));
 }
 
@@ -258,9 +259,9 @@ static void hostfs_destroy_inode(struct inode *inode)
 	call_rcu(&inode->i_rcu, hostfs_i_callback);
 }
 
-static int hostfs_show_options(struct seq_file *seq, struct dentry *root)
+static int hostfs_show_options(struct seq_file *seq, struct vfsmount *vfs)
 {
-	const char *root_path = root->d_sb->s_fs_info;
+	const char *root_path = vfs->mnt_sb->s_fs_info;
 	size_t offset = strlen(root_ino) + 1;
 
 	if (strlen(root_path) > offset)
@@ -551,7 +552,7 @@ static int read_name(struct inode *ino, char *name)
 	return 0;
 }
 
-int hostfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+int hostfs_create(struct inode *dir, struct dentry *dentry, int mode,
 		  struct nameidata *nd)
 {
 	struct inode *inode;
@@ -676,7 +677,7 @@ int hostfs_symlink(struct inode *ino, struct dentry *dentry, const char *to)
 	return err;
 }
 
-int hostfs_mkdir(struct inode *ino, struct dentry *dentry, umode_t mode)
+int hostfs_mkdir(struct inode *ino, struct dentry *dentry, int mode)
 {
 	char *file;
 	int err;
@@ -700,7 +701,7 @@ int hostfs_rmdir(struct inode *ino, struct dentry *dentry)
 	return err;
 }
 
-static int hostfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
+int hostfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
 {
 	struct inode *inode;
 	char *name;

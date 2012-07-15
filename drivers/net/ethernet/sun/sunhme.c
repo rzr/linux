@@ -2457,11 +2457,11 @@ static void hme_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info
 {
 	struct happy_meal *hp = netdev_priv(dev);
 
-	strlcpy(info->driver, "sunhme", sizeof(info->driver));
-	strlcpy(info->version, "2.02", sizeof(info->version));
+	strcpy(info->driver, "sunhme");
+	strcpy(info->version, "2.02");
 	if (hp->happy_flags & HFLAG_PCI) {
 		struct pci_dev *pdev = hp->happy_dev;
-		strlcpy(info->bus_info, pci_name(pdev), sizeof(info->bus_info));
+		strcpy(info->bus_info, pci_name(pdev));
 	}
 #ifdef CONFIG_SBUS
 	else {
@@ -2469,8 +2469,7 @@ static void hme_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info
 		struct platform_device *op = hp->happy_dev;
 		regs = of_get_property(op->dev.of_node, "regs", NULL);
 		if (regs)
-			snprintf(info->bus_info, sizeof(info->bus_info),
-				"SBUS:%d",
+			sprintf(info->bus_info, "SBUS:%d",
 				regs->which_io);
 	}
 #endif
@@ -2850,7 +2849,7 @@ err_out:
 static int is_quattro_p(struct pci_dev *pdev)
 {
 	struct pci_dev *busdev = pdev->bus->self;
-	struct pci_dev *this_pdev;
+	struct list_head *tmp;
 	int n_hmes;
 
 	if (busdev == NULL ||
@@ -2859,10 +2858,15 @@ static int is_quattro_p(struct pci_dev *pdev)
 		return 0;
 
 	n_hmes = 0;
-	list_for_each_entry(this_pdev, &pdev->bus->devices, bus_list) {
+	tmp = pdev->bus->devices.next;
+	while (tmp != &pdev->bus->devices) {
+		struct pci_dev *this_pdev = pci_dev_b(tmp);
+
 		if (this_pdev->vendor == PCI_VENDOR_ID_SUN &&
 		    this_pdev->device == PCI_DEVICE_ID_SUN_HAPPYMEAL)
 			n_hmes++;
+
+		tmp = tmp->next;
 	}
 
 	if (n_hmes != 4)

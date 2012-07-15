@@ -434,10 +434,10 @@ static void get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 {
 	struct adapter *adapter = dev->ml_priv;
 
-	strlcpy(info->driver, DRV_NAME, sizeof(info->driver));
-	strlcpy(info->version, DRV_VERSION, sizeof(info->version));
-	strlcpy(info->bus_info, pci_name(adapter->pdev),
-		sizeof(info->bus_info));
+	strcpy(info->driver, DRV_NAME);
+	strcpy(info->version, DRV_VERSION);
+	strcpy(info->fw_version, "N/A");
+	strcpy(info->bus_info, pci_name(adapter->pdev));
 }
 
 static int get_sset_count(struct net_device *dev, int sset)
@@ -849,8 +849,7 @@ static int t1_set_mac_addr(struct net_device *dev, void *p)
 	return 0;
 }
 
-static netdev_features_t t1_fix_features(struct net_device *dev,
-	netdev_features_t features)
+static u32 t1_fix_features(struct net_device *dev, u32 features)
 {
 	/*
 	 * Since there is no support for separate rx/tx vlan accel
@@ -864,9 +863,9 @@ static netdev_features_t t1_fix_features(struct net_device *dev,
 	return features;
 }
 
-static int t1_set_features(struct net_device *dev, netdev_features_t features)
+static int t1_set_features(struct net_device *dev, u32 features)
 {
-	netdev_features_t changed = dev->features ^ features;
+	u32 changed = dev->features ^ features;
 	struct adapter *adapter = dev->ml_priv;
 
 	if (changed & NETIF_F_HW_VLAN_RX)

@@ -64,8 +64,6 @@ struct setup_header {
 	__u32	payload_offset;
 	__u32	payload_length;
 	__u64	setup_data;
-	__u64	pref_address;
-	__u32	init_size;
 } __attribute__((packed));
 
 struct sys_desc_table {

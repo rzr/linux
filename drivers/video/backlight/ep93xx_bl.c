@@ -13,6 +13,7 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/module.h>
 #include <linux/io.h>
 #include <linux/fb.h>
 #include <linux/backlight.h>
@@ -143,7 +144,17 @@ static struct platform_driver ep93xxbl_driver = {
 	.resume		= ep93xxbl_resume,
 };
 
-module_platform_driver(ep93xxbl_driver);
+static int __init ep93xxbl_init(void)
+{
+	return platform_driver_register(&ep93xxbl_driver);
+}
+module_init(ep93xxbl_init);
+
+static void __exit ep93xxbl_exit(void)
+{
+	platform_driver_unregister(&ep93xxbl_driver);
+}
+module_exit(ep93xxbl_exit);
 
 MODULE_DESCRIPTION("EP93xx Backlight Driver");
 MODULE_AUTHOR("H Hartley Sweeten <hsweeten@visionengravers.com>");

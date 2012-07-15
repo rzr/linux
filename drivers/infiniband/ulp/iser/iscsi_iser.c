@@ -628,7 +628,7 @@ iscsi_iser_ep_disconnect(struct iscsi_endpoint *ep)
 	iser_conn_terminate(ib_conn);
 }
 
-static umode_t iser_attr_is_visible(int param_type, int param)
+static mode_t iser_attr_is_visible(int param_type, int param)
 {
 	switch (param_type) {
 	case ISCSI_HOST_PARAM:

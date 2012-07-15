@@ -19,6 +19,7 @@
 #include "internal.h"
 
 static const struct regcache_ops *cache_types[] = {
+	&regcache_indexed_ops,
 	&regcache_rbtree_ops,
 	&regcache_lzo_ops,
 };
@@ -60,10 +61,8 @@ static int regcache_hw_init(struct regmap *map)
 
 	map->reg_defaults = kmalloc(count * sizeof(struct reg_default),
 				      GFP_KERNEL);
-	if (!map->reg_defaults) {
-		ret = -ENOMEM;
-		goto err_free;
-	}
+	if (!map->reg_defaults)
+		return -ENOMEM;
 
 	/* fill the reg_defaults */
 	map->num_reg_defaults = count;
@@ -78,15 +77,9 @@ static int regcache_hw_init(struct regmap *map)
 	}
 
 	return 0;
-
-err_free:
-	if (map->cache_free)
-		kfree(map->reg_defaults_raw);
-
-	return ret;
 }
 
-int regcache_init(struct regmap *map, const struct regmap_config *config)
+int regcache_init(struct regmap *map)
 {
 	int ret;
 	int i;
@@ -107,12 +100,6 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
 		return -EINVAL;
 	}
 
-	map->num_reg_defaults = config->num_reg_defaults;
-	map->num_reg_defaults_raw = config->num_reg_defaults_raw;
-	map->reg_defaults_raw = config->reg_defaults_raw;
-	map->cache_word_size = DIV_ROUND_UP(config->val_bits, 8);
-	map->cache_size_raw = map->cache_word_size * config->num_reg_defaults_raw;
-
 	map->cache = NULL;
 	map->cache_ops = cache_types[i];
 
@@ -125,10 +112,10 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
 	 * won't vanish from under us.  We'll need to make
 	 * a copy of it.
 	 */
-	if (config->reg_defaults) {
+	if (map->reg_defaults) {
 		if (!map->num_reg_defaults)
 			return -EINVAL;
-		tmp_buf = kmemdup(config->reg_defaults, map->num_reg_defaults *
+		tmp_buf = kmemdup(map->reg_defaults, map->num_reg_defaults *
 				  sizeof(struct reg_default), GFP_KERNEL);
 		if (!tmp_buf)
 			return -ENOMEM;
@@ -149,18 +136,9 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
 	if (map->cache_ops->init) {
 		dev_dbg(map->dev, "Initializing %s cache\n",
 			map->cache_ops->name);
-		ret = map->cache_ops->init(map);
-		if (ret)
-			goto err_free;
+		return map->cache_ops->init(map);
 	}
 	return 0;
-
-err_free:
-	kfree(map->reg_defaults);
-	if (map->cache_free)
-		kfree(map->reg_defaults_raw);
-
-	return ret;
 }
 
 void regcache_exit(struct regmap *map)
@@ -193,21 +171,16 @@ void regcache_exit(struct regmap *map)
 int regcache_read(struct regmap *map,
 		  unsigned int reg, unsigned int *value)
 {
-	int ret;
-
 	if (map->cache_type == REGCACHE_NONE)
 		return -ENOSYS;
 
 	BUG_ON(!map->cache_ops);
 
-	if (!regmap_volatile(map, reg)) {
-		ret = map->cache_ops->read(map, reg, value);
+	if (!regmap_readable(map, reg))
+		return -EIO;
 
-		if (ret == 0)
-			trace_regmap_reg_read_cache(map->dev, reg, *value);
-
-		return ret;
-	}
+	if (!regmap_volatile(map, reg))
+		return map->cache_ops->read(map, reg, value);
 
 	return -EINVAL;
 }
@@ -268,8 +241,6 @@ int regcache_sync(struct regmap *map)
 		map->cache_ops->name);
 	name = map->cache_ops->name;
 	trace_regcache_sync(map->dev, name, "start");
-	if (!map->cache_dirty)
-		goto out;
 	if (map->cache_ops->sync) {
 		ret = map->cache_ops->sync(map);
 	} else {
@@ -318,23 +289,6 @@ void regcache_cache_only(struct regmap *map, bool enable)
 	mutex_unlock(&map->lock);
 }
 EXPORT_SYMBOL_GPL(regcache_cache_only);
-
-/**
- * regcache_mark_dirty: Mark the register cache as dirty
- *
- * @map: map to mark
- *
- * Mark the register cache as dirty, for example due to the device
- * having been powered down for suspend.  If the cache is not marked
- * as dirty then the cache sync will be suppressed.
- */
-void regcache_mark_dirty(struct regmap *map)
-{
-	mutex_lock(&map->lock);
-	map->cache_dirty = true;
-	mutex_unlock(&map->lock);
-}
-EXPORT_SYMBOL_GPL(regcache_mark_dirty);
 
 /**
  * regcache_cache_bypass: Put a register map into cache bypass mode
@@ -426,4 +380,23 @@ int regcache_lookup_reg(struct regmap *map, unsigned int reg)
 		return r - map->reg_defaults;
 	else
 		return -ENOENT;
+}
+
+int regcache_insert_reg(struct regmap *map, unsigned int reg,
+			unsigned int val)
+{
+	void *tmp;
+
+	tmp = krealloc(map->reg_defaults,
+		       (map->num_reg_defaults + 1) * sizeof(struct reg_default),
+		       GFP_KERNEL);
+	if (!tmp)
+		return -ENOMEM;
+	map->reg_defaults = tmp;
+	map->num_reg_defaults++;
+	map->reg_defaults[map->num_reg_defaults - 1].reg = reg;
+	map->reg_defaults[map->num_reg_defaults - 1].def = val;
+	sort(map->reg_defaults, map->num_reg_defaults,
+	     sizeof(struct reg_default), regcache_default_cmp, NULL);
+	return 0;
 }

@@ -588,6 +588,9 @@ static void do_signal(struct pt_regs *regs, unsigned int save_r0)
 	if (!user_mode(regs))
 		return;
 
+	if (try_to_freeze())
+		goto no_signal;
+
 	if (current_thread_info()->status & TS_RESTORE_SIGMASK)
 		oldset = &current->saved_sigmask;
 	else
@@ -615,6 +618,7 @@ static void do_signal(struct pt_regs *regs, unsigned int save_r0)
 		return;
 	}
 
+no_signal:
 	/* Did we come from a system call? */
 	if (regs->tra >= 0) {
 		/* Restart the system call - no handlers present */

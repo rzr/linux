@@ -382,7 +382,7 @@ decode_ds_addr(struct xdr_stream *streamp, gfp_t gfp_flags)
 {
 	struct nfs4_pnfs_ds_addr *da = NULL;
 	char *buf, *portstr;
-	__be16 port;
+	u32 port;
 	int nlen, rlen;
 	int tmp[2];
 	__be32 *p;

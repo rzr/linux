@@ -17,11 +17,41 @@
 #include <linux/bitops.h>
 
 #include "../iio.h"
-#include "../buffer.h"
+#include "../buffer_generic.h"
 #include "../ring_sw.h"
 #include "../trigger_consumer.h"
 
 #include "ad799x.h"
+
+int ad799x_single_channel_from_ring(struct iio_dev *indio_dev, int channum)
+{
+	struct iio_buffer *ring = indio_dev->buffer;
+	int count = 0, ret;
+	u16 *ring_data;
+
+	if (!(test_bit(channum, ring->scan_mask))) {
+		ret = -EBUSY;
+		goto error_ret;
+	}
+
+	ring_data = kmalloc(ring->access->get_bytes_per_datum(ring),
+			    GFP_KERNEL);
+	if (ring_data == NULL) {
+		ret = -ENOMEM;
+		goto error_ret;
+	}
+	ret = ring->access->read_last(ring, (u8 *) ring_data);
+	if (ret)
+		goto error_free_ring_data;
+	/* Need a count of channels prior to this one */
+	count = bitmap_weight(ring->scan_mask, channum);
+	ret = be16_to_cpu(ring_data[count]);
+
+error_free_ring_data:
+	kfree(ring_data);
+error_ret:
+	return ret;
+}
 
 /**
  * ad799x_ring_preenable() setup the parameters of the ring before enabling
@@ -41,10 +71,9 @@ static int ad799x_ring_preenable(struct iio_dev *indio_dev)
 	 */
 
 	if (st->id == ad7997 || st->id == ad7998)
-		ad7997_8_set_scan_mode(st, *indio_dev->active_scan_mask);
+		ad7997_8_set_scan_mode(st, *ring->scan_mask);
 
-	st->d_size = bitmap_weight(indio_dev->active_scan_mask,
-				   indio_dev->masklength) * 2;
+	st->d_size = ring->scan_count * 2;
 
 	if (ring->scan_timestamp) {
 		st->d_size += sizeof(s64);
@@ -86,13 +115,12 @@ static irqreturn_t ad799x_trigger_handler(int irq, void *p)
 	case ad7991:
 	case ad7995:
 	case ad7999:
-		cmd = st->config |
-			(*indio_dev->active_scan_mask << AD799X_CHANNEL_SHIFT);
+		cmd = st->config | (*ring->scan_mask << AD799X_CHANNEL_SHIFT);
 		break;
 	case ad7992:
 	case ad7993:
 	case ad7994:
-		cmd = (*indio_dev->active_scan_mask << AD799X_CHANNEL_SHIFT) |
+		cmd = (*ring->scan_mask << AD799X_CHANNEL_SHIFT) |
 			AD7998_CONV_RES_REG;
 		break;
 	case ad7997:
@@ -104,8 +132,7 @@ static irqreturn_t ad799x_trigger_handler(int irq, void *p)
 	}
 
 	b_sent = i2c_smbus_read_i2c_block_data(st->client,
-			cmd, bitmap_weight(indio_dev->active_scan_mask,
-					   indio_dev->masklength) * 2, rxbuf);
+			cmd, ring->scan_count * 2, rxbuf);
 	if (b_sent < 0)
 		goto done;
 
@@ -156,7 +183,7 @@ int ad799x_register_ring_funcs_and_init(struct iio_dev *indio_dev)
 	}
 
 	/* Ring buffer functions - here trigger setup related */
-	indio_dev->setup_ops = &ad799x_buf_setup_ops;
+	indio_dev->buffer->setup_ops = &ad799x_buf_setup_ops;
 	indio_dev->buffer->scan_timestamp = true;
 
 	/* Flag that polled ring buffering is possible */

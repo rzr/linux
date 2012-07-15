@@ -17,21 +17,15 @@
 
 #include <linux/irq.h>
 
-struct device;
+struct sys_device;
 
 #ifdef CONFIG_PM
 
 extern __init int s3c_pm_init(void);
-extern __init int s3c64xx_pm_init(void);
 
 #else
 
 static inline int s3c_pm_init(void)
-{
-	return 0;
-}
-
-static inline int s3c64xx_pm_init(void)
 {
 	return 0;
 }

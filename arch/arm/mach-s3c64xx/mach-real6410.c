@@ -25,7 +25,6 @@
 #include <linux/serial_core.h>
 #include <linux/types.h>
 
-#include <asm/hardware/vic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -35,6 +34,7 @@
 #include <mach/regs-modem.h>
 #include <mach/regs-srom.h>
 
+#include <plat/s3c6410.h>
 #include <plat/adc.h>
 #include <plat/cpu.h>
 #include <plat/devs.h>
@@ -45,8 +45,6 @@
 #include <plat/regs-fb-v4.h>
 
 #include <video/platform_lcd.h>
-
-#include "common.h"
 
 #define UCON S3C2410_UCON_DEFAULT
 #define ULCON (S3C2410_LCON_CS8 | S3C2410_LCON_PNONE | S3C2410_LCON_STOPB)
@@ -328,9 +326,7 @@ MACHINE_START(REAL6410, "REAL6410")
 	.atag_offset	= 0x100,
 
 	.init_irq	= s3c6410_init_irq,
-	.handle_irq	= vic_handle_irq,
 	.map_io		= real6410_map_io,
 	.init_machine	= real6410_machine_init,
 	.timer		= &s3c24xx_timer,
-	.restart	= s3c64xx_restart,
 MACHINE_END

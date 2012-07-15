@@ -54,28 +54,37 @@ MODULE_FIRMWARE("rtlwifi/rtl8192cufw.bin");
 static int rtl92cu_init_sw_vars(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
+	const struct firmware *firmware;
 	int err;
 
-	rtlpriv->dm.dm_initialgain_enable = true;
+	rtlpriv->dm.dm_initialgain_enable = 1;
 	rtlpriv->dm.dm_flag = 0;
-	rtlpriv->dm.disable_framebursting = false;
+	rtlpriv->dm.disable_framebursting = 0;
 	rtlpriv->dm.thermalvalue = 0;
 	rtlpriv->dbg.global_debuglevel = rtlpriv->cfg->mod_params->debug;
-
-	/* for firmware buf */
-	rtlpriv->rtlhal.pfirmware = vzalloc(0x4000);
+	rtlpriv->rtlhal.pfirmware = vmalloc(0x4000);
 	if (!rtlpriv->rtlhal.pfirmware) {
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
 			 ("Can't alloc buffer for fw.\n"));
 		return 1;
 	}
-
-	pr_info("Loading firmware %s\n", rtlpriv->cfg->fw_name);
-	rtlpriv->max_fw_size = 0x4000;
-	err = request_firmware_nowait(THIS_MODULE, 1,
-				      rtlpriv->cfg->fw_name, rtlpriv->io.dev,
-				      GFP_KERNEL, hw, rtl_fw_cb);
-
+	/* request fw */
+	err = request_firmware(&firmware, rtlpriv->cfg->fw_name,
+			rtlpriv->io.dev);
+	if (err) {
+		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+			 ("Failed to request firmware!\n"));
+		return 1;
+	}
+	if (firmware->size > 0x4000) {
+		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+			 ("Firmware is too big!\n"));
+		release_firmware(firmware);
+		return 1;
+	}
+	memcpy(rtlpriv->rtlhal.pfirmware, firmware->data, firmware->size);
+	rtlpriv->rtlhal.fwsize = firmware->size;
+	release_firmware(firmware);
 
 	return 0;
 }
@@ -375,4 +384,15 @@ static struct usb_driver rtl8192cu_driver = {
 #endif
 };
 
-module_usb_driver(rtl8192cu_driver);
+static int __init rtl8192cu_init(void)
+{
+	return usb_register(&rtl8192cu_driver);
+}
+
+static void __exit rtl8192cu_exit(void)
+{
+	usb_deregister(&rtl8192cu_driver);
+}
+
+module_init(rtl8192cu_init);
+module_exit(rtl8192cu_exit);

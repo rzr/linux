@@ -340,10 +340,6 @@ struct vendor_data {
  * @cur_msg: Pointer to current spi_message being processed
  * @cur_transfer: Pointer to current spi_transfer
  * @cur_chip: pointer to current clients chip(assigned from controller_state)
- * @next_msg_cs_active: the next message in the queue has been examined
- *  and it was found that it uses the same chip select as the previous
- *  message, so we left it active after the previous transfer, and it's
- *  active already.
  * @tx: current position in TX buffer to be read
  * @tx_end: end position in TX buffer to be read
  * @rx: current position in RX buffer to be written
@@ -377,7 +373,6 @@ struct pl022 {
 	struct spi_message		*cur_msg;
 	struct spi_transfer		*cur_transfer;
 	struct chip_data		*cur_chip;
-	bool				next_msg_cs_active;
 	void				*tx;
 	void				*tx_end;
 	void				*rx;
@@ -450,9 +445,23 @@ static void giveback(struct pl022 *pl022)
 	struct spi_transfer *last_transfer;
 	unsigned long flags;
 	struct spi_message *msg;
-	pl022->next_msg_cs_active = false;
+	void (*curr_cs_control) (u32 command);
 
-	last_transfer = list_entry(pl022->cur_msg->transfers.prev,
+	/*
+	 * This local reference to the chip select function
+	 * is needed because we set curr_chip to NULL
+	 * as a step toward termininating the message.
+	 */
+	curr_cs_control = pl022->cur_chip->cs_control;
+	spin_lock_irqsave(&pl022->queue_lock, flags);
+	msg = pl022->cur_msg;
+	pl022->cur_msg = NULL;
+	pl022->cur_transfer = NULL;
+	pl022->cur_chip = NULL;
+	queue_work(pl022->workqueue, &pl022->pump_messages);
+	spin_unlock_irqrestore(&pl022->queue_lock, flags);
+
+	last_transfer = list_entry(msg->transfers.prev,
 					struct spi_transfer,
 					transfer_list);
 
@@ -464,13 +473,18 @@ static void giveback(struct pl022 *pl022)
 		 */
 		udelay(last_transfer->delay_usecs);
 
-	if (!last_transfer->cs_change) {
+	/*
+	 * Drop chip select UNLESS cs_change is true or we are returning
+	 * a message with an error, or next message is for another chip
+	 */
+	if (!last_transfer->cs_change)
+		curr_cs_control(SSP_CHIP_DESELECT);
+	else {
 		struct spi_message *next_msg;
 
-		/*
-		 * cs_change was not set. We can keep the chip select
-		 * enabled if there is message in the queue and it is
-		 * for the same spi device.
+		/* Holding of cs was hinted, but we need to make sure
+		 * the next message is for the same chip.  Don't waste
+		 * time with the following tests unless this was hinted.
 		 *
 		 * We cannot postpone this until pump_messages, because
 		 * after calling msg->complete (below) the driver that
@@ -487,29 +501,19 @@ static void giveback(struct pl022 *pl022)
 					struct spi_message, queue);
 		spin_unlock_irqrestore(&pl022->queue_lock, flags);
 
-		/*
-		 * see if the next and current messages point
-		 * to the same spi device.
+		/* see if the next and current messages point
+		 * to the same chip
 		 */
-		if (next_msg && next_msg->spi != pl022->cur_msg->spi)
+		if (next_msg && next_msg->spi != msg->spi)
 			next_msg = NULL;
-		if (!next_msg || pl022->cur_msg->state == STATE_ERROR)
-			pl022->cur_chip->cs_control(SSP_CHIP_DESELECT);
-		else
-			pl022->next_msg_cs_active = true;
+		if (!next_msg || msg->state == STATE_ERROR)
+			curr_cs_control(SSP_CHIP_DESELECT);
 	}
-
-	spin_lock_irqsave(&pl022->queue_lock, flags);
-	msg = pl022->cur_msg;
-	pl022->cur_msg = NULL;
-	pl022->cur_transfer = NULL;
-	pl022->cur_chip = NULL;
-	queue_work(pl022->workqueue, &pl022->pump_messages);
-	spin_unlock_irqrestore(&pl022->queue_lock, flags);
-
 	msg->state = NULL;
 	if (msg->complete)
 		msg->complete(msg->context);
+	/* This message is completed, so let's turn off the clocks & power */
+	pm_runtime_put(&pl022->adev->dev);
 }
 
 /**
@@ -900,11 +904,11 @@ static int configure_dma(struct pl022 *pl022)
 {
 	struct dma_slave_config rx_conf = {
 		.src_addr = SSP_DR(pl022->phybase),
-		.direction = DMA_DEV_TO_MEM,
+		.direction = DMA_FROM_DEVICE,
 	};
 	struct dma_slave_config tx_conf = {
 		.dst_addr = SSP_DR(pl022->phybase),
-		.direction = DMA_MEM_TO_DEV,
+		.direction = DMA_TO_DEVICE,
 	};
 	unsigned int pages;
 	int ret;
@@ -1041,7 +1045,7 @@ static int configure_dma(struct pl022 *pl022)
 	rxdesc = rxchan->device->device_prep_slave_sg(rxchan,
 				      pl022->sgt_rx.sgl,
 				      rx_sglen,
-				      DMA_DEV_TO_MEM,
+				      DMA_FROM_DEVICE,
 				      DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 	if (!rxdesc)
 		goto err_rxdesc;
@@ -1049,7 +1053,7 @@ static int configure_dma(struct pl022 *pl022)
 	txdesc = txchan->device->device_prep_slave_sg(txchan,
 				      pl022->sgt_tx.sgl,
 				      tx_sglen,
-				      DMA_MEM_TO_DEV,
+				      DMA_TO_DEVICE,
 				      DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 	if (!txdesc)
 		goto err_txdesc;
@@ -1083,7 +1087,7 @@ err_alloc_rx_sg:
 	return -ENOMEM;
 }
 
-static int __devinit pl022_dma_probe(struct pl022 *pl022)
+static int __init pl022_dma_probe(struct pl022 *pl022)
 {
 	dma_cap_mask_t mask;
 
@@ -1240,9 +1244,9 @@ static irqreturn_t pl022_interrupt_handler(int irq, void *dev_id)
 
 	if ((pl022->tx == pl022->tx_end) && (flag == 0)) {
 		flag = 1;
-		/* Disable Transmit interrupt, enable receive interrupt */
-		writew((readw(SSP_IMSC(pl022->virtbase)) &
-		       ~SSP_IMSC_MASK_TXIM) | SSP_IMSC_MASK_RXIM,
+		/* Disable Transmit interrupt */
+		writew(readw(SSP_IMSC(pl022->virtbase)) &
+		       (~SSP_IMSC_MASK_TXIM),
 		       SSP_IMSC(pl022->virtbase));
 	}
 
@@ -1348,7 +1352,7 @@ static void pump_transfers(unsigned long data)
 			 */
 			udelay(previous->delay_usecs);
 
-		/* Reselect chip select only if cs_change was requested */
+		/* Drop chip select only if cs_change is requested */
 		if (previous->cs_change)
 			pl022->cur_chip->cs_control(SSP_CHIP_SELECT);
 	} else {
@@ -1375,22 +1379,15 @@ static void pump_transfers(unsigned long data)
 	}
 
 err_config_dma:
-	/* enable all interrupts except RX */
-	writew(ENABLE_ALL_INTERRUPTS & ~SSP_IMSC_MASK_RXIM, SSP_IMSC(pl022->virtbase));
+	writew(ENABLE_ALL_INTERRUPTS, SSP_IMSC(pl022->virtbase));
 }
 
 static void do_interrupt_dma_transfer(struct pl022 *pl022)
 {
-	/*
-	 * Default is to enable all interrupts except RX -
-	 * this will be enabled once TX is complete
-	 */
-	u32 irqflags = ENABLE_ALL_INTERRUPTS & ~SSP_IMSC_MASK_RXIM;
+	u32 irqflags = ENABLE_ALL_INTERRUPTS;
 
-	/* Enable target chip, if not already active */
-	if (!pl022->next_msg_cs_active)
-		pl022->cur_chip->cs_control(SSP_CHIP_SELECT);
-
+	/* Enable target chip */
+	pl022->cur_chip->cs_control(SSP_CHIP_SELECT);
 	if (set_up_next_transfer(pl022, pl022->cur_transfer)) {
 		/* Error path */
 		pl022->cur_msg->state = STATE_ERROR;
@@ -1445,8 +1442,7 @@ static void do_polling_transfer(struct pl022 *pl022)
 		} else {
 			/* STATE_START */
 			message->state = STATE_RUNNING;
-			if (!pl022->next_msg_cs_active)
-				pl022->cur_chip->cs_control(SSP_CHIP_SELECT);
+			pl022->cur_chip->cs_control(SSP_CHIP_SELECT);
 		}
 
 		/* Configuration Changing Per Transfer */
@@ -1508,28 +1504,14 @@ static void pump_messages(struct work_struct *work)
 	struct pl022 *pl022 =
 		container_of(work, struct pl022, pump_messages);
 	unsigned long flags;
-	bool was_busy = false;
 
 	/* Lock queue and check for queue work */
 	spin_lock_irqsave(&pl022->queue_lock, flags);
 	if (list_empty(&pl022->queue) || !pl022->running) {
-		if (pl022->busy) {
-			/* nothing more to do - disable spi/ssp and power off */
-			writew((readw(SSP_CR1(pl022->virtbase)) &
-				(~SSP_CR1_MASK_SSE)), SSP_CR1(pl022->virtbase));
-
-			if (pl022->master_info->autosuspend_delay > 0) {
-				pm_runtime_mark_last_busy(&pl022->adev->dev);
-				pm_runtime_put_autosuspend(&pl022->adev->dev);
-			} else {
-				pm_runtime_put(&pl022->adev->dev);
-			}
-		}
 		pl022->busy = false;
 		spin_unlock_irqrestore(&pl022->queue_lock, flags);
 		return;
 	}
-
 	/* Make sure we are not already running a message */
 	if (pl022->cur_msg) {
 		spin_unlock_irqrestore(&pl022->queue_lock, flags);
@@ -1540,10 +1522,7 @@ static void pump_messages(struct work_struct *work)
 	    list_entry(pl022->queue.next, struct spi_message, queue);
 
 	list_del_init(&pl022->cur_msg->queue);
-	if (pl022->busy)
-		was_busy = true;
-	else
-		pl022->busy = true;
+	pl022->busy = true;
 	spin_unlock_irqrestore(&pl022->queue_lock, flags);
 
 	/* Initial message state */
@@ -1553,14 +1532,12 @@ static void pump_messages(struct work_struct *work)
 
 	/* Setup the SPI using the per chip configuration */
 	pl022->cur_chip = spi_get_ctldata(pl022->cur_msg->spi);
-	if (!was_busy)
-		/*
-		 * We enable the core voltage and clocks here, then the clocks
-		 * and core will be disabled when this workqueue is run again
-		 * and there is no more work to be done.
-		 */
-		pm_runtime_get_sync(&pl022->adev->dev);
-
+	/*
+	 * We enable the core voltage and clocks here, then the clocks
+	 * and core will be disabled when giveback() is called in each method
+	 * (poll/interrupt/DMA)
+	 */
+	pm_runtime_get_sync(&pl022->adev->dev);
 	restore_state(pl022);
 	flush(pl022);
 
@@ -1605,7 +1582,6 @@ static int start_queue(struct pl022 *pl022)
 	pl022->cur_msg = NULL;
 	pl022->cur_transfer = NULL;
 	pl022->cur_chip = NULL;
-	pl022->next_msg_cs_active = false;
 	spin_unlock_irqrestore(&pl022->queue_lock, flags);
 
 	queue_work(pl022->workqueue, &pl022->pump_messages);
@@ -1905,7 +1881,7 @@ static int pl022_setup(struct spi_device *spi)
 {
 	struct pl022_config_chip const *chip_info;
 	struct chip_data *chip;
-	struct ssp_clock_params clk_freq = { .cpsdvsr = 0, .scr = 0};
+	struct ssp_clock_params clk_freq = {0, };
 	int status = 0;
 	struct pl022 *pl022 = spi_master_get_devdata(spi->master);
 	unsigned int bits = spi->bits_per_word;
@@ -2255,17 +2231,7 @@ pl022_probe(struct amba_device *adev, const struct amba_id *id)
 	dev_dbg(dev, "probe succeeded\n");
 
 	/* let runtime pm put suspend */
-	if (platform_info->autosuspend_delay > 0) {
-		dev_info(&adev->dev,
-			"will use autosuspend for runtime pm, delay %dms\n",
-			platform_info->autosuspend_delay);
-		pm_runtime_set_autosuspend_delay(dev,
-			platform_info->autosuspend_delay);
-		pm_runtime_use_autosuspend(dev);
-		pm_runtime_put_autosuspend(dev);
-	} else {
-		pm_runtime_put(dev);
-	}
+	pm_runtime_put(dev);
 	return 0;
 
  err_spi_register:
@@ -2339,6 +2305,11 @@ static int pl022_suspend(struct device *dev)
 		return status;
 	}
 
+	amba_vcore_enable(pl022->adev);
+	amba_pclk_enable(pl022->adev);
+	load_ssp_default_config(pl022);
+	amba_pclk_disable(pl022->adev);
+	amba_vcore_disable(pl022->adev);
 	dev_dbg(dev, "suspended\n");
 	return 0;
 }
@@ -2460,8 +2431,6 @@ static struct amba_id pl022_ids[] = {
 	},
 	{ 0, 0 },
 };
-
-MODULE_DEVICE_TABLE(amba, pl022_ids);
 
 static struct amba_driver pl022_driver = {
 	.drv = {

@@ -26,7 +26,6 @@
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
 #include <linux/if_arp.h>
-#include <linux/if_vlan.h>
 #include <linux/if_link.h>
 #include <linux/if_macvlan.h>
 #include <net/rtnetlink.h>
@@ -259,7 +258,7 @@ static int macvlan_queue_xmit(struct sk_buff *skb, struct net_device *dev)
 
 xmit_world:
 	skb->ip_summed = ip_summed;
-	skb_set_dev(skb, vlan->lowerdev);
+	skb->dev = vlan->lowerdev;
 	return dev_queue_xmit(skb);
 }
 
@@ -522,23 +521,26 @@ static struct rtnl_link_stats64 *macvlan_dev_get_stats64(struct net_device *dev,
 	return stats;
 }
 
-static int macvlan_vlan_rx_add_vid(struct net_device *dev,
+static void macvlan_vlan_rx_add_vid(struct net_device *dev,
 				    unsigned short vid)
 {
 	struct macvlan_dev *vlan = netdev_priv(dev);
 	struct net_device *lowerdev = vlan->lowerdev;
+	const struct net_device_ops *ops = lowerdev->netdev_ops;
 
-	return vlan_vid_add(lowerdev, vid);
+	if (ops->ndo_vlan_rx_add_vid)
+		ops->ndo_vlan_rx_add_vid(lowerdev, vid);
 }
 
-static int macvlan_vlan_rx_kill_vid(struct net_device *dev,
+static void macvlan_vlan_rx_kill_vid(struct net_device *dev,
 				     unsigned short vid)
 {
 	struct macvlan_dev *vlan = netdev_priv(dev);
 	struct net_device *lowerdev = vlan->lowerdev;
+	const struct net_device_ops *ops = lowerdev->netdev_ops;
 
-	vlan_vid_del(lowerdev, vid);
-	return 0;
+	if (ops->ndo_vlan_rx_kill_vid)
+		ops->ndo_vlan_rx_kill_vid(lowerdev, vid);
 }
 
 static void macvlan_ethtool_get_drvinfo(struct net_device *dev,

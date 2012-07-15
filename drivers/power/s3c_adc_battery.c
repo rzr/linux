@@ -47,22 +47,6 @@ static void s3c_adc_bat_ext_power_changed(struct power_supply *psy)
 		msecs_to_jiffies(JITTER_DELAY));
 }
 
-static int gather_samples(struct s3c_adc_client *client, int num, int channel)
-{
-	int value, i;
-
-	/* default to 1 if nothing is set */
-	if (num < 1)
-		num = 1;
-
-	value = 0;
-	for (i = 0; i < num; i++)
-		value += s3c_adc_read(client, channel);
-	value /= num;
-
-	return value;
-}
-
 static enum power_supply_property s3c_adc_backup_bat_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN,
@@ -83,8 +67,7 @@ static int s3c_adc_backup_bat_get_property(struct power_supply *psy,
 	if (bat->volt_value < 0 ||
 		jiffies_to_msecs(jiffies - bat->timestamp) >
 			BAT_POLL_INTERVAL) {
-		bat->volt_value = gather_samples(bat->client,
-			bat->pdata->backup_volt_samples,
+		bat->volt_value = s3c_adc_read(bat->client,
 			bat->pdata->backup_volt_channel);
 		bat->volt_value *= bat->pdata->backup_volt_mult;
 		bat->timestamp = jiffies;
@@ -156,11 +139,9 @@ static int s3c_adc_bat_get_property(struct power_supply *psy,
 	if (bat->volt_value < 0 || bat->cur_value < 0 ||
 		jiffies_to_msecs(jiffies - bat->timestamp) >
 			BAT_POLL_INTERVAL) {
-		bat->volt_value = gather_samples(bat->client,
-			bat->pdata->volt_samples,
+		bat->volt_value = s3c_adc_read(bat->client,
 			bat->pdata->volt_channel) * bat->pdata->volt_mult;
-		bat->cur_value = gather_samples(bat->client,
-			bat->pdata->current_samples,
+		bat->cur_value = s3c_adc_read(bat->client,
 			bat->pdata->current_channel) * bat->pdata->current_mult;
 		bat->timestamp = jiffies;
 	}
@@ -440,7 +421,17 @@ static struct platform_driver s3c_adc_bat_driver = {
 	.resume		= s3c_adc_bat_resume,
 };
 
-module_platform_driver(s3c_adc_bat_driver);
+static int __init s3c_adc_bat_init(void)
+{
+	return platform_driver_register(&s3c_adc_bat_driver);
+}
+module_init(s3c_adc_bat_init);
+
+static void __exit s3c_adc_bat_exit(void)
+{
+	platform_driver_unregister(&s3c_adc_bat_driver);
+}
+module_exit(s3c_adc_bat_exit);
 
 MODULE_AUTHOR("Vasily Khoruzhick <anarsoul@gmail.com>");
 MODULE_DESCRIPTION("iPAQ H1930/H1940/RX1950 battery controller driver");

@@ -220,7 +220,6 @@ MACHINE_START(OPENRD_BASE, "Marvell OpenRD Base Board")
 	.init_early	= kirkwood_init_early,
 	.init_irq	= kirkwood_init_irq,
 	.timer		= &kirkwood_timer,
-	.restart	= kirkwood_restart,
 MACHINE_END
 #endif
 
@@ -233,7 +232,6 @@ MACHINE_START(OPENRD_CLIENT, "Marvell OpenRD Client Board")
 	.init_early	= kirkwood_init_early,
 	.init_irq	= kirkwood_init_irq,
 	.timer		= &kirkwood_timer,
-	.restart	= kirkwood_restart,
 MACHINE_END
 #endif
 
@@ -246,6 +244,5 @@ MACHINE_START(OPENRD_ULTIMATE, "Marvell OpenRD Ultimate Board")
 	.init_early	= kirkwood_init_early,
 	.init_irq	= kirkwood_init_irq,
 	.timer		= &kirkwood_timer,
-	.restart	= kirkwood_restart,
 MACHINE_END
 #endif

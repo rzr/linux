@@ -134,12 +134,8 @@ static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key)
 		key->flags |= KEY_FLAG_UPLOADED_TO_HARDWARE;
 
 		if (!((key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_MMIC) ||
-		      (key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV) ||
-		      (key->conf.flags & IEEE80211_KEY_FLAG_PUT_IV_SPACE)))
+		      (key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV)))
 			sdata->crypto_tx_tailroom_needed_cnt--;
-
-		WARN_ON((key->conf.flags & IEEE80211_KEY_FLAG_PUT_IV_SPACE) &&
-			(key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV));
 
 		return 0;
 	}
@@ -183,8 +179,7 @@ static void ieee80211_key_disable_hw_accel(struct ieee80211_key *key)
 	sdata = key->sdata;
 
 	if (!((key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_MMIC) ||
-	      (key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV) ||
-	      (key->conf.flags & IEEE80211_KEY_FLAG_PUT_IV_SPACE)))
+	      (key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV)))
 		increment_tailroom_need_count(sdata);
 
 	if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)

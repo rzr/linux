@@ -85,9 +85,6 @@ void _iwl_read_targ_mem_words(struct iwl_bus *bus, u32 addr,
 					 (bufsize) / sizeof(u32));\
 	} while (0)
 
-int _iwl_write_targ_mem_words(struct iwl_bus *bus, u32 addr,
-			      void *buf, int words);
-
 u32 iwl_read_targ_mem(struct iwl_bus *bus, u32 addr);
-int iwl_write_targ_mem(struct iwl_bus *bus, u32 addr, u32 val);
+void iwl_write_targ_mem(struct iwl_bus *bus, u32 addr, u32 val);
 #endif

@@ -19,16 +19,15 @@ ccflags-y += \
 	-Idrivers/net/wireless/brcm80211/brcmfmac	\
 	-Idrivers/net/wireless/brcm80211/include
 
-obj-$(CONFIG_BRCMFMAC) += brcmfmac.o
-brcmfmac-objs += \
-		wl_cfg80211.o \
-		dhd_cdc.o \
-		dhd_common.o \
-		dhd_linux.o
-brcmfmac-$(CONFIG_BRCMFMAC_SDIO) += \
-		dhd_sdio.o \
-		bcmsdh.o \
-		bcmsdh_sdmmc.o \
-		sdio_chip.o
+DHDOFILES = \
+	wl_cfg80211.o \
+	dhd_cdc.o \
+	dhd_common.o \
+	dhd_sdio.o	\
+	dhd_linux.o \
+	bcmsdh.o \
+	bcmsdh_sdmmc.o
 
+obj-$(CONFIG_BRCMFMAC) += brcmfmac.o
+brcmfmac-objs += $(DHDOFILES)
 ccflags-y += -D__CHECK_ENDIAN__

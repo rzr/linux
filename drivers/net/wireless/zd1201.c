@@ -1907,4 +1907,15 @@ static struct usb_driver zd1201_usb = {
 	.resume = zd1201_resume,
 };
 
-module_usb_driver(zd1201_usb);
+static int __init zd1201_init(void)
+{
+	return usb_register(&zd1201_usb);
+}
+
+static void __exit zd1201_cleanup(void)
+{
+	usb_deregister(&zd1201_usb);
+}
+
+module_init(zd1201_init);
+module_exit(zd1201_cleanup);

@@ -25,7 +25,6 @@
 #include <linux/clk.h>
 #include <linux/log2.h>
 #include <linux/slab.h>
-#include <linux/of.h>
 
 #include <mach/hardware.h>
 #include <asm/uaccess.h>
@@ -508,13 +507,7 @@ static int __devinit s3c_rtc_probe(struct platform_device *pdev)
 		goto err_nortc;
 	}
 
-#ifdef CONFIG_OF
-	if (pdev->dev.of_node)
-		s3c_rtc_cpu_type = of_device_is_compatible(pdev->dev.of_node,
-			"samsung,s3c6410-rtc") ? TYPE_S3C64XX : TYPE_S3C2410;
-	else
-#endif
-		s3c_rtc_cpu_type = platform_get_device_id(pdev)->driver_data;
+	s3c_rtc_cpu_type = platform_get_device_id(pdev)->driver_data;
 
 	/* Check RTC Time */
 
@@ -636,17 +629,6 @@ static int s3c_rtc_resume(struct platform_device *pdev)
 #define s3c_rtc_resume  NULL
 #endif
 
-#ifdef CONFIG_OF
-static const struct of_device_id s3c_rtc_dt_match[] = {
-	{ .compatible = "samsung,s3c2410-rtc" },
-	{ .compatible = "samsung,s3c6410-rtc" },
-	{},
-};
-MODULE_DEVICE_TABLE(of, s3c_rtc_dt_match);
-#else
-#define s3c_rtc_dt_match NULL
-#endif
-
 static struct platform_device_id s3c_rtc_driver_ids[] = {
 	{
 		.name		= "s3c2410-rtc",
@@ -669,11 +651,24 @@ static struct platform_driver s3c_rtc_driver = {
 	.driver		= {
 		.name	= "s3c-rtc",
 		.owner	= THIS_MODULE,
-		.of_match_table	= s3c_rtc_dt_match,
 	},
 };
 
-module_platform_driver(s3c_rtc_driver);
+static char __initdata banner[] = "S3C24XX RTC, (c) 2004,2006 Simtec Electronics\n";
+
+static int __init s3c_rtc_init(void)
+{
+	printk(banner);
+	return platform_driver_register(&s3c_rtc_driver);
+}
+
+static void __exit s3c_rtc_exit(void)
+{
+	platform_driver_unregister(&s3c_rtc_driver);
+}
+
+module_init(s3c_rtc_init);
+module_exit(s3c_rtc_exit);
 
 MODULE_DESCRIPTION("Samsung S3C RTC Driver");
 MODULE_AUTHOR("Ben Dooks <ben@simtec.co.uk>");

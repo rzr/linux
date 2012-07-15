@@ -69,12 +69,12 @@ MODULE_LICENSE("GPL");
 /* module parameters */
 static int opmode   = OPMODE_AUTO;
 int msp_debug;		 /* msp_debug output */
-bool msp_once;		 /* no continuous stereo monitoring */
-bool msp_amsound;	 /* hard-wire AM sound at 6.5 Hz (france),
+int msp_once;		 /* no continuous stereo monitoring */
+int msp_amsound;	 /* hard-wire AM sound at 6.5 Hz (france),
 			    the autoscan seems work well only with FM... */
 int msp_standard = 1;    /* Override auto detect of audio msp_standard,
 			    if needed. */
-bool msp_dolby;
+int msp_dolby;
 
 int msp_stereo_thresh = 0x190; /* a2 threshold for stereo/bilingual
 					(msp34xxg only) 0x00a0-0x03c0 */

@@ -306,9 +306,20 @@ static struct platform_driver smbus_sch_driver = {
 	.remove		= __devexit_p(smbus_sch_remove),
 };
 
-module_platform_driver(smbus_sch_driver);
+static int __init i2c_sch_init(void)
+{
+	return platform_driver_register(&smbus_sch_driver);
+}
+
+static void __exit i2c_sch_exit(void)
+{
+	platform_driver_unregister(&smbus_sch_driver);
+}
 
 MODULE_AUTHOR("Jacob Pan <jacob.jun.pan@intel.com>");
 MODULE_DESCRIPTION("Intel SCH SMBus driver");
 MODULE_LICENSE("GPL");
+
+module_init(i2c_sch_init);
+module_exit(i2c_sch_exit);
 MODULE_ALIAS("platform:isch_smbus");

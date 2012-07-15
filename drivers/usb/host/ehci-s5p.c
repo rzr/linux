@@ -14,6 +14,8 @@
 
 #include <linux/clk.h>
 #include <linux/platform_device.h>
+#include <mach/regs-pmu.h>
+#include <plat/cpu.h>
 #include <plat/ehci.h>
 #include <plat/usb-phy.h>
 
@@ -133,8 +135,6 @@ static int __devinit s5p_ehci_probe(struct platform_device *pdev)
 
 	/* cache this readonly data; minimize chip reads */
 	ehci->hcs_params = readl(&ehci->caps->hcs_params);
-
-	ehci_reset(ehci);
 
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (err) {

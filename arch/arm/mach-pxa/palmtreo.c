@@ -452,7 +452,6 @@ MACHINE_START(TREO680, "Palm Treo 680")
 	.handle_irq       = pxa27x_handle_irq,
 	.timer          = &pxa_timer,
 	.init_machine   = treo680_init,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif
 
@@ -465,6 +464,5 @@ MACHINE_START(CENTRO, "Palm Centro 685")
 	.handle_irq       = pxa27x_handle_irq,
 	.timer          = &pxa_timer,
 	.init_machine	= centro_init,
-	.restart	= pxa_restart,
 MACHINE_END
 #endif

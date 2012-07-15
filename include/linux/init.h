@@ -2,7 +2,6 @@
 #define _LINUX_INIT_H
 
 #include <linux/compiler.h>
-#include <linux/types.h>
 
 /* These macros are used to mark some functions or 
  * initialized data (doesn't apply to uninitialized data)
@@ -157,7 +156,7 @@ void prepare_namespace(void);
 
 extern void (*late_time_init)(void);
 
-extern bool initcall_debug;
+extern int initcall_debug;
 
 #endif
   

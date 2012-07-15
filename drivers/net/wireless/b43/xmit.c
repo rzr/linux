@@ -874,7 +874,7 @@ bool b43_fill_txstatus_report(struct b43_wldev *dev,
 			      struct ieee80211_tx_info *report,
 			      const struct b43_txstatus *status)
 {
-	bool frame_success = true;
+	bool frame_success = 1;
 	int retry_limit;
 
 	/* preserve the confiured retry limit before clearing the status
@@ -890,7 +890,7 @@ bool b43_fill_txstatus_report(struct b43_wldev *dev,
 		/* The frame was not ACKed... */
 		if (!(report->flags & IEEE80211_TX_CTL_NO_ACK)) {
 			/* ...but we expected an ACK. */
-			frame_success = false;
+			frame_success = 0;
 		}
 	}
 	if (status->frame_count == 0) {

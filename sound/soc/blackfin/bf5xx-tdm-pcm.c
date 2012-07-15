@@ -286,6 +286,7 @@ static u64 bf5xx_pcm_dmamask = DMA_BIT_MASK(32);
 static int bf5xx_pcm_tdm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
+	struct snd_soc_dai *dai = rtd->cpu_dai;
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
@@ -294,14 +295,14 @@ static int bf5xx_pcm_tdm_new(struct snd_soc_pcm_runtime *rtd)
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
-	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
+	if (dai->driver->playback.channels_min) {
 		ret = bf5xx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
 
-	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+	if (dai->driver->capture.channels_min) {
 		ret = bf5xx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
@@ -338,7 +339,17 @@ static struct platform_driver bfin_tdm_driver = {
 	.remove = __devexit_p(bf5xx_soc_platform_remove),
 };
 
-module_platform_driver(bfin_tdm_driver);
+static int __init snd_bfin_tdm_init(void)
+{
+	return platform_driver_register(&bfin_tdm_driver);
+}
+module_init(snd_bfin_tdm_init);
+
+static void __exit snd_bfin_tdm_exit(void)
+{
+	platform_driver_unregister(&bfin_tdm_driver);
+}
+module_exit(snd_bfin_tdm_exit);
 
 MODULE_AUTHOR("Barry Song");
 MODULE_DESCRIPTION("ADI Blackfin TDM PCM DMA module");

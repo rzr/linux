@@ -102,8 +102,8 @@ fail:
 }
 
 static
-int mxl1x1sf_demod_get_tps_modulation(struct mxl111sf_demod_state *state,
-					 fe_modulation_t *modulation)
+int mxl1x1sf_demod_get_tps_constellation(struct mxl111sf_demod_state *state,
+					 fe_modulation_t *constellation)
 {
 	u8 val;
 	int ret = mxl111sf_demod_read_reg(state, V6_MODORDER_TPS_REG, &val);
@@ -113,13 +113,13 @@ int mxl1x1sf_demod_get_tps_modulation(struct mxl111sf_demod_state *state,
 
 	switch ((val & V6_PARAM_CONSTELLATION_MASK) >> 4) {
 	case 0:
-		*modulation = QPSK;
+		*constellation = QPSK;
 		break;
 	case 1:
-		*modulation = QAM_16;
+		*constellation = QAM_16;
 		break;
 	case 2:
-		*modulation = QAM_64;
+		*constellation = QAM_64;
 		break;
 	}
 fail:
@@ -284,7 +284,8 @@ static int mxl1x1sf_demod_reset_irq_status(struct mxl111sf_demod_state *state)
 
 /* ------------------------------------------------------------------------ */
 
-static int mxl111sf_demod_set_frontend(struct dvb_frontend *fe)
+static int mxl111sf_demod_set_frontend(struct dvb_frontend *fe,
+				       struct dvb_frontend_parameters *param)
 {
 	struct mxl111sf_demod_state *state = fe->demodulator_priv;
 	int ret = 0;
@@ -302,7 +303,7 @@ static int mxl111sf_demod_set_frontend(struct dvb_frontend *fe)
 	mxl_dbg("()");
 
 	if (fe->ops.tuner_ops.set_params) {
-		ret = fe->ops.tuner_ops.set_params(fe);
+		ret = fe->ops.tuner_ops.set_params(fe, param);
 		if (mxl_fail(ret))
 			goto fail;
 		msleep(50);
@@ -480,13 +481,13 @@ static int mxl111sf_demod_read_signal_strength(struct dvb_frontend *fe,
 					       u16 *signal_strength)
 {
 	struct mxl111sf_demod_state *state = fe->demodulator_priv;
-	fe_modulation_t modulation;
+	fe_modulation_t constellation;
 	u16 snr;
 
 	mxl111sf_demod_calc_snr(state, &snr);
-	mxl1x1sf_demod_get_tps_modulation(state, &modulation);
+	mxl1x1sf_demod_get_tps_constellation(state, &constellation);
 
-	switch (modulation) {
+	switch (constellation) {
 	case QPSK:
 		*signal_strength = (snr >= 1300) ?
 			min(65535, snr * 44) : snr * 38;
@@ -507,9 +508,9 @@ static int mxl111sf_demod_read_signal_strength(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int mxl111sf_demod_get_frontend(struct dvb_frontend *fe)
+static int mxl111sf_demod_get_frontend(struct dvb_frontend *fe,
+				       struct dvb_frontend_parameters *p)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct mxl111sf_demod_state *state = fe->demodulator_priv;
 
 	mxl_dbg("()");
@@ -517,18 +518,18 @@ static int mxl111sf_demod_get_frontend(struct dvb_frontend *fe)
 	p->inversion = /* FIXME */ ? INVERSION_ON : INVERSION_OFF;
 #endif
 	if (fe->ops.tuner_ops.get_bandwidth)
-		fe->ops.tuner_ops.get_bandwidth(fe, &p->bandwidth_hz);
+		fe->ops.tuner_ops.get_bandwidth(fe, &p->u.ofdm.bandwidth);
 	if (fe->ops.tuner_ops.get_frequency)
 		fe->ops.tuner_ops.get_frequency(fe, &p->frequency);
-	mxl1x1sf_demod_get_tps_code_rate(state, &p->code_rate_HP);
-	mxl1x1sf_demod_get_tps_code_rate(state, &p->code_rate_LP);
-	mxl1x1sf_demod_get_tps_modulation(state, &p->modulation);
+	mxl1x1sf_demod_get_tps_code_rate(state, &p->u.ofdm.code_rate_HP);
+	mxl1x1sf_demod_get_tps_code_rate(state, &p->u.ofdm.code_rate_LP);
+	mxl1x1sf_demod_get_tps_constellation(state, &p->u.ofdm.constellation);
 	mxl1x1sf_demod_get_tps_guard_fft_mode(state,
-					      &p->transmission_mode);
+					      &p->u.ofdm.transmission_mode);
 	mxl1x1sf_demod_get_tps_guard_interval(state,
-					      &p->guard_interval);
+					      &p->u.ofdm.guard_interval);
 	mxl1x1sf_demod_get_tps_hierarchy(state,
-					 &p->hierarchy);
+					 &p->u.ofdm.hierarchy_information);
 
 	return 0;
 }
@@ -550,9 +551,10 @@ static void mxl111sf_demod_release(struct dvb_frontend *fe)
 }
 
 static struct dvb_frontend_ops mxl111sf_demod_ops = {
-	.delsys = { SYS_DVBT },
+
 	.info = {
 		.name               = "MaxLinear MxL111SF DVB-T demodulator",
+		.type               = FE_OFDM,
 		.frequency_min      = 177000000,
 		.frequency_max      = 858000000,
 		.frequency_stepsize = 166666,

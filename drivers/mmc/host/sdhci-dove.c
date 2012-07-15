@@ -89,7 +89,17 @@ static struct platform_driver sdhci_dove_driver = {
 	.remove		= __devexit_p(sdhci_dove_remove),
 };
 
-module_platform_driver(sdhci_dove_driver);
+static int __init sdhci_dove_init(void)
+{
+	return platform_driver_register(&sdhci_dove_driver);
+}
+module_init(sdhci_dove_init);
+
+static void __exit sdhci_dove_exit(void)
+{
+	platform_driver_unregister(&sdhci_dove_driver);
+}
+module_exit(sdhci_dove_exit);
 
 MODULE_DESCRIPTION("SDHCI driver for Dove");
 MODULE_AUTHOR("Saeed Bishara <saeed@marvell.com>, "

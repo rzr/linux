@@ -358,7 +358,17 @@ static struct platform_driver nuc900_pcm_driver = {
 	.remove = __devexit_p(nuc900_soc_platform_remove),
 };
 
-module_platform_driver(nuc900_pcm_driver);
+static int __init nuc900_pcm_init(void)
+{
+	return platform_driver_register(&nuc900_pcm_driver);
+}
+module_init(nuc900_pcm_init);
+
+static void __exit nuc900_pcm_exit(void)
+{
+	platform_driver_unregister(&nuc900_pcm_driver);
+}
+module_exit(nuc900_pcm_exit);
 
 MODULE_AUTHOR("Wan ZongShun, <mcuos.com@gmail.com>");
 MODULE_DESCRIPTION("nuc900 Audio DMA module");

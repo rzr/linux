@@ -46,7 +46,7 @@ static struct channel_list ChannelPlan[] = {
 	  56, 60, 64}, 21}
 };
 
-void dot11d_init(struct rtllib_device *ieee)
+void Dot11d_Init(struct rtllib_device *ieee)
 {
 	struct rt_dot11d_info *pDot11dInfo = GET_DOT11D_INFO(ieee);
 	pDot11dInfo->bEnabled = false;
@@ -58,7 +58,6 @@ void dot11d_init(struct rtllib_device *ieee)
 	RESET_CIE_WATCHDOG(ieee);
 
 }
-EXPORT_SYMBOL(dot11d_init);
 
 void Dot11d_Channelmap(u8 channel_plan, struct rtllib_device *ieee)
 {
@@ -100,7 +99,6 @@ void Dot11d_Channelmap(u8 channel_plan, struct rtllib_device *ieee)
 		break;
 	}
 }
-EXPORT_SYMBOL(Dot11d_Channelmap);
 
 
 void Dot11d_Reset(struct rtllib_device *ieee)
