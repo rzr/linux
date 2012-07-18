@@ -733,6 +733,7 @@ static struct platform_device sham_device = {
 	.id		= -1,
 };
 
+#if 0
 static void omap_init_sham(void)
 {
 	sham_device.resource = omap4_sham_resources;
@@ -740,6 +741,38 @@ static void omap_init_sham(void)
 
 	platform_device_register(&sham_device);
 }
+#endif
+
+int __init omap_init_sham(void)
+{
+	int id = -1;
+	struct platform_device *pdev;
+	struct omap_hwmod *oh;
+	char *oh_name = "sha0";
+	char *name = "omap4-sham";
+
+	oh = omap_hwmod_lookup(oh_name);
+	if (!oh) {
+		pr_err("Could not look up %s\n", oh_name);
+		return -ENODEV;
+	}
+
+	pdev = omap_device_build(name, id, oh, NULL, 0, NULL, 0, 0);
+	//pdev.resource = omap4_sham_resources;
+	//pdev.num_resources = omap4_sham_resources_sz;
+
+	if (IS_ERR(pdev)) {
+		WARN(1, "Can't build omap_device for %s:%s.\n",
+						name, oh->name);
+		return PTR_ERR(pdev);
+	}
+
+	return 0;
+}
+
+
+
+
 
 #else
 static inline void omap_init_sham(void) { }
@@ -835,12 +868,45 @@ static struct platform_device aes_device = {
 	.id		= -1,
 };
 
+#if 0
 static void omap_init_aes(void)
 {
 	aes_device.resource = omap4_aes_resources;
 	aes_device.num_resources = omap4_aes_resources_sz;
 	platform_device_register(&aes_device);
 }
+#endif
+
+int __init omap_init_aes(void)
+{
+	int id = -1;
+	struct platform_device *pdev;
+	struct omap_hwmod *oh;
+	char *oh_name = "aes0";
+	char *name = "omap4-aes";
+
+	oh = omap_hwmod_lookup(oh_name);
+	if (!oh) {
+		pr_err("Could not look up %s\n", oh_name);
+		return -ENODEV;
+	}
+
+	pdev = omap_device_build(name, id, oh, NULL, 0, NULL, 0, 0);
+	//pdev.resource = omap4_sham_resources;
+	//pdev.num_resources = omap4_sham_resources_sz;
+
+	if (IS_ERR(pdev)) {
+		WARN(1, "Can't build omap_device for %s:%s.\n",
+						name, oh->name);
+		return PTR_ERR(pdev);
+	}
+
+	return 0;
+}
+
+
+
+
 
 #else
 static inline void omap_init_aes(void) { }

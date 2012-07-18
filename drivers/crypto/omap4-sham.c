@@ -31,7 +31,6 @@
 #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
-#include <linux/clk.h>
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
@@ -40,6 +39,7 @@
 #include <linux/delay.h>
 #include <linux/crypto.h>
 #include <linux/cryptohash.h>
+#include <linux/pm_runtime.h>
 #include <crypto/scatterwalk.h>
 #include <crypto/algapi.h>
 #include <crypto/sha.h>
@@ -700,7 +700,6 @@ static void omap4_sham_finish_req(struct ahash_request *req, int err)
 	/* atomic operation is not needed here */
 	dd->dflags &= ~(BIT(FLAGS_BUSY) | BIT(FLAGS_FINAL) | BIT(FLAGS_CPU) |
 			BIT(FLAGS_DMA_READY) | BIT(FLAGS_OUTPUT_READY));
-	clk_disable(dd->iclk);
 
 	if (req->base.complete)
 		req->base.complete(&req->base, err);
@@ -743,7 +742,6 @@ static int omap4_sham_handle_queue(struct omap4_sham_dev *dd,
 	dev_dbg(dd->dev, "handling new req, op: %lu, nbytes: %d\n",
 						ctx->op, req->nbytes);
 
-	clk_enable(dd->iclk);
 	if (!test_bit(FLAGS_INIT, &dd->dflags)) {
 		set_bit(FLAGS_INIT, &dd->dflags);
 		dd->err = 0;
@@ -1272,13 +1270,15 @@ static int __devinit omap4_sham_probe(struct platform_device *pdev)
 	dd->irq = -1;
 
 	/* Get the base address */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(dev, "no MEM resource info\n");
-		err = -ENODEV;
-		goto res_err;
-	}
-	dd->phys_base = res->start;
+	//res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	//if (!res) {
+	//	dev_err(dev, "no MEM resource info\n");
+	//	err = -ENODEV;
+	//	goto res_err;
+	//}
+
+	//dd->phys_base = res->start;
+	dd->phys_base = AM33XX_SHA1MD5_P_BASE;
 
 	/* Get the DMA */
 	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
@@ -1308,13 +1308,10 @@ static int __devinit omap4_sham_probe(struct platform_device *pdev)
 	if (err)
 		goto dma_err;
 
-	/* Initializing the clock */
-	dd->iclk = clk_get(dev, "sha0_fck");
-	if (IS_ERR(dd->iclk)) {
-		dev_err(dev, "clock initialization failed.\n");
-		err = PTR_ERR(dd->iclk);
-		goto clk_err;
-	}
+	pm_runtime_enable(dev);
+	udelay(1);
+	pm_runtime_get_sync(dev);
+	udelay(1);
 
 	dd->io_base = ioremap(dd->phys_base, SZ_4K);
 	if (!dd->io_base) {
@@ -1323,9 +1320,7 @@ static int __devinit omap4_sham_probe(struct platform_device *pdev)
 		goto io_err;
 	}
 
-	clk_enable(dd->iclk);
 	reg = omap4_sham_read(dd, SHA_REG_REV);
-	clk_disable(dd->iclk);
 
 	dev_info(dev, "AM33X SHA/MD5 hw accel rev: %u.%02u\n",
 		 (reg & SHA_REG_REV_X_MAJOR_MASK) >> 8, reg & SHA_REG_REV_Y_MINOR_MASK);
@@ -1349,7 +1344,11 @@ err_algs:
 		crypto_unregister_ahash(&algs[j]);
 	iounmap(dd->io_base);
 io_err:
-	clk_put(dd->iclk);
+	pm_runtime_put_sync(dev);
+	udelay(1);
+	pm_runtime_disable(dev);
+	udelay(1);
+
 clk_err:
 	omap4_sham_dma_cleanup(dd);
 dma_err:
@@ -1379,7 +1378,11 @@ static int __devexit omap4_sham_remove(struct platform_device *pdev)
 		crypto_unregister_ahash(&algs[i]);
 	tasklet_kill(&dd->done_task);
 	iounmap(dd->io_base);
-	clk_put(dd->iclk);
+	pm_runtime_put_sync(&pdev->dev);
+	udelay(1);
+	pm_runtime_disable(&pdev->dev);
+	udelay(1);
+
 	omap4_sham_dma_cleanup(dd);
 	if (dd->irq >= 0)
 		free_irq(dd->irq, dd);

@@ -436,11 +436,18 @@ static struct omap_hwmod_irq_info am33xx_aes0_irqs[] = {
 	{ .irq = -1 }
 };
 
+static struct omap_hwmod_dma_info am33xx_aes0_dma[] = {
+	{ .dma_req = AM33XX_DMA_AESEIP36T0_DOUT },
+	{ .dma_req = AM33XX_DMA_AESEIP36T0_DIN },
+	{ .dma_req = -1 }
+};
+
 static struct omap_hwmod am33xx_aes0_hwmod = {
 	.name		= "aes0",
 	.class		= &am33xx_aes_hwmod_class,
 	.clkdm_name	= "l3_clkdm",
 	.mpu_irqs	= am33xx_aes0_irqs,
+	.sdma_reqs	= am33xx_aes0_dma,
 	.main_clk	= "aes0_fck",
 	.prcm		= {
 		.omap4	= {
@@ -2165,8 +2172,13 @@ static struct omap_hwmod_class am33xx_sha0_hwmod_class = {
 };
 
 static struct omap_hwmod_irq_info am33xx_sha0_irqs[] = {
-	{ .irq = 108 },
+	{ .irq = AM33XX_IRQ_SHAEIP57t0_P },
 	{ .irq = -1 }
+};
+
+static struct omap_hwmod_dma_info am33xx_sha0_dma[] = {
+	{ .dma_req = AM33XX_DMA_SHAEIP57T0_DIN },
+	{ .dma_req = -1 }
 };
 
 static struct omap_hwmod am33xx_sha0_hwmod = {
@@ -2174,6 +2186,7 @@ static struct omap_hwmod am33xx_sha0_hwmod = {
 	.class		= &am33xx_sha0_hwmod_class,
 	.clkdm_name	= "l3_clkdm",
 	.mpu_irqs	= am33xx_sha0_irqs,
+	.sdma_reqs	= am33xx_sha0_dma,
 	.main_clk	= "sha0_fck",
 	.prcm		= {
 		.omap4	= {

@@ -32,13 +32,14 @@
 #include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
-#include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/scatterlist.h>
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
 #include <linux/crypto.h>
+#include <linux/pm_runtime.h>
 #include <linux/interrupt.h>
+#include <linux/delay.h>
 #include <crypto/scatterwalk.h>
 #include <crypto/aes.h>
 
@@ -145,12 +146,6 @@ static void omap4_aes_write_n(struct omap4_aes_dev *dd, u32 offset,
 
 static int omap4_aes_hw_init(struct omap4_aes_dev *dd)
 {
-	/*
-	 * clocks are enabled when request starts and disabled when finished.
-	 * It may be long delays between requests.
-	 * Device might go to off mode to save power.
-	 */
-	clk_enable(dd->iclk);
 	omap4_aes_write(dd, AES_REG_SYSCFG, 0);
 
 	if (!(dd->flags & FLAGS_INIT)) {
@@ -494,7 +489,6 @@ static void omap4_aes_finish_req(struct omap4_aes_dev *dd, int err)
 
 	pr_debug("err: %d\n", err);
 
-	clk_disable(dd->iclk);
 	dd->flags &= ~FLAGS_BUSY;
 
 	req->base.complete(&req->base, err);
@@ -801,13 +795,15 @@ static int omap4_aes_probe(struct platform_device *pdev)
 	crypto_init_queue(&dd->queue, AM33X_AES_QUEUE_LENGTH);
 
 	/* Get the base address */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(dev, "invalid resource type\n");
-		err = -ENODEV;
-		goto err_res;
-	}
-	dd->phys_base = res->start;
+	//res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	//if (!res) {
+	//	dev_err(dev, "invalid resource type\n");
+	//	err = -ENODEV;
+	//	goto err_res;
+	//}
+
+	//dd->phys_base = res->start;
+	dd->phys_base = AM33XX_AES0_P_BASE;
 
 	/* Get the DMA */
 	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
@@ -823,13 +819,10 @@ static int omap4_aes_probe(struct platform_device *pdev)
 	else
 		dd->dma_in = res->start;
 
-	/* Initializing the clock */
-	dd->iclk = clk_get(dev, "aes0_fck");
-	if (IS_ERR(dd->iclk)) {
-		dev_err(dev, "clock initialization failed.\n");
-		err = PTR_ERR(dd->iclk);
-		goto err_res;
-	}
+	pm_runtime_enable(dev);
+	udelay(1);
+	pm_runtime_get_sync(dev);
+	udelay(1);
 
 	dd->io_base = ioremap(dd->phys_base, SZ_4K);
 	if (!dd->io_base) {
@@ -840,7 +833,7 @@ static int omap4_aes_probe(struct platform_device *pdev)
 
 	omap4_aes_hw_init(dd);
 	reg = omap4_aes_read(dd, AES_REG_REV);
-	clk_disable(dd->iclk);
+
 	dev_info(dev, "AM33X AES hw accel rev: %u.%02u\n",
 		 ((reg & AES_REG_REV_X_MAJOR_MASK) >> 8),
 		 (reg & AES_REG_REV_Y_MINOR_MASK));
@@ -879,7 +872,12 @@ err_dma:
 	iounmap(dd->io_base);
 
 err_io:
-	clk_put(dd->iclk);
+	pm_runtime_put_sync(dev);
+	udelay(1);
+	pm_runtime_disable(dev);
+	udelay(1);
+
+
 err_res:
 	kfree(dd);
 	dd = NULL;
@@ -907,7 +905,11 @@ static int omap4_aes_remove(struct platform_device *pdev)
 	tasklet_kill(&dd->queue_task);
 	omap4_aes_dma_cleanup(dd);
 	iounmap(dd->io_base);
-	clk_put(dd->iclk);
+	pm_runtime_put_sync(&pdev->dev);
+	udelay(1);
+	pm_runtime_disable(&pdev->dev);
+	udelay(1);
+
 	kfree(dd);
 	dd = NULL;
 
