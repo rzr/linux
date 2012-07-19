@@ -878,9 +878,9 @@ err_io:
 	udelay(1);
 
 
-err_res:
-	kfree(dd);
-	dd = NULL;
+//err_res:
+	//kfree(dd);
+	//dd = NULL;
 err_data:
 	dev_err(dev, "initialization failed.\n");
 	return err;
@@ -916,12 +916,35 @@ static int omap4_aes_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int omap4_aes_suspend(struct device *dev)
+{
+	pr_debug("#### Crypto: Suspend call ####\n");
+
+	return 0;
+}
+
+
+static int omap4_aes_resume(struct device *dev)
+{
+	pr_debug("#### Crypto: resume call ####\n");
+
+	return 0;
+}
+
+static struct dev_pm_ops omap4_aes_dev_pm_ops = {
+	.suspend	= omap4_aes_suspend,
+	.resume		= omap4_aes_resume,
+	.runtime_suspend = omap4_aes_suspend,
+	.runtime_resume = omap4_aes_resume,
+};
+
 static struct platform_driver omap4_aes_driver = {
 	.probe	= omap4_aes_probe,
 	.remove	= omap4_aes_remove,
 	.driver	= {
 		.name	= "omap4-aes",
 		.owner	= THIS_MODULE,
+		.pm		= &omap4_aes_dev_pm_ops
 	},
 };
 
@@ -943,6 +966,8 @@ static void __exit omap4_aes_mod_exit(void)
 
 	platform_driver_unregister(&omap4_aes_driver);
 }
+
+
 
 module_init(omap4_aes_mod_init);
 module_exit(omap4_aes_mod_exit);

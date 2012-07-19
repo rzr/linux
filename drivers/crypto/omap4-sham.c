@@ -239,7 +239,7 @@ static void omap4_sham_copy_ready_hash(struct ahash_request *req)
 	struct omap4_sham_reqctx *ctx = ahash_request_ctx(req);
 	u32 *in = (u32 *)ctx->digest;
 	u32 *hash = (u32 *)req->result;
-	int i, d;
+	int i, d = 0;
 
 	if (!hash)
 		return;
@@ -1224,8 +1224,6 @@ static void omap4_sham_dma_callback(unsigned int lch, u16 ch_status, void *data)
 
 static int omap4_sham_dma_init(struct omap4_sham_dev *dd)
 {
-	int err;
-
 	dd->dma_lch = -1;
 
 	dd->dma_lch = edma_alloc_channel(dd->dma, omap4_sham_dma_callback, dd, EVENTQ_2);
@@ -1349,8 +1347,9 @@ io_err:
 	pm_runtime_disable(dev);
 	udelay(1);
 
-clk_err:
-	omap4_sham_dma_cleanup(dd);
+//clk_err:
+//	omap4_sham_dma_cleanup(dd);
+
 dma_err:
 	if (dd->irq >= 0)
 		free_irq(dd->irq, dd);
@@ -1392,12 +1391,35 @@ static int __devexit omap4_sham_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int omap4_sham_suspend(struct device *dev)
+{
+	pr_debug("#### Crypto: Suspend call ####\n");
+
+	return 0;
+}
+
+
+static int omap4_sham_resume(struct device *dev)
+{
+	pr_debug("#### Crypto: resume call ####\n");
+
+	return 0;
+}
+
+static struct dev_pm_ops omap4_sham_dev_pm_ops = {
+	.suspend	= omap4_sham_suspend,
+	.resume		= omap4_sham_resume,
+	.runtime_suspend = omap4_sham_suspend,
+	.runtime_resume = omap4_sham_resume,
+};
+
 static struct platform_driver omap4_sham_driver = {
 	.probe	= omap4_sham_probe,
 	.remove	= omap4_sham_remove,
 	.driver	= {
 		.name	= "omap4-sham",
 		.owner	= THIS_MODULE,
+		.pm		= &omap4_sham_dev_pm_ops
 	},
 };
 
