@@ -1686,13 +1686,35 @@ static void wl12xx_bluetooth_enable(void)
 	gpio_direction_output(am335xevm_wlan_data.bt_enable_gpio, 0);
 }
 
+#define AM33XX_CTRL_REGADDR(reg)					\
+		AM33XX_L4_WK_IO_ADDRESS(AM33XX_SCM_BASE + (reg))
+
+/* wlan enable pin */
+#define AM33XX_CONTROL_PADCONF_GPMC_CSN0_OFFSET		0x087C
 static int wl12xx_set_power(struct device *dev, int slot, int on, int vdd)
 {
+	int pad_mux_value;
+
 	if (on) {
 		gpio_direction_output(am335xevm_wlan_data.wlan_enable_gpio, 1);
+
+		/* Enable pullup on the WLAN enable pin for keeping wlan active during suspend
+		   in wowlan mode */
+		if ( am335x_evm_get_id() == EVM_SK ) {
+			pad_mux_value = readl(AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_GPMC_CSN0_OFFSET));
+			pad_mux_value &= (~AM33XX_PULL_DISA);
+			writel(pad_mux_value, AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_GPMC_CSN0_OFFSET));
+		}
+
 		mdelay(70);
 	} else {
 		gpio_direction_output(am335xevm_wlan_data.wlan_enable_gpio, 0);
+		/* Disable pullup on the WLAN enable when WLAN is off */
+		if ( am335x_evm_get_id() == EVM_SK ) {
+			pad_mux_value = readl(AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_GPMC_CSN0_OFFSET));
+			pad_mux_value |= AM33XX_PULL_DISA;
+			writel(pad_mux_value, AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_GPMC_CSN0_OFFSET));
+		}
 	}
 
 	return 0;
