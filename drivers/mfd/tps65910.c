@@ -21,12 +21,22 @@
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps65910.h>
 
+static struct resource rtc_resources[] = {
+	{
+		.start  = TPS65910_IRQ_RTC_ALARM,
+		.end    = TPS65910_IRQ_RTC_ALARM,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+
 static struct mfd_cell tps65910s[] = {
 	{
 		.name = "tps65910-pmic",
 	},
 	{
 		.name = "tps65910-rtc",
+		.num_resources = ARRAY_SIZE(rtc_resources),
+		.resources = &rtc_resources[0],
 	},
 	{
 		.name = "tps65910-power",
