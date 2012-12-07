@@ -1214,17 +1214,17 @@ static struct mtd_partition am335x_spi_partitions[] = {
 	{
 		.name       = "U-Boot",
 		.offset     = MTDPART_OFS_APPEND,	/* Offset = 0x20000 */
-		.size       = 2 * SZ_128K,
+		.size       = (3 * SZ_128K) - SZ_4K,
 	},
 	{
 		.name       = "U-Boot Env",
-		.offset     = MTDPART_OFS_APPEND,	/* Offset = 0x60000 */
-		.size       = 2 * SZ_4K,
+		.offset     = MTDPART_OFS_APPEND,	/* Offset = 0x7F000 */
+		.size       = SZ_4K,
 	},
 	{
 		.name       = "Kernel",
-		.offset     = MTDPART_OFS_APPEND,	/* Offset = 0x62000 */
-		.size       = 28 * SZ_128K,
+		.offset     = MTDPART_OFS_APPEND,	/* Offset = 0x80000 */
+		.size       = 866 * SZ_4K,		/* size = 0x362000 */
 	},
 	{
 		.name       = "File System",
