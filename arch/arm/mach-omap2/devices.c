@@ -708,72 +708,18 @@ static void omap_init_sham(void)
 }
 
 #elif defined(CONFIG_CRYPTO_DEV_OMAP4_SHAM) || defined(CONFIG_CRYPTO_DEV_OMAP4_SHAM_MODULE)
-
-static struct resource omap4_sham_resources[] = {
-	{
-		.start	= AM33XX_SHA1MD5_P_BASE,
-		.end	= AM33XX_SHA1MD5_P_BASE + 0x120,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= AM33XX_IRQ_SHAEIP57t0_P,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= AM33XX_DMA_SHAEIP57T0_DIN,
-		.flags	= IORESOURCE_DMA,
-	}
-};
-
-static int omap4_sham_resources_sz = ARRAY_SIZE(omap4_sham_resources);
-
-
-static struct platform_device sham_device = {
-	.name		= "omap4-sham",
-	.id		= -1,
-};
-
-#if 0
-static void omap_init_sham(void)
+static void __init omap_init_sham(void)
 {
-	sham_device.resource = omap4_sham_resources;
-	sham_device.num_resources = omap4_sham_resources_sz;
-
-	platform_device_register(&sham_device);
-}
-#endif
-
-int __init omap_init_sham(void)
-{
-	int id = -1;
-	struct platform_device *pdev;
 	struct omap_hwmod *oh;
-	char *oh_name = "sha0";
-	char *name = "omap4-sham";
+	struct platform_device *pdev;
 
-	oh = omap_hwmod_lookup(oh_name);
-	if (!oh) {
-		pr_err("Could not look up %s\n", oh_name);
-		return -ENODEV;
-	}
+	oh = omap_hwmod_lookup("sha0");
+	if (!oh)
+		return;
 
-	pdev = omap_device_build(name, id, oh, NULL, 0, NULL, 0, 0);
-	//pdev.resource = omap4_sham_resources;
-	//pdev.num_resources = omap4_sham_resources_sz;
-
-	if (IS_ERR(pdev)) {
-		WARN(1, "Can't build omap_device for %s:%s.\n",
-						name, oh->name);
-		return PTR_ERR(pdev);
-	}
-
-	return 0;
+	pdev = omap_device_build("omap4-sham", -1, oh, NULL, 0, NULL, 0, 0);
+	WARN(IS_ERR(pdev), "Can't build omap_device for omap-sham\n");
 }
-
-
-
-
-
 #else
 static inline void omap_init_sham(void) { }
 #endif

@@ -79,6 +79,7 @@ static struct omap_hwmod am33xx_spi1_hwmod;
 static struct omap_hwmod am33xx_elm_hwmod;
 static struct omap_hwmod am33xx_adc_tsc_hwmod;
 static struct omap_hwmod am33xx_rtc_hwmod;
+static struct omap_hwmod am33xx_sha0_hwmod;
 static struct omap_hwmod am33xx_mcasp0_hwmod;
 static struct omap_hwmod am33xx_mcasp1_hwmod;
 static struct omap_hwmod am33xx_ehrpwm0_hwmod;
@@ -2167,8 +2168,16 @@ static struct omap_hwmod am33xx_rtc_hwmod = {
 };
 
 /* sha0 */
+static struct omap_hwmod_class_sysconfig am33xx_sha0_sysc = {
+	.rev_offs	= 0x100,
+	.sysc_offs	= 0x110,
+	.syss_offs	= 0x114,
+	.sysc_flags	= SYSS_HAS_RESET_STATUS,
+};
+
 static struct omap_hwmod_class am33xx_sha0_hwmod_class = {
 	.name		= "sha0",
+	.sysc		= &am33xx_sha0_sysc,
 };
 
 static struct omap_hwmod_irq_info am33xx_sha0_irqs[] = {
@@ -2179,6 +2188,27 @@ static struct omap_hwmod_irq_info am33xx_sha0_irqs[] = {
 static struct omap_hwmod_dma_info am33xx_sha0_dma[] = {
 	{ .dma_req = AM33XX_DMA_SHAEIP57T0_DIN },
 	{ .dma_req = -1 }
+};
+
+struct omap_hwmod_addr_space am33xx_sha0_addr_space[] = {
+	{
+		.pa_start	= 0x53100000,
+		.pa_end		= 0x53100000 + SZ_1M - 1,
+		.flags		= ADDR_TYPE_RT,
+	},
+	{ }
+};
+
+struct omap_hwmod_ocp_if am33xx_l3_core__sha0 = {
+	.master		= &am33xx_l3_main_hwmod,
+	.slave		= &am33xx_sha0_hwmod,
+	.clk		= "sha0_fck",
+	.addr		= am33xx_sha0_addr_space,
+	.user		= OCP_USER_MPU,
+};
+
+static struct omap_hwmod_ocp_if *am33xx_sha0_slaves[] = {
+	&am33xx_l3_core__sha0,
 };
 
 static struct omap_hwmod am33xx_sha0_hwmod = {
@@ -2194,6 +2224,8 @@ static struct omap_hwmod am33xx_sha0_hwmod = {
 			.modulemode	= MODULEMODE_SWCTRL,
 		},
 	},
+	.slaves		= am33xx_sha0_slaves,
+	.slaves_cnt	= ARRAY_SIZE(am33xx_sha0_slaves),
 };
 
 /* 'smartreflex' class */
