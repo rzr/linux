@@ -138,7 +138,6 @@ struct omap4_sham_dev {
 	struct device		*dev;
 	void __iomem		*io_base;
 	int			irq;
-	struct clk		*iclk;
 	spinlock_t		lock;
 	int			err;
 	int			dma;
@@ -701,6 +700,8 @@ static void omap4_sham_finish_req(struct ahash_request *req, int err)
 	dd->dflags &= ~(BIT(FLAGS_BUSY) | BIT(FLAGS_FINAL) | BIT(FLAGS_CPU) |
 			BIT(FLAGS_DMA_READY) | BIT(FLAGS_OUTPUT_READY));
 
+	pm_runtime_put_sync(dd->dev);
+
 	if (req->base.complete)
 		req->base.complete(&req->base, err);
 
@@ -741,6 +742,8 @@ static int omap4_sham_handle_queue(struct omap4_sham_dev *dd,
 
 	dev_dbg(dd->dev, "handling new req, op: %lu, nbytes: %d\n",
 						ctx->op, req->nbytes);
+
+	pm_runtime_get_sync(dd->dev);
 
 	if (!test_bit(FLAGS_INIT, &dd->dflags)) {
 		set_bit(FLAGS_INIT, &dd->dflags);
@@ -1306,11 +1309,6 @@ static int __devinit omap4_sham_probe(struct platform_device *pdev)
 	if (err)
 		goto dma_err;
 
-	pm_runtime_enable(dev);
-	udelay(1);
-	pm_runtime_get_sync(dev);
-	udelay(1);
-
 	dd->io_base = ioremap(dd->phys_base, SZ_4K);
 	if (!dd->io_base) {
 		dev_err(dev, "can't ioremap\n");
@@ -1318,7 +1316,11 @@ static int __devinit omap4_sham_probe(struct platform_device *pdev)
 		goto io_err;
 	}
 
+
+	pm_runtime_enable(dev);
+	pm_runtime_get_sync(dev);
 	reg = omap4_sham_read(dd, SHA_REG_REV);
+	pm_runtime_put_sync(&pdev->dev);
 
 	dev_info(dev, "AM33X SHA/MD5 hw accel rev: %u.%02u\n",
 		 (reg & SHA_REG_REV_X_MAJOR_MASK) >> 8, reg & SHA_REG_REV_Y_MINOR_MASK);
@@ -1342,13 +1344,7 @@ err_algs:
 		crypto_unregister_ahash(&algs[j]);
 	iounmap(dd->io_base);
 io_err:
-	pm_runtime_put_sync(dev);
-	udelay(1);
 	pm_runtime_disable(dev);
-	udelay(1);
-
-//clk_err:
-//	omap4_sham_dma_cleanup(dd);
 
 dma_err:
 	if (dd->irq >= 0)
@@ -1377,10 +1373,7 @@ static int __devexit omap4_sham_remove(struct platform_device *pdev)
 		crypto_unregister_ahash(&algs[i]);
 	tasklet_kill(&dd->done_task);
 	iounmap(dd->io_base);
-	pm_runtime_put_sync(&pdev->dev);
-	udelay(1);
 	pm_runtime_disable(&pdev->dev);
-	udelay(1);
 
 	omap4_sham_dma_cleanup(dd);
 	if (dd->irq >= 0)
