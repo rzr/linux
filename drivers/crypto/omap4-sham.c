@@ -1271,15 +1271,13 @@ static int __devinit omap4_sham_probe(struct platform_device *pdev)
 	dd->irq = -1;
 
 	/* Get the base address */
-	//res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	//if (!res) {
-	//	dev_err(dev, "no MEM resource info\n");
-	//	err = -ENODEV;
-	//	goto res_err;
-	//}
-
-	//dd->phys_base = res->start;
-	dd->phys_base = AM33XX_SHA1MD5_P_BASE;
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(dev, "no MEM resource info\n");
+		err = -ENODEV;
+		goto res_err;
+	}
+	dd->phys_base = res->start;
 
 	/* Get the DMA */
 	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
