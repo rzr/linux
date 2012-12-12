@@ -791,69 +791,18 @@ static void omap_init_aes(void)
 }
 
 #elif defined(CONFIG_CRYPTO_DEV_OMAP4_AES) || defined(CONFIG_CRYPTO_DEV_OMAP4_AES_MODULE)
-
-static struct resource omap4_aes_resources[] = {
-	{
-		.start	= AM33XX_AES0_P_BASE,
-		.end	= AM33XX_AES0_P_BASE + 0x4C,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= AM33XX_DMA_AESEIP36T0_DOUT,
-		.flags	= IORESOURCE_DMA,
-	},
-	{
-		.start	= AM33XX_DMA_AESEIP36T0_DIN,
-		.flags	= IORESOURCE_DMA,
-	}
-};
-static int omap4_aes_resources_sz = ARRAY_SIZE(omap4_aes_resources);
-
-static struct platform_device aes_device = {
-	.name		= "omap4-aes",
-	.id		= -1,
-};
-
-#if 0
-static void omap_init_aes(void)
+static void __init omap_init_aes(void)
 {
-	aes_device.resource = omap4_aes_resources;
-	aes_device.num_resources = omap4_aes_resources_sz;
-	platform_device_register(&aes_device);
-}
-#endif
-
-int __init omap_init_aes(void)
-{
-	int id = -1;
-	struct platform_device *pdev;
 	struct omap_hwmod *oh;
-	char *oh_name = "aes0";
-	char *name = "omap4-aes";
+	struct platform_device *pdev;
 
-	oh = omap_hwmod_lookup(oh_name);
-	if (!oh) {
-		pr_err("Could not look up %s\n", oh_name);
-		return -ENODEV;
-	}
+	oh = omap_hwmod_lookup("aes0");
+	if (!oh)
+		return;
 
-	pdev = omap_device_build(name, id, oh, NULL, 0, NULL, 0, 0);
-	//pdev.resource = omap4_sham_resources;
-	//pdev.num_resources = omap4_sham_resources_sz;
-
-	if (IS_ERR(pdev)) {
-		WARN(1, "Can't build omap_device for %s:%s.\n",
-						name, oh->name);
-		return PTR_ERR(pdev);
-	}
-
-	return 0;
+	pdev = omap_device_build("omap4-aes", -1, oh, NULL, 0, NULL, 0, 0);
+	WARN(IS_ERR(pdev), "Can't build omap_device for omap-aes\n");
 }
-
-
-
-
-
 #else
 static inline void omap_init_aes(void) { }
 #endif

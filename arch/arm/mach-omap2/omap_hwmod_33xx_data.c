@@ -78,6 +78,7 @@ static struct omap_hwmod am33xx_spi0_hwmod;
 static struct omap_hwmod am33xx_spi1_hwmod;
 static struct omap_hwmod am33xx_elm_hwmod;
 static struct omap_hwmod am33xx_adc_tsc_hwmod;
+static struct omap_hwmod am33xx_aes0_hwmod;
 static struct omap_hwmod am33xx_rtc_hwmod;
 static struct omap_hwmod am33xx_sha0_hwmod;
 static struct omap_hwmod am33xx_mcasp0_hwmod;
@@ -427,8 +428,16 @@ static struct omap_hwmod am33xx_adc_tsc_hwmod = {
 };
 
 /* 'aes' class */
+static struct omap_hwmod_class_sysconfig am33xx_aes_sysc = {
+	.rev_offs	= 0x80,
+	.sysc_offs	= 0x84,
+	.syss_offs	= 0x88,
+	.sysc_flags	= SYSS_HAS_RESET_STATUS,
+};
+
 static struct omap_hwmod_class am33xx_aes_hwmod_class = {
 	.name		= "aes",
+	.sysc		= &am33xx_aes_sysc,
 };
 
 /* aes0 */
@@ -441,6 +450,27 @@ static struct omap_hwmod_dma_info am33xx_aes0_dma[] = {
 	{ .dma_req = AM33XX_DMA_AESEIP36T0_DOUT },
 	{ .dma_req = AM33XX_DMA_AESEIP36T0_DIN },
 	{ .dma_req = -1 }
+};
+
+static struct omap_hwmod_addr_space am33xx_aes0_addrs[] = {
+	{
+		.pa_start	= 0x53500000,
+		.pa_end		= 0x53500000 + SZ_1M - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+	{ }
+};
+
+static struct omap_hwmod_ocp_if am33xx_l3_main__aes0 = {
+	.master		= &am33xx_l3_main_hwmod,
+	.slave		= &am33xx_aes0_hwmod,
+	.clk		= "aes0_fck",
+	.addr		= am33xx_aes0_addrs,
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *am33xx_aes0_slaves[] = {
+	&am33xx_l3_main__aes0,
 };
 
 static struct omap_hwmod am33xx_aes0_hwmod = {
@@ -456,6 +486,8 @@ static struct omap_hwmod am33xx_aes0_hwmod = {
 			.modulemode	= MODULEMODE_SWCTRL,
 		},
 	},
+	.slaves		= am33xx_aes0_slaves,
+	.slaves_cnt	= ARRAY_SIZE(am33xx_aes0_slaves),
 };
 
 /* cefuse */
