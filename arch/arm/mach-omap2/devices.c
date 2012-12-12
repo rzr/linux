@@ -807,6 +807,23 @@ static void __init omap_init_aes(void)
 static inline void omap_init_aes(void) { }
 #endif
 
+#if IS_ENABLED(CONFIG_HW_RANDOM_OMAP4)
+static void __init omap_init_rng(void)
+{
+	struct omap_hwmod *oh;
+	struct platform_device *pdev;
+
+	oh = omap_hwmod_lookup("rng");
+	if (!oh)
+		return;
+
+	pdev = omap_device_build("omap4_rng", -1, oh, NULL, 0, NULL, 0, 0);
+	WARN(IS_ERR(pdev), "Can't build omap_device for omap-rng\n");
+}
+#else
+static inline void omap_init_rng(void) {}
+#endif
+
 /*-------------------------------------------------------------------------*/
 
 #if defined(CONFIG_MMC_OMAP) || defined(CONFIG_MMC_OMAP_MODULE)
@@ -1207,6 +1224,7 @@ static int __init omap2_init_devices(void)
 	omap_init_sti();
 	omap_init_sham();
 	omap_init_aes();
+	omap_init_rng();
 	omap_init_vout();
 	am33xx_register_edma();
 	am33xx_init_pcm();

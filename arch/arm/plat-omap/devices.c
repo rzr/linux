@@ -105,28 +105,6 @@ static void omap_init_rng(void)
 {
 	(void) platform_device_register(&omap_rng_device);
 }
-#elif defined(CONFIG_HW_RANDOM_OMAP4) || defined(CONFIG_HW_RANDOM_OMAP4_MODULE)
-
-static struct resource rng_resources[] = {
-	{
-		.start		= AM33XX_RNG_BASE,
-		.end		= AM33XX_RNG_BASE + 0x1FFC,
-		.flags		= IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device omap4_rng_device = {
-	.name		= "omap4_rng",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(rng_resources),
-	.resource	= rng_resources,
-};
-
-static void omap_init_rng(void)
-{
-	(void) platform_device_register(&omap4_rng_device);
-}
-
 #else
 static inline void omap_init_rng(void) {}
 #endif

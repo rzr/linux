@@ -94,6 +94,7 @@ static struct omap_hwmod am33xx_lcdc_hwmod;
 static struct omap_hwmod am33xx_mailbox_hwmod;
 static struct omap_hwmod am33xx_cpgmac0_hwmod;
 static struct omap_hwmod am33xx_mdio_hwmod;
+static struct omap_hwmod am33xx_rng_hwmod;
 
 /*
  * ERRATA: (Yet to conform from IP team)
@@ -3541,6 +3542,67 @@ static struct omap_hwmod am33xx_pruss_hwmod = {
 	.rst_lines_cnt	= ARRAY_SIZE(am33xx_pruss_resets),
 };
 
+/* rng */
+static struct omap_hwmod_sysc_fields omap3_rng_sysc_fields = {
+	.sidle_shift	= 3,
+	.autoidle_shift	= 0,
+};
+
+static struct omap_hwmod_class_sysconfig am33xx_rng_sysc = {
+	.rev_offs	= 0x1fe0,
+	.sysc_offs	= 0x1fe4,
+	.rst_offs	= 0x1ff0,
+	.sysc_flags	= SYSC_HAS_AUTOIDLE,
+	.sysc_fields	= &omap3_rng_sysc_fields,
+};
+
+static struct omap_hwmod_class am33xx_rng_hwmod_class = {
+	.name		= "rng",
+	.sysc		= &am33xx_rng_sysc,
+};
+
+static struct omap_hwmod_irq_info am33xx_rng_irqs[] = {
+	{ .irq = 111 },
+	{ .irq = -1 }
+};
+
+struct omap_hwmod_addr_space am33xx_rng_addr_space[] = {
+	{
+		.pa_start	= 0x48310000,
+		.pa_end		= 0x48310000 + SZ_8K - 1,
+		.flags		= ADDR_TYPE_RT,
+	},
+	{ }
+};
+
+struct omap_hwmod_ocp_if am33xx_l4per__rng = {
+	.master		= &am33xx_l4per_hwmod,
+	.slave		= &am33xx_rng_hwmod,
+	.clk		= "rng_fck",
+	.addr		= am33xx_rng_addr_space,
+	.user		= OCP_USER_MPU,
+};
+
+static struct omap_hwmod_ocp_if *am33xx_rng_slaves[] = {
+	&am33xx_l4per__rng,
+};
+
+static struct omap_hwmod am33xx_rng_hwmod = {
+	.name		= "rng",
+	.class		= &am33xx_rng_hwmod_class,
+	.clkdm_name	= "l4ls_clkdm",
+	.mpu_irqs	= am33xx_rng_irqs,
+	.main_clk	= "rng_fck",
+	.prcm		= {
+		.omap4	= {
+			.clkctrl_offs	= AM33XX_CM_PER_RNG_CLKCTRL_OFFSET,
+			.modulemode	= MODULEMODE_SWCTRL,
+		},
+	},
+	.slaves		= am33xx_rng_slaves,
+	.slaves_cnt	= ARRAY_SIZE(am33xx_rng_slaves),
+};
+
 static __initdata struct omap_hwmod *am33xx_hwmods[] = {
 	/* l3 class */
 	&am33xx_l3_instr_hwmod,
@@ -3661,6 +3723,8 @@ static __initdata struct omap_hwmod *am33xx_hwmods[] = {
 	&am33xx_gfx_hwmod,
 	/* pruss */
 	&am33xx_pruss_hwmod,
+	/* rng */
+	&am33xx_rng_hwmod,
 	NULL,
 };
 
