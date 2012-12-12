@@ -911,24 +911,19 @@ static int omap4_aes_remove(struct platform_device *pdev)
 
 static int omap4_aes_suspend(struct device *dev)
 {
-	pr_debug("#### Crypto: Suspend call ####\n");
-
+	pm_runtime_put_sync(dev);
 	return 0;
 }
 
 
 static int omap4_aes_resume(struct device *dev)
 {
-	pr_debug("#### Crypto: resume call ####\n");
-
+	pm_runtime_get_sync(dev);
 	return 0;
 }
 
 static struct dev_pm_ops omap4_aes_dev_pm_ops = {
-	.suspend	= omap4_aes_suspend,
-	.resume		= omap4_aes_resume,
-	.runtime_suspend = omap4_aes_suspend,
-	.runtime_resume = omap4_aes_resume,
+	SET_SYSTEM_SLEEP_PM_OPS(omap4_aes_suspend, omap4_aes_resume)
 };
 
 static struct platform_driver omap4_aes_driver = {
@@ -937,7 +932,7 @@ static struct platform_driver omap4_aes_driver = {
 	.driver	= {
 		.name	= "omap4-aes",
 		.owner	= THIS_MODULE,
-		.pm		= &omap4_aes_dev_pm_ops
+		.pm	= &omap4_aes_dev_pm_ops
 	},
 };
 
