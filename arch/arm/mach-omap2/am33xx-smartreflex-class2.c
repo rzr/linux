@@ -763,6 +763,12 @@ static int __init am33xx_sr_probe(struct platform_device *pdev)
 	int ret;
 	int i,j;
 
+	if (omap_rev() != AM335X_REV_ES1_0) {
+		dev_err(&pdev->dev, "%s: Smartreflex requires ES 1.0\n",
+		       	__func__);
+		return -EINVAL;
+	}
+
 	sr_info = kzalloc(sizeof(struct am33xx_sr), GFP_KERNEL);
 	if (!sr_info) {
 		dev_err(&pdev->dev, "%s: unable to allocate sr_info\n",
