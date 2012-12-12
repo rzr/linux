@@ -800,15 +800,13 @@ static int omap4_aes_probe(struct platform_device *pdev)
 	crypto_init_queue(&dd->queue, AM33X_AES_QUEUE_LENGTH);
 
 	/* Get the base address */
-	//res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	//if (!res) {
-	//	dev_err(dev, "invalid resource type\n");
-	//	err = -ENODEV;
-	//	goto err_res;
-	//}
-
-	//dd->phys_base = res->start;
-	dd->phys_base = AM33XX_AES0_P_BASE;
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(dev, "invalid resource type\n");
+		err = -ENODEV;
+		goto err_data;
+	}
+	dd->phys_base = res->start;
 
 	/* Get the DMA */
 	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
