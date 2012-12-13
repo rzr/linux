@@ -23,7 +23,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/random.h>
-#include <linux/clk.h>
+#include <linux/pm_runtime.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
 #include <linux/hw_random.h>
@@ -111,7 +111,6 @@
 
 
 static void __iomem *rng_base;
-static struct clk *rng_fck;
 static struct platform_device *rng_dev;
 
 #define trng_read(reg)						\
@@ -172,13 +171,8 @@ static int __devinit omap4_rng_probe(struct platform_device *pdev)
 	if (rng_dev)
 		return -EBUSY;
 
-	rng_fck = clk_get(&pdev->dev, "rng_fck");
-	if (IS_ERR(rng_fck)) {
-		dev_err(&pdev->dev, "Could not get rng_fck\n");
-		ret = PTR_ERR(rng_fck);
-		return ret;
-	} else
-		clk_enable(rng_fck);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -223,8 +217,8 @@ err_register:
 err_ioremap:
 	release_mem_region(res->start, resource_size(res));
 err_region:
-	clk_disable(rng_fck);
-	clk_put(rng_fck);
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	return ret;
 }
 
@@ -238,8 +232,8 @@ static int __exit omap4_rng_remove(struct platform_device *pdev)
 
 	iounmap(rng_base);
 
-	clk_disable(rng_fck);
-	clk_put(rng_fck);
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	release_mem_region(res->start, resource_size(res));
 	rng_base = NULL;
 
@@ -252,11 +246,15 @@ static int omap4_rng_suspend(struct platform_device *pdev, pm_message_t message)
 {
 	trng_write(trng_read(CONTROL) & ~RNG_REG_CONTROL_ENABLE_TRNG, CONTROL);
 
+	pm_runtime_put_sync(&pdev->dev);
+
 	return 0;
 }
 
 static int omap4_rng_resume(struct platform_device *pdev)
 {
+	pm_runtime_get_sync(&pdev->dev);
+
 	trng_write(trng_read(CONTROL) | RNG_REG_CONTROL_ENABLE_TRNG, CONTROL);
 
 	return 0;
