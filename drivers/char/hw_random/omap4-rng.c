@@ -283,7 +283,7 @@ static struct platform_driver omap4_rng_driver = {
 
 static int __init omap4_rng_init(void)
 {
-	if (!cpu_is_am33xx()  || omap_type() != OMAP2_DEVICE_TYPE_GP)
+	if (!cpu_is_am33xx())
 		return -ENODEV;
 
 	return platform_driver_register(&omap4_rng_driver);
