@@ -5,26 +5,26 @@ Maintainer: Philippe Coval <rzr@gna.org>
 Standards-Version: 3.8.4
 Homepage: http://www.kernel.org/
 
-Package: linux-image-3.1.1lsproduo-00009-gd7442b1-svn-dirty
-Provides: linux-image, linux-image-2.6, linux-modules-3.1.1lsproduo-00009-gd7442b1-svn-dirty
+Package: linux-image-3.1.9lsproduo-00010-ga75a410-svn
+Provides: linux-image, linux-image-2.6, linux-modules-3.1.9lsproduo-00010-ga75a410-svn
 Suggests: linux-firmware-image
 Architecture: any
-Description: Linux kernel, version 3.1.1lsproduo-00009-gd7442b1-svn-dirty
+Description: Linux kernel, version 3.1.9lsproduo-00010-ga75a410-svn
  This package contains the Linux kernel, modules and corresponding other
- files, version: 3.1.1lsproduo-00009-gd7442b1-svn-dirty.
+ files, version: 3.1.9lsproduo-00010-ga75a410-svn.
 
-Package: linux-headers-3.1.1lsproduo-00009-gd7442b1-svn-dirty
+Package: linux-headers-3.1.9lsproduo-00010-ga75a410-svn
 Provides: linux-headers, linux-headers-2.6
 Architecture: armel
-Description: Linux kernel headers for 3.1.1lsproduo-00009-gd7442b1-svn-dirty on armel
- This package provides kernel header files for 3.1.1lsproduo-00009-gd7442b1-svn-dirty on armel
+Description: Linux kernel headers for 3.1.9lsproduo-00010-ga75a410-svn on armel
+ This package provides kernel header files for 3.1.9lsproduo-00010-ga75a410-svn on armel
  .
  This is useful for people who need to build external modules
 
 Package: linux-firmware-image
 Architecture: all
-Description: Linux kernel firmware, version 3.1.1lsproduo-00009-gd7442b1-svn-dirty
- This package contains firmware from the Linux kernel, version 3.1.1lsproduo-00009-gd7442b1-svn-dirty.
+Description: Linux kernel firmware, version 3.1.9lsproduo-00010-ga75a410-svn
+ This package contains firmware from the Linux kernel, version 3.1.9lsproduo-00010-ga75a410-svn.
 
 Package: linux-libc-dev
 Section: devel
