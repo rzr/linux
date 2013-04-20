@@ -1,0 +1,45 @@
+[base]
+compiler: gcc-4.4
+flavours:
+ amiga
+ atari
+ bvme6000
+# hp
+ mac
+ mvme147
+ mvme16x
+# q40
+# sun3
+kernel-arch: m68k
+
+[image]
+initramfs: false
+suggests: vmelilo, fdutils
+
+[amiga_description]
+hardware: Amiga
+
+[atari_description]
+hardware: Atari
+
+[bvme6000_description]
+hardware: BVM BVME4000 and BVME6000
+
+[hp_description]
+hardware: HP
+
+[mac_description]
+hardware: Macintosh
+
+[mvme147_description]
+hardware: Motorola MVME147
+
+[mvme16x_description]
+hardware: Motorola MVME162/6/7, MVME172/7
+
+[q40_description]
+hardware: Q40 and Q60
+
+[sun3_description]
+hardware: sun3
+
