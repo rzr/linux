@@ -1,5 +1,5 @@
-linux-upstream (3.1.9lsproduo-00010-ga75a410-svn-22) unstable; urgency=low
+linux-upstream (3.2.41lsproduo-00011-gda8cb6c-svn-dirty-23) unstable; urgency=low
 
   * Custom built Linux kernel.
 
- -- Philippe Coval <rzr@gna.org>  Sat, 20 Apr 2013 13:38:29 +0200
+ -- Philippe Coval <rzr@gna.org>  Sat, 20 Apr 2013 14:21:32 +0200
