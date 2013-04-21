@@ -20,28 +20,33 @@ address?=0x02000000
 
 name?=lsproduo
 
+sudo?=fakeroot
 
 default: config all
+
 
 %:
 	@echo "todo: $@"
 
+
 all: ./arch/arm/tools/mach-types
-	time fakeroot ${MAKE} \
+	time ${sudo} ${MAKE} \
 	 oldconfig \
 	 menuconfig \
 	 deb-pkg \
-	 uimage \
 	  ARCH=${ARCH} \
 	  CROSS_COMPILE=${CROSS_COMPILE} \
 	  KBUILD_DEBARCH=${KBUILD_DEBARCH} \
 	  KALLSYMS_EXTRA_PASS=1 \
- #eol
+ #eol:
+
 
 up: arch/arm/tools/mach-types
 
+
 arch/arm/tools/mach-types:
 	wget -O "$@" "${arch_url}"
+
 
 setup: setup/debian
 
@@ -61,6 +66,7 @@ uboot.dat:
 
 ${uimage}.uboot: uboot.dat ${uimage}
 	cat uboot.dat ${uimage} > ${uimage}.uboot
+
 
 ${uimage}.buffalo: ${uimage}.uboot 
 	mkimage -A arm -O linux -T kernel -C none -a 0x00008000 -e 0x00008000 -n "${name}" -d $< $@
