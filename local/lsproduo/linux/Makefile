@@ -24,6 +24,10 @@ sudo?=fakeroot
 
 default: config all
 
+uimage?=uImage-${name}
+
+initrd?=initrd-${name}
+
 
 %:
 	@echo "todo: $@"
@@ -72,5 +76,10 @@ ${uimage}.buffalo: ${uimage}.uboot
 	mkimage -A arm -O linux -T kernel -C none -a 0x00008000 -e 0x00008000 -n "${name}" -d $< $@
 
 
+${initrd}.buffalo: ${initrd}
+	sudo mkimage \
+	 -A arm -O linux -T ramdisk -C none \
+	 -a ${address} -e ${address} \
+	 -n "${name}" -d $< $@
 
 #eof
