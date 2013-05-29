@@ -238,14 +238,14 @@ int sr_register_class(struct omap_sr_class_data *class_data);
 
 #ifdef CONFIG_AM33XX_SMARTREFLEX
 
-#define SR_CORE                         (0)
-#define SR_MPU                          (1)
+#define SR_CORE				(0)
+#define SR_MPU				(1)
 #define SRCLKLENGTH_125MHZ_SYSCLK	(0x78 << 12)
-#define GAIN_MAXLIMIT                   (16)
-#define R_MAXLIMIT                      (256)
-#define MAX_SENSORS                     2
+#define GAIN_MAXLIMIT			(16)
+#define R_MAXLIMIT			(256)
+#define MAX_SENSORS			(2)
 /* GG: eventually this should be determined at runtime */
-#define AM33XX_OPP_COUNT                4
+#define AM33XX_OPP_COUNT		(5)
 
 /**
  * struct am33xx_sr_opp_data	- Smartreflex data per OPP
@@ -264,17 +264,17 @@ int sr_register_class(struct omap_sr_class_data *class_data);
  */
 struct am33xx_sr_opp_data {
 	u32	efuse_offs;
-        u32     nvalue;
-        u32     adj_nvalue;
+	u32     nvalue;
+	u32     adj_nvalue;
 	s32	e2v_gain;
 	u32	err_weight;
 	u32	err_minlimit;
 	u32	err_maxlimit;
-        s32     margin;
-        u32     nominal_volt; /* nominal_volt and frequency may be removed
-                                 once am33xx voltdm layer works */
-        u32     frequency;
-        u32     opp_id;
+	s32     margin;
+	u32     nominal_volt; /* nominal_volt and frequency may be removed
+				once am33xx voltdm layer works */
+	u32     frequency;
+	u32     opp_id;
 };
 
 /**
@@ -290,50 +290,54 @@ struct am33xx_sr_opp_data {
  */
 struct am33xx_sr_sdata {
 	struct am33xx_sr_opp_data *sr_opp_data;
-        u32     no_of_opps;
-        u32     default_opp;
+	u32     no_of_opps;
+	u32     default_opp;
 	u32	senn_mod;
 	u32	senp_mod;
 };
 
 struct am33xx_sr_sensor {
-        u32                             sr_id;
+	u32                             sr_id;
 	u32			        irq;
 	u32			        irq_status;
 	u32			        senn_en;
 	u32			        senp_en;
 	char			        *name;
-        char                            *reg_name;
+	char                            *reg_name;
 	void __iomem		        *base;
-        int				init_volt_mv;
-        int                             curr_opp;
-        u32                             no_of_opps;
-        struct delayed_work             work_reenable;
-        struct regulator		*reg;
-        struct am33xx_sr_opp_data       opp_data[AM33XX_OPP_COUNT];
+	int				init_volt_mv;
+	int                             curr_opp;
+	u32                             no_of_opps;
+	int                             state;
+	s8                              avg_error_nom;
+	int                             saved_volt;
+	struct delayed_work             work_reenable;
+	struct regulator		*reg;
+	struct am33xx_sr_opp_data       opp_data[AM33XX_OPP_COUNT];
 	struct clk		        *fck;
-        struct voltagedomain		*voltdm;
-        struct omap_volt_data           *volt_data;
+	struct voltagedomain		*voltdm;
+	struct omap_volt_data           *volt_data;
 };
 
 struct am33xx_sr {
-	u32				autocomp_active;
+	bool				autocomp_active;
+	bool                            is_suspended;
 	u32				sens_per_vd;
-        u32                             no_of_sens;
-        u32                             no_of_vds;
+	u32                             no_of_sens;
+	u32                             no_of_vds;
 	u32				ip_type;
-        u32				irq_delay;
-        u32                             disabled_by_user;
+	u32				irq_delay;
+	bool                            disabled_by_user;
 	int				uvoltage_step_size;
-        char                            *res_name[MAX_SENSORS];
+	char                            *res_name[MAX_SENSORS];
 #ifdef CONFIG_CPU_FREQ
 	struct notifier_block	        freq_transition;
 #endif
-	/*struct work_struct		work;*/
-        struct delayed_work             work;
+	struct delayed_work             work;
 	struct sr_platform_data		*sr_data;
 	struct am33xx_sr_sensor		sen[MAX_SENSORS];
 	struct platform_device		*pdev;
+	struct list_head                node;
 };
 
 /**
@@ -354,7 +358,7 @@ struct am33xx_sr_platform_data {
 	struct am33xx_sr_sdata	*sr_sdata;
 	char			*vd_name[2];
 	u32			ip_type;
-        u32                     irq_delay;
+	u32                     irq_delay;
 	u32			no_of_vds;
 	u32			no_of_sens;
 	u32			vstep_size_uv;
