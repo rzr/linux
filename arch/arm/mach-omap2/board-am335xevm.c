@@ -2535,6 +2535,20 @@ static void am335x_evm_setup(struct memory_accessor *mem_acc, void *context)
 
 	am335x_opp_update();
 
+	/*
+	 * For now, Beaglebone Black uses PG 2.0 that are speed binned and operate
+	 * up to 1GHz. So re-enable Turbo and Nitro modes,
+	 */
+	if (!strncmp("A335BNLT", config.name, 8)) {
+		struct device *mpu_dev;
+
+		mpu_dev = omap_device_get_by_hwmod_name("mpu");
+		opp_enable(mpu_dev,
+			    AM33XX_ES2_0_OPPTURBO_FREQ);
+		opp_enable(mpu_dev,
+			    AM33XX_ES2_0_OPPNITRO_FREQ);
+	}
+
 	/* SmartReflex also requires board information. */
 	am33xx_sr_init();
 
