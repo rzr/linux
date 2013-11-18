@@ -53,6 +53,26 @@ config CPU_FREQ_STAT_DETAILS
 
 	  If in doubt, say N.
 
+config OVERCLOCKING
+	bool "Overclocking"
+	default N
+	help
+	  This choice enables "Opptimizer", which patches the OMAP PM OPP
+	  tables on-the-fly to enable under/overclocking and under/over-
+	  volting.
+
+	  Individual kernel modules will need to be loaded as modules
+	  in the following submenu.
+
+	  NOTE that this is a Nokia N9/50 "RM696/RM680" specific option,
+	  enabling it on other devices may cause them to malfunction!
+
+	  If in doubt, say N.
+
+if OVERCLOCKING
+source "drivers/cpufreq/opptimizer/Kconfig"
+endif
+
 choice
 	prompt "Default CPUFreq governor"
 	default CPU_FREQ_DEFAULT_GOV_USERSPACE if CPU_FREQ_SA1100 || CPU_FREQ_SA1110
