@@ -42,7 +42,6 @@ static unsigned long supers_dirty __read_mostly;
 
 static int bdi_sync_supers(void *);
 static void sync_supers_timer_fn(unsigned long);
-static void arm_supers_timer(void);
 
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
@@ -321,7 +320,7 @@ void sb_mark_dirty(struct super_block *sb)
 	if (likely(supers_dirty))
 		return;
 	supers_dirty = 1;
-	arm_supers_timer();
+	bdi_arm_supers_timer();
 }
 EXPORT_SYMBOL_GPL(sb_mark_dirty);
 
@@ -338,7 +337,7 @@ static int bdi_sync_supers(void *unused)
 	while (!kthread_should_stop()) {
 		set_current_state(TASK_INTERRUPTIBLE);
 		if (supers_dirty)
-			arm_supers_timer();
+			bdi_arm_supers_timer();
 		schedule();
 
 		supers_dirty = 0;
@@ -358,9 +357,12 @@ static int bdi_sync_supers(void *unused)
 	return 0;
 }
 
-static void arm_supers_timer(void)
+void bdi_arm_supers_timer(void)
 {
 	unsigned long next;
+
+	if (!dirty_writeback_interval)
+		return;
 
 	next = msecs_to_jiffies(dirty_writeback_interval * 10) + jiffies;
 	mod_timer(&sync_supers_timer, round_jiffies_up(next));
