@@ -7,7 +7,7 @@
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/page.h>
-	
+
 OUTPUT_ARCH(arm)
 ENTRY(stext)
 
@@ -46,9 +46,6 @@ SECTIONS
 		__setup_start = .;
 			*(.init.setup)
 		__setup_end = .;
-		__early_begin = .;
-			*(.early_param.init)
-		__early_end = .;
 		__initcall_start = .;
 			INITCALLS
 		__initcall_end = .;
