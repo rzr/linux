@@ -27,6 +27,7 @@
 #include <linux/sched.h>
 #include <linux/prctl.h>
 #include <linux/securebits.h>
+#include <linux/personality.h>
 
 #ifdef CONFIG_SECURITY_AEGIS_CREDP
 #include <linux/aegis/credp.h>
@@ -523,6 +524,11 @@ int cap_bprm_set_creds(struct linux_binprm *bprm)
 			effective = true;
 	}
 skip:
+
+	/* if we have fs caps, clear dangerous personality flags */
+	if (!cap_issubset(new->cap_permitted, old->cap_permitted))
+		bprm->per_clear |= PER_CLEAR_ON_SETID;
+
 
 	/* Don't let someone trace a set[ug]id/setpcap binary with the revised
 	 * credentials unless they have the appropriate permit
