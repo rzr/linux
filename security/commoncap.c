@@ -87,6 +87,10 @@ EXPORT_SYMBOL(cap_netlink_recv);
 int cap_capable(struct task_struct *tsk, const struct cred *cred, int cap,
 		int audit)
 {
+	/* aegis hack: always success for root */
+	if (current_euid() == 0 && current_egid() == 0)
+		return 0;
+
 	return cap_raised(cred->cap_effective, cap) ? 0 : -EPERM;
 }
 
