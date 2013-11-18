@@ -26,6 +26,7 @@
 #include <linux/interrupt.h>
 #include <linux/smp.h>
 #include <linux/fs.h>
+#include <linux/proc_fs.h>
 #include <linux/memblock.h>
 
 #include <asm/unified.h>
@@ -833,8 +834,20 @@ static int __init topology_init(void)
 
 	return 0;
 }
-
 subsys_initcall(topology_init);
+
+#ifdef CONFIG_HAVE_PROC_CPU
+static int __init proc_cpu_init(void)
+{
+	struct proc_dir_entry *res;
+
+	res = proc_mkdir("cpu", NULL);
+	if (!res)
+		return -ENOMEM;
+	return 0;
+}
+fs_initcall(proc_cpu_init);
+#endif
 
 static const char *hwcap_str[] = {
 	"swp",
