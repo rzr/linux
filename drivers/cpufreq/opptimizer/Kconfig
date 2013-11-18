@@ -1,0 +1,20 @@
+config OPPTIMIZER_KO
+	tristate "Opptimizer kernel module"
+	depends on OVERCLOCKING
+	default m
+	help
+	  This is the Opptimizer kernel module, which is responsible for
+	  adding the user-selected OMAP OPPs to the OPP table.
+
+	  Select m to allow on-the-fly configuration.
+
+config SYMSEARCH_KO
+	tristate "Symsearch kernel module"
+	depends on OVERCLOCKING
+	default m
+	help
+	  This is the Symsearch kernel module, which patches the routines
+	  responsible for OMAP power management to allow Opptimizer to
+	  work.
+
+	  Since you're this far, just select m.
