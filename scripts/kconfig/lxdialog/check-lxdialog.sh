@@ -4,6 +4,8 @@
 # What library to link
 ldflags()
 {
+echo -lncurses
+exit
 	for ext in so a dylib ; do
 		for lib in ncursesw ncurses curses ; do
 			$cc -print-file-name=lib${lib}.${ext} | grep -q /

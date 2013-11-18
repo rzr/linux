@@ -2396,6 +2396,7 @@ extern ssize_t simple_read_from_buffer(void __user *to, size_t count,
 			loff_t *ppos, const void *from, size_t available);
 
 extern int simple_fsync(struct file *, struct dentry *, int);
+extern int generic_file_fsync(struct file *, int);
 
 #ifdef CONFIG_MIGRATION
 extern int buffer_migrate_page(struct address_space *,
