@@ -73,6 +73,7 @@
 /* Quota format type IDs */
 #define	QFMT_VFS_OLD 1
 #define	QFMT_VFS_V0 2
+#define QFMT_VFS_V1 3
 
 /* Size of block in which space limits are passed through the quota
  * interface */
