@@ -619,6 +619,13 @@ static int hrtimer_reprogram(struct hrtimer *timer,
 static void
 hrtimer_expire_cancelable(struct hrtimer_cpu_base *cpu_base, ktime_t now);
 
+static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
+{
+	ktime_t *offs_real = &base->clock_base[CLOCK_REALTIME].offset;
+
+	return ktime_get_update_offsets(offs_real);
+}
+
 /*
  * Retrigger next event is called after clock was set
  *
@@ -684,13 +691,6 @@ static inline void hrtimer_init_hres(struct hrtimer_cpu_base *base)
  */
 static inline void hrtimer_init_timer_hres(struct hrtimer *timer)
 {
-}
-
-static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
-{
-	ktime_t *offs_real = &base->clock_base[CLOCK_REALTIME].offset;
-
-	return ktime_get_update_offsets(offs_real);
 }
 
 /*
