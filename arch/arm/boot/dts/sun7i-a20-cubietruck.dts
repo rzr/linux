@@ -91,6 +91,20 @@
 				allwinner,drive = <0>;
 				allwinner,pull = <0>;
 			};
+
+			bt_pwr_pin: bt_pwr_pin@0 {
+				allwinner,pins = "PH18";
+				allwinner,function = "gpio_out";
+				allwinner,drive = <0>;
+				allwinner,pull = <0>;
+			};
+
+			bt_wake_pin: bt_wake_pin@0 {
+				allwinner,pins = "PH24";
+				allwinner,function = "gpio_out";
+				allwinner,drive = <0>;
+				allwinner,pull = <0>;
+			};
 		};
 
 		pwm: pwm@01c20e00 {
@@ -102,6 +116,12 @@
 		uart0: serial@01c28000 {
 			pinctrl-names = "default";
 			pinctrl-0 = <&uart0_pins_a>;
+			status = "okay";
+		};
+
+		uart2: serial@01c28800 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart2_pins_a>;
 			status = "okay";
 		};
 
@@ -185,5 +205,21 @@
 		regulator-max-microvolt = <3300000>;
 		enable-active-high;
 		gpio = <&pio 7 9 0>;
+	};
+
+	rfkill-switches {
+		compatible = "simple-bus";
+		pinctrl-names = "default";
+
+		rfkill_bt {
+			compatible = "rfkill-gpio";
+			pinctrl-0 = <&bt_pwr_pin>, <&clk_out_a_pins_a>;
+			rfkill-name = "bt";
+			rfkill-type = <2>;
+			bt_shutdown-gpios = <0>, <&pio 7 18 0>; /* PH18 */
+			bt_reset-gpios = <&pio 7 24 0>; /* PH24 */
+			clocks = <&clk_out_a>;
+			clock-frequency = <32768>;
+		};
 	};
 };
