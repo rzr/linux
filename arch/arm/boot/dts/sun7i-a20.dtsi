@@ -768,6 +768,12 @@
 			reg = <0x01c20e00 0xc>;
 			clocks = <&osc24M>;
 			#pwm-cells = <3>;
+		};
+
+		lradc: lradc@01c22800 {
+			compatible = "allwinner,sun4i-lradc-keys";
+			reg = <0x01c22800 0x100>;
+			interrupts = <0 31 4>;
 			status = "disabled";
 		};
 
