@@ -14,6 +14,7 @@
 /dts-v1/;
 /include/ "sun5i-a10s.dtsi"
 /include/ "sunxi-common-regulators.dtsi"
+#include <dt-bindings/input/input.h>
 
 / {
 	model = "Olimex A10s-Olinuxino Micro";
@@ -96,6 +97,13 @@
 				allwinner,drive = <0>;
 				allwinner,pull = <0>;
 			};
+		};
+
+		lradc: lradc@01c22800 {
+			allwinner,chan0-step = <200>;
+			linux,chan0-keycodes = <KEY_VOLUMEUP KEY_VOLUMEDOWN
+						KEY_MENU KEY_ENTER KEY_HOME>;
+			status = "okay";
 		};
 
 		uart0: serial@01c28000 {
