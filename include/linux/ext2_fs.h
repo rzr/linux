@@ -68,6 +68,10 @@
  * The second extended file system magic number
  */
 #define EXT2_SUPER_MAGIC	0xEF53
+#ifdef CONFIG_BUFFALO_PLATFORM
+// __LS_COMMENT__ BUFFALO add 2004.8.30  EXT2 melco exension magic number
+#define MEL_EXT2_SUPER_MAGIC	0xEF54
+#endif
 
 #ifdef __KERNEL__
 static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)

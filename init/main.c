@@ -434,6 +434,9 @@ void __init parse_early_param(void)
 	done = 1;
 }
 
+#if defined(CONFIG_ARM) && defined(CONFIG_DEBUG_LL)
+int console_init_done = 0;
+#endif
 /*
  *	Activate the first processor.
  */
@@ -493,6 +496,9 @@ asmlinkage void __init start_kernel(void)
 	 * this. But we do want output early, in case something goes wrong.
 	 */
 	console_init();
+#if defined(CONFIG_ARM) && defined(CONFIG_DEBUG_LL)
+	console_init_done ++;
+#endif
 	if (panic_later)
 		panic(panic_later, panic_param);
 	profile_init();

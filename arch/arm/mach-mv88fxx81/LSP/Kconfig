@@ -1,0 +1,162 @@
+if ARCH_MV88fxx81
+
+menu "mv88fxx81 Options"
+	depends on ARCH_MV88fxx81
+
+choice
+	prompt "system type (mv88f1181 / mv88f5181)"
+	default ARCH_MV88f1181
+
+config ARCH_MV88f1181
+	bool "Support for mv88f1181"
+	---help---
+	  Choosing this option will generate a linux kernel for the mv88f1181
+
+config ARCH_MV88f5181
+	bool "Support for mv88f5181"
+	---help---
+	  Choosing this option will generate a linux kernel for the mv88f5181
+
+endchoice
+
+config  MV88F5182
+        bool "Support for Orion-NAS"
+        depends on ARCH_MV88f5181
+        ---help---
+
+config  VOIP_RD2
+        bool "Support for Orion voip RD2 boards"
+        depends on ARCH_MV88f5181
+        ---help---
+            Choosing this option will generate image for the Viop RD2 board.
+
+config  VOIP_RD2_5181L
+        bool "Support for Orion voip RD2 boards with the MV88f5181L chipset"
+        depends on VOIP_RD2
+        ---help---
+            Choosing this option will generate image for the Viop RD2 board with 5181L support.  
+
+config  MV_88W8660
+        bool "Support for Shark"
+        depends on ARCH_MV88f5181
+        ---help---
+
+
+config ARCH_SUPPORTS_BIG_ENDIAN
+	bool
+	 default y
+
+config USE_DSP
+        bool "use pld/ldrd/strd arm DSP instructions"
+          default n
+
+config MV_DMA_COPYUSER
+       bool "Support DMA copy_to_user() and copy_from_user"
+       depends on (ARCH_MV88f5181) && EXPERIMENTAL
+         default n
+       help
+         Say Y here if you want to use the DMA engine to perform
+         copy_to_user() and copy_from_user() functionality.
+
+menu "egiga options"
+
+config  ETH_0_MACADDR
+	string "Giga port MAC address"
+	depends on ARCH_MV88f5181
+	default "000000000051"
+	---help---
+	  Set the Giga port MAC address.
+
+config  EGIGA_PROC
+	bool "egiga proc FS (for mvEgigaTool) (TBD)"
+	depends on ARCH_MV88f5181
+	---help---
+	  Use mvEgigaTool proc FS.
+
+config EGIGA_MULTI_Q 
+	bool "Multi Q Support (TBD)"
+	depends on ARCH_MV88f5181
+	---help---
+	  Use Multi Q.
+
+config QUARTER_DECK
+	bool "Support for Quarter Deck Switch connected through the giga port"
+	depends on ARCH_MV88f5181
+	---help---
+	  Use the Quarter Deck.
+
+endmenu
+
+config  MV_PHONE
+	tristate "Support for Marvell telephony support (VoIP)"
+	depends on ARCH_MV88f5181 && PHONE
+	---help---
+	  Choosing this option will enable you to use the Marvell telephony 
+	  support for various VoIP applications. 
+	  Note that the kernel Telephony subsystem must be chosen too.
+
+menu "cesa options"
+	depends on MV88F5182 || VOIP_RD2_5181L
+
+config  MV_CESA
+        bool
+        default y
+
+config	MV_CESA_OCF
+	bool "Support for Marvell CESA OCF driver"
+	depends on MV_CESA && OCF_OCF
+	---help---
+          Choosing this option will enable you to use the Marvell Cryptographic Engine and
+	  Security Accelerator, under the OCF package.
+
+config  MV_CESA_TEST
+	bool "Support for Marvell CESA test driver"
+	depends on MV_CESA && !MV_CESA_OCF
+        ---help---
+          Choosing this option will enable you to use the Marvell Cryptographic Engine and
+          Security Accelerator, with the mv_cesa_tool in test mode.
+
+endmenu
+
+config  SCSI_MVSATA
+	tristate "Support for Marvell Sata Adapters"
+	depends on PCI && SCSI
+	---help---
+	  Choosing this option will enable you to use the Marvell Sata 
+	  adapters support with emulation as SCSI adapters. 
+	  Note that the kernel scsi subsystem must be chosen too.
+
+config  MV88fxx81_PROC
+	bool "Support for MV-shell proc file system"
+	depends on PROC_FS
+	---help---	
+	  Choosing this option will enable you to use the MV-shell through the Proc
+	  File system.
+	  The MV-shell is a debug utility which can be run from the shell.
+
+config  UBOOT_STRUCT
+	bool "Use UBoot Marvell tag structure"
+	---help---
+	  Choosing this option will cause the linux to extract the Tclk, Sysclk and
+	  the uboot version from the Tag list passed by the uboot.
+
+choice
+	prompt "usb mode"
+	depends on ARCH_MV88f5181 && !UBOOT_STRUCT
+	default MV_USB_HOST
+
+config MV_USB_HOST
+	bool "Support for usb host"
+	---help---
+	Choosing this option will configure on chip USB Controller to work in Host mode
+
+config MV_USB_DEVICE
+	bool "Support for usb device"
+	---help---
+	Choosing this option will configure on chip USB Controller to work in Device mode
+
+endchoice
+
+endmenu
+
+endif

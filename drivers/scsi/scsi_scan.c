@@ -1066,6 +1066,13 @@ EXPORT_SYMBOL(int_to_scsilun);
  *     0: scan completed (or no memory, so further scanning is futile)
  *     1: no report lun scan, or not configured
  **/
+#ifdef CONFIG_BUFFALO_PLATFORM
+static int scsi_report_lun_scan(struct scsi_target *starget, int bflags,
+				int rescan)
+{
+	return 1;
+}
+#else
 static int scsi_report_lun_scan(struct scsi_target *starget, int bflags,
 				int rescan)
 {
@@ -1257,6 +1264,7 @@ static int scsi_report_lun_scan(struct scsi_target *starget, int bflags,
 		scsi_destroy_sdev(sdev);
 	return ret;
 }
+#endif
 
 struct scsi_device *__scsi_add_device(struct Scsi_Host *shost, uint channel,
 				      uint id, uint lun, void *hostdata)

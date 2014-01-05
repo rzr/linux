@@ -102,7 +102,7 @@ vfp_support_entry:
 	VFPFMRX	r8, FPINST2, NE		@ FPINST2 if needed - avoids reading
 					@ nonexistant reg on rev0
 	VFPFSTMIA r4 			@ save the working registers
-	add	r4, r4, #8*16+4
+@	add	r4, r4, #8*16+4	STMIA already increment r4
 	stmia	r4, {r1, r5, r6, r8}	@ save FPEXC, FPSCR, FPINST, FPINST2
 					@ and point r4 at the word at the
 					@ start of the register dump
@@ -148,10 +148,12 @@ look_for_VFP_exceptions:
 
 process_exception:
 	DBGSTR	"bounce"
+#ifndef CONFIG_ARCH_MV88fxx81
 	sub	r2, r2, #4
 	str	r2, [sp, #S_PC]		@ retry the instruction on exit from
 					@ the imprecise exception handling in
 					@ the support code
+#endif	/* CONFIG_ARCH_MV88fxx81 */
 	mov	r2, sp			@ nothing stacked - regdump is at TOS
 	mov	lr, r9			@ setup for a return to the user code.
 

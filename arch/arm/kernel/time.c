@@ -255,6 +255,12 @@ void do_gettimeofday(struct timeval *tv)
 		sec++;
 	}
 
+/*
+//buffalo
+printk(">%s: %ld %ld\n"
+	,__FUNCTION__,sec,usec);
+*/
+
 	tv->tv_sec = sec;
 	tv->tv_usec = usec;
 }

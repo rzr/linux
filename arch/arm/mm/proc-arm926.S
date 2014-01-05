@@ -35,6 +35,33 @@
 #include <asm/ptrace.h>
 #include "proc-macros.S"
 
+#ifdef ARCH_MV88fxx81
+/* BE/ LE swap for Asm */
+
+#if defined(CONFIG_CPU_BIG_ENDIAN)
+                .macro  HTOLL sr, tt            @ sr   = A  ,B  ,C  ,D
+                eor \tt, \sr, \sr, ror #16 ;    @ temp = A^C,B^
+                bic \tt, \tt, #0xff0000 ;       @ temp = A^C,0  ,C^A,D^B
+                mov \sr, \sr, ror #8 ;          @ sr   = D  ,A  ,B  ,C
+                eor \sr, \sr, \tt, lsr #8       @ sr   = D  ,C  ,B  ,A
+                .endm
+#else
+                .macro  HTOLL sr, tt
+                .endm
+#endif
+
+#define INTER_REGS_BASE       0xF1000000
+#define MV_REG_READ_ASM(toReg, tmpReg, regOffs)                 \
+        ldr     tmpReg, =(INTER_REGS_BASE + regOffs) ;  \
+        ldr     toReg, [tmpReg]                      ;  \
+        HTOLL   toReg,tmpReg
+
+#define MV_REG_WRITE_ASM(fromReg, tmpReg, regOffs)      \
+        HTOLL   fromReg,tmpReg                        ;  \
+        ldr     tmpReg, =(INTER_REGS_BASE + regOffs) ;  \
+        str     fromReg, [tmpReg]
+#endif	/* ARCH_MV88fxx81 */
+
 /*
  * This is the maximum size of an area which will be invalidated
  * using the single invalidate entry instructions.  Anything larger
@@ -49,6 +76,10 @@
  * the cache line size of the I and D cache
  */
 #define CACHE_DLINESIZE	32
+
+#ifdef CONFIG_ARCH_MV88fxx81
+#include <asm/arch/orion_ver_macro.h>
+#endif
 
 	.text
 /*
@@ -104,8 +135,17 @@ ENTRY(cpu_arm926_do_idle)
 	mcr	p15, 0, r0, c7, c10, 4		@ Drain write buffer
 	bic	r2, r1, #1 << 12
 	mcr	p15, 0, r2, c1, c0, 0		@ Disable I cache
+#ifdef ARCH_MV88fxx81
+	MV_REG_READ_ASM (r2, r0, 0x20100)	@ Read CPU configuration register
+	bic	r3, r2, #3 << 16
+	MV_REG_WRITE_ASM (r3, r0, 0x20100)	@ disable I & D cache prefetch
+	mov	r0, #0
+#endif	/* ARCH_MV88fxx81 */
 	mcr	p15, 0, r0, c7, c0, 4		@ Wait for interrupt
 	mcr	p15, 0, r1, c1, c0, 0		@ Restore ICache enable
+#ifdef ARCH_MV88fxx81
+	MV_REG_WRITE_ASM (r2, r0, 0x20100)	@ Restore I & D cache prefetch
+#endif	/* ARCH_MV88fxx81 */
 	mov	pc, lr
 
 /*
@@ -334,8 +374,13 @@ ENTRY(cpu_arm926_switch_mm)
 	mcr	p15, 0, ip, c7, c6, 0		@ invalidate D cache
 #else
 @ && 'Clean & Invalidate whole DCache'
+#ifdef CONFIG_ARCH_MV88fxx81
+	mv_flush_all r1, r2, r3, ip
+	mov	ip, #0
+#else	/* CONFIG_ARCH_MV88fxx81 */
 1:	mrc	p15, 0, r15, c7, c14, 3 	@ test,clean,invalidate
 	bne	1b
+#endif	/* CONFIG_ARCH_MV88fxx81 */
 #endif
 	mcr	p15, 0, ip, c7, c5, 0		@ invalidate I cache
 	mcr	p15, 0, ip, c7, c10, 4		@ drain WB
@@ -490,6 +535,10 @@ __arm926_proc_info:
 	.long	cpu_arm926_name
 	.long	arm926_processor_functions
 	.long	v4wbi_tlb_fns
+#ifdef ARCH_MV88fxx81
+	.long	v4wb_wa_user_fns
+#else	/* ARCH_MV88fxx81 */
 	.long	v4wb_user_fns
+#endif	/* ARCH_MV88fxx81 */
 	.long	arm926_cache_fns
 	.size	__arm926_proc_info, . - __arm926_proc_info

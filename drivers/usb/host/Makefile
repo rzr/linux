@@ -8,7 +8,13 @@ endif
 
 obj-$(CONFIG_PCI)		+= pci-quirks.o
 
-obj-$(CONFIG_USB_EHCI_HCD)	+= ehci-hcd.o
+ifeq ($(CONFIG_ARCH_MV88f5181),y)
+	ehci-marvell-hcd-objs	+= ehci-hcd.o ehci-marvell-platform.o
+
+	obj-$(CONFIG_USB_EHCI_HCD)	+= ehci-marvell-hcd.o
+else
+	obj-$(CONFIG_USB_EHCI_HCD)	+= ehci-hcd.o
+endif
 obj-$(CONFIG_USB_ISP116X_HCD)	+= isp116x-hcd.o
 obj-$(CONFIG_USB_OHCI_HCD)	+= ohci-hcd.o
 obj-$(CONFIG_USB_UHCI_HCD)	+= uhci-hcd.o

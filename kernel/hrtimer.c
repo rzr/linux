@@ -109,7 +109,8 @@ void ktime_get_ts(struct timespec *ts)
 {
 	struct timespec tomono;
 	unsigned long seq;
-
+	//static int loopflag=0;
+	
 	do {
 		seq = read_seqbegin(&xtime_lock);
 		getnstimeofday(ts);
@@ -117,8 +118,20 @@ void ktime_get_ts(struct timespec *ts)
 
 	} while (read_seqretry(&xtime_lock, seq));
 
+	/*
+	if (loopflag++==40){
+		loopflag=0;
+		printk("ts.tv_sec=%ld tomono.tv_sec=%ld\n",ts->tv_sec, tomono.tv_sec);
+	}
+	*/
 	set_normalized_timespec(ts, ts->tv_sec + tomono.tv_sec,
 				ts->tv_nsec + tomono.tv_nsec);
+	/*
+	if (loopflag==0){
+		loopflag=0;
+		printk(" --ts.tv_sec=%ld\n",ts->tv_sec);
+	}
+	*/
 }
 EXPORT_SYMBOL_GPL(ktime_get_ts);
 

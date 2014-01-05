@@ -1,0 +1,1 @@
+../../arch/arm/mach-mv88fxx81/Board/buffalo/BuffaloUart.h

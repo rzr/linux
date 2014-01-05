@@ -1234,6 +1234,12 @@ out_kfree:
 	kfree(bprm);
 
 out_ret:
+//buffalo
+/*
+if (retval){
+	printk(">%s:%s retval=%d\n",__FUNCTION__,filename,retval); // buffalo
+}
+*/
 	return retval;
 }
 

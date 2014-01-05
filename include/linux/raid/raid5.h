@@ -175,6 +175,11 @@ struct stripe_head {
 #define	STRIPE_DEGRADED		7
 #define	STRIPE_BIT_DELAY	8
 
+#ifdef CONFIG_BUFFALO_SCAN
+  #define STRIPE_SCANING          9
+  #define STRIPE_INSCAN          10
+#endif /* CONFIG_BUFFALO_SCAN */
+
 /*
  * Plugging:
  *

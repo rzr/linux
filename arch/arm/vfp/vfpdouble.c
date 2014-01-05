@@ -361,7 +361,7 @@ static u32 vfp_compare(int dd, int signal_on_qnan, int dm, u32 fpscr)
 	s64 d, m;
 	u32 ret = 0;
 
-	m = vfp_get_double(dm);
+	m = (dm == -1) ? 0 : vfp_get_double(dm);
 	if (vfp_double_packed_exponent(m) == 2047 && vfp_double_packed_mantissa(m)) {
 		ret |= FPSCR_C | FPSCR_V;
 		if (signal_on_qnan || !(vfp_double_packed_mantissa(m) & (1ULL << (VFP_DOUBLE_MANTISSA_BITS - 1))))

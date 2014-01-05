@@ -130,6 +130,10 @@ struct r1bio_s {
  * with failure when last write completes (and all failed).
  * Record that bi_end_io was called with this flag...
  */
-#define	R1BIO_Returned 6
+#define	R1BIO_Returned  6
 
-#endif
+#ifdef CONFIG_BUFFALO_SCAN
+#define R1BIO_ScanErr   7
+#endif /* CONFIG_BUFFALO_SCAN */
+
+#endif /* _RAID1_H */

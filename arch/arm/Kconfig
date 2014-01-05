@@ -122,6 +122,10 @@ config ARCH_INTEGRATOR
 	help
 	  Support for ARM's Integrator platform.
 
+config ARCH_MV88fxx81
+	bool "mv88fxx81"
+	select PCI
+
 config ARCH_IOP3XX
 	bool "IOP3xx-based"
 	select PCI
@@ -248,6 +252,370 @@ config ARCH_AT91RM9200
 
 endchoice
 
+menu "BUFFALO Features"
+
+config BUFFALO_PLATFORM
+	bool "BUFFALO_PLATFORM"
+	---help---
+	  Hardware/Software is BUFFALO platfrom
+
+config USE_REFERENCE_PCB
+	bool "USE_REFERENCE PCB"
+	---help---
+	  Hardware is Reference platfrom
+
+config BUFFALO_ERRCNT
+	bool "BUFFALO_ERRCNT"
+        ---help---
+          disk I/O error counter and auto MD degrading.
+
+config BUFFALO_SCAN
+	bool "BUFFALO_SCAN"
+        ----help---
+	  MD redundancy array scan and repair sector error.
+
+config DEBUG_RAID
+	bool "DEBUG_RAID"
+	----help---
+	  I/O error emulation code for debugging redundancy array.
+          (disk_brk_req_r, disk_brk_req_w, err_r_prob)
+
+menu "BUFFALO system type"
+
+choice
+	prompt "BUFFALO Model Name"
+
+config BUFFALO_LINKSTATION_LSGL
+	bool "LinkStation(LSGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO linkstation
+
+config BUFFALO_TERASTATION_TSHTGL
+	bool "TeraStation(TSHTGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO terastation
+
+config BUFFALO_LINKSTATION_HSWDHTGL_R1
+	bool "LinkStation(HSWDHTGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWTGL_R1
+	bool "LinkStaiton(LSWTGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWSGL_R1
+	bool "LinkStaiton(LSWSGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWHGL_R1
+	bool "LinkStaiton(LSWHGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWTGL_R1_V3
+	bool "LinkStaiton(LSWTGL-V3)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWTGL_R1_V2
+	bool "LinkStaiton(LSWTGL-V2)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_TERASTATION_TEST
+	bool "TeraStation(test)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO terastation
+
+endchoice
+
+choice
+	prompt "BUFFALO LinkStation sub Model Name"
+
+config BUFFALO_TERASTATION_R1
+	bool "Model /R1"
+	default y
+	depends on BUFFALO_LINKSTATION_HSWDHTGL_R1
+
+endchoice
+
+choice
+	prompt "BUFFALO TeraStation sub Model Name"
+
+
+config BUFFALO_TERASTATION_R5
+	bool "Model /R5"
+	default y
+	depends on BUFFALO_TERASTATION_TSHTGL
+
+endchoice
+
+endmenu
+
+config BUFFALO_SOFT_BOARDID
+	bool "USE SOFT_BOARDID"
+	depends on BUFFALO_PLATFORM
+
+choice
+	prompt "BUFFALO Board ID"
+
+config BUFFALO_LSGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x12 (LSGL)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-GL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_TSHTGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x14 (TS-HTGL)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO TS-HTGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_TSHTGL2_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x15 (TS-HTGL 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO TS-HTGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_HSWDHTGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x17 (HS-WDHTGL 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO HS-WDHTGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWTGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x18 (LS-WTGL 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WTGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWSGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x19 (LS-WSGL 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WSGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWHGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x1A (LS-WHGL 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WHGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWTGL_V3_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x1B (LS-WTGL-V3 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WTGL-V3 mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWTGL_V2_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x1C (LS-WTGL-V2 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WTGL-V2 mvBoardEnvSpec.c : mvBoardIdGet()
+
+endchoice
+
+config USE_RS5C372
+	bool "USE RTC chip RS5C372"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  arch/arm/mach-mv88fxx81/Board/rtc/mvDS1339Reg.h.c
+
+config BUFFALO_USE_MICON
+	bool "USE MICON control"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  buffalo/drivers
+
+config BUFFALO_USE_INTERRUPT_DRIVER
+	bool "USE interrupt driver"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO buffalo/drivers
+
+config BUFFALO_USE_GPIO_DRIVER
+	bool "USE gpio driver"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO buffalo/drivers
+	  Only use for miconless models.
+
+comment "gpio switch features"
+	depends on BUFFALO_USE_GPIO_DRIVER
+
+config BUFFALO_USE_SWITCH_SLIDE_POWER
+	bool "USE slide type power switch"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver.
+	  /proc/buffalo/gpio/switch/power
+	  This option support slide type power switch.
+	  Only use for miconless models.
+
+config BUFFALO_USE_SWITCH_FUNC
+	bool "USE function switch"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/switch/function
+	  This option support function switch.
+	  Only use for miconless models.
+
+config BUFFALO_USE_SWITCH_INIT
+	bool "USE initialization switch"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/switch/init
+	  This option support initialization switch.
+	  Only use for miconless models.
+
+config BUFFALO_USE_SWITCH_AUTOPOWER
+	bool "USE autopower switch"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/switch/auto_power
+	  This option support autopower switch.
+	  Only use for miconless models.
+
+comment "gpio led features "
+	depends on BUFFALO_USE_GPIO_DRIVER
+
+config BUFFALO_USE_LED_POWER
+	bool "USE power led"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/led/power
+	  This option support power led.
+	  Only use for miconless models.
+
+config BUFFALO_USE_LED_ETH
+	bool "USE ethernet led"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/led/eth
+	  This option support ethernet led.
+	  Only use for miconless models.
+
+config BUFFALO_USE_LED_INFO
+	bool "USE information led"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/led/info
+	  This option support information led.
+	  Only use for miconless models.
+
+config BUFFALO_USE_LED_ALARM
+	bool "USE alarm led"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/led/alarm
+	  This option support alarm led.
+	  Only use for miconless models.
+
+config BUFFALO_USE_LED_FUNC
+	bool "USE function led"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/led/func
+	  This option support function led.
+	  Only use for miconless models.
+
+
+comment "gpio power control features"
+	depends on BUFFALO_USE_GPIO_DRIVER
+
+config BUFFALO_USE_HDD_POWER_CONTROL
+	bool "USE HDD power control"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/power_control/hddx
+	  This option support hdd power control.
+	  Only use for miconless models.
+
+config BUFFALO_USE_USB_POWER_CONTROL
+	bool "USE USB power control"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/power_control/usbx
+	  This option support usb power control.
+	  Only use for miconless models.
+
+comment "gpio fan control features"
+	depends on BUFFALO_USE_GPIO_DRIVER
+
+config BUFFALO_USE_FAN_LOCK_DETECT
+	bool "USE fan lock detect"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/fan/lock
+	  This option support fan lock detect.
+	  Only use for miconless models.
+
+config BUFFALO_USE_FAN_CONTROL
+	bool "USE fan control"
+	depends on BUFFALO_USE_GPIO_DRIVER
+	---help---
+	  BUFFALO GPIO Driver
+	  /proc/buffalo/gpio/fan/control
+	  This option support fan control.
+	  Only use for miconless models.
+
+comment "end of gpio driver configuration"
+	depends on BUFFALO_USE_GPIO_DRIVER
+
+config BUFFALO_SUPPORT_BOARD_INFO
+	bool "support board info from kernel"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  buffalo/drivers
+
+config BUFFALO_SUPPORT_WHITE_SPACE_ISERIAL
+	bool "Enable make_guid white space skip routine"
+	depends on BUFFALO_PLATFORM
+	default n
+	---help---
+	  BUFFALO drivers/usb/storage/scsiglue.c
+	  If this option would enable, make_guid routine will change.
+	  White space of USB iSerial is ignored in the time to generate GUID.
+
+config BUFFALO_USE_UPS
+	bool "USE UPS control"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  buffalo/drivers
+
+config BUFFALO_ENABLE_TESTCODE
+	bool "enable debug codes"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO buffalo/drivers
+
+endmenu
+
+source "arch/arm/mach-mv88fxx81/LSP/Kconfig"
+
 source "arch/arm/mach-clps711x/Kconfig"
 
 source "arch/arm/mach-footbridge/Kconfig"
@@ -331,7 +699,8 @@ config ISA_DMA_API
 	bool
 
 config PCI
-	bool "PCI support" if ARCH_INTEGRATOR_AP || ARCH_VERSATILE_PB
+	bool "PCI support" if ARCH_INTEGRATOR_AP || ARCH_VERSATILE_PB  || \
+			      ARCH_VERSATILE_PB || ARCH_MV88fxx81
 	help
 	  Find out whether you have a PCI motherboard. PCI is the name of a
 	  bus system, i.e. the way the CPU talks to the other stuff inside
@@ -466,6 +835,15 @@ config OABI_COMPAT
 	  UNPREDICTABLE (in fact it can be predicted that it won't work
 	  at all). If in doubt say Y.
 
+config REORDER
+	bool "Function reordering"
+	default n
+	help
+	  This option enables the toolchain to reorder functions for a more
+	  optimal TLB/Icache usage. If you have pretty much any version of binutils,
+	  this can increase your kernel build time by roughly one minute.
+
+
 config ARCH_DISCONTIGMEM_ENABLE
 	bool
 	default (ARCH_LH7A40X && !LH7A40X_CONTIGMEM)
@@ -484,7 +862,8 @@ config LEDS
 		   ARCH_LUBBOCK || MACH_MAINSTONE || ARCH_NETWINDER || \
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
-		   ARCH_AT91RM9200
+		   ARCH_AT91RM9200 || \
+		   ARCH_MV88fxx81
 	help
 	  If you say Y here, the LEDs on your machine will be used
 	  to provide useful information about your current system status.
@@ -498,7 +877,8 @@ config LEDS
 
 config LEDS_TIMER
 	bool "Timer LED" if (!ARCH_CDB89712 && !ARCH_OMAP) || \
-			    MACH_OMAP_H2 || MACH_OMAP_PERSEUS2
+			    MACH_OMAP_H2 || MACH_OMAP_PERSEUS2 || \
+			    ARCH_MV88fxx81
 	depends on LEDS
 	default y if ARCH_EBSA110
 	help
@@ -700,6 +1080,15 @@ config VFP
 
 	  Say N if your target does not have VFP hardware.
 
+config VFP_RUN_FAST_MODE
+	bool "VFP run fast mode"
+	depends on !VFP
+	help
+	  Say Y to activate run-fast mode of the VFP. This mode
+	  enables the CPU in run-fast-mode only and disables lazy
+	  context switch (ie. every context switch, the CPU swaps in/out
+	  the VFP registers and control).
+
 endmenu
 
 menu "Userspace binary formats"
@@ -788,6 +1177,8 @@ source "drivers/message/i2o/Kconfig"
 source "drivers/net/Kconfig"
 
 source "drivers/isdn/Kconfig"
+
+source "drivers/telephony/Kconfig"
 
 # input before char - char/joystick depends on it. As does USB.
 

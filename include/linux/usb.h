@@ -1034,9 +1034,14 @@ extern int usb_set_interface(struct usb_device *dev, int ifnum, int alternate);
  * USB identifies 5 second timeouts, maybe more in a few cases, and a few
  * slow devices (like some MGE Ellipse UPSes) actually push that limit.
  */
-#define USB_CTRL_GET_TIMEOUT	5000
-#define USB_CTRL_SET_TIMEOUT	5000
 
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+  #define USB_CTRL_GET_TIMEOUT	1000
+  #define USB_CTRL_SET_TIMEOUT	1000
+#else
+  #define USB_CTRL_GET_TIMEOUT	5000
+  #define USB_CTRL_SET_TIMEOUT	5000
+#endif
 
 /**
  * struct usb_sg_request - support for scatter/gather I/O

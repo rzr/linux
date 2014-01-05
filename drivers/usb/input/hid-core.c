@@ -30,6 +30,82 @@
 #undef DEBUG
 #undef DEBUG_DATA
 
+//#define DEBUG
+//#define DEBUG_DATA
+
+//#define BUFFALO_ENABLE_RELEASE_CANDIDATE_CODE
+  #undef CONFIG_BUFFALO_ENABLE_TESTCODE
+
+#if defined BUFFALO_ENABLE_RELEASE_CANDIDATE_CODE
+  #undef CONFIG_BUFFALO_ENABLE_TESTCODE // for comfirmation of RC codes without debug code.
+  //#define WAIT_AT_EACH_ONE_REPORT
+
+  int TargetwValue[]={  0x10c, 0x10d, 0x107, \
+			0x114, 0x116, 0x117, \
+			0x133, \
+			       0x301, 0x302, 0x303, 0x304, 0x305, 0x306, 0x307, \
+			0x308, 0x309, 0x30a, 0x30b, 0x30c, 0x30d, 0x30e, 0x30f, \
+			0x310, 0x311, 0x312, 0x313, 0x314, 0x315, 0x316, 0x317, \
+			0x318, 0x319, 0x31a, 0x31b, 0x31c, 0x31d, 0x31e, 0x31f, \
+			0x320, 0x321, 0x322, 0x323, 0x324, 0x325, 0x326, 0x327, \
+			0x328, 0x329, 0x32a, 0x32b, 0x32c, 0x32d, 0x32e, 0x32f, \
+			0x330, 0x331, 0x332, 0x333, 0x334, 0x335, 0x336, 0x337, \
+			0x33e, 0x33f, \
+			0x340, 0x341, 0x342, 0x345, 0x346, 0x347, 0x348,\
+			0x351, 0x352,  \
+			0x360, 0x361, 0x362, 0x00};
+#endif
+
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+  int IgnorewValue[]={0x00};
+  IGNORE_WVALUE_UPPER_LIMIT=0x100;
+  IGNORE_WVALUE_LOWER_LIMIT=0x400;
+
+  //#define BUFFALO_DEBUG
+  //#define BUFFALO_DEBUG2
+  //#define BUFFALO_DEBUG3
+  #define BUFFALO_DEBUG4
+  #define BUFFALO_DEBUG5
+
+  //#define WAIT_AT_EACH_ONE_REPORT
+
+  #if defined BUFFALO_DEBUG
+    #define TRACE(x)	x
+  #else
+    #define TRACE(x)
+  #endif
+
+  #if defined BUFFALO_DEBUG2
+    #define TRACE2(x)	x
+  #else
+    #define TRACE2(x)
+  #endif
+
+  #if defined BUFFALO_DEBUG3
+    #define TRACE3(x)	x
+  #else
+    #define TRACE3(x)
+  #endif
+
+  #if defined BUFFALO_DEBUG5
+    #define TRACE5(x)	x
+  #else
+    #define TRACE5(x)
+  #endif
+
+  #define	BIT_CHECK	TRACE2(printk("%s : HID_CTRL_RUNNING=0x%08x, HID_OUT_RUNNING=0x%08x\n", __FUNCTION__, test_bit(HID_CTRL_RUNNING, &hid->iofl) ? 1 : 0, test_bit(HID_OUT_RUNNING, &hid->iofl) ? 1 : 0))
+  #define	BIT_SET_INFO	TRACE2(printk("%s : HID_CTRL_RUNNING is setted here(%d)\n", __FUNCTION__, __LINE__))
+  #define	BIT_CLEAR_INFO	TRACE2(printk("%s : HID_CTRL_RUNNING is clead here(%d)\n", __FUNCTION__, __LINE__))
+#else
+  #define TRACE(x)
+  #define TRACE2(x)
+  #define TRACE3(x)
+  #define TRACE5(x)
+  #define BIT_CHECK
+  #define BIT_SET_INFO
+  #define BIT_CLEAR_INFO
+#endif
+
 #include <linux/usb.h>
 
 #include "hid.h"
@@ -79,6 +155,7 @@ static struct hid_report *hid_register_report(struct hid_device *device, unsigne
 	report->device = device;
 	report_enum->report_id_hash[id] = report;
 
+	//TRACE3(printk("%s : device->ctrltail=0x%08x, device->ctrlhead=0x%08x\n", __FUNCTION__, device->ctrltail, device->ctrlhead));
 	list_add_tail(&report->list, &report_enum->report_list);
 
 	return report;
@@ -866,7 +943,7 @@ static int hid_input_report(int type, struct urb *urb, int interrupt, struct pt_
 		return -1;
 	}
 
-#ifdef DEBUG_DATA
+#if defined DEBUG_DATA || defined BUFFALO_DEBUG4
 	printk(KERN_DEBUG __FILE__ ": report (size %u) (%snumbered)\n", len, report_enum->numbered ? "" : "un");
 #endif
 
@@ -876,7 +953,7 @@ static int hid_input_report(int type, struct urb *urb, int interrupt, struct pt_
 		len--;
 	}
 
-#ifdef DEBUG_DATA
+#if defined DEBUG_DATA || defined BUFFALO_DEBUG4
 	{
 		int i;
 		printk(KERN_DEBUG __FILE__ ": report %d (size %u) = ", n, len);
@@ -935,6 +1012,9 @@ static void hid_irq_in(struct urb *urb, struct pt_regs *regs)
 			warn("input irq status %d received", urb->status);
 	}
 
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+	mdelay(20);
+#endif
 	status = usb_submit_urb(urb, SLAB_ATOMIC);
 	if (status)
 		err("can't resubmit intr, %s-%s/input%d, status %d",
@@ -1031,6 +1111,9 @@ static int hid_submit_out(struct hid_device *hid)
 
 	dbg("submitting out urb");
 
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+	mdelay(20);
+#endif
 	if (usb_submit_urb(hid->urbout, GFP_ATOMIC)) {
 		err("usb_submit_urb(out) failed");
 		return -1;
@@ -1044,6 +1127,7 @@ static int hid_submit_ctrl(struct hid_device *hid)
 	struct hid_report *report;
 	unsigned char dir;
 	int len;
+	TRACE(printk("%s : Entered\n", __FUNCTION__));
 
 	report = hid->ctrl[hid->ctrltail].report;
 	dir = hid->ctrl[hid->ctrltail].dir;
@@ -1075,14 +1159,43 @@ static int hid_submit_ctrl(struct hid_device *hid)
 	hid->cr->wIndex = cpu_to_le16(hid->ifnum);
 	hid->cr->wLength = cpu_to_le16(len);
 
-	dbg("submitting ctrl urb: %s wValue=0x%04x wIndex=0x%04x wLength=%u",
-		hid->cr->bRequest == HID_REQ_SET_REPORT ? "Set_Report" : "Get_Report",
-		hid->cr->wValue, hid->cr->wIndex, hid->cr->wLength);
+#if defined BUFFALO_ENABLE_RELEASE_CANDIDATE_CODE
+	int wValue_counter=0;
+	int head = (hid->ctrlhead + 1) & (HID_CONTROL_FIFO_SIZE - 1);
+	int tail = (hid->ctrltail + 1) & (HID_CONTROL_FIFO_SIZE - 1);
+	//printk("%s hid->ctrlhead = 0x%02x, hid->ctrltail = 0x%02x\n", __FUNCTION__, hid->ctrlhead, hid->ctrltail);
+	//printk("%s head = 0x%02x, tail = 0x%02x\n", __FUNCTION__, head, tail);
+	while(TargetwValue[wValue_counter]>0x00){
+		if(TargetwValue[wValue_counter] == hid->cr->wValue){
+			goto TargetwValueProcess;
+		}
+		wValue_counter++;
+	}
+	printk("%s : wValue = 0x%08x, doropped\n", __FUNCTION__, hid->cr->wValue);
+#if 0
+	goto TargetwValueProcess;
+#endif
+	hid->ctrltail = tail;
+	return -EINVAL;
+TargetwValueProcess:
+#endif
 
+//	dbg("submitting ctrl urb: %s wValue=0x%04x wIndex=0x%04x wLength=%u\n",
+	TRACE(printk("submitting ctrl urb: %s wValue=0x%04x wIndex=0x%04x wLength=%u\n",
+		hid->cr->bRequest == HID_REQ_SET_REPORT ? "Set_Report" : "Get_Report",
+		hid->cr->wValue, hid->cr->wIndex, hid->cr->wLength));
+
+#if defined WAIT_AT_EACH_ONE_REPORT
+	mdelay(100);
+	//printk("%s Waiting ... \n", __FUNCTION__);
+#endif
 	if (usb_submit_urb(hid->urbctrl, GFP_ATOMIC)) {
+//	if (usb_submit_urb(hid->urbctrl, GFP_KERNEL)) {
 		err("usb_submit_urb(ctrl) failed");
+		TRACE(printk("%s : LEAVING(-1)...\n", __FUNCTION__));
 		return -1;
 	}
+	TRACE(printk("%s : LEAVING(0)...\n", __FUNCTION__));
 
 	return 0;
 }
@@ -1165,7 +1278,9 @@ static void hid_ctrl(struct urb *urb, struct pt_regs *regs)
 		hid->ctrltail = (hid->ctrltail + 1) & (HID_CONTROL_FIFO_SIZE - 1);
 
 	if (hid->ctrlhead != hid->ctrltail) {
+		TRACE(printk("%s : Starting hid_submit_ctrl(hid)\n", __FUNCTION__));
 		if (hid_submit_ctrl(hid)) {
+			BIT_CLEAR_INFO;
 			clear_bit(HID_CTRL_RUNNING, &hid->iofl);
 			wake_up(&hid->wait);
 		}
@@ -1173,9 +1288,11 @@ static void hid_ctrl(struct urb *urb, struct pt_regs *regs)
 		return;
 	}
 
+	BIT_CLEAR_INFO;
 	clear_bit(HID_CTRL_RUNNING, &hid->iofl);
 	spin_unlock_irqrestore(&hid->ctrllock, flags);
 	wake_up(&hid->wait);
+	BIT_CHECK;
 }
 
 void hid_submit_report(struct hid_device *hid, struct hid_report *report, unsigned char dir)
@@ -1185,6 +1302,21 @@ void hid_submit_report(struct hid_device *hid, struct hid_report *report, unsign
 
 	if ((hid->quirks & HID_QUIRK_NOGET) && dir == USB_DIR_IN)
 		return;
+
+#if defined BUFFALO_ENABLE_RELEASE_CANDIDATE_CODE_NG
+	unsigned int SubmittingwValue = cpu_to_le16(((report->type + 1) << 8)|report->id);
+
+	int wValue_counter=0;
+	while(TargetwValue[wValue_counter]>0x00){
+		if(TargetwValue[wValue_counter] == SubmittingwValue){
+			goto SendwValueProcess;
+		}
+		wValue_counter++;
+	}
+	printk("%s : Cancelled submit wValue is 0x%08x\n", __FUNCTION__, SubmittingwValue);
+	return ;
+SendwValueProcess:
+#endif
 
 	if (hid->urbout && dir == USB_DIR_OUT && report->type == HID_OUTPUT_REPORT) {
 
@@ -1219,9 +1351,19 @@ void hid_submit_report(struct hid_device *hid, struct hid_report *report, unsign
 	hid->ctrl[hid->ctrlhead].dir = dir;
 	hid->ctrlhead = head;
 
-	if (!test_and_set_bit(HID_CTRL_RUNNING, &hid->iofl))
-		if (hid_submit_ctrl(hid))
+	BIT_SET_INFO;
+	if (!test_and_set_bit(HID_CTRL_RUNNING, &hid->iofl)){
+		TRACE(printk("%s : Starting hid_submit_ctrl\n", __FUNCTION__));
+		if (hid_submit_ctrl(hid)){
+			BIT_CLEAR_INFO;
 			clear_bit(HID_CTRL_RUNNING, &hid->iofl);
+		}
+	}
+//	else{
+//		TRACE(printk("%s : Canncelling urb ... \n", __FUNCTION__));
+//		usb_unlink_urb(hid->urbctrl);
+//	}
+	//clear_bit(HID_CTRL_RUNNING, &hid->iofl);
 
 	spin_unlock_irqrestore(&hid->ctrllock, flags);
 }
@@ -1231,9 +1373,16 @@ int hid_wait_io(struct hid_device *hid)
 	if (!wait_event_timeout(hid->wait, (!test_bit(HID_CTRL_RUNNING, &hid->iofl) &&
 					!test_bit(HID_OUT_RUNNING, &hid->iofl)),
 					10*HZ)) {
-		dbg("timeout waiting for ctrl or out queue to clear");
+		//BIT_CHECK;
+		//TRACE2(printk("timeout waiting for ctrl or out queue to clear\n"));
+		//TRACE(printk("%s : Canncelling urb ... \n", __FUNCTION__));
+		//usb_unlink_urb(hid->urbctrl);
+		dbg("timeout waiting for ctrl or out queue to clear\n");
 		return -1;
 	}
+//	TRACE2(printk("HID_CTRL_RUNNING=0x%08x, HID_OUT_RUNNING=0x%08x\n",
+//		test_bit(HID_CTRL_RUNNING, &hid->iofl) ? 1 : 0,
+//		test_bit(HID_OUT_RUNNING, &hid->iofl) ? 1 : 0));
 
 	return 0;
 }
@@ -1268,6 +1417,9 @@ int hid_open(struct hid_device *hid)
 
 	hid->urbin->dev = hid->dev;
 
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+	mdelay(20);
+#endif
 	if (usb_submit_urb(hid->urbin, GFP_KERNEL))
 		return -EIO;
 
@@ -1288,12 +1440,11 @@ void hid_init_reports(struct hid_device *hid)
 {
 	struct hid_report *report;
 	int err, ret;
+	TRACE5(printk("%s : Entered\n", __FUNCTION__));
 
-	list_for_each_entry(report, &hid->report_enum[HID_INPUT_REPORT].report_list, list)
+	list_for_each_entry(report, &hid->report_enum[HID_INPUT_REPORT].report_list, list){
 		hid_submit_report(hid, report, USB_DIR_IN);
-
-	list_for_each_entry(report, &hid->report_enum[HID_FEATURE_REPORT].report_list, list)
-		hid_submit_report(hid, report, USB_DIR_IN);
+	}
 
 	err = 0;
 	ret = hid_wait_io(hid);
@@ -1308,6 +1459,25 @@ void hid_init_reports(struct hid_device *hid)
 
 	if (err)
 		warn("timeout initializing reports");
+
+	TRACE5(printk("%s : finish get HID_INPUT_REPORT\n", __FUNCTION__));
+
+	list_for_each_entry(report, &hid->report_enum[HID_FEATURE_REPORT].report_list, list){
+		hid_submit_report(hid, report, USB_DIR_IN);
+	}
+
+	err = 0;
+	ret = hid_wait_io(hid);
+	while (ret) {
+		err |= ret;
+		if (test_bit(HID_CTRL_RUNNING, &hid->iofl))
+			usb_kill_urb(hid->urbctrl);
+		if (test_bit(HID_OUT_RUNNING, &hid->iofl))
+			usb_kill_urb(hid->urbout);
+		ret = hid_wait_io(hid);
+	}
+	TRACE5(printk(" %s : finish get HID_FEATURE_REPORT\n", __FUNCTION__));
+	TRACE5(printk(" %s : Leaving\n", __FUNCTION__));
 }
 
 #define USB_VENDOR_ID_WACOM		0x056a
@@ -1623,6 +1793,7 @@ static void hid_find_max_report(struct hid_device *hid, unsigned int type, int *
 		if (*max < size)
 			*max = size;
 	}
+	//printk("%s : report->size=0x%08x, hid->report_enum[type].numbered=0x%08x\n", __FUNCTION__, report->size, type, hid->report_enum[type].numbered);
 }
 
 static int hid_alloc_buffers(struct usb_device *dev, struct hid_device *hid)
@@ -1952,9 +2123,12 @@ static int hid_resume(struct usb_interface *intf)
 	struct hid_device *hid = usb_get_intfdata (intf);
 	int status;
 
-	if (hid->open)
+	if (hid->open){
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+		mdelay(20);
+#endif
 		status = usb_submit_urb(hid->urbin, GFP_NOIO);
-	else
+	}else
 		status = 0;
 	dev_dbg(&intf->dev, "resume status %d\n", status);
 	return status;

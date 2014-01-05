@@ -39,6 +39,8 @@ static struct mtd_partition *physmap_partitions;
 
 static const char *part_probes[] __initdata = {"cmdlinepart", "RedBoot", NULL};
 
+//#define CONFIG_BUFFALO_DEBUG
+
 void physmap_set_partitions(struct mtd_partition *parts, int num_parts)
 {
 	physmap_partitions=parts;
@@ -52,18 +54,36 @@ static int __init init_physmap(void)
 	const char **type;
 
        	printk(KERN_NOTICE "physmap flash device: %lx at %lx\n", physmap_map.size, physmap_map.phys);
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :do ioremap\n", __FUNCTION__);
+#endif
 	physmap_map.virt = ioremap(physmap_map.phys, physmap_map.size);
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :finish ioremap\n", __FUNCTION__);
+#endif
 
 	if (!physmap_map.virt) {
 		printk("Failed to ioremap\n");
 		return -EIO;
 	}
 
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :do simpole_map_init\n", __FUNCTION__);
+#endif
 	simple_map_init(&physmap_map);
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :finish simpole_map_init\n", __FUNCTION__);
+#endif
 
 	mymtd = NULL;
 	type = rom_probe_types;
+#if defined CONFIG_BUFFALO_DEBUG
+	int counter=0;
+#endif
 	for(; !mymtd && *type; type++) {
+#if defined CONFIG_BUFFALO_DEBUG
+		printk("%s :counter=%d\n", __FUNCTION__, counter);
+#endif
 		mymtd = do_map_probe(*type, &physmap_map);
 	}
 	if (mymtd) {

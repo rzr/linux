@@ -35,6 +35,14 @@
 #include <asm/uaccess.h>
 #include <asm/mach/time.h>
 
+#if defined CONFIG_BUFFALO_USE_GPIO_DRIVER
+ #include "buffalo/BuffaloGpio.h"
+#endif
+
+#ifdef CONFIG_BUFFALO_USE_MICON
+#include "buffalo/miconcntl.h"
+#endif
+
 extern const char *processor_modes[];
 extern void setup_mm_for_reboot(char mode);
 
@@ -140,8 +148,41 @@ int __init reboot_setup(char *str)
 
 __setup("reboot=", reboot_setup);
 
+#if defined CONFIG_BUFFALO_USE_GPIO_DRIVER
+void
+BuffaloChangePowerStatusBeforeHalt(void)
+{
+	unsigned int MagicKey = BuffaloGpio_ChangePowerStatus(0);
+	printk("%s > Check power status. MagicKey = %d\n", __FUNCTION__, MagicKey);
+	switch(MagicKey){
+	case MagicKeyReboot:
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_REBOOT_REACHED_HALT);
+		printk("%s > Changed to %d from %d\n", __FUNCTION__, MagicKeyRebootReachedHalt, MagicKey);
+	break;
+	case MagicKeySwPoff:
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_SW_POFF_REACHED_HALT);
+		printk("%s > Changed to %d from %d\n", __FUNCTION__, MagicKeySWPoffReachedHalt, MagicKey);
+		break;
+	case MagicKeyUpsShutdown:
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_UPS_SHUTDOWN_REACHED_HALT);
+		printk("%s > Changed to %d from %d\n", __FUNCTION__, MagicKeyUpsShutdownReachedHalt, MagicKey);
+		break;
+	}
+}
+#endif
+
 void machine_halt(void)
 {
+#ifdef CONFIG_BUFFALO_USE_GPIO_DRIVER
+ #if 0
+	BuffaloGpio_ChangePowerStatus(POWER_STATUS_SW_POWER_OFF);
+ #endif
+	BuffaloChangePowerStatusBeforeHalt();
+	BuffaloGpio_CpuReset();
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_PowerOff();
+#endif
 }
 
 
@@ -165,6 +206,17 @@ void machine_restart(char * __unused)
 	 * soft boot works.
 	 */
 	setup_mm_for_reboot(reboot_mode);
+
+#ifdef CONFIG_BUFFALO_USE_GPIO_DRIVER
+ #if 1
+	BuffaloGpio_ChangePowerStatus(POWER_STATUS_REBOOTING);
+ #endif
+	BuffaloChangePowerStatusBeforeHalt();
+	BuffaloGpio_CpuReset();
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_Reboot();
+#endif
 
 	/*
 	 * Now call the architecture specific reboot code.

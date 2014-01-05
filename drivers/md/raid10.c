@@ -2069,6 +2069,10 @@ static int stop(mddev_t *mddev)
 	kfree(conf->mirrors);
 	kfree(conf);
 	mddev->private = NULL;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// to delete bvec function
+	blk_queue_merge_bvec(mddev->queue, NULL);
+#endif
 	return 0;
 }
 

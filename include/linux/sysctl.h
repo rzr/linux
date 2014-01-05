@@ -804,10 +804,22 @@ enum {
 };
 
 /* /proc/sys/dev/raid */
+#ifdef CONFIG_BUFFALO_PLATFORM
+enum {
+	DEV_RAID_SPEED_LIMIT_MIN=1,
+	DEV_RAID_SPEED_LIMIT_MAX=2,
+	DEV_RAID_SKIP_RESYNC=3
+#ifdef CONFIG_BUFFALO_SCAN
+        ,DEV_RAID_SCAN_SPEED_LIMIT_MIN=4
+        ,DEV_RAID_SCAN_SPEED_LIMIT_MAX=5
+#endif /* CONFIG_BUFFALO_SCAN */
+};
+#else
 enum {
 	DEV_RAID_SPEED_LIMIT_MIN=1,
 	DEV_RAID_SPEED_LIMIT_MAX=2
 };
+#endif
 
 /* /proc/sys/dev/parport/default */
 enum {

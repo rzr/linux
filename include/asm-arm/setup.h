@@ -8,7 +8,7 @@
  * published by the Free Software Foundation.
  *
  *  Structure passed to kernel to tell it about the
- *  hardware it's running on.  See Documentation/arm/Setup
+ *  hardware it's running on.  See linux/Documentation/arm/Setup
  *  for more info.
  */
 #ifndef __ASMARM_SETUP_H
@@ -141,6 +141,17 @@ struct tag_memclk {
 	u32 fmemclk;
 };
 
+/* Marvell uboot parameters */
+#define ATAG_MV_UBOOT	0x41000403
+
+struct tag_mv_uboot {
+	u32 uboot_version;
+	u32 tclk;
+	u32 sysclk;
+	u32 isUsbHost;
+	u32 overEthAddr;
+};
+
 struct tag {
 	struct tag_header hdr;
 	union {
@@ -163,6 +174,11 @@ struct tag {
 		 * DC21285 specific
 		 */
 		struct tag_memclk	memclk;
+
+		/*
+		 * Marvell specific
+		 */
+		struct tag_mv_uboot	mv_uboot;
 	} u;
 };
 
@@ -196,12 +212,17 @@ static struct tagtable __tagtable_##fn __tag = { tag, fn }
 
 struct meminfo {
 	int nr_banks;
+	unsigned long end;
 	struct {
 		unsigned long start;
 		unsigned long size;
 		int           node;
 	} bank[NR_BANKS];
 };
+
+#if __GNUC__ <= 3
+extern struct meminfo meminfo;
+#endif
 
 /*
  * Early command line parameters.

@@ -359,29 +359,59 @@ extern unsigned long __arch_clear_user(void __user *addr, unsigned long n);
 extern unsigned long __arch_strncpy_from_user(char *to, const char __user *from, unsigned long count);
 extern unsigned long __arch_strnlen_user(const char __user *s, long n);
 
+#ifdef CONFIG_MV_DMA_COPYUSER
+#define IDMA_MIN_COPY	1260
+#if IDMA_MIN_COPY < 64
+#error IDMA_MIN_COPY must be greater than 64 bytes.
+#endif
+#endif
+
+extern unsigned long dma_copy_from_user(void *to, const void __user *from, unsigned long n);
+extern unsigned long dma_copy_to_user(void __user *to, const void *from, unsigned long n);
+
+
 static inline unsigned long copy_from_user(void *to, const void __user *from, unsigned long n)
 {
-	if (access_ok(VERIFY_READ, from, n))
-		n = __arch_copy_from_user(to, from, n);
+	if (access_ok(VERIFY_READ, from, n)) {
+#ifdef CONFIG_MV_DMA_COPYUSER
+		if(n > IDMA_MIN_COPY)
+			return dma_copy_from_user(to,from,n);
+#endif
+		return __arch_copy_from_user(to, from, n);
+	}
 	else /* security hole - plug it */
 		memzero(to, n);
+
 	return n;
 }
 
 static inline unsigned long __copy_from_user(void *to, const void __user *from, unsigned long n)
 {
+#ifdef CONFIG_MV_DMA_COPYUSER
+	if(n > IDMA_MIN_COPY)
+		return dma_copy_from_user(to,from,n);
+#endif
 	return __arch_copy_from_user(to, from, n);
 }
 
 static inline unsigned long copy_to_user(void __user *to, const void *from, unsigned long n)
 {
-	if (access_ok(VERIFY_WRITE, to, n))
-		n = __arch_copy_to_user(to, from, n);
+	if (access_ok(VERIFY_WRITE, to, n)) {
+#ifdef CONFIG_MV_DMA_COPYUSER
+		if(n > IDMA_MIN_COPY)
+			return dma_copy_to_user(to,from,n);
+#endif
+		return __arch_copy_to_user(to, from, n);
+	}
 	return n;
 }
 
 static inline unsigned long __copy_to_user(void __user *to, const void *from, unsigned long n)
 {
+#ifdef CONFIG_MV_DMA_COPYUSER
+	if(n > IDMA_MIN_COPY)
+		return dma_copy_to_user(to,from,n);
+#endif
 	return __arch_copy_to_user(to, from, n);
 }
 

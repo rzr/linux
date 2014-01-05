@@ -1,0 +1,101 @@
+This patch fixes the foolowing bug:
+The IDMA/XOR acceleration uses the IDMA/XOR channels to accelerate copying buffers between kernel space and user space, each buffer is divided into small chunks that are contiguous on physical memory, sometimes the chunk is too small so use the cpu to copy it, and that can happen while the IDMA/XOR is in the middle of copying the previous chunk, this parallelism is done for performance sake. In some cases the start address of the destination chunk buffer might not be cache line aligned, thus it may share the same cache line with the previous chunk which accessed by the IDMA, so writing to that address will allocate the full line into the cache (when write allocate is enabled, or the PLD instruction is used), this cache line will be flushed later to memory thus overriding the data written by the IDMA/XOR -> data corruption.
+
+When using IDMA, the fix is to wait to last activating IDMA channel before using the cpu copy user-kernel function.
+For the XOR engine, all chunks transfered using the HW.
+
+diff -Nru linux-88fxx81-1_10_3_patch3/arch/arm/mach-mv88fxx81/LSP/dma.c linux-88fxx81-1_10_3_patch4/arch/arm/mach-mv88fxx81/LSP/dma.c
+--- linux-88fxx81-1_10_3_patch3/arch/arm/mach-mv88fxx81/LSP/dma.c	2006-09-06 16:16:07.000000000 +0300
++++ linux-88fxx81-1_10_3_patch4/arch/arm/mach-mv88fxx81/LSP/dma.c	2006-11-05 17:08:21.000000000 +0200
+@@ -495,6 +495,16 @@
+             if (chunk < IDMA_MIN_COPY_CHUNK)
+             {
+         	DPRINTK(" chunk %d too small , use memcpy \n",chunk);
++                /* the "to" address might cross cache line boundary, so part of the line*/  
++                /* may be subject to DMA, so we need to wait to last DMA engine to finish */
++                if (index > 0)
++                {
++                    if(wait_for_idma(PREV_CHANNEL(current_dma_channel)))
++                    {
++	                BUG();
++                    }
++                }
++                
+         	if(to_user)
+ 	       	    __arch_copy_to_user((void *)to, (void *)from, chunk);
+ 	        else
+diff -Nru linux-88fxx81-1_10_3_patch3/arch/arm/mach-mv88fxx81/LSP/xor.c linux-88fxx81-1_10_3_patch4/arch/arm/mach-mv88fxx81/LSP/xor.c
+--- linux-88fxx81-1_10_3_patch3/arch/arm/mach-mv88fxx81/LSP/xor.c	2006-09-07 17:07:37.000000000 +0300
++++ linux-88fxx81-1_10_3_patch4/arch/arm/mach-mv88fxx81/LSP/xor.c	2006-11-05 18:53:37.000000000 +0200
+@@ -60,7 +60,7 @@
+ 
+ MV_XOR_DESC     *pDescriptors;
+ dma_addr_t      descsPhyAddr;
+-#define IDMA_MIN_COPY_CHUNK 128
++#define XOR_MIN_COPY_CHUNK 128
+ static unsigned long mv_dma_min_buffer = IDMA_MIN_COPY;
+ 
+ static struct proc_dir_entry *xor_read_proc_entry;
+@@ -602,15 +602,29 @@
+ 	    /*
+ 	     *  Prepare the IDMA.
+ 	     */
+-            if (chunk < IDMA_MIN_COPY_CHUNK)
++#if 0
++            if (chunk < XOR_MIN_COPY_CHUNK)
+             {
++                int last_chan = chan1;   
+         	DPRINTK(" chunk %d too small , use memcpy \n",chunk);
+-        	if(to_user)
++        	
++        	if(current_channel == chan1)
++                {   
++                    last_chan = chan2;
++                }
++                /* the "to" address might cross cache line boundary, so part of the line*/  
++                /* may be subject to DMA, so we need to wait to last DMA engine to finish */
++                if(index > 1)
++                    while(mvXorStateGet(last_chan) != MV_IDLE);
++
++                if(to_user)
+ 	       	    __arch_copy_to_user((void *)to, (void *)from, chunk);
+ 	        else
+-		    __arch_copy_from_user((void *)to, (void *)from, chunk);
++	            __arch_copy_from_user((void *)to, (void *)from, chunk);
+             }
+-            else if ((!phys_from) || (!phys_to))
++            else
++#endif 
++            if ((!phys_from) || (!phys_to))
+             {
+                 /* The requested page isn't available, fall back to */
+                 DPRINTK(" no physical address, fall back: from %p , to %p \n", from, to);
+@@ -648,8 +662,14 @@
+                     BUG();
+                 }
+                 
+-//                while(!(mvXorStateGet(chan) == MV_IDLE));
+-                if(current_channel == chan1) current_channel = chan2;
++                if(current_channel == chan1) 
++                {
++                    current_channel = chan2;
++                }
++                else
++                {
++                    current_channel = chan1;
++                }
+ #ifdef RT_DEBUG
+                     dma_activations++;
+ #endif
+diff -Nru linux-88fxx81-1_10_3_patch3/include/asm-arm/arch-mv88fxx81/system.h linux-88fxx81-1_10_3_patch4/include/asm-arm/arch-mv88fxx81/system.h
+--- linux-88fxx81-1_10_3_patch3/include/asm-arm/arch-mv88fxx81/system.h	2006-11-05 19:19:37.000000000 +0200
++++ linux-88fxx81-1_10_3_patch4/include/asm-arm/arch-mv88fxx81/system.h	2006-11-05 14:48:18.000000000 +0200
+@@ -26,7 +26,7 @@
+ #	define TEST_UBOOT_VER 0x010a0300 /* 1.10.3 */
+ #endif
+ 
+-#define LSP_VERSION "1.10.3.patch3_DB_NAS"
++#define LSP_VERSION "1.10.3.patch4_DB_NAS"
+ 
+ 
+ static inline void arch_idle(void)

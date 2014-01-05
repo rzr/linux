@@ -119,6 +119,7 @@ int __init initrd_load(void)
 			return 1;
 		}
 	}
+	printk("> exit %s\n",__FUNCTION__);
 	sys_unlink("/initrd.image");
 	return 0;
 }

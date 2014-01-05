@@ -43,7 +43,9 @@
 #include <asm/irq.h>
 #include <asm/system.h>
 #include <asm/unaligned.h>
-
+#if defined(CONFIG_ARCH_MV88f5181) || defined(CONFIG_MARVELL)
+	#include <linux/platform_device.h>
+#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -196,6 +198,18 @@ static void tdi_reset (struct ehci_hcd *ehci)
 	reg_ptr = (u32 __iomem *)(((u8 __iomem *)ehci->regs) + 0x68);
 	tmp = readl (reg_ptr);
 	tmp |= 0x3;
+#if defined(CONFIG_ARCH_MV88f5181) || defined(CONFIG_MARVELL)
+	if(ehci_to_hcd(ehci)->self.controller->bus == &platform_bus_type)
+	{
+		struct platform_device *pdev = to_platform_device(ehci_to_hcd(ehci)->self.controller);
+		if(((pdev->id & 0x0000ffff) == PCI_VENDOR_ID_MARVELL) &&
+		(((pdev->id & 0x00ff0000) >> 16) == 0))
+		{
+			/* Streaming disable for all USB rev0 */
+			tmp |= (1 << 4);
+		}
+	}
+#endif
 	writel (tmp, reg_ptr);
 }
 
@@ -493,6 +507,10 @@ static int ehci_init(struct usb_hcd *hcd)
 /* start HC running; it's halted, ehci_init() has been run (once) */
 static int ehci_run (struct usb_hcd *hcd)
 {
+#ifdef BUFFALO_USB_DEBUG
+	printk("%s> hcd->self.controller->bus = %d\n", __FUNCTION__, hcd->self.controller->bus);
+	printk("%s> &platform_bus_type=%d\n", __FUNCTION__, &platform_bus_type);
+#endif
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	int			retval;
 	u32			temp;
@@ -605,7 +623,34 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd, struct pt_regs *regs)
 		if (likely ((status & STS_ERR) == 0))
 			COUNT (ehci->stats.normal);
 		else
+		{
+#if defined (CONFIG_ARCH_MV88f5181) || defined (CONFIG_MARVELL)
+			if(hcd->self.controller->bus == &platform_bus_type)
+			{
+				struct platform_device	*pdev = to_platform_device(hcd->self.controller);
+				/* For all MARVELL USB rev: 0 & 1 controllers */
+
+				if(((pdev->id & 0x0000ffff) == PCI_VENDOR_ID_MARVELL) &&
+				(((pdev->id & 0x00ff0000) >> 16) <= 1))
+				{
+					u32	portsc;
+					struct	usb_hub* hub;
+
+					portsc = readl (&ehci->regs->port_status[0]);
+
+					if(((portsc & PORT_PE) == 0) &&
+					   ((portsc & PORT_CONNECT) == 1) &&
+					   (ehci_port_speed(ehci, portsc) == 0 ))
+					{
+						hub = (struct usb_hub *)usb_get_intfdata(hcd->self.root_hub->actconfig->interface[0]);
+						set_bit(1, hub->change_bits);
+						usb_kick_khubd(hcd->self.root_hub);
+					}
+				}
+			} 
+#endif
 			COUNT (ehci->stats.error);
+		}
 		bh = 1;
 	}
 
@@ -886,6 +931,7 @@ static int ehci_get_frame (struct usb_hcd *hcd)
 MODULE_DESCRIPTION (DRIVER_INFO);
 MODULE_AUTHOR (DRIVER_AUTHOR);
 MODULE_LICENSE ("GPL");
+
 
 #ifdef CONFIG_PCI
 #include "ehci-pci.c"

@@ -355,10 +355,18 @@ struct hid_report_enum {
 
 #define HID_REPORT_TYPES 3
 
-#define HID_MIN_BUFFER_SIZE	64		/* make sure there is at least a packet size of space */
-#define HID_MAX_BUFFER_SIZE	4096		/* 4kb */
-#define HID_CONTROL_FIFO_SIZE	256		/* to init devices with >100 reports */
-#define HID_OUTPUT_FIFO_SIZE	64
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+  #define HID_MIN_BUFFER_SIZE	64		/* make sure there is at least a packet size of space */
+  #define HID_MAX_BUFFER_SIZE	8192		/* 8kb */
+  #define HID_CONTROL_FIFO_SIZE	256		/* change to large FIFO is no effect */
+  #define HID_OUTPUT_FIFO_SIZE	64
+#else
+  #define HID_MIN_BUFFER_SIZE	64		/* make sure there is at least a packet size of space */
+  #define HID_MAX_BUFFER_SIZE	4096		/* 4kb */
+  #define HID_CONTROL_FIFO_SIZE	256		/* to init devices with >100 reports */
+  #define HID_OUTPUT_FIFO_SIZE	64
+#endif
+
 
 struct hid_control_fifo {
 	unsigned char dir;
@@ -404,7 +412,11 @@ struct hid_device {							/* device report descriptor */
 	struct usb_ctrlrequest *cr;					/* Control request struct */
 	dma_addr_t cr_dma;						/* Control request struct dma */
 	struct hid_control_fifo ctrl[HID_CONTROL_FIFO_SIZE];		/* Control fifo */
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+	unsigned short ctrlhead, ctrltail;				/* Control fifo head & tail */
+#else
 	unsigned char ctrlhead, ctrltail;				/* Control fifo head & tail */
+#endif
 	char *ctrlbuf;							/* Control buffer */
 	dma_addr_t ctrlbuf_dma;						/* Control buffer dma */
 	spinlock_t ctrllock;						/* Control fifo spinlock */

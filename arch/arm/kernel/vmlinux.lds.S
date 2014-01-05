@@ -84,6 +84,9 @@ SECTIONS
 
 	.text : {			/* Real text segment		*/
 		_text = .;		/* Text and read-only data	*/
+ /* Then all the functions that are "hot" in profiles, to group them onto the same hugetlb entry */
+#include "functionlist"
+ /* Then the rest */
 			*(.text)
 			SCHED_TEXT
 			LOCK_TEXT

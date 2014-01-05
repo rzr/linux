@@ -57,6 +57,9 @@ EXPORT_SYMBOL(panic_blink);
  
 NORET_TYPE void panic(const char * fmt, ...)
 {
+#if defined(CONFIG_ARM) && defined(CONFIG_DEBUG_LL)
+	extern int console_init_done;
+#endif
 	long i;
 	static char buf[1024];
 	va_list args;
@@ -75,6 +78,14 @@ NORET_TYPE void panic(const char * fmt, ...)
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
+#if defined(CONFIG_ARM) && defined(CONFIG_DEBUG_LL)
+	if (!console_init_done) {
+		static char printbuf[sizeof(buf) + 32];
+		snprintf(printbuf, sizeof(printbuf),
+			"Kernel panic - not syncing: %s\n", buf);
+		printascii(printbuf);
+	}
+#endif
 	printk(KERN_EMERG "Kernel panic - not syncing: %s\n",buf);
 	bust_spinlocks(0);
 

@@ -9,7 +9,7 @@
  *
  * Better read-balancing code written by Mika Kuoppala <miku@iki.fi>, 2000
  *
- * Fixes to reconstruction by Jakob Østergaard" <jakob@ostenfeld.dk>
+ * Fixes to reconstruction by Jakob $B%j(Bstergaard" <jakob@ostenfeld.dk>
  * Various fixes by Neil Brown <neilb@cse.unsw.edu.au>
  *
  * Changes by Peter T. Breuer <ptb@it.uc3m.es> 31/1/2003 to support
@@ -211,7 +211,11 @@ static void reschedule_retry(r1bio_t *r1_bio)
 	unsigned long flags;
 	mddev_t *mddev = r1_bio->mddev;
 	conf_t *conf = mddev_to_conf(mddev);
-
+#ifdef CONFIG_BUFFALO_SCAN
+/*        printk("raid1: reschedule_retry called(logical sector=%llu)\n",
+            (unsigned long long int)(r1_bio->sector));
+*/
+#endif /* CONFIG_BUFFALO_SCAN */
 	spin_lock_irqsave(&conf->device_lock, flags);
 	list_add(&r1_bio->retry_list, &conf->retry_list);
 	conf->nr_queued ++;
@@ -260,6 +264,7 @@ static int raid1_end_read_request(struct bio *bio, unsigned int bytes_done, int 
 	int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
 	r1bio_t * r1_bio = (r1bio_t *)(bio->bi_private);
 	int mirror;
+        mdk_rdev_t *rdev;
 	conf_t *conf = mddev_to_conf(r1_bio->mddev);
 
 	if (bio->bi_size)
@@ -270,6 +275,20 @@ static int raid1_end_read_request(struct bio *bio, unsigned int bytes_done, int 
 	 * this branch is our 'one mirror IO has finished' event handler:
 	 */
 	update_head_pos(mirror, r1_bio);
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+        rcu_read_lock();
+        if((rdev = rcu_dereference(conf->mirrors[r1_bio->read_disk].rdev))!=NULL){
+       	    if((atomic_read(&rdev->bdev->bd_disk->nr_errs) >
+                   atomic_read(&conf->mddev->maxerr_cnt))
+                   && (atomic_read(&conf->mddev->maxerr_cnt)!=-1)){
+        	if(conf->working_disks !=1){
+                	goto do_degrade;
+                }
+             }
+        }
+        rcu_read_unlock();
+#endif /* CONFIG_BUFFALO_ERRCNT */
 
 	if (uptodate || conf->working_disks <= 1) {
 		/*
@@ -290,6 +309,9 @@ static int raid1_end_read_request(struct bio *bio, unsigned int bytes_done, int 
 		 * oops, read error:
 		 */
 		char b[BDEVNAME_SIZE];
+#ifdef CONFIG_BUFFALO_ERRCNT
+do_degrade:
+#endif /* CONFIG_BUFFALO_ERRCNT */
 		if (printk_ratelimit())
 			printk(KERN_ERR "raid1: %s: rescheduling sector %llu\n",
 			       bdevname(conf->mirrors[mirror].rdev->bdev,b), (unsigned long long)r1_bio->sector);
@@ -678,7 +700,6 @@ static void allow_barrier(conf_t *conf)
 	spin_unlock_irqrestore(&conf->resync_lock, flags);
 	wake_up(&conf->wait_barrier);
 }
-
 static void freeze_array(conf_t *conf)
 {
 	/* stop syncio and normal IO and wait for everything to
@@ -919,6 +940,196 @@ static int make_request(request_queue_t *q, struct bio * bio)
 	return 0;
 }
 
+#ifdef CONFIG_BUFFALO_SCAN
+/*
+void print_bio(struct bio *bio){
+    printk("print_bio(): called.\n");
+    printk("  bio->bi_bdev   = %x\n",bio->bi_bdev);
+    printk("  bio->bi_sector = %d\n",bio->bi_sector);
+}
+*/
+
+int raid1_end_scan_request(struct bio *bio, unsigned int bytes_done, int error) {
+    int failed=0;
+    char b[BDEVNAME_SIZE];
+    r1bio_t * r1_bio = (r1bio_t *)(bio->bi_private);
+    conf_t *conf = mddev_to_conf(r1_bio->mddev);
+    int disks = conf->raid_disks;
+    mdk_rdev_t *rdev;
+    int i;
+    int uptodate;
+
+    if (bio->bi_size)
+        return 1;
+
+    uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
+
+    __free_pages(bio->bi_io_vec[0].bv_page,get_order((r1_bio->sectors)<<9));
+
+    md_sync_acct(bio->bi_bdev, r1_bio->sectors);
+
+    if (!uptodate || error) {
+        printk("I/O request is failed(bio->bi_size=%d, error=%d)."
+               " Set flag ScanErr.\n",bio->bi_size, error);
+        set_bit(R1BIO_ScanErr, &r1_bio->state);
+        failed=1;
+
+        rcu_read_lock();
+        for (i = 0;  i < disks; i++) {
+            if ((rdev=rcu_dereference(conf->mirrors[i].rdev)) != NULL ){
+                if(bio == r1_bio->bios[i]) {
+                    printk("raid1: error disk is %d.\n",i);
+                    r1_bio->read_disk=i;
+                }
+            }
+        }
+        printk("The read request is failed.(%s:sector=%llu).\n",
+               bdevname(bio->bi_bdev,b), (unsigned long long int)bio->bi_sector);
+        rcu_read_unlock();
+    }
+
+    /* if remaining request is none, free bio and r1_bio structure. */
+    if(atomic_dec_and_test(&r1_bio->remaining)) {
+        put_all_bios(conf, r1_bio);
+        if(test_bit(R1BIO_ScanErr, &r1_bio->state)) {
+            if(r1_bio->read_disk == -1) {
+                /* Scan error detected, but cound not find error disk,
+                 * so rescan. */
+                printk("md:raid1: scan error has detected,"
+                       "but cound not find error disk.\n");
+                atomic_add(r1_bio->sectors, &r1_bio->mddev->nr_scanning);
+                r1_bio->mddev->pers->make_scan_request(
+                     r1_bio->mddev,r1_bio->sector,r1_bio->sectors,-1);
+                goto r1_bio_free;
+            } else {
+                reschedule_retry(r1_bio);
+            }
+        } else { /* scanned, but sector error not found. */
+r1_bio_free:
+            atomic_sub(r1_bio->sectors, &r1_bio->mddev->nr_scanning);
+            mempool_free(r1_bio, conf->r1bio_pool);
+            allow_barrier(conf);
+            return 0;
+        }
+    }
+       return 0;
+}
+
+static int make_scan_request(mddev_t *mddev, sector_t s_from, int nr_secrs, int dest_dsk) {
+    int i;
+    struct page *page;
+    r1bio_t *r1_bio;
+    mdk_rdev_t *rdev;
+    conf_t *conf = mddev_to_conf(mddev);
+    int disks = conf->raid_disks;
+
+    /* sanity check */
+
+    if((s_from+nr_secrs) > (mddev->size<<1)){
+        printk("raid1: make_scan_request(): internal error, sector over"
+               "(mddev->size*2=%llu, s_from=%llu, nr_secrs=%d).\n",
+               (unsigned long long int)mddev->size<<1,
+               (unsigned long long int)s_from,
+               nr_secrs);
+        return -1;
+    }
+
+    if(nr_secrs>32 || nr_secrs <= 0){
+        printk("raid1: make_scan_request(): argument nr_secrs is invalid.\n");
+        return -1;
+    }
+
+    if(conf->working_disks<=1) {
+        printk("raid1: make_scan_request(): working disk is lessn than 2. \n"
+               "raid1:  passed through the request for sector %llu without processing.",
+               (unsigned long long int)s_from);
+        return -3;
+    }
+
+    if((r1_bio = mempool_alloc(conf->r1bio_pool, GFP_NOIO))==NULL){
+        printk("r1_bio allocation error\n");
+        return -1;
+    }
+
+    wait_barrier(conf);
+
+    /* initialization r1_bio */
+
+    r1_bio->sector= s_from;
+    r1_bio->sectors= nr_secrs;
+    r1_bio->mddev = mddev;
+    r1_bio->state = 0;
+    r1_bio->read_disk=-1;
+    atomic_set(&r1_bio->remaining,0);
+
+    rcu_read_lock();
+    for (i = 0;  i < disks; i++) {
+        if ((rdev=rcu_dereference(conf->mirrors[i].rdev)) != NULL ){
+            if ((!test_bit(Faulty, &rdev->flags)) &&
+                  test_bit(In_sync, &rdev->flags)) {
+                /* bio allocation and setup */
+                if((r1_bio->bios[i] = bio_alloc(GFP_NOIO,1))==NULL){
+                     printk("bio allocation error\n");
+                     goto error_end;
+                }
+                r1_bio->bios[i]->bi_io_vec[0].bv_page=NULL;
+                if((page=alloc_pages(GFP_KERNEL,get_order(nr_secrs << 9)))
+                   ==NULL){
+                     printk("page allocation error\n");
+                     goto error_end;
+                }
+                r1_bio->bios[i]->bi_bdev = rdev->bdev;
+                r1_bio->bios[i]->bi_sector = s_from + rdev->data_offset;
+                if(!bio_add_page(r1_bio->bios[i], page, (nr_secrs << 9), 0)){
+                     printk("make_scan_request(): bio_add_page error\n");
+                     __free_pages(page,get_order((r1_bio->sectors)<<9));
+                     goto error_end;
+                }
+                r1_bio->bios[i]->bi_private = r1_bio;
+                r1_bio->bios[i]->bi_rw      = READ;
+                r1_bio->bios[i]->bi_end_io = raid1_end_scan_request;
+                atomic_inc(&r1_bio->remaining);
+            } else {
+                r1_bio->bios[i] = NULL;
+            }
+        } else {
+            r1_bio->bios[i] = NULL;
+        }
+    }
+    rcu_read_unlock();
+
+
+    if(atomic_read(&r1_bio->remaining)==0){
+        printk("no disk\n");
+        mempool_free(r1_bio, conf->r1bio_pool);
+        return -5;
+    }
+
+    for (i = 0;  i < disks; i++) {
+        if((r1_bio->bios[i])!=NULL){
+            generic_make_request(r1_bio->bios[i]);
+        }
+    }
+    return nr_secrs;
+
+error_end:
+
+    for (i = 0;  i < disks; i++) {
+        if((r1_bio->bios[i])!=NULL) {
+            if(r1_bio->bios[i]->bi_io_vec[0].bv_page) {
+                __free_pages(r1_bio->bios[i]->bi_io_vec[0].bv_page,
+                             get_order((r1_bio->sectors)<<9));
+            }
+        }
+    }
+    put_all_bios(conf, r1_bio);
+    atomic_set(&r1_bio->remaining,0);
+    mempool_free(r1_bio, conf->r1bio_pool);
+    return -1;
+}
+
+#endif /* CONFIG_BUFFALO_SCAN */
+
 static void status(struct seq_file *seq, mddev_t *mddev)
 {
 	conf_t *conf = mddev_to_conf(mddev);
@@ -931,6 +1142,16 @@ static void status(struct seq_file *seq, mddev_t *mddev)
 			      conf->mirrors[i].rdev &&
 			      test_bit(In_sync, &conf->mirrors[i].rdev->flags) ? "U" : "_");
 	seq_printf(seq, "]");
+/*
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// recovery_count
+	seq_printf(seq, " [");
+	for (i = 0; i < conf->raid_disks; i++){
+		seq_printf(seq, "%d ", conf->mirrors[i].recovery_count);
+	}
+	seq_printf(seq, "]");
+#endif
+*/
 }
 
 
@@ -1059,6 +1280,16 @@ static int raid1_add_disk(mddev_t *mddev, mdk_rdev_t *rdev)
 		}
 
 	print_conf(conf);
+#ifdef CONFIG_BUFFALO_SCAN
+       spin_lock(&mddev->scan_thr_ops);
+       if(mddev->scan_thr_started==1){
+               init_completion(&mddev->scan_thr_complete);
+               mddev->scan_thr_interrupt_reason=5;
+               mddev->scan_thr_interruption=1;
+               wait_for_completion(&mddev->scan_thr_complete);
+       }
+       spin_unlock(&mddev->scan_thr_ops);
+#endif /* CONFIG_BUFFALO_SCAN */
 	return found;
 }
 
@@ -1155,7 +1386,6 @@ static void sync_request_write(mddev_t *mddev, r1bio_t *r1_bio)
 	struct bio *bio, *wbio;
 
 	bio = r1_bio->bios[r1_bio->read_disk];
-
 
 	if (test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery)) {
 		/* We have read all readable devices.  If we haven't
@@ -1309,6 +1539,24 @@ static void sync_request_write(mddev_t *mddev, r1bio_t *r1_bio)
 		}
 	}
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+        rcu_read_lock();
+        for (i=0; i<mddev->raid_disks; i++) {
+	    mdk_rdev_t *rdev = rcu_dereference(conf->mirrors[i].rdev);
+            if (r1_bio->bios[i]->bi_end_io == end_sync_read){
+                if(rdev!=NULL){
+                    if((atomic_read(&rdev->bdev->bd_disk->nr_errs)
+                         > atomic_read(&conf->mddev->maxerr_cnt)) &&
+                        (atomic_read(&conf->mddev->maxerr_cnt)!= -1)) {
+                        if(!test_bit(Faulty, &conf->mirrors[i].rdev->flags))
+                             md_error(mddev, conf->mirrors[i].rdev);
+                    }
+                }
+            }
+        }
+        rcu_read_unlock();
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
 	/*
 	 * schedule writes
 	 */
@@ -1423,7 +1671,6 @@ static void raid1d(mddev_t *mddev)
 				}
 		} else {
 			int disk;
-
 			/* we got a read error. Maybe the drive is bad.  Maybe just
 			 * the block and we can fix it.
 			 * We freeze all other IO, and try reading the block from
@@ -1434,7 +1681,14 @@ static void raid1d(mddev_t *mddev)
 			 */
 			sector_t sect = r1_bio->sector;
 			int sectors = r1_bio->sectors;
+
+#ifdef CONFIG_BUFFALO_SCAN
+                        printk("raid1d: error routine.(logical sector=%llu)\n",
+                             (unsigned long long int)(r1_bio->sector));
+#endif /* CONFIG_BUFFALO_SCAN */
+
 			freeze_array(conf);
+
 			if (mddev->ro == 0) while(sectors) {
 				int s = sectors;
 				int d = r1_bio->read_disk;
@@ -1462,6 +1716,10 @@ static void raid1d(mddev_t *mddev)
 				if (success) {
 					/* write it back and re-read */
 					int start = d;
+#ifdef CONFIG_BUFFALO_SCAN
+    printk("raid1d: To repair sector, reading sector(%llu) done.\n",
+            (unsigned long long int)sect);
+#endif /* CONFIG_BUFFALO_SCAN */
 					while (d != r1_bio->read_disk) {
 						if (d==0)
 							d = conf->raid_disks;
@@ -1501,8 +1759,49 @@ static void raid1d(mddev_t *mddev)
 				sect += s;
 			}
 
-			unfreeze_array(conf);
+#ifdef CONFIG_BUFFALO_ERRCNT
+                        if( conf->mirrors[r1_bio->read_disk].rdev != NULL ){
+                            if((atomic_read(&conf->mirrors[r1_bio->read_disk].rdev->bdev->bd_disk->nr_errs) >
+                                 atomic_read(&conf->mddev->maxerr_cnt))
+                               && (atomic_read(&conf->mddev->maxerr_cnt)!=-1)){
+                                md_error(mddev, conf->mirrors[r1_bio->read_disk].rdev);
+                            }
+                        }
+#endif /* CONFIG_BUFFALO_ERRCNT */
 
+			unfreeze_array(conf);
+#ifdef CONFIG_BUFFALO_SCAN
+                        if(test_bit(R1BIO_ScanErr,&r1_bio->state)){
+                            /*
+                             * if the number of operating disk is 1,
+                             * secerr is uncorrectable.
+                             */
+                            if(conf->working_disks == 1){
+				printk(KERN_ALERT "raid1: unrecoverable I/O"
+				       " read error for block %llu\n",
+				       (unsigned long long)r1_bio->sector);
+                                mempool_free(r1_bio, conf->r1bio_pool);
+	                        allow_barrier(conf);
+                                atomic_sub(r1_bio->sectors,&mddev->nr_scanning);
+
+                                spin_lock(&mddev->scan_thr_ops);
+                                  if(mddev->scan_thr_started==1){
+                                      init_completion(&mddev->scan_thr_complete);
+                                      mddev->scan_thr_interrupt_reason=2;
+                                      mddev->scan_thr_interruption=1;
+                                      wait_for_completion(&mddev->scan_thr_complete);
+                                }
+                                spin_unlock(&mddev->scan_thr_ops);
+
+                            } else {
+                                printk("raid1: sector error(%llu) has been corrected.\n",(unsigned long long int)(r1_bio->sector));
+                                mempool_free(r1_bio, conf->r1bio_pool);
+	                        allow_barrier(conf);
+                                atomic_sub(r1_bio->sectors,&mddev->nr_scanning);
+                                continue; /* most outer `for' loop */
+                            }
+                        }
+#endif /* CONFIG_BUFFALO_SCAN */
 			bio = r1_bio->bios[r1_bio->read_disk];
 			if ((disk=read_balance(conf, r1_bio)) == -1) {
 				printk(KERN_ALERT "raid1: %s: unrecoverable I/O"
@@ -2070,6 +2369,9 @@ static struct mdk_personality raid1_personality =
 	.level		= 1,
 	.owner		= THIS_MODULE,
 	.make_request	= make_request,
+#ifdef CONFIG_BUFFALO_SCAN
+        .make_scan_request = make_scan_request,
+#endif /* CONFIG_BUFFALO_SCAN */
 	.run		= run,
 	.stop		= stop,
 	.status		= status,

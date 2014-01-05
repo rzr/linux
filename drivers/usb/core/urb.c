@@ -7,6 +7,18 @@
 #include <linux/usb.h>
 #include "hcd.h"
 
+#if defined CONFIG_BUFFALO_ENABLE_TESTCODE
+  //#define TRACE(x)	x
+  //#define LEAVING(x)	printk("%s : Leaving(%d) at %d\n", __FUNCTION__, x, __LINE__)
+#else
+  #define TRACE(x)
+  #define LEAVING(x)
+#endif
+
+#define TRACE(x)
+#define LEAVING(x)
+
+
 #define to_urb(d) container_of(d, struct urb, kref)
 
 static void urb_destroy(struct kref *kref)
@@ -225,17 +237,26 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	struct usb_operations	*op;
 	int			is_out;
 
-	if (!urb || urb->hcpriv || !urb->complete)
+	TRACE(printk("%s > Entered\n", __FUNCTION__));
+	if (!urb || urb->hcpriv || !urb->complete){
+		LEAVING(-EINVAL);
 		return -EINVAL;
+	}
 	if (!(dev = urb->dev) ||
 	    (dev->state < USB_STATE_DEFAULT) ||
-	    (!dev->bus) || (dev->devnum <= 0))
+	    (!dev->bus) || (dev->devnum <= 0)){
+		LEAVING(-ENODEV);
 		return -ENODEV;
+	}
 	if (dev->bus->controller->power.power_state.event != PM_EVENT_ON
-			|| dev->state == USB_STATE_SUSPENDED)
+			|| dev->state == USB_STATE_SUSPENDED){
+		LEAVING(-EHOSTUNREACH);
 		return -EHOSTUNREACH;
-	if (!(op = dev->bus->op) || !op->submit_urb)
+	}
+	if (!(op = dev->bus->op) || !op->submit_urb){
+		LEAVING(-ENODEV);
 		return -ENODEV;
+	}
 
 	urb->status = -EINPROGRESS;
 	urb->actual_length = 0;
@@ -248,8 +269,10 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	temp = usb_pipetype (pipe);
 	is_out = usb_pipeout (pipe);
 
-	if (!usb_pipecontrol (pipe) && dev->state < USB_STATE_CONFIGURED)
+	if (!usb_pipecontrol (pipe) && dev->state < USB_STATE_CONFIGURED){
+		LEAVING(-ENODEV);
 		return -ENODEV;
+	}
 
 	/* FIXME there should be a sharable lock protecting us against
 	 * config/altsetting changes and disconnects, kicking in here.
@@ -263,6 +286,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 			"bogus endpoint ep%d%s in %s (bad maxpacket %d)\n",
 			usb_pipeendpoint (pipe), is_out ? "out" : "in",
 			__FUNCTION__, max);
+		LEAVING(-EMSGSIZE);
 		return -EMSGSIZE;
 	}
 
@@ -280,20 +304,26 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 			max *= mult;
 		}
 
-		if (urb->number_of_packets <= 0)		    
+		if (urb->number_of_packets <= 0){
+			LEAVING(-EINVAL);
 			return -EINVAL;
+		}
 		for (n = 0; n < urb->number_of_packets; n++) {
 			len = urb->iso_frame_desc [n].length;
-			if (len < 0 || len > max) 
+			if (len < 0 || len > max) {
+				LEAVING(-EMSGSIZE);
 				return -EMSGSIZE;
+			}
 			urb->iso_frame_desc [n].status = -EXDEV;
 			urb->iso_frame_desc [n].actual_length = 0;
 		}
 	}
 
 	/* the I/O buffer must be mapped/unmapped, except when length=0 */
-	if (urb->transfer_buffer_length < 0)
+	if (urb->transfer_buffer_length < 0){
+		LEAVING(-EMSGSIZE);
 		return -EMSGSIZE;
+	}
 
 #ifdef DEBUG
 	/* stuff that drivers shouldn't do, but which shouldn't
@@ -328,6 +358,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	if (urb->transfer_flags != orig_flags) {
 		err ("BOGUS urb flags, %x --> %x",
 			orig_flags, urb->transfer_flags);
+		LEAVING(-EINVAL);
 		return -EINVAL;
 	}
 	}
@@ -369,6 +400,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 			}
 			break;
 		default:
+			LEAVING(-EINVAL);
 			return -EINVAL;
 		}
 		/* power of two? */
@@ -377,6 +409,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 		urb->interval = temp;
 	}
 
+	TRACE(printk("%s : Leaving.\n", __FUNCTION__));
 	return op->submit_urb (urb, mem_flags);
 }
 

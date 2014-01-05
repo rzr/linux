@@ -67,6 +67,10 @@ void (*init_arch_irq)(void) __initdata = NULL;
 #define irq_finish(irq) do { } while (0)
 #endif
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+//#define TRACE_GPIOIRQ
+#endif
+
 /*
  * Dummy mask/unmask handler
  */
@@ -313,7 +317,13 @@ report_bad_irq(unsigned int irq, struct pt_regs *regs, struct irqdesc *desc, int
 	if (ret != IRQ_HANDLED && ret != IRQ_NONE) {
 		printk("irq%u: bogus retval mask %x\n", irq, ret);
 	} else {
+#ifdef CONFIG_ARCH_MV88fxx81
+		/* don't show this kind of msg to console */
+		printk(KERN_INFO "irq%u: nobody cared\n", irq);
+		return;
+#else
 		printk("irq%u: nobody cared\n", irq);
+#endif
 	}
 	show_regs(regs);
 	dump_stack();
@@ -401,6 +411,12 @@ do_edge_IRQ(unsigned int irq, struct irqdesc *desc, struct pt_regs *regs)
 
 	desc->triggered = 1;
 
+#ifdef TRACE_GPIOIRQ
+	if (irq>=32){
+		printk("*** %s GPIO irq=%d\n",__FUNCTION__,irq);
+	}
+#endif
+
 	/*
 	 * If we're currently running this IRQ, or its disabled,
 	 * we shouldn't process the IRQ.  Instead, turn on the
@@ -464,6 +480,12 @@ do_level_IRQ(unsigned int irq, struct irqdesc *desc, struct pt_regs *regs)
 	const unsigned int cpu = smp_processor_id();
 
 	desc->triggered = 1;
+
+#ifdef TRACE_GPIOIRQ
+	if (irq>=32){
+		printk("*** %s GPIO irq=%d\n",__FUNCTION__,irq);
+	}
+#endif
 
 	/*
 	 * Acknowledge, clear _AND_ disable the interrupt.

@@ -11,6 +11,9 @@ obj-$(CONFIG_IBM_EMAC) += ibm_emac/
 obj-$(CONFIG_IXGB) += ixgb/
 obj-$(CONFIG_CHELSIO_T1) += chelsio/
 obj-$(CONFIG_BONDING) += bonding/
+ifneq ($(CONFIG_MV_88W8660),y)
+obj-$(CONFIG_ARCH_MV88f5181) += ../../arch/arm/mach-mv88fxx81/LSP/egiga/
+endif
 obj-$(CONFIG_GIANFAR) += gianfar_driver.o
 
 gianfar_driver-objs := gianfar.o \

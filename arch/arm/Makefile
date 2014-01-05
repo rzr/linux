@@ -13,6 +13,10 @@ OBJCOPYFLAGS	:=-O binary -R .note -R .comment -S
 GZFLAGS		:=-9
 #CFLAGS		+=-pipe
 
+ifeq ($(CONFIG_REORDER),y)
+CFLAGS		+= -ffunction-sections
+endif
+
 # Do not use arch/arm/defconfig - it's always outdated.
 # Select a platform tht is kept up-to-date
 KBUILD_DEFCONFIG := versatile_defconfig
@@ -39,7 +43,12 @@ comma = ,
 # testing for a specific architecture or later rather impossible.
 arch-$(CONFIG_CPU_32v6)		:=-D__LINUX_ARM_ARCH__=6 $(call cc-option,-march=armv6,-march=armv5t -Wa$(comma)-march=armv6)
 arch-$(CONFIG_CPU_32v6K)	:=-D__LINUX_ARM_ARCH__=6 $(call cc-option,-march=armv6k,-march=armv5t -Wa$(comma)-march=armv6k)
+
+ifneq ($(CONFIG_USE_DSP),y)
+arch-$(CONFIG_CPU_32v5)		:=-D__LINUX_ARM_ARCH__=5 $(call cc-option,-march=armv5t)
+else
 arch-$(CONFIG_CPU_32v5)		:=-D__LINUX_ARM_ARCH__=5 $(call cc-option,-march=armv5te,-march=armv4)
+endif
 arch-$(CONFIG_CPU_32v4)		:=-D__LINUX_ARM_ARCH__=4 -march=armv4
 arch-$(CONFIG_CPU_32v3)		:=-D__LINUX_ARM_ARCH__=3 -march=armv3
 
@@ -50,7 +59,13 @@ tune-$(CONFIG_CPU_ARM720T)	:=-mtune=arm7tdmi
 tune-$(CONFIG_CPU_ARM920T)	:=-mtune=arm9tdmi
 tune-$(CONFIG_CPU_ARM922T)	:=-mtune=arm9tdmi
 tune-$(CONFIG_CPU_ARM925T)	:=-mtune=arm9tdmi
+
+#we observed better performance using xscale tuning
+ifeq ($(CONFIG_ARCH_MV88fxx81),y)
+tune-$(CONFIG_CPU_ARM926T)	:=-mtune=xscale
+else
 tune-$(CONFIG_CPU_ARM926T)	:=-mtune=arm9tdmi
+endif
 tune-$(CONFIG_CPU_SA110)	:=-mtune=strongarm110
 tune-$(CONFIG_CPU_SA1100)	:=-mtune=strongarm1100
 tune-$(CONFIG_CPU_XSCALE)	:=$(call cc-option,-mtune=xscale,-mtune=strongarm110) -Wa,-mcpu=xscale
@@ -89,6 +104,11 @@ endif
  machine-$(CONFIG_ARCH_PXA)	   := pxa
  machine-$(CONFIG_ARCH_L7200)	   := l7200
  machine-$(CONFIG_ARCH_INTEGRATOR) := integrator
+
+ machine-$(CONFIG_ARCH_MV88f1181)  := mv88fxx81/mv88f1181
+ machine-$(CONFIG_ARCH_MV88f5181)  := mv88fxx81/mv88f5181
+  incdir-$(CONFIG_ARCH_MV88fxx81)  := mv88fxx81
+
  textofs-$(CONFIG_ARCH_CLPS711X)   := 0x00028000
  machine-$(CONFIG_ARCH_CLPS711X)   := clps711x
  machine-$(CONFIG_ARCH_IOP3XX)	   := iop3xx

@@ -19,9 +19,14 @@
 #include <asm/memory.h>
 #include <asm/glue.h>
 #include <asm/vfpmacros.h>
+#include <asm/arch/irqs.h>
 #include <asm/arch/entry-macro.S>
 
 #include "entry-header.S"
+
+#ifdef CONFIG_ARCH_MV88fxx81
+#include <asm/arch/orion_ver_macro.h>
+#endif
 
 /*
  * Interrupt handling.  Preserves r7, r8, r9
@@ -585,7 +590,55 @@ ENTRY(__switch_to)
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r6, c3, c0, 0		@ Set domain register
 #endif
-#ifdef CONFIG_VFP
+#ifdef CONFIG_VFP_RUN_FAST_MODE
+	@ In run-fast-mode, don't use the lazy context. On every
+	@ context switch, switch the VFP registers.
+
+#ifdef CONFIG_ARCH_MV88fxx81
+	mv_check_orion_ver r4
+	tst	r4, #MV_ORION2
+	bne	rfm /* if Orion II then RFM */
+	b	no_vfp_rfm /* if others then no VFP */
+		
+#endif
+rfm:
+	VFPFMRX	r4, FPSCR               @ First thing save FPSCR
+	@ Store the registers to be used
+	stmia	sp, {r1, r2}
+
+	@ Make r1 and r2 point to vfp_state union
+	add	r1, r1, #TI_VFPSTATE
+	add	r2, r2, #((TI_VFPSTATE) - (TI_CPU_DOMAIN))
+	@ The - #TI_CPU_DOMAIN since r2 was
+	@ just previously updated with
+	@ + #TI_CPU_DOMAIN
+
+	@ First save the VFP reigsters
+	VFPFSTMIA r1                    @ save the working registers
+	VFPFMRX	ip, FPEXC               @ Load the FPEXC register
+	VFPFMRX	r6, FPINST              @ FPINST (always there, rev0 onwards)
+	tst     ip, #FPEXC_FPV2         @ is there an FPINST2 to read?
+	VFPFMRX	r8, FPINST2, NE         @ FPINST2 if needed - avoids reading
+					@ nonexistant reg on rev0
+	stmia	r1, {r4, r6, r8, ip}	@ save FPEXC, FPSCR, FPINST, FPINST2
+					@ and point r4 at the word at the
+					@ start of the register dump
+
+	@ Now re-load the VFP registers
+	VFPFLDMIA r2			@ Load VFP registers
+	ldmia	r2, {r4, r6, r8, ip}	@ load FPEXC, FPSCR, FPINST, FPINST2
+	orr	ip, ip, #FPEXC_ENABLE	@ Always enable VFP
+	tst	ip, #FPEXC_FPV2		@ is there an FPINST2 to write?
+	VFPFMXR	FPINST2, r8, NE		@ FPINST2 if needed - avoids writing
+					@ nonexistant reg on rev0
+	VFPFMXR	FPINST, r6
+	VFPFMXR	FPEXC, ip
+	orr	r4, r4, #0x03000000	@ Always enable run fast mode
+	VFPFMXR	FPSCR, r4
+
+	ldmia	sp, {r1, r2}
+no_vfp_rfm:
+#elif defined(CONFIG_VFP)
 	@ Always disable VFP so we can lazily save/restore the old
 	@ state. This occurs in the context of the previous thread.
 	VFPFMRX	r4, FPEXC

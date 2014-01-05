@@ -106,8 +106,14 @@ const char *const scsi_device_types[MAX_SCSI_DEVICE_CODE] = {
 	"WORM             ",
 	"CD-ROM           ",
 	"Scanner          ",
+#ifdef CONFIG_BUFFALO_PLATFORM
+// __LS_COMMENT__ BUFFALO change 2004.8.30
+	"Optical-Device   ",
+	"Medium-Changer   ",
+#else
 	"Optical Device   ",
 	"Medium Changer   ",
+#endif
 	"Communications   ",
 	"Unknown          ",
 	"Unknown          ",

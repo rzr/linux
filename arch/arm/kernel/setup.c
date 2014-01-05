@@ -400,6 +400,16 @@ __early_param("initrd=", early_initrd);
 
 static void __init add_memory(unsigned long start, unsigned long size)
 {
+#ifndef LINUX_ORIGINAL
+	if (size == 0) {
+		meminfo.bank[meminfo.nr_banks].start = start;
+		meminfo.bank[meminfo.nr_banks].size  = size;
+		meminfo.bank[meminfo.nr_banks].node  = PHYS_TO_NID(start);
+		meminfo.nr_banks += 1;
+		return;
+	}
+#endif	/* LINUX_ORIGINAL */
+
 	/*
 	 * Ensure that start/size are aligned to a page boundary.
 	 * Size is appropriately rounded down, start is rounded up.

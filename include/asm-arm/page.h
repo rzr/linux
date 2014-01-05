@@ -60,6 +60,9 @@
 # endif
 #endif
 
+#ifdef CONFIG_ARCH_MV88fxx81
+# define MULTI_USER 1
+#else	/* CONFIG_ARCH_MV88fxx81 */
 #ifdef CONFIG_CPU_COPY_V4WB
 # ifdef _USER
 #  define MULTI_USER 1
@@ -67,6 +70,7 @@
 #  define _USER v4wb
 # endif
 #endif
+#endif	/* CONFIG_ARCH_MV88fxx81 */
 
 #ifdef CONFIG_CPU_SA1100
 # ifdef _USER

@@ -653,8 +653,25 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
 	sbi->s_es = es;
 	sb->s_magic = le16_to_cpu(es->s_magic);
-
+/*
+// dump SB
+{
+	int i;
+	unsigned long *p;
+	p=(unsigned long *)sb;
+	for (i=0; i<4*5; i++){
+		printk("%08x ",p[i]);
+	}
+	printk("\n");
+	printk("magic=%x\n",sb->s_magic);
+}
+ */
+#ifdef CONFIG_BUFFALO_PLATFORM
+	if ((sb->s_magic != EXT2_SUPER_MAGIC) &&
+	    (sb->s_magic != MEL_EXT2_SUPER_MAGIC))
+#else
 	if (sb->s_magic != EXT2_SUPER_MAGIC)
+#endif
 		goto cantfind_ext2;
 
 	/* Set defaults before we parse the mount options */
@@ -742,7 +759,12 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		}
 		es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
 		sbi->s_es = es;
+#ifdef CONFIG_BUFFALO_PLATFORM
+		if ((sb->s_magic != cpu_to_le16(EXT2_SUPER_MAGIC)) &&
+		    (sb->s_magic != cpu_to_le16(MEL_EXT2_SUPER_MAGIC))) {
+#else
 		if (es->s_magic != cpu_to_le16(EXT2_SUPER_MAGIC)) {
+#endif
 			printk ("EXT2-fs: Magic mismatch, very weird !\n");
 			goto failed_mount;
 		}
@@ -791,7 +813,12 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->s_desc_per_block_bits =
 		log2 (EXT2_DESC_PER_BLOCK(sb));
 
+	#ifdef CONFIG_BUFFALO_PLATFORM
+	if ((sb->s_magic != EXT2_SUPER_MAGIC) &&
+	    (sb->s_magic != MEL_EXT2_SUPER_MAGIC))
+	#else
 	if (sb->s_magic != EXT2_SUPER_MAGIC)
+	#endif
 		goto cantfind_ext2;
 
 	if (sb->s_blocksize != bh->b_size) {

@@ -264,6 +264,10 @@ static int linear_stop (mddev_t *mddev)
 	blk_sync_queue(mddev->queue); /* the unplug fn references 'conf'*/
 	kfree(conf->hash_table);
 	kfree(conf);
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// to delete bvec function
+	blk_queue_merge_bvec(mddev->queue, NULL);
+#endif
 
 	return 0;
 }

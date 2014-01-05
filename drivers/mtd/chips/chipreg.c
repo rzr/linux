@@ -18,6 +18,8 @@
 static DEFINE_SPINLOCK(chip_drvs_lock);
 static LIST_HEAD(chip_drvs_list);
 
+//#define CONFIG_BUFFALO_DEBUG
+
 void register_mtd_chip_driver(struct mtd_chip_driver *drv)
 {
 	spin_lock(&chip_drvs_lock);
@@ -62,11 +64,25 @@ struct mtd_info *do_map_probe(const char *name, struct map_info *map)
 {
 	struct mtd_chip_driver *drv;
 	struct mtd_info *ret;
-
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :Entered\n", __FUNCTION__);
+#endif
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :do mtd_chip_driver(%s)\n", __FUNCTION__, name);
+#endif
 	drv = get_mtd_chip_driver(name);
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :finish mtd_chip_driver(%s)\n", __FUNCTION__, name);
+#endif
 
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :do request_module(%s), get_mtd_chip_driver(%s)\n", __FUNCTION__, name, name);
+#endif
 	if (!drv && !request_module("%s", name))
 		drv = get_mtd_chip_driver(name);
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s :finish request_module(%s), get_mtd_chip_driver(%s)\n", __FUNCTION__, name, name);
+#endif
 
 	if (!drv)
 		return NULL;
@@ -80,6 +96,9 @@ struct mtd_info *do_map_probe(const char *name, struct map_info *map)
 	*/
 	module_put(drv->module);
 
+#if defined CONFIG_BUFFALO_DEBUG
+	printk("%s: Leaving\n", __FUNCTION__);
+#endif
 	if (ret)
 		return ret;
 

@@ -74,6 +74,10 @@ struct statfs;
  * The second extended file system magic number
  */
 #define EXT3_SUPER_MAGIC	0xEF53
+#ifdef CONFIG_BUFFALO_PLATFORM
+// __LS_COMMENT__ BUFFALO add 2004.8.30  EXT2 melco extension magic number
+#define MEL_EXT3_SUPER_MAGIC	0xEF54
+#endif
 
 /*
  * Maximal count of links to a file

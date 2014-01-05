@@ -311,6 +311,27 @@ decompress_kernel(ulg output_start, ulg free_mem_ptr_p, ulg free_mem_ptr_end_p,
 
 	arch_decomp_setup();
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	putstr("CONFIG_BUFFALO_PLATFORM ");
+ #if defined(CONFIG_BUFFALO_LINKSTATION_LSGL)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSGL ");
+ #elif defined(CONFIG_BUFFALO_TERASTATION_TSHTGL)
+	putstr("CONFIG_BUFFALO_TERASTATION_TSHTGL ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_HSWDHTGL_R1)
+	putstr("CONFIG_BUFFALO_LINKSTATION_HSWDHTGL_R1 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWSGL_R1)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWSGL_R1 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWHGL_R1)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWHGL_R1 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V3)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V3 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V2)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V2 ");
+ #endif
+	putstr("---\n");
+#endif
 	makecrc();
 	putstr("Uncompressing Linux...");
 	gunzip();

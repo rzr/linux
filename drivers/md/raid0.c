@@ -386,6 +386,10 @@ static int raid0_stop (mddev_t *mddev)
 	conf->strip_zone = NULL;
 	kfree(conf);
 	mddev->private = NULL;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// to delete bvec function
+	blk_queue_merge_bvec(mddev->queue, NULL);
+#endif
 
 	return 0;
 }

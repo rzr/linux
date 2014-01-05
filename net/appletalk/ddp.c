@@ -66,6 +66,16 @@
 struct datalink_proto *ddp_dl, *aarp_dl;
 static const struct proto_ops atalk_dgram_ops;
 
+//#define BUFFALO_TEST_CODE
+
+#ifdef BUFFALO_TEST_CODE
+	#define TEST_CODE(x)	x
+	#define ORG_CODE(x)
+#else
+	#define TEST_CODE(x)
+	#define ORG_CODE(x)	x
+#endif
+
 /**************************************************************************\
 *                                                                          *
 * Handlers for the socket list.                                            *
@@ -1594,7 +1604,6 @@ static int atalk_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr 
 
 	if (usat->sat_addr.s_net || usat->sat_addr.s_node == ATADDR_ANYNODE) {
 		rt = atrtr_find(&usat->sat_addr);
-		dev = rt->dev;
 	} else {
 		struct atalk_addr at_hint;
 
@@ -1602,11 +1611,11 @@ static int atalk_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr 
 		at_hint.s_net  = at->src_net;
 
 		rt = atrtr_find(&at_hint);
-		dev = rt->dev;
 	}
-	if (!rt)
+	if (!rt){
+		TEST_CODE(printk("Debug: %s> rt = 0x%p\n", __FUNCTION__, rt));
 		return -ENETUNREACH;
-
+	}
 	dev = rt->dev;
 
 	SOCK_DEBUG(sk, "SK %p: Size needed %d, device %s\n",

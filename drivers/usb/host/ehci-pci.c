@@ -22,6 +22,13 @@
 #error "This file is PCI bus glue.  CONFIG_PCI must be defined."
 #endif
 
+#if defined(CONFIG_ARCH_MV88f5181) || defined(CONFIG_MARVELL)
+	#include <linux/platform_device.h>
+	extern	int ehci_platform_init(void);
+	extern	void ehci_platform_cleanup(void);
+#endif
+
+
 /*-------------------------------------------------------------------------*/
 
 /* called after powerup, by probe or system-pm "wakeup" */
@@ -67,7 +74,6 @@ static int ehci_pci_reinit(struct ehci_hcd *ehci, struct pci_dev *pdev)
 static int ehci_pci_setup(struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci(hcd);
-	struct pci_dev		*pdev = to_pci_dev(hcd->self.controller);
 	u32			temp;
 	int			retval;
 
@@ -89,43 +95,57 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 		return retval;
 
 	/* NOTE:  only the parts below this line are PCI-specific */
-
-	switch (pdev->vendor) {
-	case PCI_VENDOR_ID_TDI:
-		if (pdev->device == PCI_DEVICE_ID_TDI_EHCI) {
-			ehci->is_tdi_rh_tt = 1;
-			tdi_reset(ehci);
-		}
-		break;
-	case PCI_VENDOR_ID_AMD:
-		/* AMD8111 EHCI doesn't work, according to AMD errata */
-		if (pdev->device == 0x7463) {
-			ehci_info(ehci, "ignoring AMD8111 (errata)\n");
-			retval = -EIO;
-			goto done;
-		}
-		break;
-	case PCI_VENDOR_ID_NVIDIA:
-		/* NVidia reports that certain chips don't handle
-		 * QH, ITD, or SITD addresses above 2GB.  (But TD,
-		 * data buffer, and periodic schedule are normal.)
-		 */
-		switch (pdev->device) {
-		case 0x003c:	/* MCP04 */
-		case 0x005b:	/* CK804 */
-		case 0x00d8:	/* CK8 */
-		case 0x00e8:	/* CK8S */
-			if (pci_set_consistent_dma_mask(pdev,
-						DMA_31BIT_MASK) < 0)
-				ehci_warn(ehci, "can't enable NVidia "
-					"workaround for >2GB RAM\n");
+	if (hcd->self.controller->bus == &pci_bus_type)
+	{
+		struct pci_dev		*pdev = to_pci_dev(hcd->self.controller);
+		switch (pdev->vendor) {
+		case PCI_VENDOR_ID_TDI:
+			if (pdev->device == PCI_DEVICE_ID_TDI_EHCI) {
+				ehci->is_tdi_rh_tt = 1;
+				tdi_reset(ehci);
+			}
+			break;
+		case PCI_VENDOR_ID_AMD:
+			/* AMD8111 EHCI doesn't work, according to AMD errata */
+			if (pdev->device == 0x7463) {
+				ehci_info(ehci, "ignoring AMD8111 (errata)\n");
+				retval = -EIO;
+				goto done;
+			}
+			break;
+		case PCI_VENDOR_ID_NVIDIA:
+			/* NVidia reports that certain chips don't handle
+			 * QH, ITD, or SITD addresses above 2GB.  (But TD,
+			 * data buffer, and periodic schedule are normal.)
+			 */
+			switch (pdev->device) {
+			case 0x003c:	/* MCP04 */
+			case 0x005b:	/* CK804 */
+			case 0x00d8:	/* CK8 */
+			case 0x00e8:	/* CK8S */
+				if (pci_set_consistent_dma_mask(pdev,
+							DMA_31BIT_MASK) < 0)
+					ehci_warn(ehci, "can't enable NVidia "
+						"workaround for >2GB RAM\n");
+				break;
+			}
 			break;
 		}
-		break;
+
+		if (ehci_is_TDI(ehci))
+			ehci_reset(ehci);
 	}
 
-	if (ehci_is_TDI(ehci))
-		ehci_reset(ehci);
+#if defined (CONFIG_ARCH_MV88f5181) || defined(CONFIG_MARVELL)
+	if(hcd->self.controller->bus == &platform_bus_type)
+	{
+		struct platform_device *pdev = to_platform_device(hcd->self.controller);
+		if((pdev->id & 0x0000ffff) == PCI_VENDOR_ID_MARVELL)
+		{
+			ehci->is_tdi_rh_tt = 1;
+		}
+	}
+#endif /* CONFIG_ARCH_MV88f5181 || CONFIG_MARVELL */
 
 	/* at least the Genesys GL880S needs fixup here */
 	temp = HCS_N_CC(ehci->hcs_params) * HCS_N_PCC(ehci->hcs_params);
@@ -137,33 +157,42 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 			HCS_N_PCC(ehci->hcs_params),
 			HCS_N_PORTS(ehci->hcs_params));
 
-		switch (pdev->vendor) {
-		case 0x17a0:		/* GENESYS */
-			/* GL880S: should be PORTS=2 */
-			temp |= (ehci->hcs_params & ~0xf);
-			ehci->hcs_params = temp;
-			break;
-		case PCI_VENDOR_ID_NVIDIA:
-			/* NF4: should be PCC=10 */
-			break;
+		if(hcd->self.controller->bus == &pci_bus_type)
+		{
+			struct pci_dev		*pdev = to_pci_dev(hcd->self.controller);
+			switch (pdev->vendor) {
+			case 0x17a0:		/* GENESYS */
+				/* GL880S: should be PORTS=2 */
+				temp |= (ehci->hcs_params & ~0xf);
+				ehci->hcs_params = temp;
+				break;
+			case PCI_VENDOR_ID_NVIDIA:
+				/* NF4: should be PCC=10 */
+				break;
+			}
+		} // end of pci_bus specific part.
+	}
+
+	if(hcd->self.controller->bus == &pci_bus_type)
+	{
+		struct pci_dev		*pdev = to_pci_dev(hcd->self.controller);
+		/* Serial Bus Release Number is at PCI 0x60 offset */\
+		pci_read_config_byte(pdev, 0x60, &ehci->sbrn);
+
+		/* Workaround current PCI init glitch:  wakeup bits aren't
+		 * being set from PCI PM capability.
+		 */
+		if (!device_can_wakeup(&pdev->dev)) {
+			u16	port_wake;
+
+			pci_read_config_word(pdev, 0x62, &port_wake);
+			if (port_wake & 0x0001)
+				device_init_wakeup(&pdev->dev, 1);
 		}
+		
+		retval = ehci_pci_reinit(ehci, pdev);
 	}
 
-	/* Serial Bus Release Number is at PCI 0x60 offset */
-	pci_read_config_byte(pdev, 0x60, &ehci->sbrn);
-
-	/* Workaround current PCI init glitch:  wakeup bits aren't
-	 * being set from PCI PM capability.
-	 */
-	if (!device_can_wakeup(&pdev->dev)) {
-		u16	port_wake;
-
-		pci_read_config_word(pdev, 0x62, &port_wake);
-		if (port_wake & 0x0001)
-			device_init_wakeup(&pdev->dev, 1);
-	}
-
-	retval = ehci_pci_reinit(ehci, pdev);
 done:
 	return retval;
 }
@@ -279,9 +308,9 @@ restart:
 }
 #endif
 
-static const struct hc_driver ehci_pci_hc_driver = {
+const struct hc_driver ehci_pci_hc_driver = {
 	.description =		hcd_name,
-	.product_desc =		"EHCI Host Controller",
+	.product_desc =		"EHCI Platform Host Controller",
 	.hcd_priv_size =	sizeof(struct ehci_hcd),
 
 	/*
@@ -357,7 +386,9 @@ static int __init ehci_hcd_pci_init(void)
 		hcd_name,
 		sizeof(struct ehci_qh), sizeof(struct ehci_qtd),
 		sizeof(struct ehci_itd), sizeof(struct ehci_sitd));
-
+#if defined(CONFIG_ARCH_MV88f5181) || defined(CONFIG_MARVELL)
+	ehci_platform_init();	
+#endif
 	return pci_register_driver(&ehci_pci_driver);
 }
 module_init(ehci_hcd_pci_init);
@@ -365,5 +396,8 @@ module_init(ehci_hcd_pci_init);
 static void __exit ehci_hcd_pci_cleanup(void)
 {
 	pci_unregister_driver(&ehci_pci_driver);
+#if defined(CONFIG_ARCH_MV88f5181) || defined(CONFIG_MARVELL)
+	ehci_platform_cleanup();	
+#endif
 }
 module_exit(ehci_hcd_pci_cleanup);

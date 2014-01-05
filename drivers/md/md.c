@@ -43,6 +43,9 @@
 #include <linux/buffer_head.h> /* for invalidate_bdev */
 #include <linux/suspend.h>
 #include <linux/poll.h>
+#ifdef CONFIG_BUFFALO_PLATFORM
+ #include <buffalo/kernevnt.h>		/* 2005.5.10 BUFFALO */
+#endif
 
 #include <linux/init.h>
 
@@ -85,7 +88,14 @@ static DEFINE_SPINLOCK(pers_lock);
  */
 
 static int sysctl_speed_limit_min = 1000;
+#ifdef CONFIG_BUFFALO_PLATFORM
+static int sysctl_speed_limit_max = 50000;
+#else
 static int sysctl_speed_limit_max = 200000;
+#endif
+#ifdef CONFIG_BUFFALO_PLATFORM
+static int sysctl_skip_resync=0;
+#endif
 static inline int speed_min(mddev_t *mddev)
 {
 	return mddev->sync_speed_min ?
@@ -97,6 +107,23 @@ static inline int speed_max(mddev_t *mddev)
 	return mddev->sync_speed_max ?
 		mddev->sync_speed_max : sysctl_speed_limit_max;
 }
+
+#ifdef CONFIG_BUFFALO_SCAN
+static int sysctl_scan_speed_limit_min = 1000;
+static int sysctl_scan_speed_limit_max = 50000;
+
+static inline int scan_speed_max(mddev_t *mddev)
+{
+        return mddev->scan_speed_max ?
+                mddev->scan_speed_max : sysctl_scan_speed_limit_max;
+}
+
+static inline int scan_speed_min(mddev_t *mddev)
+{
+        return mddev->scan_speed_min ?
+                mddev->scan_speed_min : sysctl_scan_speed_limit_min;
+}
+#endif /* CONFIG_BUFFALO_SCAN */
 
 static struct ctl_table_header *raid_table_header;
 
@@ -117,6 +144,34 @@ static ctl_table raid_table[] = {
 		.mode		= 0644,
 		.proc_handler	= &proc_dointvec,
 	},
+#ifdef CONFIG_BUFFALO_PLATFORM
+	{
+		.ctl_name	= DEV_RAID_SKIP_RESYNC,
+		.procname	= "skip_resync",
+		.data		= &sysctl_skip_resync,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &proc_dointvec,
+	},
+#endif
+#ifdef CONFIG_BUFFALO_SCAN
+        {
+                .ctl_name       = DEV_RAID_SPEED_LIMIT_MIN,
+                .procname       = "scan_speed_limit_min",
+                .data           = &sysctl_scan_speed_limit_min,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = &proc_dointvec,
+        },
+        {
+                .ctl_name       = DEV_RAID_SPEED_LIMIT_MAX,
+                .procname       = "scan_speed_limit_max",
+                .data           = &sysctl_scan_speed_limit_max,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = &proc_dointvec,
+        },
+#endif /* CONFIG_BUFFALO_SCAN */
 	{ .ctl_name = 0 }
 };
 
@@ -271,11 +326,17 @@ static mddev_t * mddev_find(dev_t unit)
 
 static inline int mddev_lock(mddev_t * mddev)
 {
+#ifdef BUFFALO_TRACE_SEM
+	printk("%s:%s %d\n",__FUNCTION__,mdname(mddev),current->pid);
+#endif
 	return down_interruptible(&mddev->reconfig_sem);
 }
 
 static inline void mddev_lock_uninterruptible(mddev_t * mddev)
 {
+#ifdef BUFFALO_TRACE_SEM
+	printk("%s:%s %d\n",__FUNCTION__,mdname(mddev),current->pid);
+#endif
 	down(&mddev->reconfig_sem);
 }
 
@@ -286,6 +347,9 @@ static inline int mddev_trylock(mddev_t * mddev)
 
 static inline void mddev_unlock(mddev_t * mddev)
 {
+#ifdef BUFFALO_TRACE_SEM
+	printk("%s:%s %d\n",__FUNCTION__,mdname(mddev),current->pid);
+#endif
 	up(&mddev->reconfig_sem);
 
 	md_wakeup_thread(mddev->thread);
@@ -1953,6 +2017,189 @@ level_store(mddev_t *mddev, const char *buf, size_t len)
 static struct md_sysfs_entry md_level =
 __ATTR(level, 0644, level_show, level_store);
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+/* ----------------------------------------------------------------------- */
+static ssize_t maxerr_cnt_show(mddev_t *mddev, char *page)
+{
+        return sprintf(page, "%d\n", atomic_read(&mddev->maxerr_cnt));
+}
+static ssize_t maxerr_cnt_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtol(buf, &e, 10);
+        if (*buf && (*e == 0 || *e == '\n') && (n == -1 || ((signed int)n) >= 0)) {
+                atomic_set(&mddev->maxerr_cnt, n);
+                return len;
+        }
+        return -EINVAL;
+}
+static struct md_sysfs_entry md_maxerr_cnt =
+__ATTR(maxerr_cnt, 0644, maxerr_cnt_show, maxerr_cnt_store);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+/* ----------------------------------------------------------------------- */
+
+#ifdef CONFIG_BUFFALO_SCAN
+/* ----------------------------------------------------------------------- */
+static ssize_t do_scan_show(mddev_t *mddev, char *page)
+{
+        unsigned long max_blocks, scan, dt, db, rt;
+        scan = (mddev->scan_cursor - atomic_read(&mddev->nr_scanning))/2;
+
+        max_blocks = mddev->array_size;
+
+	if (!mddev->pers){
+		return -EINVAL;
+        }
+
+	if (!mddev->pers->make_scan_request){
+            printk("%s: RAID maintenance function is not supported.\n",
+                    mdname(mddev));
+	    return -EINVAL;
+        }
+
+        scan = (mddev->scan_cursor - atomic_read(&mddev->nr_scanning))/2;
+
+        dt = ((jiffies - mddev->scan_mark) / HZ);
+        if (!dt) dt++;
+
+        db = mddev->scan_speed;
+        rt = (((max_blocks-scan) / (db/100+1)))/100;
+
+        if(!(mddev->scan_thr_started)){
+            rt=0;
+            mddev->scan_speed=0;
+        }
+
+        return sprintf(page, "%d (sector:%llu/%llu,"
+                             " finish=%lu.%lumin, speed=%uK/sec)\n",
+                        mddev->scan_thr_started,
+                       (unsigned long long int)(mddev->scan_cursor),
+                       (unsigned long long int)((mddev->array_size)<<1),
+                       rt/60,
+                       (rt % 60)/6,
+                       mddev->scan_speed
+                       );
+}
+
+static void md_do_scan(mddev_t *mddev);
+
+static ssize_t do_scan_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtoul(buf, &e, 10);
+
+	if (!mddev->pers || ! mddev->thread ){
+            printk("%s: is not started.\n",mdname(mddev));
+            return -EINVAL;
+        }
+
+	if (!mddev->pers->make_scan_request){
+            printk("%s: RAID maintenance function is not supported.\n",
+                   mdname(mddev));
+	    return -EINVAL;
+        }
+
+        if (*buf && (*e == 0 || *e == '\n')) {
+            spin_lock(&mddev->scan_thr_ops);
+            if ( n == 1 && !(mddev->scan_thr_started)){
+                 if (mddev->curr_resync){
+                        printk("%s: scan has canceled. md is busy.\n",mdname(mddev));
+                        goto error;
+                 }
+                 mddev->scan_thr_started=1;
+                 if(!(mddev->scan_thread)){
+                     mddev->scan_thread=md_register_thread(
+                                          md_do_scan, mddev, "%s_scan");
+                 }
+                 md_wakeup_thread(mddev->scan_thread);
+                 goto success;
+            } else if ( n == 0 && mddev->scan_thr_started) {
+                 mddev->scan_thr_interrupt_reason=1;
+                 init_completion(&mddev->scan_thr_complete);
+                 mddev->scan_thr_interruption=1;
+                 wait_for_completion(&mddev->scan_thr_complete);
+                 goto success;
+            } else {
+                 goto error;
+            }
+success:
+            spin_unlock(&mddev->scan_thr_ops);
+//            printk("md: md_do_scan_store() exitting, successfully.\n");
+            return len;
+error:
+            spin_unlock(&mddev->scan_thr_ops);
+        }
+        return -EINVAL;
+}
+
+static struct md_sysfs_entry md_do_scan_ctl =
+__ATTR(do_scan_ctl, 0644, do_scan_show, do_scan_store);
+
+static ssize_t scan_min_show(mddev_t *mddev, char *page)
+{
+        return sprintf(page, "%d (%s)\n", scan_speed_min(mddev),
+                       mddev->scan_speed_min ? "local": "system");
+}
+
+static ssize_t scan_min_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        int min;
+        char *e;
+        if (strncmp(buf, "system", 6)==0) {
+                mddev->scan_speed_min = 0;
+                return len;
+        }
+        min = simple_strtoul(buf, &e, 10);
+        if (buf == e || (*e && *e != '\n') || min <= 0)
+                return -EINVAL;
+        mddev->scan_speed_min = min;
+        return len;
+}
+
+static struct md_sysfs_entry md_scan_min =
+__ATTR(scan_speed_min, S_IRUGO|S_IWUSR, scan_min_show, scan_min_store);
+
+static ssize_t scan_max_show(mddev_t *mddev, char *page)
+{
+        return sprintf(page, "%d (%s)\n", scan_speed_max(mddev),
+                       mddev->scan_speed_max ? "local": "system");
+}
+
+static ssize_t scan_max_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        int max;
+        char *e;
+        if (strncmp(buf, "system", 6)==0) {
+                mddev->scan_speed_max = 0;
+                return len;
+        }
+        max = simple_strtoul(buf, &e, 10);
+        if (buf == e || (*e && *e != '\n') || max <= 0)
+                return -EINVAL;
+        mddev->scan_speed_max = max;
+        return len;
+}
+
+static struct md_sysfs_entry md_scan_max =
+__ATTR(scan_speed_max, S_IRUGO|S_IWUSR, scan_max_show, scan_max_store);
+
+static ssize_t
+scan_speed_show(mddev_t *mddev, char *page)
+{
+        unsigned long scan, dt, db;
+        scan = (mddev->scan_cursor - atomic_read(&mddev->nr_scanning));
+        dt = ((jiffies - mddev->scan_mark) / HZ);
+        if (!dt) dt++;
+        db = scan - (mddev->scan_mark_cnt);
+        return sprintf(page, "%ld\n", db/dt/2); /* K/sec */
+}
+
+static struct md_sysfs_entry
+md_scan_speed = __ATTR_RO(scan_speed); 
+
+#endif /* CONFIG_BUFFALO_SCAN */
+/* ----------------------------------------------------------------------- */
+
 static ssize_t
 raid_disks_show(mddev_t *mddev, char *page)
 {
@@ -2308,6 +2555,9 @@ static struct attribute *md_default_attrs[] = {
 	&md_size.attr,
 	&md_metadata.attr,
 	&md_new_device.attr,
+#ifdef CONFIG_BUFFALO_ERRCNT
+        &md_maxerr_cnt.attr,
+#endif /* CONFIG_BUFFALO_ERRCNT */
 	NULL,
 };
 
@@ -2318,6 +2568,12 @@ static struct attribute *md_redundancy_attrs[] = {
 	&md_sync_max.attr,
 	&md_sync_speed.attr,
 	&md_sync_completed.attr,
+#ifdef CONFIG_BUFFALO_SCAN
+        &md_do_scan_ctl.attr,
+        &md_scan_min.attr,
+        &md_scan_max.attr,
+        &md_scan_speed.attr,
+#endif /* CONFIG_BUFFALO_SCAN */
 	NULL,
 };
 static struct attribute_group md_redundancy_group = {
@@ -2598,6 +2854,21 @@ static int do_md_run(mddev_t * mddev)
 	mddev->queue->make_request_fn = mddev->pers->make_request;
 
 	mddev->changed = 1;
+#ifdef CONFIG_BUFFALO_ERRCNT
+       /* MAXERR_CNT_DEFAULT is defined on include/linux/raid/md_k.h */
+       atomic_set(&mddev->maxerr_cnt,MAXERR_CNT_DEFAULT);
+#endif
+
+#ifdef CONFIG_BUFFALO_SCAN
+       spin_lock_init(&mddev->scan_thr_ops);
+       spin_lock(&mddev->scan_thr_ops);
+       mddev->scan_thr_started=0;
+       mddev->scan_thread=NULL;
+       spin_unlock(&mddev->scan_thr_ops);
+       mddev->scan_speed = 0;
+
+#endif
+
 	md_new_event(mddev);
 	return 0;
 }
@@ -2647,6 +2918,16 @@ static int do_md_stop(mddev_t * mddev, int ro)
 	struct gendisk *disk = mddev->gendisk;
 
 	if (mddev->pers) {
+#ifdef CONFIG_BUFFALO_SCAN
+            spin_lock(&mddev->scan_thr_ops);
+            if(mddev->scan_thr_started==1){
+                init_completion(&mddev->scan_thr_complete);
+                mddev->scan_thr_interrupt_reason=2;
+                mddev->scan_thr_interruption=1;
+                wait_for_completion(&mddev->scan_thr_complete);
+            }
+        spin_unlock(&mddev->scan_thr_ops);
+#endif /* CONFIG_BUFFALO_SCAN */
 		if (atomic_read(&mddev->active)>2) {
 			printk("md: %s still in use.\n",mdname(mddev));
 			return -EBUSY;
@@ -4004,6 +4285,9 @@ void md_error(mddev_t *mddev, mdk_rdev_t *rdev)
 		__builtin_return_address(0),__builtin_return_address(1),
 		__builtin_return_address(2),__builtin_return_address(3));
 */
+#ifdef CONFIG_BUFFALO_PLATFORM
+	kernevnt_RadiDegraded(mddev->md_minor,MAJOR(rdev->bdev->bd_dev),MINOR(rdev->bdev->bd_dev));
+#endif
 	if (!mddev->pers->error_handler)
 		return;
 	mddev->pers->error_handler(mddev,rdev);
@@ -4039,7 +4323,6 @@ static void status_unused(struct seq_file *seq)
 static void status_resync(struct seq_file *seq, mddev_t * mddev)
 {
 	unsigned long max_blocks, resync, res, dt, db, rt;
-
 	resync = (mddev->curr_resync - atomic_read(&mddev->recovery_active))/2;
 
 	if (test_bit(MD_RECOVERY_SYNC, &mddev->recovery))
@@ -4081,12 +4364,21 @@ static void status_resync(struct seq_file *seq, mddev_t * mddev)
 	 */
 	dt = ((jiffies - mddev->resync_mark) / HZ);
 	if (!dt) dt++;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	db = mddev->currspeed;
+	rt = (((max_blocks-resync) / (db/100+1)))/100;
+#else
 	db = resync - (mddev->resync_mark_cnt/2);
 	rt = (dt * ((max_blocks-resync) / (db/100+1)))/100;
+#endif
 
 	seq_printf(seq, " finish=%lu.%lumin", rt / 60, (rt % 60)/6);
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	seq_printf(seq, " speed=%uK/sec", mddev->currspeed);
+#else
 	seq_printf(seq, " speed=%ldK/sec", db/dt);
+#endif
 }
 
 static void *md_seq_start(struct seq_file *seq, loff_t *pos)
@@ -4451,6 +4743,13 @@ static void md_do_sync(mddev_t *mddev)
 	struct list_head *tmp;
 	sector_t last_check;
 	int skipped = 0;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	int isRecovery,major=0,minor=0;
+#endif
+
+#ifdef CONFIG_BUFFALO_PLATFORM
+	set_user_nice(current, 4);
+#endif
 
 	/* just incase thread restarts... */
 	if (test_bit(MD_RECOVERY_DONE, &mddev->recovery))
@@ -4523,6 +4822,28 @@ static void md_do_sync(mddev_t *mddev)
 		/* recovery follows the physical size of devices */
 		max_sectors = mddev->size << 1;
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	{
+		mdk_rdev_t *rdev;
+		struct list_head *rtmp;
+		ITERATE_RDEV(mddev,rdev,rtmp){
+			/*
+			printk("** major=%d minor=%d  %d %d %d %d %d\n"
+				,MAJOR(rdev->bdev->bd_dev),MINOR(rdev->bdev->bd_dev)
+				,rdev->raid_disk, rdev->faulty, rdev->in_sync, rdev->desc_nr, rdev->raid_disk
+				);
+			*/
+//			if (!rdev->in_sync){
+			if (rdev->flags != In_sync){  // Changed by Hara 2006/10/3
+				major=MAJOR(rdev->bdev->bd_dev);
+				minor=MINOR(rdev->bdev->bd_dev);
+				break;
+			}
+		}
+		isRecovery=!test_bit(MD_RECOVERY_SYNC, &mddev->recovery);
+		kernevnt_RadiRecovery(mddev->md_minor,1,isRecovery,major,minor);
+	}
+#endif
 	printk(KERN_INFO "md: syncing RAID array %s\n", mdname(mddev));
 	printk(KERN_INFO "md: minimum _guaranteed_ reconstruction speed:"
 		" %d KB/sec/disc.\n", speed_min(mddev));
@@ -4567,6 +4888,11 @@ static void md_do_sync(mddev_t *mddev)
 	while (j < max_sectors) {
 		sector_t sectors;
 
+	#ifdef CONFIG_BUFFALO_PLATFORM
+		if (sysctl_skip_resync){
+			break;
+		}
+	#endif
 		skipped = 0;
 		sectors = mddev->pers->sync_request(mddev, j, &skipped,
 					    currspeed < speed_min(mddev));
@@ -4633,6 +4959,9 @@ static void md_do_sync(mddev_t *mddev)
 
 		currspeed = ((unsigned long)(io_sectors-mddev->resync_mark_cnt))/2
 			/((jiffies-mddev->resync_mark)/HZ +1) +1;
+#ifdef CONFIG_BUFFALO_PLATFORM
+		mddev->currspeed = currspeed;
+#endif
 
 		if (currspeed > speed_min(mddev)) {
 			if ((currspeed > speed_max(mddev)) ||
@@ -4650,6 +4979,9 @@ static void md_do_sync(mddev_t *mddev)
 	mddev->queue->unplug_fn(mddev->queue);
 
 	wait_event(mddev->recovery_wait, !atomic_read(&mddev->recovery_active));
+#ifdef CONFIG_BUFFALO_PLATFORM
+	kernevnt_RadiRecovery(mddev->md_minor,0,isRecovery,major,minor);
+#endif
 
 	/* tell personality that we are finished */
 	mddev->pers->sync_request(mddev, max_sectors, &skipped, 1);
@@ -4672,6 +5004,150 @@ static void md_do_sync(mddev_t *mddev)
 	set_bit(MD_RECOVERY_DONE, &mddev->recovery);
 	md_wakeup_thread(mddev->thread);
 }
+
+#ifdef CONFIG_BUFFALO_SCAN
+
+static void md_do_scan(mddev_t *mddev)
+{
+#define SCAN_MARKS      10
+#define SCAN_MARK_STEP  (3*HZ)
+#define SCAN_MAX_INFLIGHT_SECTR 1024*64
+        unsigned int currspeed = 0,
+                 window;
+        sector_t max_sectors,j, io_sectors;
+        sector_t mark_cnt[SCAN_MARKS];
+        unsigned long mark[SCAN_MARKS];
+        int last_mark, m;
+        sector_t last_check=0;
+
+        mddev->scan_cursor=0;
+        mddev->scan_thr_interruption=0;
+        mddev->scan_thr_started=1;
+
+        max_sectors = (mddev->array_size << 1);
+
+        window = 32*(PAGE_SIZE/512);
+
+	is_mddev_idle(mddev); /* this also initializes IO event counters */
+
+        atomic_set(&mddev->nr_scanning,0);
+
+        j = 0;
+
+        io_sectors = 0;
+        for (m = 0; m < SYNC_MARKS; m++) {
+                mark[m] = jiffies;
+                mark_cnt[m] = io_sectors;
+        }
+
+        last_mark = 0;
+        mddev->scan_mark = mark[last_mark];
+        mddev->scan_mark_cnt = mark_cnt[last_mark];
+
+#ifdef CONFIG_BUFFALO_PLATFORM
+    kernevnt_RadiScan(mddev->md_minor,1);
+#endif
+
+        set_user_nice(current, 4);
+
+        while (j < max_sectors) {
+                int sectors;
+
+                sectors = mddev->pers->make_scan_request(mddev, j, 8, -1);
+
+                if (sectors <= 0) {
+                        printk("raid: scan has been canceled.\n");
+                        goto normal_end;
+                }
+
+                io_sectors += sectors;
+                atomic_add(sectors, &mddev->nr_scanning);
+ 
+                j += sectors;
+
+                mddev->scan_cursor = j;
+
+                if (last_check + window > io_sectors || j == max_sectors)
+                        continue;
+
+                last_check = io_sectors;
+
+        repeat:
+                if (time_after_eq(jiffies, mark[last_mark] + SCAN_MARK_STEP )) {
+                        /* step marks */
+                        int next = (last_mark+1) % SCAN_MARKS;
+
+                        mddev->scan_mark = mark[next];
+                        mddev->scan_mark_cnt = mark_cnt[next];
+                        mark[next] = jiffies;
+                        mark_cnt[next] = io_sectors - atomic_read(&mddev->nr_scanning);
+                        last_mark = next;
+                }
+
+               if(mddev->scan_thr_interruption==1){
+                   mddev->scan_thr_interruption=0;
+                   goto interrupted_end;
+               }
+
+                mddev->queue->unplug_fn(mddev->queue);
+                cond_resched();
+
+                currspeed = ((unsigned long)(io_sectors-mddev->scan_mark_cnt))/2
+                        /((jiffies-mddev->scan_mark)/HZ +1) +1;
+
+                mddev->scan_speed = currspeed;
+
+                if (currspeed > scan_speed_min(mddev)) {
+			if ((currspeed > scan_speed_max(mddev)) ||
+					!is_mddev_idle(mddev) ||
+                         SCAN_MAX_INFLIGHT_SECTR < atomic_read(&mddev->nr_scanning)) {
+				msleep(500);
+				goto repeat;
+                        }
+                }
+        }
+
+normal_end:
+
+    while(atomic_read(&mddev->nr_scanning)){
+        md_wakeup_thread(mddev->thread);
+        msleep(1000);
+    }
+
+    if(!spin_trylock(&mddev->scan_thr_ops)){
+        if(mddev->scan_thr_interruption==1)
+            goto interrupted_end;
+    };
+
+    mddev->scan_cursor=0;
+    mddev->scan_thread=NULL;
+    mddev->scan_thr_started=0;
+
+    spin_unlock(&mddev->scan_thr_ops);
+#ifdef CONFIG_BUFFALO_PLATFORM
+    kernevnt_RadiScan(mddev->md_minor,0);
+#endif
+    do_exit(0);
+
+interrupted_end:
+    /* This area is protected by exclusion by scan_thr_ops. */
+    while(atomic_read(&mddev->nr_scanning)){
+        md_wakeup_thread(mddev->thread);
+        msleep(1000);
+    }
+
+    mddev->scan_cursor=0;
+    mddev->scan_thr_started=0;
+    mddev->scan_thread=NULL;
+    mddev->scan_thr_interruption=0;
+#ifdef CONFIG_BUFFALO_PLATFORM
+    kernevnt_RadiScan(mddev->md_minor,0);
+#endif
+    complete_and_exit(
+        &mddev->scan_thr_complete, mddev->scan_thr_interrupt_reason);
+
+}
+#endif /* CONFIG_BUFFALO_SCAN */
 
 
 /*

@@ -29,6 +29,11 @@
 #include <linux/interrupt.h>
 #include <linux/cpu.h>
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+ #define BUFFALO_SECTORERR_CNT
+ #include <buffalo/kernevnt.h>
+#endif
+
 /*
  * for max sense size
  */
@@ -2781,6 +2786,148 @@ static void init_request_from_bio(struct request *req, struct bio *bio)
 	req->start_time = jiffies;
 }
 
+#ifdef CONFIG_DEBUG_RAID /* for debugging */
+/* 
+   A C-program for MT19937, with initialization improved 2002/1/26.
+   Coded by Takuji Nishimura and Makoto Matsumoto.
+
+   Before using, initialize the state by using init_genrand(seed)  
+   or init_by_array(init_key, key_length).
+
+   Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
+   All rights reserved.                          
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+     1. Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+
+     2. Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+     3. The names of its contributors may not be used to endorse or promote 
+        products derived from this software without specific prior written 
+        permission.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+   Any feedback is very welcome.
+   http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
+   email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
+*/
+
+/* Period parameters */  
+#define N 624
+#define M 397
+#define MATRIX_A 0x9908b0dfUL   /* constant vector a */
+#define UPPER_MASK 0x80000000UL /* most significant w-r bits */
+#define LOWER_MASK 0x7fffffffUL /* least significant r bits */
+
+static unsigned long mt[N]; /* the array for the state vector  */
+static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
+
+/* initializes mt[N] with a seed */
+static void init_genrand(unsigned long s)
+{
+    mt[0]= s & 0xffffffffUL;
+    for (mti=1; mti<N; mti++) {
+        mt[mti] = 
+	    (1812433253UL * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti); 
+        /* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
+        /* In the previous versions, MSBs of the seed affect   */
+        /* only MSBs of the array mt[].                        */
+        /* 2002/01/09 modified by Makoto Matsumoto             */
+        mt[mti] &= 0xffffffffUL;
+        /* for >32 bit machines */
+    }
+}
+
+/* initialize by an array with array-length */
+/* init_key is the array for initializing keys */
+/* key_length is its length */
+/* slight change for C++, 2004/2/26 */
+static void init_by_array(unsigned long init_key[], int key_length)
+{
+    int i, j, k;
+    init_genrand(19650218UL);
+    i=1; j=0;
+    k = (N>key_length ? N : key_length);
+    for (; k; k--) {
+        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1664525UL))
+          + init_key[j] + j; /* non linear */
+        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
+        i++; j++;
+        if (i>=N) { mt[0] = mt[N-1]; i=1; }
+        if (j>=key_length) j=0;
+    }
+    for (k=N-1; k; k--) {
+        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1566083941UL))
+          - i; /* non linear */
+        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
+        i++;
+        if (i>=N) { mt[0] = mt[N-1]; i=1; }
+    }
+
+    mt[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */ 
+}
+
+/* generates a random number on [0,0xffffffff]-interval */
+static unsigned long genrand_int32(void)
+{
+    unsigned long y;
+    static unsigned long mag01[2]={0x0UL, MATRIX_A};
+    /* mag01[x] = x * MATRIX_A  for x=0,1 */
+
+    if (mti >= N) { /* generate N words at one time */
+        int kk;
+
+        if (mti == N+1)   /* if init_genrand() has not been called, */
+            init_genrand(5489UL); /* a default initial seed is used */
+
+        for (kk=0;kk<N-M;kk++) {
+            y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
+            mt[kk] = mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        }
+        for (;kk<N-1;kk++) {
+            y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
+            mt[kk] = mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        }
+        y = (mt[N-1]&UPPER_MASK)|(mt[0]&LOWER_MASK);
+        mt[N-1] = mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1UL];
+
+        mti = 0;
+    }
+  
+    y = mt[mti++];
+
+    /* Tempering */
+    y ^= (y >> 11);
+    y ^= (y << 7) & 0x9d2c5680UL;
+    y ^= (y << 15) & 0xefc60000UL;
+    y ^= (y >> 18);
+
+    return y;
+}
+
+static unsigned long rand_seed[4]={0x00,0x00,0x00,0x00};
+static unsigned long rand_seed_length=4;
+#endif /* CONFIG_DEBUG_RAID */
+
+
 static int __make_request(request_queue_t *q, struct bio *bio)
 {
 	struct request *req;
@@ -2810,7 +2957,48 @@ static int __make_request(request_queue_t *q, struct bio *bio)
 		err = -EOPNOTSUPP;
 		goto end_io;
 	}
-
+#ifdef CONFIG_DEBUG_RAID /* for debugging */
+        if (bio->bi_bdev->bd_disk->err_r_prob && (bio->bi_rw & WRITE)==0){
+            {
+	        char b[BDEVNAME_SIZE];
+                struct timeval seed_time;
+                if(rand_seed[0]==0 && rand_seed[1]==0 && rand_seed[2]==0){
+                    do_gettimeofday(&seed_time);
+                    rand_seed[0]=seed_time.tv_sec;
+                    do_gettimeofday(&seed_time);
+                    rand_seed[1]=seed_time.tv_usec;
+                    do_gettimeofday(&seed_time);
+                    rand_seed[2]=seed_time.tv_usec;
+                    do_gettimeofday(&seed_time);
+                    rand_seed[3]=seed_time.tv_sec;
+                    init_by_array(rand_seed, rand_seed_length);
+                }
+                if((genrand_int32()%(bio->bi_bdev->bd_disk->err_r_prob))==1){
+		     printk("*** %s: break read I/O %s:%Lu\n",__FUNCTION__
+		         ,bdevname(bio->bi_bdev,b),
+                         (unsigned long long)bio->bi_sector);
+                        err = -EIO;
+			goto end_io;
+                }
+            }
+        }
+        if (bio->bi_bdev->bd_disk->brk_req_r>0 && (bio->bi_rw & WRITE)==0){
+            char b[BDEVNAME_SIZE];
+            bio->bi_bdev->bd_disk->brk_req_r--;
+            printk("*** %s: break read I/O %s:%Lu\n",__FUNCTION__
+                ,bdevname(bio->bi_bdev,b),(unsigned long long)bio->bi_sector);
+                err = -EIO;
+                goto end_io;
+        }
+        if (bio->bi_bdev->bd_disk->brk_req_w>0 && (bio->bi_rw & WRITE)){
+            char b[BDEVNAME_SIZE];
+            bio->bi_bdev->bd_disk->brk_req_w--;
+            printk("*** %s: break write I/O %s:%Lu\n",__FUNCTION__
+                ,bdevname(bio->bi_bdev,b),(unsigned long long)bio->bi_sector);
+                err = -EIO;
+            goto end_io;
+        }
+#endif  /* CONFIG_DEBUG_RAID */
 	spin_lock_irq(q->queue_lock);
 
 	if (unlikely(barrier) || elv_queue_empty(q))
@@ -3005,6 +3193,15 @@ end_io:
 			goto end_io;
 		}
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+		if (bio->bi_bdev->bd_disk->limit_io_errors>0
+		 && (bio->bi_bdev->bd_disk->io_errors > bio->bi_bdev->bd_disk->limit_io_errors)){
+			//printk("%s:io error limit\n",bdevname(bio->bi_bdev, b));
+			set_bit(QUEUE_FLAG_DEAD, &q->queue_flags);
+			kernevnt_DriveDead(bdevname(bio->bi_bdev, b));
+			goto end_io;
+		}
+#endif
 		if (unlikely(test_bit(QUEUE_FLAG_DEAD, &q->queue_flags)))
 			goto end_io;
 
@@ -3152,6 +3349,18 @@ static int __end_that_request_first(struct request *req, int uptodate,
 			printk("end_request: I/O error, dev %s, sector %llu\n",
 				req->rq_disk ? req->rq_disk->disk_name : "?",
 				(unsigned long long)req->sector);
+#ifdef CONFIG_BUFFALO_ERRCNT
+                if(atomic_inc_return(&req->rq_disk->nr_errs) < 0)
+                     atomic_set(&req->rq_disk->nr_errs, INT_MAX);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_BUFFALO_PLATFORM
+		// end_request: I/O error, dev sda, sector 16
+		{
+			//char str[32];
+			//sprintf(str,"%02x:%02x",req->rq_disk->major,req->rq_disk->minors);
+			kernevnt_IOErr(req->rq_disk->disk_name /*str*/, (rq_data_dir(req)==WRITE)? "WRITE":"READ", req->sector, ++req->rq_disk->io_errors);
+		}
+#endif
 	}
 
 	if (blk_fs_request(req) && req->rq_disk) {
@@ -3251,7 +3460,18 @@ static int __end_that_request_first(struct request *req, int uptodate,
  **/
 int end_that_request_first(struct request *req, int uptodate, int nr_sectors)
 {
+#ifdef CONFIG_BUFFALO_PLATFORM
+	int ret;
+	ret = __end_that_request_first(req, uptodate, nr_sectors << 9);
+//printk(">%s: %d %d\n",__FUNCTION__,ret,uptodate);
+	if (ret==0 && !uptodate){
+		kernevnt_IOErr(req->rq_disk->disk_name,  (rq_data_dir(req)==WRITE)?"WRITE":"READ"
+			, req->sector, ++req->rq_disk->io_errors);
+	}
+	return ret;
+#else
 	return __end_that_request_first(req, uptodate, nr_sectors << 9);
+#endif
 }
 
 EXPORT_SYMBOL(end_that_request_first);
@@ -3273,7 +3493,18 @@ EXPORT_SYMBOL(end_that_request_first);
  **/
 int end_that_request_chunk(struct request *req, int uptodate, int nr_bytes)
 {
+#ifdef CONFIG_BUFFALO_PLATFORM
+	int ret;
+	ret = __end_that_request_first(req, uptodate, nr_bytes);
+	if (ret==0 && !uptodate){
+//printk("** >%s: %d %d %d\n",__FUNCTION__,ret,uptodate,nr_bytes);
+		kernevnt_IOErr(req->rq_disk->disk_name, (rq_data_dir(req)==WRITE)?"WRITE":"READ"
+			, req->sector, ++req->rq_disk->io_errors);
+	}
+	return ret;
+#else
 	return __end_that_request_first(req, uptodate, nr_bytes);
+#endif
 }
 
 EXPORT_SYMBOL(end_that_request_chunk);
@@ -3365,6 +3596,9 @@ EXPORT_SYMBOL(blk_complete_request);
 void end_that_request_last(struct request *req, int uptodate)
 {
 	struct gendisk *disk = req->rq_disk;
+#ifdef CONFIG_BUFFALO_PLATFORM
+//printk(">%s:%d\n",__FUNCTION__,blk_fs_request(req));
+#endif
 	int error;
 
 	/*

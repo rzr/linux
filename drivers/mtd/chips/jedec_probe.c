@@ -134,6 +134,14 @@
 #define M50FW080	0x002D
 #define M50FW016	0x002E
 #define M50LPW080       0x002F
+#ifdef CONFIG_BUFFALO_PLATFORM
+#define M29W320DT	0x00CA
+#define M29W320DB	0x00CB
+#define M29W324DT	0x005C
+#define M29W324DB	0x005D
+#define M29W323DT	0x005E
+#define M29W323DB	0x005F
+#endif
 
 /* SST */
 #define SST29EE020	0x0010
@@ -1598,6 +1606,40 @@ static const struct amd_flash_info jedec_table[] = {
 		.regions	= {
 			ERASEINFO(0x10000,16),
 		}
+#ifdef CONFIG_BUFFALO_PLATFORM
+	}, {
+		/* 2006.2.2 buffalo: add */
+		.mfr_id		= MANUFACTURER_ST,
+		.dev_id		= M29W323DT,
+		.name		= "ST M29W323DT",
+		.uaddr		= {
+			[0] = MTD_UADDR_0x0AAA_0x0555, /* x8 */
+			[1] = MTD_UADDR_0x0555_0x02AA  /* x16 */
+		},
+		.DevSize	= SIZE_4MiB,
+		.CmdSet		= P_ID_AMD_STD,
+		.NumEraseRegions= 2,
+		.regions	= {
+			ERASEINFO(0x10000,63),
+			ERASEINFO(0x02000,8)
+		}
+	}, {
+		/* 2006.2.2 buffalo: add */
+		.mfr_id		= MANUFACTURER_ST,
+		.dev_id		= M29W323DB,
+		.name		= "ST M29W323DB",
+		.uaddr		= {
+			[0] = MTD_UADDR_0x0AAA_0x0555, /* x8 */
+			[1] = MTD_UADDR_0x0555_0x02AA  /* x16 */
+		},
+		.DevSize	= SIZE_4MiB,
+		.CmdSet		= P_ID_AMD_STD,
+		.NumEraseRegions= 2,
+		.regions	= {
+			ERASEINFO(0x02000,8),
+			ERASEINFO(0x10000,63)
+		}
+#endif
 	}, {
 		.mfr_id		= MANUFACTURER_TOSHIBA,
 		.dev_id		= TC58FVT160,
@@ -1981,6 +2023,7 @@ static int jedec_probe_chip(struct map_info *map, __u32 base,
 	enum uaddr uaddr_idx = MTD_UADDR_NOT_SUPPORTED;
 	u32 probe_offset1, probe_offset2;
 
+	DEBUG(MTD_DEBUG_LEVEL3, "base: %x %x %x [%s]\n", base,map->phys,map->size,map->name);
  retry:
 	if (!cfi->numchips) {
 		uaddr_idx++;
@@ -2125,6 +2168,7 @@ static struct mtd_info *jedec_probe(struct map_info *map)
 	 * Just use the generic probe stuff to call our CFI-specific
 	 * chip_probe routine in all the possible permutations, etc.
 	 */
+	printk(">%s\n",__FUNCTION__);
 	return mtd_do_chip_probe(map, &jedec_chip_probe);
 }
 

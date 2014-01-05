@@ -1,0 +1,308 @@
+./core/devio.c:	kfree(as->urb->transfer_buffer);
+./core/devio.c:	kfree(as->urb->setup_packet);
+./core/devio.c:	unsigned char *data = urb->transfer_buffer;
+./core/devio.c:	if (urb->pipe & USB_DIR_IN)
+./core/devio.c:		dev_info(&urb->dev->dev, "direction=IN\n");
+./core/devio.c:		dev_info(&urb->dev->dev, "direction=OUT\n");
+./core/devio.c:	dev_info(&urb->dev->dev, "userurb=%p\n", userurb);
+./core/devio.c:	dev_info(&urb->dev->dev, "transfer_buffer_length=%d\n",
+./core/devio.c:		 urb->transfer_buffer_length);
+./core/devio.c:	dev_info(&urb->dev->dev, "actual_length=%d\n", urb->actual_length);
+./core/devio.c:	dev_info(&urb->dev->dev, "data: ");
+./core/devio.c:	for (j = 0; j < urb->transfer_buffer_length; ++j)
+./core/devio.c:        struct async *as = (struct async *)urb->context;
+./core/devio.c:		sinfo.si_errno = as->urb->status;
+./core/devio.c:	snoop(&urb->dev->dev, "urb complete\n");
+./core/devio.c:	if (uurb->flags & ~(USBDEVFS_URB_ISO_ASAP|USBDEVFS_URB_SHORT_NOT_OK|
+./core/devio.c:	if (!uurb->buffer)
+./core/devio.c:	if (uurb->signr != 0 && (uurb->signr < SIGRTMIN || uurb->signr > SIGRTMAX))
+./core/devio.c:	if (!(uurb->type == USBDEVFS_URB_TYPE_CONTROL && (uurb->endpoint & ~USB_ENDPOINT_DIR_MASK) == 0)) {
+./core/devio.c:		if ((ifnum = findintfep(ps->dev, uurb->endpoint)) < 0)
+./core/devio.c:	if ((uurb->endpoint & USB_ENDPOINT_DIR_MASK) != 0)
+./core/devio.c:		ep = ps->dev->ep_in [uurb->endpoint & USB_ENDPOINT_NUMBER_MASK];
+./core/devio.c:		ep = ps->dev->ep_out [uurb->endpoint & USB_ENDPOINT_NUMBER_MASK];
+./core/devio.c:	switch(uurb->type) {
+./core/devio.c:		if (uurb->buffer_length < 8 || uurb->buffer_length > PAGE_SIZE)
+./core/devio.c:		if (copy_from_user(dr, uurb->buffer, 8)) {
+./core/devio.c:		if (uurb->buffer_length < (le16_to_cpup(&dr->wLength) + 8)) {
+./core/devio.c:		uurb->endpoint = (uurb->endpoint & ~USB_ENDPOINT_DIR_MASK) | (dr->bRequestType & USB_ENDPOINT_DIR_MASK);
+./core/devio.c:		uurb->number_of_packets = 0;
+./core/devio.c:		uurb->buffer_length = le16_to_cpup(&dr->wLength);
+./core/devio.c:		uurb->buffer += 8;
+./core/devio.c:		if (!access_ok((uurb->endpoint & USB_DIR_IN) ?  VERIFY_WRITE : VERIFY_READ, uurb->buffer, uurb->buffer_length)) {
+./core/devio.c:		uurb->number_of_packets = 0;
+./core/devio.c:		if (uurb->buffer_length > MAX_USBFS_BUFFER_SIZE)
+./core/devio.c:		if (!access_ok((uurb->endpoint & USB_DIR_IN) ? VERIFY_WRITE : VERIFY_READ, uurb->buffer, uurb->buffer_length))
+./core/devio.c:		if (uurb->number_of_packets < 1 || uurb->number_of_packets > 128)
+./core/devio.c:		isofrmlen = sizeof(struct usbdevfs_iso_packet_desc) * uurb->number_of_packets;
+./core/devio.c:		for (totlen = u = 0; u < uurb->number_of_packets; u++) {
+./core/devio.c:		uurb->buffer_length = totlen;
+./core/devio.c:		uurb->number_of_packets = 0;
+./core/devio.c:		if (uurb->buffer_length > MAX_USBFS_BUFFER_SIZE)
+./core/devio.c:		if (!access_ok((uurb->endpoint & USB_DIR_IN) ? VERIFY_WRITE : VERIFY_READ, uurb->buffer, uurb->buffer_length))
+./core/devio.c:	if (!(as = alloc_async(uurb->number_of_packets))) {
+./core/devio.c:	if (!(as->urb->transfer_buffer = kmalloc(uurb->buffer_length, GFP_KERNEL))) {
+./core/devio.c:        as->urb->dev = ps->dev;
+./core/devio.c:        as->urb->pipe = (uurb->type << 30) | __create_pipe(ps->dev, uurb->endpoint & 0xf) | (uurb->endpoint & USB_DIR_IN);
+./core/devio.c:        as->urb->transfer_flags = uurb->flags;
+./core/devio.c:	as->urb->transfer_buffer_length = uurb->buffer_length;
+./core/devio.c:	as->urb->setup_packet = (unsigned char*)dr;
+./core/devio.c:	as->urb->start_frame = uurb->start_frame;
+./core/devio.c:	as->urb->number_of_packets = uurb->number_of_packets;
+./core/devio.c:	as->urb->interval = interval;
+./core/devio.c:        as->urb->context = as;
+./core/devio.c:        as->urb->complete = async_completed;
+./core/devio.c:	for (totlen = u = 0; u < uurb->number_of_packets; u++) {
+./core/devio.c:		as->urb->iso_frame_desc[u].offset = totlen;
+./core/devio.c:		as->urb->iso_frame_desc[u].length = isopkt[u].length;
+./core/devio.c:	if (uurb->endpoint & USB_DIR_IN)
+./core/devio.c:		as->userbuffer = uurb->buffer;
+./core/devio.c:	as->signr = uurb->signr;
+./core/devio.c:	if (!(uurb->endpoint & USB_DIR_IN)) {
+./core/devio.c:		if (copy_from_user(as->urb->transfer_buffer, uurb->buffer, as->urb->transfer_buffer_length)) {
+./core/devio.c:	snoop(&as->urb->dev->dev, "submit urb\n");
+./core/devio.c:		if (copy_to_user(as->userbuffer, urb->transfer_buffer, urb->transfer_buffer_length))
+./core/devio.c:	if (put_user(urb->status, &userurb->status))
+./core/devio.c:	if (put_user(urb->actual_length, &userurb->actual_length))
+./core/devio.c:	if (put_user(urb->error_count, &userurb->error_count))
+./core/devio.c:	if (usb_pipeisoc(urb->pipe)) {
+./core/devio.c:		for (i = 0; i < urb->number_of_packets; i++) {
+./core/devio.c:			if (put_user(urb->iso_frame_desc[i].actual_length,
+./core/devio.c:				     &userurb->iso_frame_desc[i].actual_length))
+./core/devio.c:			if (put_user(urb->iso_frame_desc[i].status,
+./core/devio.c:				     &userurb->iso_frame_desc[i].status))
+./core/devio.c:	if (get_user(kurb->type, &uurb->type) ||
+./core/devio.c:	    __get_user(kurb->endpoint, &uurb->endpoint) ||
+./core/devio.c:	    __get_user(kurb->status, &uurb->status) ||
+./core/devio.c:	    __get_user(kurb->flags, &uurb->flags) ||
+./core/devio.c:	    __get_user(kurb->buffer_length, &uurb->buffer_length) ||
+./core/devio.c:	    __get_user(kurb->actual_length, &uurb->actual_length) ||
+./core/devio.c:	    __get_user(kurb->start_frame, &uurb->start_frame) ||
+./core/devio.c:	    __get_user(kurb->number_of_packets, &uurb->number_of_packets) ||
+./core/devio.c:	    __get_user(kurb->error_count, &uurb->error_count) ||
+./core/devio.c:	    __get_user(kurb->signr, &uurb->signr))
+./core/devio.c:	if (__get_user(uptr, &uurb->buffer))
+./core/devio.c:	kurb->buffer = compat_ptr(uptr);
+./core/devio.c:	if (__get_user(uptr, &uurb->buffer))
+./core/devio.c:	kurb->usercontext = compat_ptr(uptr);
+./core/devio.c:		if (copy_to_user(as->userbuffer, urb->transfer_buffer, urb->transfer_buffer_length))
+./core/devio.c:	if (put_user(urb->status, &userurb->status))
+./core/devio.c:	if (put_user(urb->actual_length, &userurb->actual_length))
+./core/devio.c:	if (put_user(urb->error_count, &userurb->error_count))
+./core/devio.c:	if (usb_pipeisoc(urb->pipe)) {
+./core/devio.c:		for (i = 0; i < urb->number_of_packets; i++) {
+./core/devio.c:			if (put_user(urb->iso_frame_desc[i].actual_length,
+./core/devio.c:				     &userurb->iso_frame_desc[i].actual_length))
+./core/devio.c:			if (put_user(urb->iso_frame_desc[i].status,
+./core/devio.c:				     &userurb->iso_frame_desc[i].status))
+./core/hcd.c:	u8		*ubuf = urb->transfer_buffer;
+./core/hcd.c:	cmd = (struct usb_ctrlrequest *) urb->setup_packet;
+./core/hcd.c:	if (wLength > urb->transfer_buffer_length)
+./core/hcd.c:	urb->actual_length = 0;
+./core/hcd.c:			urb->actual_length = n;
+./core/hcd.c:		// wValue == urb->dev->devaddr
+./core/hcd.c:		if (urb->transfer_buffer_length < len)
+./core/hcd.c:			len = urb->transfer_buffer_length;
+./core/hcd.c:		urb->actual_length = len;
+./core/hcd.c:	spin_lock (&urb->lock);
+./core/hcd.c:	if (urb->status == -EINPROGRESS)
+./core/hcd.c:		urb->status = status;
+./core/hcd.c:	spin_unlock (&urb->lock);
+./core/hcd.c:			spin_lock(&urb->lock);
+./core/hcd.c:			if (urb->status == -EINPROGRESS) {
+./core/hcd.c:				urb->status = 0;
+./core/hcd.c:				urb->hcpriv = NULL;
+./core/hcd.c:				urb->actual_length = length;
+./core/hcd.c:				memcpy(urb->transfer_buffer, buffer, length);
+./core/hcd.c:			spin_unlock(&urb->lock);
+./core/hcd.c:	int		len = 1 + (urb->dev->maxchild / 8);
+./core/hcd.c:	if (urb->status != -EINPROGRESS)	/* already unlinked */
+./core/hcd.c:		retval = urb->status;
+./core/hcd.c:	else if (hcd->status_urb || urb->transfer_buffer_length < len) {
+./core/hcd.c:		urb->hcpriv = hcd;	/* indicate it's queued */
+./core/hcd.c:	if (usb_pipeint (urb->pipe))
+./core/hcd.c:	if (usb_pipecontrol (urb->pipe))
+./core/hcd.c:	if (usb_pipeendpoint(urb->pipe) == 0) {	/* Control URB */
+./core/hcd.c:		spin_lock_irq(&urb->lock);	/* from usb_kill_urb */
+./core/hcd.c:		++urb->reject;
+./core/hcd.c:		spin_unlock_irq(&urb->lock);
+./core/hcd.c:				atomic_read(&urb->use_count) == 0);
+./core/hcd.c:		spin_lock_irq(&urb->lock);
+./core/hcd.c:		--urb->reject;
+./core/hcd.c:		spin_unlock_irq(&urb->lock);
+./core/hcd.c:			urb->hcpriv = NULL;
+./core/hcd.c:	unsigned int	pipe = urb->pipe;
+./core/hcd.c:		bustime /= urb->number_of_packets;
+./core/hcd.c: * @urb: request (urb->dev == dev)
+./core/hcd.c:	urb->bandwidth = bustime;
+./core/hcd.c: * @urb: request (urb->dev == dev)
+./core/hcd.c:	dev->bus->bandwidth_allocated -= urb->bandwidth;
+./core/hcd.c:		urb->bandwidth,
+./core/hcd.c:	urb->bandwidth = 0;
+./core/hcd.c:	if (urb->bandwidth)
+./core/hcd.c:		usb_release_bandwidth (urb->dev, urb,
+./core/hcd.c:			usb_pipeisoc (urb->pipe));
+./core/hcd.c:	list_del_init (&urb->urb_list);
+./core/hcd.c:	usb_put_dev (urb->dev);
+./core/hcd.c:/* may be called in any context with a valid urb->dev usecount
+./core/hcd.c:	struct usb_hcd		*hcd = urb->dev->bus->hcpriv;
+./core/hcd.c:	 * Access to urb->status is controlled by urb->lock ... changes on
+./core/hcd.c:	ep = (usb_pipein(urb->pipe) ? urb->dev->ep_in : urb->dev->ep_out)
+./core/hcd.c:			[usb_pipeendpoint(urb->pipe)];
+./core/hcd.c:	else if (unlikely (urb->reject))
+./core/hcd.c:		usb_get_dev (urb->dev);
+./core/hcd.c:		list_add_tail (&urb->urb_list, &ep->urb_list);
+./core/hcd.c:				&& urb->dev->parent == NULL)
+./core/hcd.c:		INIT_LIST_HEAD (&urb->urb_list);
+./core/hcd.c:	atomic_inc (&urb->use_count);
+./core/hcd.c:	if (urb->dev == hcd->self.root_hub) {
+./core/hcd.c:		 * driver, for now) that URBs' urb->transfer_buffer be
+./core/hcd.c:		if (usb_pipecontrol (urb->pipe)
+./core/hcd.c:			&& !(urb->transfer_flags & URB_NO_SETUP_DMA_MAP))
+./core/hcd.c:			urb->setup_dma = dma_map_single (
+./core/hcd.c:					urb->setup_packet,
+./core/hcd.c:		if (urb->transfer_buffer_length != 0
+./core/hcd.c:			&& !(urb->transfer_flags & URB_NO_TRANSFER_DMA_MAP))
+./core/hcd.c:			urb->transfer_dma = dma_map_single (
+./core/hcd.c:					urb->transfer_buffer,
+./core/hcd.c:					urb->transfer_buffer_length,
+./core/hcd.c:					usb_pipein (urb->pipe)
+./core/hcd.c:		atomic_dec (&urb->use_count);
+./core/hcd.c:		if (urb->reject)
+./core/hcd.c:	if (urb->dev == hcd->self.root_hub)
+./core/hcd.c:	if (!urb->dev || !urb->dev->bus)
+./core/hcd.c:	ep = (usb_pipein(urb->pipe) ? urb->dev->ep_in : urb->dev->ep_out)
+./core/hcd.c:			[usb_pipeendpoint(urb->pipe)];
+./core/hcd.c:	 * we contend for urb->status with the hcd core,
+./core/hcd.c:	spin_lock_irqsave (&urb->lock, flags);
+./core/hcd.c:	sys = &urb->dev->dev;
+./core/hcd.c:	hcd = urb->dev->bus->hcpriv;
+./core/hcd.c:		if (tmp == &urb->urb_list)
+./core/hcd.c:	if (tmp != &urb->urb_list) {
+./core/hcd.c:	if (urb->status != -EINPROGRESS) {
+./core/hcd.c:	    && hcd->self.root_hub != urb->dev) {
+./core/hcd.c:	urb->status = status;
+./core/hcd.c:	spin_unlock_irqrestore (&urb->lock, flags);
+./core/hcd.c:	spin_unlock_irqrestore (&urb->lock, flags);
+./core/hcd.c:		 * FIXME urb->reject should allow that...
+./core/hcd.c:		if (urb->status != -EINPROGRESS)
+./core/hcd.c:		spin_lock (&urb->lock);
+./core/hcd.c:		tmp = urb->status;
+./core/hcd.c:			urb->status = -ESHUTDOWN;
+./core/hcd.c:		spin_unlock (&urb->lock);
+./core/hcd.c:			tmp = urb->pipe;
+./core/hcd.c:		urb->status = -ECONNRESET;
+./core/hcd.c:		urb->hcpriv = NULL;
+./core/hcd.c:		urb->actual_length = 0;
+./core/hcd.c: * (and is done using urb->hcpriv).  It also released all HCD locks;
+./core/hcd.c:	at_root_hub = (urb->dev == hcd->self.root_hub);
+./core/hcd.c:		if (usb_pipecontrol (urb->pipe)
+./core/hcd.c:			&& !(urb->transfer_flags & URB_NO_SETUP_DMA_MAP))
+./core/hcd.c:			dma_unmap_single (hcd->self.controller, urb->setup_dma,
+./core/hcd.c:		if (urb->transfer_buffer_length != 0
+./core/hcd.c:			&& !(urb->transfer_flags & URB_NO_TRANSFER_DMA_MAP))
+./core/hcd.c:					urb->transfer_dma,
+./core/hcd.c:					urb->transfer_buffer_length,
+./core/hcd.c:					usb_pipein (urb->pipe)
+./core/hcd.c:	urb->complete (urb, regs);
+./core/hcd.c:	atomic_dec (&urb->use_count);
+./core/hcd.c:	if (unlikely (urb->reject))
+./core/hub.c:	struct usb_hub *hub = (struct usb_hub *)urb->context;
+./core/hub.c:	switch (urb->status) {
+./core/hub.c:		dev_dbg (hub->intfdev, "transfer --> %d\n", urb->status);
+./core/hub.c:		hub->error = urb->status;
+./core/hub.c:		for (i = 0; i < urb->actual_length; ++i)
+./core/hub.c:	hub->urb->transfer_dma = hub->buffer_dma;
+./core/hub.c:	hub->urb->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
+./core/message.c:	complete((struct completion *)urb->context);
+./core/message.c:	urb->context = &done;
+./core/message.c:	urb->actual_length = 0;
+./core/message.c:		status = urb->status;
+./core/message.c:			dev_dbg(&urb->dev->dev,
+./core/message.c:				usb_pipeendpoint(urb->pipe),
+./core/message.c:				usb_pipein(urb->pipe) ? "in" : "out",
+./core/message.c:				urb->actual_length,
+./core/message.c:				urb->transfer_buffer_length
+./core/message.c:			if (urb->actual_length > 0)
+./core/message.c:		*actual_length = urb->actual_length;
+./core/message.c:	struct usb_sg_request	*io = (struct usb_sg_request *) urb->context;
+./core/message.c:				|| urb->status != -ECONNRESET)
+./core/message.c:			&& urb->actual_length) {
+./core/message.c:			usb_pipeendpoint (urb->pipe),
+./core/message.c:			usb_pipein (urb->pipe) ? "in" : "out",
+./core/message.c:			urb->status, io->status);
+./core/message.c:	if (io->status == 0 && urb->status && urb->status != -ECONNRESET) {
+./core/message.c:		io->status = urb->status;
+./core/message.c:	urb->dev = NULL;
+./core/message.c:	io->bytes += urb->actual_length;
+./core/urb.c:		kref_init(&urb->kref);
+./core/urb.c:		spin_lock_init(&urb->lock);
+./core/urb.c:		kref_put(&urb->kref, urb_destroy);
+./core/urb.c:		kref_get(&urb->kref);
+./core/urb.c: * urb->interval is modified to reflect the actual transfer period used
+./core/urb.c: * urb->start_frame is modified to reflect when the URB's transfers were
+./core/urb.c:	if (!urb || urb->hcpriv || !urb->complete){
+./core/urb.c:	if (!(dev = urb->dev) ||
+./core/urb.c:	urb->status = -EINPROGRESS;
+./core/urb.c:	urb->actual_length = 0;
+./core/urb.c:	urb->bandwidth = 0;
+./core/urb.c:	pipe = urb->pipe;
+./core/urb.c:		if (urb->number_of_packets <= 0){
+./core/urb.c:		for (n = 0; n < urb->number_of_packets; n++) {
+./core/urb.c:			len = urb->iso_frame_desc [n].length;
+./core/urb.c:			urb->iso_frame_desc [n].status = -EXDEV;
+./core/urb.c:			urb->iso_frame_desc [n].actual_length = 0;
+./core/urb.c:	if (urb->transfer_buffer_length < 0){
+./core/urb.c:	unsigned int	orig_flags = urb->transfer_flags;
+./core/urb.c:	urb->transfer_flags &= allowed;
+./core/urb.c:	if (urb->transfer_flags != orig_flags) {
+./core/urb.c:			orig_flags, urb->transfer_flags);
+./core/urb.c:		if (urb->interval <= 0)
+./core/urb.c:			if (urb->interval > (1024 * 8))
+./core/urb.c:				urb->interval = 1024 * 8;
+./core/urb.c:				if (urb->interval > 255)
+./core/urb.c:				if (urb->interval > 1024)
+./core/urb.c:					urb->interval = 1024;
+./core/urb.c:		while (temp > urb->interval)
+./core/urb.c:		urb->interval = temp;
+./core/urb.c: * function will see urb->status == -ECONNRESET.  Failure is indicated
+./core/urb.c:	if (!(urb->dev && urb->dev->bus && urb->dev->bus->op))
+./core/urb.c:	return urb->dev->bus->op->unlink_urb(urb, -ECONNRESET);
+./core/urb.c: * the completion handler will see urb->status == -ENOENT.
+./core/urb.c:	if (!(urb && urb->dev && urb->dev->bus && urb->dev->bus->op))
+./core/urb.c:	spin_lock_irq(&urb->lock);
+./core/urb.c:	++urb->reject;
+./core/urb.c:	spin_unlock_irq(&urb->lock);
+./core/urb.c:	urb->dev->bus->op->unlink_urb(urb, -ENOENT);
+./core/urb.c:	wait_event(usb_kill_urb_queue, atomic_read(&urb->use_count) == 0);
+./core/urb.c:	spin_lock_irq(&urb->lock);
+./core/urb.c:	--urb->reject;
+./core/urb.c:	spin_unlock_irq(&urb->lock);
+./core/usb.c: * These buffers are used with URB_NO_xxx_DMA_MAP set in urb->transfer_flags
+./core/usb.c: * added to urb->transfer_flags if the operation succeeds.  If the device
+./core/usb.c:			|| !urb->dev
+./core/usb.c:			|| !(bus = urb->dev->bus)
+./core/usb.c:		urb->transfer_dma = dma_map_single (controller,
+./core/usb.c:			urb->transfer_buffer, urb->transfer_buffer_length,
+./core/usb.c:			usb_pipein (urb->pipe)
+./core/usb.c:		if (usb_pipecontrol (urb->pipe))
+./core/usb.c:			urb->setup_dma = dma_map_single (controller,
+./core/usb.c:					urb->setup_packet,
+./core/usb.c:	// if (urb->transfer_dma == DMA_ADDR_INVALID) return 0;
+./core/usb.c:		urb->transfer_dma = ~0;
+./core/usb.c:	urb->transfer_flags |= (URB_NO_TRANSFER_DMA_MAP
+./core/usb.c:			|| !(urb->transfer_flags & URB_NO_TRANSFER_DMA_MAP)
+./core/usb.c:			|| !urb->dev
+./core/usb.c:			|| !(bus = urb->dev->bus)
+./core/usb.c:			urb->transfer_dma, urb->transfer_buffer_length,
+./core/usb.c:			usb_pipein (urb->pipe)
+./core/usb.c:		if (usb_pipecontrol (urb->pipe))
+./core/usb.c:					urb->setup_dma,
+./core/usb.c:			|| !(urb->transfer_flags & URB_NO_TRANSFER_DMA_MAP)
+./core/usb.c:			|| !urb->dev
+./core/usb.c:			|| !(bus = urb->dev->bus)
+./core/usb.c:			urb->transfer_dma, urb->transfer_buffer_length,
+./core/usb.c:			usb_pipein (urb->pipe)
+./core/usb.c:		if (usb_pipecontrol (urb->pipe))
+./core/usb.c:					urb->setup_dma,
+./core/usb.c:	urb->transfer_flags &= ~(URB_NO_TRANSFER_DMA_MAP

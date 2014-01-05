@@ -221,6 +221,7 @@ xlog_header_check_recover(
 	 * (XLOG_FMT_UNKNOWN). This stops us from trying to recover
 	 * a dirty log created in IRIX.
 	 */
+//printk("%x %x\n",INT_GET(head->h_fmt, ARCH_CONVERT),XLOG_FMT);
 	if (unlikely(INT_GET(head->h_fmt, ARCH_CONVERT) != XLOG_FMT)) {
 		xlog_warn(
 	"XFS: dirty log written in incompatible format - can't recover");

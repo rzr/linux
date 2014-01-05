@@ -141,6 +141,8 @@ obj-$(CONFIG_SCSI_PDC_ADMA)	+= libata.o pdc_adma.o
 
 obj-$(CONFIG_ARM)		+= arm/
 
+obj-$(CONFIG_SCSI_MVSATA)	+= ../../arch/arm/mach-mv88fxx81/LSP/mvSata/
+
 obj-$(CONFIG_CHR_DEV_ST)	+= st.o
 obj-$(CONFIG_CHR_DEV_OSST)	+= osst.o
 obj-$(CONFIG_BLK_DEV_SD)	+= sd_mod.o

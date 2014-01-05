@@ -1,8 +1,10 @@
 VERSION = 2
 PATCHLEVEL = 6
 SUBLEVEL = 16
-EXTRAVERSION = .16
+EXTRAVERSION = .16-arm1
 NAME=Sliding Snow Leopard
+# CONFIG_DEBUG_INFO=1
+# KBUILD_VERBOSE=1
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
@@ -172,8 +174,9 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?=
+ARCH		?= arm
+#CROSS_COMPILE	?= arm-linux-
+CROSS_COMPILE	?= arm-none-linux-gnueabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE := $(ARCH)
@@ -315,7 +318,7 @@ OBJCOPY		= $(CROSS_COMPILE)objcopy
 OBJDUMP		= $(CROSS_COMPILE)objdump
 AWK		= awk
 GENKSYMS	= scripts/genksyms/genksyms
-DEPMOD		= /sbin/depmod
+DEPMOD		= /kernel26tool/sbin/depmod
 KALLSYMS	= scripts/kallsyms
 PERL		= perl
 CHECK		= sparse
@@ -460,7 +463,7 @@ scripts_basic: include/linux/autoconf.h
 
 # Objects we will link into vmlinux / subdirs we need to visit
 init-y		:= init/
-drivers-y	:= drivers/ sound/
+drivers-y	:= drivers/ sound/ buffalo/drivers/
 net-y		:= net/
 libs-y		:= lib/
 core-y		:= usr/
@@ -550,7 +553,7 @@ export	INSTALL_PATH ?= /boot
 # relocations required by build roots.  This is not defined in the
 # makefile but the arguement can be passed to make if needed.
 #
-
+INSTALL_MOD_PATH?=binaries
 MODLIB	= $(INSTALL_MOD_PATH)/lib/modules/$(KERNELRELEASE)
 export MODLIB
 

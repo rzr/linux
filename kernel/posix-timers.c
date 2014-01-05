@@ -219,7 +219,22 @@ static inline int invalid_clockid(const clockid_t which_clock)
  */
 static int posix_ktime_get_ts(clockid_t which_clock, struct timespec *tp)
 {
+
+#ifdef CONFIG_BUFFALO_PLATFORM
+	static struct timespec boottime;
+	static int loop=0;
+#endif
+
 	ktime_get_ts(tp);
+#ifdef CONFIG_BUFFALO_PLATFORM
+	if (loop == 0 && tp->tv_sec > 200) {
+		loop++;
+		memcpy(&boottime, tp, sizeof(boottime));
+	}
+	//printk(">%s: %ld %ld\n",__FUNCTION__,tp->tv_sec,boottime.tv_sec);
+	tp->tv_sec -= boottime.tv_sec;
+	//printk(">%s: %ld\n",__FUNCTION__,tp->tv_sec);
+#endif
 	return 0;
 }
 

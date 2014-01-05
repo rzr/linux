@@ -319,6 +319,40 @@ void usb_stor_report_bus_reset(struct us_data *us)
 /***********************************************************************
  * /proc/scsi/ functions
  ***********************************************************************/
+#ifdef CONFIG_BUFFALO_PLATFORM
+/* 
+ * GUID definitions from TeraStation source
+ */
+
+#define GUID(x) __u32 x[3]
+#define GUID_EQUAL(x, y) (x[0] == y[0] && x[1] == y[1] && x[2] == y[2])
+#define GUID_CLEAR(x) x[0] = x[1] = x[2] = 0;
+#define GUID_NONE(x) (!x[0] && !x[1] && !x[2])
+#define GUID_FORMAT "%08x%08x%08x"
+#define GUID_ARGS(x) x[0], x[1], x[2]
+
+static inline void make_guid( __u32 *pg, __u16 vendor, __u16 product, char *serial)
+{
+	pg[0] = (vendor << 16) | product;
+	pg[1] = pg[2] = 0;
+	while (*serial) {
+#if defined CONFIG_BUFFALO_SUPPORT_WHITE_SPACE_ISERIAL
+		if(*serial == ' '){
+			serial++;
+			continue;
+		}
+#endif
+		pg[1] <<= 4;
+		pg[1] |= pg[2] >> 28;
+		pg[2] <<= 4;
+		if (*serial >= 'a')
+			*serial -= 'a' - 'A';
+		pg[2] |= (*serial <= '9' && *serial >= '0') ? *serial - '0'
+			: *serial - 'A' + 10;
+		serial++;
+	}
+}
+#endif
 
 /* we use this macro to help us write into the buffer */
 #undef SPRINTF
@@ -364,6 +398,32 @@ static int proc_info (struct Scsi_Host *host, char *buffer,
 	SPRINTF("     Protocol: %s\n", us->protocol_name);
 	SPRINTF("    Transport: %s\n", us->transport_name);
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// add GUID
+	{
+		char serial[USB_STOR_STRING_LEN];	     /* serial number */
+		GUID(guid);			   /* Global Unique Identifier */
+		GUID_CLEAR(guid);
+		memset(serial,0,sizeof(serial));
+		
+		if (us->pusb_dev->descriptor.iSerialNumber /* && !(flags & US_FL_IGNORE_SER)*/)
+			usb_string(us->pusb_dev, us->pusb_dev->descriptor.iSerialNumber, 
+				   serial, sizeof(serial));
+		
+		/* Create a GUID for this device */
+		if (us->pusb_dev->descriptor.iSerialNumber && serial[0]) {
+			/* If we have a serial number, and it's a non-NULL string */
+			make_guid(guid, us->pusb_dev->descriptor.idVendor, 
+				  us->pusb_dev->descriptor.idProduct, serial);
+		} else {
+			/* We don't have a serial number, so we use 0 */
+			make_guid(guid, us->pusb_dev->descriptor.idVendor, 
+				  us->pusb_dev->descriptor.idProduct, "0");
+		}
+		/* show the GUID of the device */
+		SPRINTF("         GUID: " GUID_FORMAT "\n", GUID_ARGS(guid));
+	}
+#endif
 	/* show the device flags */
 	if (pos < buffer + length) {
 		pos += sprintf(pos, "       Quirks:");

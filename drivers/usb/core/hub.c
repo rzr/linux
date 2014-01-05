@@ -288,7 +288,7 @@ void usb_kick_khubd(struct usb_device *hdev)
 {
 	kick_khubd(hdev_to_hub(hdev));
 }
-
+EXPORT_SYMBOL(usb_kick_khubd);
 
 /* completion function, fires on port status changes and various faults */
 static void hub_irq(struct urb *urb, struct pt_regs *regs)

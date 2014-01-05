@@ -388,10 +388,151 @@ static ssize_t disk_stats_read(struct gendisk * disk, char *page)
 		jiffies_to_msecs(disk_stat_read(disk, io_ticks)),
 		jiffies_to_msecs(disk_stat_read(disk, time_in_queue)));
 }
+#ifdef CONFIG_BUFFALO_PLATFORM
+static ssize_t
+cfq_var_store(unsigned int *var, const char *page, size_t count)
+{
+	char *p = (char *) page;
+
+	*var = simple_strtoul(p, &p, 10);
+	return count;
+}
+
+
+#define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)			\
+static ssize_t __FUNC(struct gendisk * disk, const char *page, size_t count)	\
+{									\
+	unsigned int __data;						\
+	int ret = cfq_var_store(&__data, (page), count);		\
+	if (__data < (MIN))						\
+		__data = (MIN);						\
+	else if (__data > (MAX))					\
+		__data = (MAX);						\
+	if (__CONV)							\
+		*(__PTR) = msecs_to_jiffies(__data);			\
+	else								\
+		*(__PTR) = __data;					\
+	return ret;							\
+}
+
+STORE_FUNCTION(disk_io_error_store, &disk->io_errors, 0, UINT_MAX, 0);
+STORE_FUNCTION(disk_limit_io_error_store, &disk->limit_io_errors, 0, UINT_MAX, 0);
+
+static ssize_t disk_io_error_read(struct gendisk * disk, char *page)
+{
+	return sprintf(page, "%u\n", disk->io_errors);
+}
+
+static ssize_t disk_limit_io_error_read(struct gendisk * disk, char *page)
+{
+	return sprintf(page, "%u\n", disk->limit_io_errors);
+}
+
+#endif
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+static ssize_t disk_nr_errs_read(struct gendisk * disk, char *page)
+{
+        return sprintf(page, "%d\n", atomic_read(&disk->nr_errs));
+}
+static ssize_t disk_nr_errs_store(struct gendisk * disk,
+                                 const char *buf, size_t len)
+{
+        char *e;
+        long n = simple_strtol(buf, &e, 10);
+        if (*buf && (*e == 0 || *e == '\n') && n >= 0 ) {
+                atomic_set(&disk->nr_errs, n);
+                return len;
+        }
+        return -EINVAL;
+}
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
+#ifdef CONFIG_DEBUG_RAID /* for debugging */
+static ssize_t disk_err_r_prob_show(struct gendisk * disk, char *page)
+{
+        return sprintf(page, "%d\n", disk->err_r_prob);
+}
+static ssize_t disk_err_r_prob_store(struct gendisk * disk,
+                                 const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtoul(buf, &e, 10);
+        if (*buf && (*e == 0 || *e == '\n')) {
+                disk->err_r_prob = n;
+                return len;
+        }
+        return -EINVAL;
+}
+
+static struct disk_attribute disk_attr_err_prob_r = {
+        .attr = {.name = "err_prob_r", .mode = (S_IRUGO|S_IWUSR) },
+        .show  = disk_err_r_prob_show,
+        .store = disk_err_r_prob_store
+};
+
+static ssize_t disk_brk_req_r_read(struct gendisk * disk, char *page)
+{
+        return sprintf(page, "%d\n", disk->brk_req_r);
+}
+static ssize_t disk_brk_req_r_store(struct gendisk * disk,
+                                 const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtoul(buf, &e, 10);
+        if (*buf && (*e == 0 || *e == '\n')) {
+                disk->brk_req_r = n;
+                return len;
+        }
+        return -EINVAL;
+}
+// for write
+static ssize_t disk_brk_req_w_read(struct gendisk * disk, char *page)
+{
+        return sprintf(page, "%d\n", disk->brk_req_w);
+}
+static ssize_t disk_brk_req_w_store(struct gendisk * disk,
+                                 const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtoul(buf, &e, 10);
+        if (*buf && (*e == 0 || *e == '\n')) {
+                disk->brk_req_w = n;
+                return len;
+        }
+        return -EINVAL;
+}
+
+static struct disk_attribute disk_attr_brk_req_r = {
+        .attr = {.name = "brk_req_r", .mode = (S_IRUGO|S_IWUSR) },
+        .show  = disk_brk_req_r_read,
+        .store = disk_brk_req_r_store
+};
+static struct disk_attribute disk_attr_brk_req_w = {
+        .attr = {.name = "brk_req_w", .mode = (S_IRUGO|S_IWUSR) },
+        .show  = disk_brk_req_w_read,
+        .store = disk_brk_req_w_store
+};
+
+#endif /* CONFIG_DEBUG_RAID */
+
+
 static struct disk_attribute disk_attr_uevent = {
 	.attr = {.name = "uevent", .mode = S_IWUSR },
 	.store	= disk_uevent_store
 };
+#ifdef CONFIG_BUFFALO_PLATFORM
+static struct disk_attribute disk_io_errors = {
+	.attr = {.name = "io_errors", .mode = S_IRUGO|S_IWUSR },
+	.show	= disk_io_error_read,
+	.store = disk_io_error_store,
+};
+static struct disk_attribute disk_limit_io_errors = {
+	.attr = {.name = "limit_io_errors", .mode = S_IRUGO|S_IWUSR },
+	.show	= disk_limit_io_error_read,
+	.store = disk_limit_io_error_store,
+};
+#endif
 static struct disk_attribute disk_attr_dev = {
 	.attr = {.name = "dev", .mode = S_IRUGO },
 	.show	= disk_dev_read
@@ -413,6 +554,14 @@ static struct disk_attribute disk_attr_stat = {
 	.show	= disk_stats_read
 };
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+static struct disk_attribute disk_attr_nr_errs = {
+        .attr = {.name = "nr_errs", .mode = (S_IRUGO|S_IWUSR) },
+        .show  = disk_nr_errs_read,
+        .store = disk_nr_errs_store
+};
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
 static struct attribute * default_attrs[] = {
 	&disk_attr_uevent.attr,
 	&disk_attr_dev.attr,
@@ -420,6 +569,18 @@ static struct attribute * default_attrs[] = {
 	&disk_attr_removable.attr,
 	&disk_attr_size.attr,
 	&disk_attr_stat.attr,
+	#ifdef CONFIG_BUFFALO_PLATFORM
+	&disk_io_errors.attr,
+	&disk_limit_io_errors.attr,
+	#endif
+#ifdef CONFIG_BUFFALO_ERRCNT
+        &disk_attr_nr_errs.attr,
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_DEBUG_RAID /* for debugging */
+        &disk_attr_err_prob_r.attr,
+        &disk_attr_brk_req_r.attr,
+        &disk_attr_brk_req_w.attr,
+#endif /* CONFIG_DEBUG_RAID */
 	NULL,
 };
 
@@ -629,6 +790,12 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 		disk->minors = minors;
 		kobj_set_kset_s(disk,block_subsys);
 		kobject_init(&disk->kobj);
+#ifdef CONFIG_DEBUG_RAID /* for debugging */
+                disk->err_r_prob = 0;
+#endif /* CONFIG_DEBUG_RAID */
+#ifdef CONFIG_BUFFALO_ERRCNT
+                atomic_set(&disk->nr_errs, 0);
+#endif /* CONFIG_BUFFALO_ERRCNT */
 		rand_initialize_disk(disk);
 	}
 	return disk;

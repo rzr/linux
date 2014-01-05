@@ -121,10 +121,24 @@ struct gendisk {
 	atomic_t sync_io;		/* RAID */
 	unsigned long stamp;
 	int in_flight;
+#ifdef CONFIG_DEBUG_RAID /* for debug */
+        int err_r_prob;
+        int err_w_prob;
+        int brk_req_r;                  /* simulate Block I/O read error */
+        int brk_req_w;                  /* simulate Block I/O write error */
+#endif /* CONFIG_DEBUG_RAID */
+#ifdef CONFIG_BUFFALO_ERRCNT
+        atomic_t nr_errs;               /* number of errors occur during
+                                         * Block I/O execution. */
+#endif /* CONFIG_BUFFALO_ERRCNT */
 #ifdef	CONFIG_SMP
 	struct disk_stats *dkstats;
 #else
 	struct disk_stats dkstats;
+#endif
+#ifdef CONFIG_BUFFALO_PLATFORM
+	unsigned io_errors;				/* I/O error counter */
+	unsigned limit_io_errors;		/* I/O error limit */
 #endif
 };
 
