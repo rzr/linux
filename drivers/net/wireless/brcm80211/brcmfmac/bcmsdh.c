@@ -33,6 +33,7 @@
 #include <linux/suspend.h>
 #include <linux/errno.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <net/cfg80211.h>
 
 #include <defs.h>
@@ -43,6 +44,7 @@
 #include "dhd_bus.h"
 #include "dhd_dbg.h"
 #include "sdio_host.h"
+#include "of.h"
 
 #define SDIOH_API_ACCESS_RETRY_LIMIT	2
 
@@ -996,7 +998,6 @@ MODULE_DEVICE_TABLE(sdio, brcmf_sdmmc_ids);
 
 static struct brcmfmac_sdio_platform_data *brcmfmac_sdio_pdata;
 
-
 static int brcmf_ops_sdio_probe(struct sdio_func *func,
 				const struct sdio_device_id *id)
 {
@@ -1042,6 +1043,9 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
 	dev_set_drvdata(&sdiodev->func[1]->dev, bus_if);
 	sdiodev->dev = &sdiodev->func[1]->dev;
 	sdiodev->pdata = brcmfmac_sdio_pdata;
+
+	if (!sdiodev->pdata)
+		brcmf_of_probe(sdiodev);
 
 	atomic_set(&sdiodev->suspend, false);
 	init_waitqueue_head(&sdiodev->request_word_wait);
@@ -1149,6 +1153,7 @@ static struct sdio_driver brcmf_sdmmc_driver = {
 	.id_table = brcmf_sdmmc_ids,
 	.drv = {
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(brcmf_of_ids),
 #ifdef CONFIG_PM_SLEEP
 		.pm = &brcmf_sdio_pm_ops,
 #endif	/* CONFIG_PM_SLEEP */
@@ -1202,8 +1207,10 @@ void brcmf_sdio_exit(void)
 
 	if (brcmfmac_sdio_pdata)
 		platform_driver_unregister(&brcmf_sdio_pd);
-	else
+	else {
 		sdio_unregister_driver(&brcmf_sdmmc_driver);
+		brcmf_of_exit();
+	}
 }
 
 void __init brcmf_sdio_init(void)
@@ -1213,6 +1220,10 @@ void __init brcmf_sdio_init(void)
 	brcmf_dbg(SDIO, "Enter\n");
 
 	ret = platform_driver_probe(&brcmf_sdio_pd, brcmf_sdio_pd_probe);
-	if (ret == -ENODEV)
+	if (ret == -ENODEV) {
 		brcmf_dbg(SDIO, "No platform data available.\n");
+		/* see if devicetree contains data */
+		brcmf_of_init();
+	}
 }
+
