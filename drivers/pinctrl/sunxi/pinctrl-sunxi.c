@@ -646,6 +646,8 @@ static struct irq_chip sunxi_pinctrl_irq_chip = {
 	.irq_mask_ack	= sunxi_pinctrl_irq_mask_ack,
 	.irq_unmask	= sunxi_pinctrl_irq_unmask,
 	.irq_set_type	= sunxi_pinctrl_irq_set_type,
+	.name		= "sunxi-pio",
+	.flags		= IRQCHIP_SKIP_SET_WAKE,
 };
 
 static void sunxi_pinctrl_irq_handler(unsigned irq, struct irq_desc *desc)
