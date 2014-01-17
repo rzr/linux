@@ -1,0 +1,26 @@
+GPIO controlled RFKILL devices
+
+Required properties:
+- compatible	: Must be "rfkill-gpio".
+- rfkill-name	: Name of RFKILL device
+- rfkill-type	: Type of RFKILL device: 1 for WiFi, 2 for BlueTooth
+- NAME_shutdown-gpios	: GPIO phandle to shutdown control
+			  (phandle must be the second)
+- NAME_reset-gpios	: GPIO phandle to reset control
+
+NAME must match the rfkill-name property. NAME_shutdown-gpios or
+NAME_reset-gpios, or both, must be defined.
+
+Optional properties:
+- clocks		: phandle to clock to enable/disable
+
+Example:
+
+	rfkill_bt: rfkill@0 {
+		compatible = "rfkill-gpio";
+		rfkill-name = "bluetooth";
+		rfkill-type = <2>;
+		bluetooth_shutdown-gpios = <0>, <&pio 7 18 0>;
+		bluetooth_reset-gpios = <&pio 7 24 0>;
+		clocks = <&clk_out_a>;
+	};

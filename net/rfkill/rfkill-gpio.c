@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/acpi.h>
 #include <linux/gpio/consumer.h>
+#include <linux/of_gpio.h>
 
 #include <linux/rfkill-gpio.h>
 
@@ -83,6 +84,18 @@ static int rfkill_gpio_acpi_probe(struct device *dev,
 	return 0;
 }
 
+static int rfkill_gpio_dt_probe(struct device *dev,
+				struct rfkill_gpio_data *rfkill)
+{
+	struct device_node * np = dev->of_node;
+
+	rfkill->name = np->name;
+	of_property_read_string(np, "rfkill-name", &rfkill->name);
+	of_property_read_u32(np, "rfkill-type", &rfkill->type);
+
+	return 0;
+}
+
 static int rfkill_gpio_probe(struct platform_device *pdev)
 {
 	struct rfkill_gpio_platform_data *pdata = pdev->dev.platform_data;
@@ -98,6 +111,10 @@ static int rfkill_gpio_probe(struct platform_device *pdev)
 
 	if (ACPI_HANDLE(&pdev->dev)) {
 		ret = rfkill_gpio_acpi_probe(&pdev->dev, rfkill);
+		if (ret)
+			return ret;
+	} else if (&pdev->dev.of_node) {
+		ret = rfkill_gpio_dt_probe(&pdev->dev, rfkill);
 		if (ret)
 			return ret;
 	} else if (pdata) {
@@ -189,6 +206,11 @@ static const struct acpi_device_id rfkill_acpi_match[] = {
 	{ },
 };
 
+static const struct of_device_id rfkill_of_match[] = {
+	{ .compatible = "rfkill-gpio", },
+	{},
+};
+
 static struct platform_driver rfkill_gpio_driver = {
 	.probe = rfkill_gpio_probe,
 	.remove = rfkill_gpio_remove,
@@ -196,6 +218,7 @@ static struct platform_driver rfkill_gpio_driver = {
 		.name = "rfkill_gpio",
 		.owner = THIS_MODULE,
 		.acpi_match_table = ACPI_PTR(rfkill_acpi_match),
+		.of_match_table = of_match_ptr(rfkill_of_match),
 	},
 };
 
