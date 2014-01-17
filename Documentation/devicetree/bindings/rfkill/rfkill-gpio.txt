@@ -13,6 +13,7 @@ NAME_reset-gpios, or both, must be defined.
 
 Optional properties:
 - clocks		: phandle to clock to enable/disable
+- clock-frequency	: clock rate to set for the given clock
 
 Example:
 
@@ -23,4 +24,5 @@ Example:
 		bluetooth_shutdown-gpios = <0>, <&pio 7 18 0>;
 		bluetooth_reset-gpios = <&pio 7 24 0>;
 		clocks = <&clk_out_a>;
+		clock-frequency = <32678>;
 	};
