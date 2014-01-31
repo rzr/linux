@@ -1,0 +1,40 @@
+Broadcom BCM43xx Fullmac wireless SDIO devices
+
+This node provides properties for controlling the Broadcom wireless device. The
+node is expected to be specified as a child node to the SDIO controller that
+connects the device to the system.
+
+Required properties:
+
+ - compatible : Should be "brcm,bcm43xx-fmac".
+ - brcm,wlan-supply : phandle for gpio to control power for the device/module.
+
+Optional properties:
+ - brcm,wlan-reset : phandle for gpio to reset the device/module.
+ - brcm,drive-strength : drive strength used for SDIO pins on device.
+	(default = 6mA).
+ - interrupt-parent : the phandle for the interrupt controller to which the
+	device interrupts are connected.
+ - interrupts : specifies attributes for the out-of-band interrupt (host-wake).
+	When not specified the device will use in-band SDIO interrupts.
+ - interrupt-names : name of the out-of-band interrupt, which must be set
+	to "host-wake".
+ - clocks : specifies the clocks needed for the device.
+	The device requires two clocks which must be named "sysclk"
+	and "sleepclk".
+ - clock-names : specifies the names of clocks.
+
+Example:
+
+bcm4335 {
+	compatible = "brcm,bcm43xx-fmac";
+	brcm,wlan-supply = <&wlan-pwr>;
+	brcm,wlan-reset = <&wlan-rst>;
+	brcm,drive-strength = <4>;
+	interrupt-parent = <&gpx2>;
+	interrupts = <5 IRQ_TYPE_LEVEL_HIGH>;
+	interrupt-names = "host-wake";
+	clocks = <&osc 1>, <&osc 2>;
+	clock-names = "sysclk", "sleepclk";
+};
+
