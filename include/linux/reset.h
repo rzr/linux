@@ -33,6 +33,9 @@ static inline struct reset_control *devm_reset_control_get_optional(
 	return devm_reset_control_get(dev, id);
 }
 
+struct reset_control *of_reset_control_get(struct device_node *node,
+					   const char *id);
+
 #else
 
 static inline int reset_control_reset(struct reset_control *rstc)
@@ -71,6 +74,12 @@ static inline struct reset_control *reset_control_get_optional(
 
 static inline struct reset_control *devm_reset_control_get_optional(
 					struct device *dev, const char *id)
+{
+	return ERR_PTR(-ENOSYS);
+}
+
+static inline struct reset_control *of_reset_control_get(
+				struct device_node *node, const char *id)
 {
 	return ERR_PTR(-ENOSYS);
 }
