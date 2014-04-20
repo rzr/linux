@@ -3,8 +3,8 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.14.0
-%define variant x86-generic
+%define upstream_version 3.14.1
+%define variant x86-common
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
 %define arch_32bits i386 i586 i686 %{ix86}
@@ -76,7 +76,7 @@ Source0: %{name}-%{version}.tar.bz2
 
 
 %description
-This package contains the Tizen Generic Linux kernel
+This package contains the Tizen Common Linux kernel
 
 
 %package devel
@@ -127,11 +127,11 @@ make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
 
 # Build kernel and modules
 %ifarch %{arch_32bits}
-make -s ARCH=%{kernel_arch} generic_x86_defconfig
+make -s ARCH=%{kernel_arch} common_x86_defconfig
 %endif
 
 %ifarch x86_64
-make -s ARCH=%{kernel_arch} generic_x86_64_defconfig
+make -s ARCH=%{kernel_arch} common_x86_64_defconfig
 %endif
 
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} bzImage
