@@ -32,10 +32,18 @@
 
 		mmc3: mmc@01c12000 {
 			pinctrl-names = "default";
-			pinctrl-0 = <&mmc3_pins_a>;
+			pinctrl-0 = <&mmc3_pins_a>, <&wifi_host_wake_pin>;
 			vmmc-supply = <&reg_vmmc3>;
 			non-removable;
 			status = "okay";
+
+			brcmf: bcrmf@0 {
+				/* out of band interrupt not working */
+				/* compatible = "broadcom,bcm43362"; */
+				interrupt-parent = <&pio>;
+				interrupts = <10 2>; /* EINT10 */
+				status = "okay";
+			};
 		};
 
 		usbphy: phy@01c13400 {
@@ -88,6 +96,13 @@
 			led_pins_cubietruck: led_pins@0 {
 				allwinner,pins = "PH7", "PH11", "PH20", "PH21";
 				allwinner,function = "gpio_out";
+				allwinner,drive = <0>;
+				allwinner,pull = <0>;
+			};
+
+			wifi_host_wake_pin: wifi_host_wake_pin@0 {
+				allwinner,pins = "PH10";
+				allwinner,function = "gpio_in";
 				allwinner,drive = <0>;
 				allwinner,pull = <0>;
 			};
