@@ -20,6 +20,11 @@
 	compatible = "linksprite,a20-pcduino3", "allwinner,sun7i-a20";
 
 	soc@01c00000 {
+		ahci: sata@01c18000 {
+			target-supply = <&reg_ahci_5v>;
+ 			status = "okay";
+		};
+
 		pinctrl@01c20800 {
 			led_pins_pcduino3: led_pins@0 {
 				allwinner,pins = "PH2";
@@ -96,5 +101,9 @@
 
 	reg_usb2_vbus: usb2-vbus {
 		status = "okay";
+	};
+
+	reg_ahci_5v: ahci-5v {
+ 		status = "okay";
 	};
 };
