@@ -418,4 +418,53 @@ config CRYPTO_DEV_MXS_DCP
 	  To compile this driver as a module, choose M here: the module
 	  will be called mxs-dcp.
 
+config CRYPTO_DEV_SUNXI_SS
+        tristate "Support for Allwinner Security System cryptographic accelerator"
+        depends on ARCH_SUNXI
+        help
+          Some Allwinner processors have a crypto accelerator named
+          Security System. Select this if you want to use it.
+
+          To compile this driver as a module, choose M here: the module
+          will be called sunxi-ss.
+
+if CRYPTO_DEV_SUNXI_SS
+config CRYPTO_DEV_SUNXI_SS_PRNG
+	bool "Security System PRNG"
+	select CRYPTO_RNG2
+	---help---
+	  If you enable this option, the SS will provide a pseudo random
+	  number generator.
+config CRYPTO_DEV_SUNXI_SS_MD5
+	bool "Security System MD5"
+	select CRYPTO_MD5
+	---help---
+	  If you enable this option, the SS will provide MD5 hardware
+	  acceleration.
+config CRYPTO_DEV_SUNXI_SS_SHA1
+	bool "Security System SHA1"
+	select CRYPTO_SHA1
+	---help---
+	  If you enable this option, the SS will provide SHA1 hardware
+	  acceleration.
+config CRYPTO_DEV_SUNXI_SS_AES
+	bool "Security System AES"
+	select CRYPTO_AES
+	---help---
+	  If you enable this option, the SS will provide AES hardware
+	  acceleration.
+config CRYPTO_DEV_SUNXI_SS_DES
+	bool "Security System DES"
+	select CRYPTO_DES
+	---help---
+	  If you enable this option, the SS will provide DES hardware
+	  acceleration.
+config CRYPTO_DEV_SUNXI_SS_3DES
+	bool "Security System 3DES"
+	select CRYPTO_DES
+	---help---
+	  If you enable this option, the SS will provide 3DES hardware
+	  acceleration.
+endif #CRYPTO_DEV_SUNXI_SS
+
 endif # CRYPTO_HW
