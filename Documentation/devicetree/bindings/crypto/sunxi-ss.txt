@@ -1,0 +1,9 @@
+* Allwinner Security System found on A20 SoC
+
+Required properties:
+- compatible : Should be "allwinner,sun7i-a20-crypto".
+- reg: Should contain the SS register location and length.
+- interrupts: Should contain the IRQ line for the SS.
+- clocks : A phandle to the functional clock node of the SS module
+- clock-names : Name of the functional clock, should be "ahb" and "mod".
+
