@@ -1,0 +1,15 @@
+To bump kernel version:
+
+# make ARCH=i386 common_x86_defconfig
+# make ARCH=i386 menuconfig
+# ... change config ...
+# make ARCH=i386 savedefconfig
+# mv defconfig arch/x86/configs/common_x86_defconfig
+
+# make ARCH=x86_64 common_x86_64_defconfig
+# make ARCH=x86_64 menuconfig
+# ... change config ...
+# make ARCH=x86_64 savedefconfig
+# mv defconfig arch/x86/configs/common_x86_64_defconfig
+
+
