@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/mfd/axp20x.h>
+#include <linux/mfd/core.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 
@@ -236,6 +237,10 @@ static int axp20x_regulator_probe(struct platform_device *pdev)
 	struct regulator_init_data *init_data;
 	int ret, i;
 	u32 workmode;
+
+	ret = mfd_register_supply_aliases(pdev);
+	if (ret)
+		return ret;
 
 	ret = axp20x_regulator_parse_dt(pdev);
 	if (ret)
