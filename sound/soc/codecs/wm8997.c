@@ -26,6 +26,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 
+#include <linux/mfd/core.h>
 #include <linux/mfd/arizona/core.h>
 #include <linux/mfd/arizona/registers.h>
 
@@ -1107,7 +1108,11 @@ static int wm8997_probe(struct platform_device *pdev)
 {
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
 	struct wm8997_priv *wm8997;
-	int i;
+	int i, ret;
+
+	ret = mfd_register_supply_aliases(pdev);
+	if (ret)
+		return ret;
 
 	wm8997 = devm_kzalloc(&pdev->dev, sizeof(struct wm8997_priv),
 			      GFP_KERNEL);
