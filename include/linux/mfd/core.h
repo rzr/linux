@@ -61,7 +61,9 @@ struct mfd_cell {
 	bool			pm_runtime_no_callbacks;
 
 	/* A list of regulator supplies that should be mapped to the MFD
-	 * device rather than the child device when requested
+	 * device rather than the child device when requested.
+	 * Drivers using this must call mfd_register_supply_aliases()
+	 * from their probe method.
 	 */
 	const char		**parent_supplies;
 	int			num_parent_supplies;
@@ -109,5 +111,7 @@ extern int mfd_add_devices(struct device *parent, int id,
 			   int irq_base, struct irq_domain *irq_domain);
 
 extern void mfd_remove_devices(struct device *parent);
+
+extern int mfd_register_supply_aliases(struct platform_device *pdev);
 
 #endif
