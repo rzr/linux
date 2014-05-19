@@ -607,6 +607,8 @@ static void sunxi_pinctrl_irq_mask(struct irq_data *d)
 	unsigned long flags;
 	u32 val;
 
+	pr_err("masking gpio irq %d\n", idx);
+
 	spin_lock_irqsave(&pctl->lock, flags);
 
 	/* Mask the IRQ */
@@ -629,6 +631,7 @@ static void sunxi_pinctrl_irq_unmask(struct irq_data *d)
 						       pctl->irq_array[d->hwirq],
 						       "irq");
 
+	pr_err("unmasking gpio irq %d, selecting mux %d for pin %d\n", idx, func->muxval, pctl->irq_array[d->hwirq]);
 	/* Change muxing to INT mode */
 	sunxi_pmx_set(pctl->pctl_dev, pctl->irq_array[d->hwirq], func->muxval);
 
@@ -664,6 +667,7 @@ static void sunxi_pinctrl_irq_handler(unsigned irq, struct irq_desc *desc)
 
 		chained_irq_enter(chip, desc);
 		for_each_set_bit(irqoffset, &reg, SUNXI_IRQ_NUMBER) {
+			pr_err("calling gpio irq %d\n", irqoffset);
 			int pin_irq = irq_find_mapping(pctl->domain, irqoffset);
 			generic_handle_irq(pin_irq);
 		}
