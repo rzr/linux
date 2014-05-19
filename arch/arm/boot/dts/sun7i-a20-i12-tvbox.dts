@@ -106,6 +106,63 @@
 			status = "okay";
 		};
 
+		i2c0: i2c@01c2ac00 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c0_pins_a>;
+			status = "okay";
+
+			axp209: pmic@34 {
+				compatible = "x-powers,axp209";
+				reg = <0x34>;
+				interrupt-parent = <&nmi_intc>;
+				interrupts = <0 8>;
+
+				interrupt-controller;
+				#interrupt-cells = <1>;
+
+				acin-supply = <&reg_axp_ipsout>;
+				vin2-supply = <&reg_axp_ipsout>;
+				vin3-supply = <&reg_axp_ipsout>;
+				ldo24in-supply = <&reg_axp_ipsout>;
+				ldo3in-supply = <&reg_axp_ipsout>;
+				ldo5in-supply = <&reg_axp_ipsout>;
+
+				regulators {
+					x-powers,dcdc-freq = <1500>;
+
+					axp_vcore_reg: dcdc2 {
+						regulator-min-microvolt = <700000>;
+						regulator-max-microvolt = <2275000>;
+						regulator-always-on;
+					};
+
+					axp_ddr_reg: dcdc3 {
+						regulator-always-on;
+					};
+
+					axp_rtc_reg: ldo1 {
+						regulator-always-on;
+					};
+
+					axp_analog_reg: ldo2 {
+						regulator-always-on;
+					};
+
+					axp_pll_reg: ldo3 {
+						regulator-always-on;
+					};
+
+					axp_hdmi_reg: ldo4 {
+						regulator-always-on;
+					};
+
+					axp_mic_reg: ldo5 {
+						regulator-always-on;
+					};
+				};
+			};
+		};
+
 		gmac: ethernet@01c50000 {
 			pinctrl-names = "default";
 			pinctrl-0 = <&gmac_pins_mii_a>;
@@ -178,5 +235,13 @@
 		startup-delay-us = <50000>;
 		enable-active-high;
 		gpio = <&pio 7 21 0>;
+	};
+
+	reg_axp_ipsout: axp_ipsout {
+		compatible = "regulator-fixed";
+		regulator-name = "axp-ipsout";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
 	};
 };
