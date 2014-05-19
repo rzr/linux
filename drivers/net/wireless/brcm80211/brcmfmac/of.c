@@ -133,6 +133,8 @@ void brcmf_of_probe(struct brcmf_sdio_dev *sdiodev)
 	u32 irqf;
 	u32 val;
 
+	pr_err("brcmf_of_probe\n");
+	
 	if (!np)
 		return;
 
@@ -147,6 +149,7 @@ void brcmf_of_probe(struct brcmf_sdio_dev *sdiodev)
 		return;
 	}
 	irqf = irqd_get_trigger_type(irq_get_irq_data(irq));
+	pr_err("brcmf_of_probe got irq %d flags %d\n", irq, irqf);
 
 	sdiodev->pdata->oob_irq_supported = true;
 	sdiodev->pdata->oob_irq_nr = irq;

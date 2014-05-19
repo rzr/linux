@@ -35,6 +35,14 @@
 			bus-width = <4>;
 			non-removable;
 			status = "okay";
+
+			brcmf: bcrmf@0 {
+				compatible = "brcm,bcm43xx-fmac";
+				interrupt-parent = <&pio>;
+				interrupts = <10 2>; /* PH10 / EINT10 */
+				interrupt-names = "host-wake";
+				status = "okay";
+			};
 		};
 
 		usbphy: phy@01c13400 {
