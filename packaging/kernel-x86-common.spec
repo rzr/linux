@@ -9,15 +9,35 @@
 %define kernel_full_version %{version}-%{release}-%{variant}
 %define arch_32bits i386 i586 i686 %{ix86}
 
+# Default arch config for tizen per arch (unless overiden after)
+%define defconfig tizen_defconfig
+
+# Default features
+%define vdso_supported 1
+%define modules_supported 1
+
+
 %ifarch %{arch_32bits}
 %define kernel_arch i386
+%define defconfig common_x86_defconfig
 %endif
 
 %ifarch x86_64
 %define kernel_arch x86_64
+%define defconfig common_%{kernel_arch}_defconfig
 %endif
 
 %define kernel_arch_subdir arch/x86
+%define kernel_image bzImage
+
+%ifarch %arm
+%define kernel_arch arm
+%define kernel_arch_subdir arch/%{kernel_arch}
+%define kernel_image zImage
+%define vdso_supported 0
+%define modules_supported 0
+%endif
+
 
 Name: kernel-%{variant}
 Summary: The Linux kernel
@@ -50,7 +70,7 @@ BuildRequires: flex
 BuildRequires: bison
 BuildRequires: libdw-devel
 BuildRequires: python-devel
-ExclusiveArch: %{arch_32bits} x86_64
+ExclusiveArch: %{arch_32bits} x86_64 armv7l
 
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
@@ -109,7 +129,7 @@ counter events as well as various kernel internal events.
 ### PREP
 ###
 %prep
-# Unpack the kernel tarbal
+# Unpack the kernel tarball
 %setup -q -n %{name}-%{version}
 
 
@@ -126,16 +146,12 @@ make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
 make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
 
 # Build kernel and modules
-%ifarch %{arch_32bits}
-make -s ARCH=%{kernel_arch} common_x86_defconfig
-%endif
+make -s ARCH=%{kernel_arch} %{defconfig}
+make %{?_smp_mflags} %{kernel_image} ARCH=%{kernel_arch}
 
-%ifarch x86_64
-make -s ARCH=%{kernel_arch} common_x86_64_defconfig
-%endif
-
-make -s ARCH=%{kernel_arch} %{?_smp_mflags} bzImage
+%if %modules_supported
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} modules
+%endif
 
 
 
@@ -147,12 +163,18 @@ install -d %{buildroot}/boot
 
 install -m 644 .config %{buildroot}/boot/config-%{kernel_full_version}
 install -m 644 System.map %{buildroot}/boot/System.map-%{kernel_full_version}
-install -m 755 %{kernel_arch_subdir}/boot/bzImage %{buildroot}/boot/vmlinuz-%{kernel_full_version}
+install -m 755 %{kernel_arch_subdir}/boot/%{kernel_image} %{buildroot}/boot/vmlinuz-%{kernel_full_version}
 # Dummy initrd, will not be included in the actual package but needed for files
 touch %{buildroot}/boot/initrd-%{kernel_full_version}.img
 
+%if %modules_supported
 make -s ARCH=%{kernel_arch} INSTALL_MOD_PATH=%{buildroot} modules_install KERNELRELEASE=%{kernel_full_version}
+%endif
+
+%if %vdso_supported
 make -s ARCH=%{kernel_arch} INSTALL_MOD_PATH=%{buildroot} vdso_install KERNELRELEASE=%{kernel_full_version}
+%endif
+
 rm -rf %{buildroot}/lib/firmware
 
 # And save the headers/makefiles etc for building modules against
@@ -163,10 +185,11 @@ rm -rf %{buildroot}/lib/firmware
 # * all script/ files
 
 # Remove existing build/source links and create pristine dirs
-rm %{buildroot}/lib/modules/%{kernel_full_version}/build
-rm %{buildroot}/lib/modules/%{kernel_full_version}/source
+rm -f %{buildroot}/lib/modules/%{kernel_full_version}/build
+rm -f %{buildroot}/lib/modules/%{kernel_full_version}/source
 install -d %{buildroot}/lib/modules/%{kernel_full_version}/build
-ln -s build %{buildroot}/lib/modules/%{kernel_full_version}/source
+ln -fs build %{buildroot}/lib/modules/%{kernel_full_version}/source
+
 
 # First, copy all dirs containing Makefile of Kconfig files
 cp --parents `find  -type f -name "Makefile*" -o -name "Kconfig*"` %{buildroot}/lib/modules/%{kernel_full_version}/build
@@ -274,12 +297,17 @@ fi
 /boot/vmlinuz-%{kernel_full_version}
 /boot/System.map-%{kernel_full_version}
 /boot/config-%{kernel_full_version}
+%if %modules_supported
 %dir /lib/modules/%{kernel_full_version}
 /lib/modules/%{kernel_full_version}/kernel
+/lib/modules/%{kernel_full_version}/modules.*
+%endif
 /lib/modules/%{kernel_full_version}/build
 /lib/modules/%{kernel_full_version}/source
+
+%if %vdso_supported
 /lib/modules/%{kernel_full_version}/vdso
-/lib/modules/%{kernel_full_version}/modules.*
+%endif
 %ghost /boot/initrd-%{kernel_full_version}.img
 
 
