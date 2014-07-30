@@ -1,4 +1,45 @@
-To bump kernel version:
+How to bump kernel version
+==========================
+
+Parameters:
+-----------
+* branch to upgrade to (example: linux-3.14.y as defined on git.kernel.org)
+* tag to upgrade to (example: v3.14.14)
+* kernel version
+
+Define variables:
+# linux_branch=linux-3.14.y
+# linux_tag=v3.14.14
+
+1. Clone kernel-common
+----------------------
+
+# git clone review.tizen.org:profile/common/kernel-common
+# cd kernel-common
+
+2. add kernel.org as new origin and fetch it
+--------------------------------------------
+
+# git remote add linux_stable git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
+# git fetch linux_stable
+
+3. import on upstream branch until given revision and push to tizen.org
+-----------------------------------------------------------------------
+
+# git fetch origin
+# git checkout upstream
+# git rebase linux_stable/${linux_branch}
+# git push origin HEAD:upstream
+# git push --tags origin HEAD:upstream
+
+4. rebase tizen branch
+----------------------
+
+# git checkout -B tizen origin/tizen
+# git rebase -i ${linux_tag}
+
+5. update kernel config
+-----------------------
 
 # make ARCH=i386 common_x86_defconfig
 # make ARCH=i386 menuconfig
@@ -12,4 +53,7 @@ To bump kernel version:
 # make ARCH=x86_64 savedefconfig
 # mv defconfig arch/x86/configs/common_x86_64_defconfig
 
+6. Bump the kernel version in the spec file
+-------------------------------------------
 
+# sed -ri "s/^(%define upstream_version).*$/\1 $(make kernelversion)/" packaging/*.spec

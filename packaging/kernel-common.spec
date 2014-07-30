@@ -3,37 +3,36 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.14.4
-%define variant x86-common
+%define upstream_version 3.14.14
+%define variant %{profile}-%{arch}
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
 %define arch_32bits i386 i586 i686 %{ix86}
 
 # Default arch config for tizen per arch (unless overiden after)
-%define defconfig tizen_defconfig
-
-# Default features
-%define vdso_supported 1
-%define modules_supported 1
-
-
 %ifarch %{arch_32bits}
 %define kernel_arch i386
-%define defconfig common_x86_defconfig
+%define kernel_arch_subdir arch/x86
+%define kernel_image bzImage
+%define defconfig %{profile}_x86_defconfig
+%define vdso_supported 1
+%define modules_supported 1
 %endif
 
 %ifarch x86_64
 %define kernel_arch x86_64
-%define defconfig common_%{kernel_arch}_defconfig
-%endif
-
 %define kernel_arch_subdir arch/x86
 %define kernel_image bzImage
+%define defconfig %{profile}_%{kernel_arch}_defconfig
+%define vdso_supported 1
+%define modules_supported 1
+%endif
 
 %ifarch %arm
 %define kernel_arch arm
 %define kernel_arch_subdir arch/%{kernel_arch}
 %define kernel_image zImage
+%define defconfig tizen_defconfig
 %define vdso_supported 0
 %define modules_supported 0
 %endif
@@ -96,8 +95,7 @@ Source0: %{name}-%{version}.tar.bz2
 
 
 %description
-This package contains the Tizen Common Linux kernel
-
+This package contains the Linux kernel for Tizen (%{profile} profile)
 
 %package devel
 Summary: Development package for building kernel modules to match the %{variant} kernel
