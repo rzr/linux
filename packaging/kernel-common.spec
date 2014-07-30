@@ -4,7 +4,7 @@
 #
 
 %define upstream_version 3.14.14
-%define variant %{profile}-%{arch}
+%define variant %{profile}-%{_arch}-%{platform}
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
 %define arch_32bits i386 i586 i686 %{ix86}
@@ -17,6 +17,7 @@
 %define defconfig %{profile}_x86_defconfig
 %define vdso_supported 1
 %define modules_supported 1
+%define platform pc
 %endif
 
 %ifarch x86_64
@@ -26,6 +27,7 @@
 %define defconfig %{profile}_%{kernel_arch}_defconfig
 %define vdso_supported 1
 %define modules_supported 1
+%define platform pc
 %endif
 
 %ifarch %arm
@@ -35,11 +37,12 @@
 %define defconfig tizen_defconfig
 %define vdso_supported 0
 %define modules_supported 0
+%define platform generic
 %endif
 
 
-Name: kernel-%{variant}
-Summary: The Linux kernel
+Name: kernel-common
+Summary: Tizen kernel
 Group: System/Kernel
 License: GPL-2.0
 URL: http://www.kernel.org/
@@ -71,6 +74,15 @@ BuildRequires: libdw-devel
 BuildRequires: python-devel
 ExclusiveArch: %{arch_32bits} x86_64 armv7l
 
+Source0: %{name}-%{version}.tar.bz2
+
+%description
+This package contains the Linux kernel for Tizen.
+
+
+%package -n kernel-%{variant}
+Summary: Tizen kernel
+Group: System/Kernel
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
 Requires(post): /usr/bin/ln
@@ -91,14 +103,11 @@ Requires(postun): rpm
 AutoReq: no
 AutoProv: yes
 
-Source0: %{name}-%{version}.tar.bz2
+%description -n kernel-%{variant}
+This package contains the Linux kernel for Tizen (%{profile} profile, architecure %{_arch})
 
-
-%description
-This package contains the Linux kernel for Tizen (%{profile} profile)
-
-%package devel
-Summary: Development package for building kernel modules to match the %{variant} kernel
+%package -n kernel-%{variant}-devel
+Summary: Development package for building kernel modules
 Group: Development/System
 Provides: kernel-devel = %{kernel_full_version}
 Provides: kernel-devel-uname-r = %{kernel_full_version}
@@ -106,7 +115,7 @@ Requires(post): /usr/bin/find
 Requires: %{name} = %{version}-%{release}
 AutoReqProv: no
 
-%description devel
+%description -n kernel-%{variant}-devel
 This package provides kernel headers and makefiles sufficient to build modules
 against the %{variant} kernel package.
 
@@ -243,7 +252,7 @@ rm %{buildroot}/etc/bash_completion.d/perf
 ### SCRIPTS
 ###
 
-%post
+%post -n kernel-%{variant}
 if [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
 	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
@@ -264,7 +273,7 @@ fi
 
 %{_bindir}/dracut /boot/initrd-%{kernel_full_version}.img %{kernel_full_version}
 
-%post devel
+%post -n kernel-%{variant}-devel
 if [ -x /usr/sbin/hardlink ]; then
 	cd /usr/src/kernels/%{kernel_full_version}
 	/usr/bin/find . -type f | while read f; do
@@ -272,7 +281,7 @@ if [ -x /usr/sbin/hardlink ]; then
 	done
 fi
 
-%postun
+%postun -n kernel-%{variant}
 if [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
 	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
@@ -290,7 +299,7 @@ fi
 ###
 ### FILES
 ###
-%files
+%files -n kernel-%{variant}
 %license COPYING
 /boot/vmlinuz-%{kernel_full_version}
 /boot/System.map-%{kernel_full_version}
@@ -309,7 +318,7 @@ fi
 %ghost /boot/initrd-%{kernel_full_version}.img
 
 
-%files devel
+%files -n kernel-%{variant}-devel
 %license COPYING
 %verify(not mtime) /usr/src/kernels/%{kernel_full_version}
 /lib/modules/%{kernel_full_version}/vmlinux
