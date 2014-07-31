@@ -4,6 +4,11 @@
 #
 
 %define upstream_version 3.14.14
+
+%if !%{defined platform}
+%define platform default
+%endif
+
 %define variant %{profile}-%{_arch}-%{platform}
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
@@ -17,7 +22,6 @@
 %define defconfig %{profile}_x86_defconfig
 %define vdso_supported 1
 %define modules_supported 1
-%define platform pc
 %endif
 
 %ifarch x86_64
@@ -27,7 +31,6 @@
 %define defconfig %{profile}_%{kernel_arch}_defconfig
 %define vdso_supported 1
 %define modules_supported 1
-%define platform pc
 %endif
 
 %ifarch %arm
@@ -37,7 +40,6 @@
 %define defconfig tizen_defconfig
 %define vdso_supported 0
 %define modules_supported 0
-%define platform generic
 %endif
 
 
@@ -83,7 +85,7 @@ This package contains the Linux kernel for Tizen.
 %package -n kernel-%{variant}
 Summary: Tizen kernel
 Group: System/Kernel
-Provides: kernel = %{version}-%{release}
+Provides: kernel-profile-%{profile} = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
 Requires(post): /usr/bin/ln
 Requires(post): /usr/bin/sort
