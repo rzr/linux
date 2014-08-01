@@ -3,7 +3,9 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.14.14
+%define upstream_version 3.10.31
+
+%define platform rcar-m2
 
 %if !%{defined platform}
 %define platform default
@@ -15,31 +17,42 @@
 %define arch_32bits i386 i586 i686 %{ix86}
 
 # Default arch config for tizen per arch (unless overiden after)
+%define vdso_supported 1
+%define modules_supported 1
+%define trace_supported 1
+%define dtbs_supported 0
+%define kernel_image bzImage
+%define defconfig tizen_defconfig
+
+# Overide per configuration
+
 %ifarch %{arch_32bits}
 %define kernel_arch i386
 %define kernel_arch_subdir arch/x86
-%define kernel_image bzImage
 %define defconfig %{profile}_x86_defconfig
-%define vdso_supported 1
-%define modules_supported 1
 %endif
 
 %ifarch x86_64
 %define kernel_arch x86_64
 %define kernel_arch_subdir arch/x86
-%define kernel_image bzImage
 %define defconfig %{profile}_%{kernel_arch}_defconfig
-%define vdso_supported 1
-%define modules_supported 1
 %endif
 
 %ifarch %arm
 %define kernel_arch arm
 %define kernel_arch_subdir arch/%{kernel_arch}
 %define kernel_image zImage
-%define defconfig tizen_defconfig
 %define vdso_supported 0
 %define modules_supported 0
+
+%if ( "rcar-m2" == "%{platform}" )
+%define defconfig tizen_%{platform}_defconfig
+%define trace_supported 0
+%define dtbs_supported 1
+%define loadaddr 40008000
+%define kernel_image uImage
+%endif
+
 %endif
 
 
@@ -55,11 +68,11 @@ Version: %{upstream_version}
 #%#define release_ver 0
 #%#define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 #%if ! 0%{?opensuse_bs}
-#Release: %{rc_str}.%{release_ver}.0.0
+#Release: 20140801.1406891712
 #%else
-#Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
+#Release: 20140801.1406891712
 #%endif
-Release: 0
+Release: 20140801.1406891712
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
@@ -154,12 +167,20 @@ sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
 make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
 make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
 
+%if %{defined loadaddr}
+export LOADADDR=${loadaddr}
+%endif
+
 # Build kernel and modules
 make -s ARCH=%{kernel_arch} %{defconfig}
 make %{?_smp_mflags} %{kernel_image} ARCH=%{kernel_arch}
 
 %if %modules_supported
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} modules
+%endif
+
+%if %dtbs_supported
+make -s ARCH=%{kernel_arch} %{?_smp_mflags} dtbs
 %endif
 
 
@@ -329,6 +350,8 @@ fi
 %files -n perf
 %license COPYING
 %{_bindir}/perf
-%{_bindir}/trace
 %{_libexecdir}/perf-core
+%if %trace_supported
+%{_bindir}/trace
 /%{_lib}/traceevent/plugins/*.so
+%endif
