@@ -15,29 +15,34 @@
 %define arch_32bits i386 i586 i686 %{ix86}
 
 # Default arch config for tizen per arch (unless overiden after)
+%define kernel_image bzImage
+%define defconfig tizen_defconfig
+
+%define dtbs_supported 0
+%define modules_supported 1
+%define trace_supported 1
+%define uboot_supported 0
+%define vdso_supported 1
+
+
+# Overide per configuration
+
 %ifarch %{arch_32bits}
 %define kernel_arch i386
 %define kernel_arch_subdir arch/x86
-%define kernel_image bzImage
 %define defconfig %{profile}_x86_defconfig
-%define vdso_supported 1
-%define modules_supported 1
 %endif
 
 %ifarch x86_64
 %define kernel_arch x86_64
 %define kernel_arch_subdir arch/x86
-%define kernel_image bzImage
 %define defconfig %{profile}_%{kernel_arch}_defconfig
-%define vdso_supported 1
-%define modules_supported 1
 %endif
 
 %ifarch %arm
 %define kernel_arch arm
 %define kernel_arch_subdir arch/%{kernel_arch}
 %define kernel_image zImage
-%define defconfig tizen_defconfig
 %define vdso_supported 0
 %define modules_supported 0
 %endif
@@ -74,6 +79,10 @@ BuildRequires: flex
 BuildRequires: bison
 BuildRequires: libdw-devel
 BuildRequires: python-devel
+%if %{uboot_supported}
+BuildRequires: u-boot-tools
+%endif
+
 ExclusiveArch: %{arch_32bits} x86_64 armv7l
 
 Source0: %{name}-%{version}.tar.bz2
@@ -154,12 +163,20 @@ sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
 make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
 make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
 
+%if %{defined loadaddr}
+export LOADADDR=%{loadaddr}
+%endif
+
 # Build kernel and modules
 make -s ARCH=%{kernel_arch} %{defconfig}
 make %{?_smp_mflags} %{kernel_image} ARCH=%{kernel_arch}
 
 %if %modules_supported
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} modules
+%endif
+
+%if %dtbs_supported
+make -s ARCH=%{kernel_arch} %{?_smp_mflags} dtbs
 %endif
 
 
@@ -329,6 +346,8 @@ fi
 %files -n perf
 %license COPYING
 %{_bindir}/perf
-%{_bindir}/trace
 %{_libexecdir}/perf-core
+%if %trace_supported
+%{_bindir}/trace
 /%{_lib}/traceevent/plugins/*.so
+%endif
