@@ -196,7 +196,39 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra30-cardhu-a02.dtb \
 	tegra30-cardhu-a04.dtb \
 	tegra114-dalmore.dtb \
-	tegra114-pluto.dtb
+	tegra114-dalmore-e1611-1000-a00-00.dtb \
+	tegra114-dalmore-e1611-1001-a00-00.dtb \
+	tegra114-macallan.dtb \
+	tegra114-roth.dtb \
+	tegra114-pluto.dtb \
+	tegra114-pismo.dtb \
+	tegra124-bonaire_sim.dtb \
+	tegra124-bonaire.dtb \
+	tegra124-ardbeg.dtb \
+	tegra124-ardbeg-a03-00.dtb \
+	tegra124-laguna.dtb \
+	tegra124-pm375.dtb \
+	tegra124-norrin.dtb \
+	tegra124-loki.dtb \
+	tegra124-foster.dtb \
+	tegra124-thor195.dtb \
+	tegra124-tn8.dtb \
+	tegra124-tn8-p1761.dtb \
+	tegra124-tn8-p1761-2gb.dtb \
+	tegra124-tn8-p1761-battery.dtb \
+	tegra124-tn8-p1761-battery-2gb.dtb \
+	tegra124-tn8-aio.dtb \
+	tegra124-tn8-battery.dtb \
+	tegra124-tn8-a03-00.dtb \
+	tegra124-tn8-a03-00-battery.dtb \
+	tegra124-tn8-a03-01.dtb \
+	tegra124-tn8-a03-01-battery.dtb \
+	tegra124-e1782_sku1100.dtb \
+	tegra124-e1791.dtb \
+	tegra124-e1922.dtb \
+	tegra124-e1923.dtb \
+	tegra124-ardbeg_sata.dtb \
+	tegra124-vcm30_t124.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb
 dtb-$(CONFIG_ARCH_VEXPRESS) += vexpress-v2p-ca5s.dtb \

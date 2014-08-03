@@ -4,6 +4,7 @@
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  Copyright (C) 2005-2007 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -445,12 +446,22 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 					MMC_BLK_DATA_AREA_GP);
 			}
 		}
-		card->ext_csd.sec_trim_mult =
-			ext_csd[EXT_CSD_SEC_TRIM_MULT];
-		card->ext_csd.sec_erase_mult =
-			ext_csd[EXT_CSD_SEC_ERASE_MULT];
-		card->ext_csd.sec_feature_support =
-			ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
+
+		if (card->ext_csd.rev < 6) {
+			card->ext_csd.sec_trim_mult =
+				ext_csd[EXT_CSD_SEC_TRIM_MULT];
+			card->ext_csd.sec_erase_mult =
+				ext_csd[EXT_CSD_SEC_ERASE_MULT];
+			card->ext_csd.sec_feature_support =
+				ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
+		}
+
+		if (card->ext_csd.rev == 6) {
+			card->ext_csd.sec_feature_support =
+				ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT] &
+				~EXT_CSD_SEC_ER_EN;
+		}
+
 		card->ext_csd.trim_timeout = 300 *
 			ext_csd[EXT_CSD_TRIM_MULT];
 
@@ -1059,7 +1070,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 				mmc_card_set_hs200(card);
 				mmc_set_timing(card->host,
 					       MMC_TIMING_MMC_HS200);
-			} else {
+			} else if (host->caps & MMC_CAP_MMC_HIGHSPEED) {
 				mmc_card_set_highspeed(card);
 				mmc_set_timing(card->host, MMC_TIMING_MMC_HS);
 			}
@@ -1310,6 +1321,24 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		host->card = card;
 
 	mmc_free_ext_csd(ext_csd);
+#ifdef CONFIG_MMC_FREQ_SCALING
+	/*
+	 * This implementation is still in experimental phase. So, don't fail
+	 * enumeration even if dev freq init fails.
+	 */
+	if (!oldcard && host->ios.timing == MMC_TIMING_MMC_HS200) {
+		if (host->caps2 & MMC_CAP2_FREQ_SCALING) {
+			err = mmc_devfreq_init(host);
+			if (err)
+				dev_info(mmc_dev(host),
+					"Devfreq scaling init failed %d\n",
+					err);
+			else
+				dev_info(mmc_dev(host),
+					"DFS is enabled successfully\n");
+		}
+	}
+#endif
 	return 0;
 
 free_card:
@@ -1357,7 +1386,9 @@ static void mmc_remove(struct mmc_host *host)
 {
 	BUG_ON(!host);
 	BUG_ON(!host->card);
-
+#ifdef CONFIG_MMC_FREQ_SCALING
+	mmc_devfreq_deinit(host);
+#endif
 	mmc_remove_card(host->card);
 	host->card = NULL;
 }
@@ -1417,7 +1448,8 @@ static int mmc_suspend(struct mmc_host *host)
 
 	if (mmc_can_poweroff_notify(host->card))
 		err = mmc_poweroff_notify(host->card, EXT_CSD_POWER_OFF_SHORT);
-	else if (mmc_card_can_sleep(host))
+	else if (mmc_card_can_sleep(host) &&
+		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD))
 		err = mmc_card_sleep(host);
 	else if (!mmc_host_is_spi(host))
 		err = mmc_deselect_cards(host);
@@ -1442,7 +1474,11 @@ static int mmc_resume(struct mmc_host *host)
 	BUG_ON(!host->card);
 
 	mmc_claim_host(host);
-	err = mmc_init_card(host, host->ocr, host->card);
+	if (mmc_card_can_sleep(host) &&
+		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD))
+		err = mmc_card_awake(host);
+	else
+		err = mmc_init_card(host, host->ocr, host->card);
 	mmc_release_host(host);
 
 	return err;

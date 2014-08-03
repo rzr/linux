@@ -1412,6 +1412,10 @@ static void handle_cmd_completion(struct xhci_hcd *xhci,
 			return;
 	}
 
+	/* return if command ring is empty */
+	if (xhci->cmd_ring->dequeue == xhci->cmd_ring->enqueue)
+		return;
+
 	switch (le32_to_cpu(xhci->cmd_ring->dequeue->generic.field[3])
 		& TRB_TYPE_BITMASK) {
 	case TRB_TYPE(TRB_ENABLE_SLOT):
@@ -2155,6 +2159,12 @@ static int process_isoc_td(struct xhci_hcd *xhci, struct xhci_td *td,
 		frame->actual_length = frame->length;
 		td->urb->actual_length += frame->length;
 	} else {
+		if (urb_priv->finishing_short_td &&
+				(event_trb == td->last_trb)) {
+			urb_priv->finishing_short_td = false;
+			/* get event for last trb, can finish this short td */
+			goto finish_td;
+		}
 		for (cur_trb = ep_ring->dequeue,
 		     cur_seg = ep_ring->deq_seg; cur_trb != event_trb;
 		     next_trb(xhci, ep_ring, &cur_seg, &cur_trb)) {
@@ -2169,8 +2179,17 @@ static int process_isoc_td(struct xhci_hcd *xhci, struct xhci_td *td,
 			frame->actual_length = len;
 			td->urb->actual_length += len;
 		}
+		if ((trb_comp_code == COMP_SHORT_TX) &&
+				(event_trb != td->last_trb)) {
+			/* last trb has IOC, expect HC to send event for it */
+			while (ep_ring->dequeue != td->last_trb)
+				inc_deq(xhci, ep_ring);
+			urb_priv->finishing_short_td = true;
+			return 0;
+		}
 	}
 
+finish_td:
 	return finish_td(xhci, td, event_trb, event, ep, status, false);
 }
 

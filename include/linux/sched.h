@@ -1,3 +1,19 @@
+/*
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ */
+
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
@@ -100,6 +116,7 @@ DECLARE_PER_CPU(unsigned long, process_counts);
 extern int nr_processes(void);
 extern unsigned long nr_running(void);
 extern unsigned long nr_iowait(void);
+extern u64 nr_running_integral(unsigned int cpu);
 extern unsigned long nr_iowait_cpu(int cpu);
 extern unsigned long this_cpu_load(void);
 
@@ -1409,6 +1426,13 @@ struct task_struct {
 		unsigned long memsw_nr_pages; /* uncharged mem+swap usage */
 	} memcg_batch;
 	unsigned int memcg_kmem_skip_account;
+	struct memcg_oom_info {
+		unsigned int may_oom:1;
+		unsigned int in_memcg_oom:1;
+		unsigned int oom_locked:1;
+		int wakeups;
+		struct mem_cgroup *wait_on_memcg;
+	} memcg_oom;
 #endif
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 	atomic_t ptrace_bp_refcnt;
@@ -1460,6 +1484,15 @@ static inline struct pid *task_pgrp(struct task_struct *task)
 static inline struct pid *task_session(struct task_struct *task)
 {
 	return task->group_leader->pids[PIDTYPE_SID].pid;
+}
+
+static inline struct task_struct *get_thread_process(struct task_struct *thread)
+{
+	struct task_struct *task = thread;
+	while (task->pid != task->tgid)
+		task = task->group_leader;
+
+	return task;
 }
 
 struct pid_namespace;
@@ -1610,6 +1643,9 @@ static inline cputime_t task_gtime(struct task_struct *t)
 extern void task_cputime_adjusted(struct task_struct *p, cputime_t *ut, cputime_t *st);
 extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut, cputime_t *st);
 
+extern int task_free_register(struct notifier_block *n);
+extern int task_free_unregister(struct notifier_block *n);
+
 /*
  * Per process flags
  */
@@ -1642,6 +1678,7 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut, 
 #define PF_MEMPOLICY	0x10000000	/* Non-default NUMA mempolicy */
 #define PF_MUTEX_TESTER	0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezable */
+#define PF_SUSPEND_TASK 0x80000000      /* this thread called freeze_processes and should not be frozen */
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other

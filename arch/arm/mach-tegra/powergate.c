@@ -1,7 +1,8 @@
 /*
- * drivers/powergate/tegra-powergate.c
+ * arch/arm/mach-tegra/powergate.c
  *
  * Copyright (c) 2010 Google, Inc
+ * Copyright (c) 2011 - 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -18,227 +19,684 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/clk/tegra.h>
+#include <linux/string.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/err.h>
-#include <linux/export.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/seq_file.h>
 #include <linux/spinlock.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
+#include <trace/events/power.h>
+#include <asm/atomic.h>
 
-#include "fuse.h"
+#include "clock.h"
 #include "iomap.h"
+#include "powergate-priv.h"
+#include "common.h"
 
-#define PWRGATE_TOGGLE		0x30
-#define  PWRGATE_TOGGLE_START	(1 << 8)
+static struct powergate_ops *pg_ops;
 
-#define REMOVE_CLAMPING		0x34
-
-#define PWRGATE_STATUS		0x38
-
-static int tegra_num_powerdomains;
-static int tegra_num_cpu_domains;
-static u8 *tegra_cpu_domains;
-static u8 tegra30_cpu_domains[] = {
-	TEGRA_POWERGATE_CPU0,
-	TEGRA_POWERGATE_CPU1,
-	TEGRA_POWERGATE_CPU2,
-	TEGRA_POWERGATE_CPU3,
-};
-
-static DEFINE_SPINLOCK(tegra_powergate_lock);
-
-static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-
-static u32 pmc_read(unsigned long reg)
+static spinlock_t *tegra_get_powergate_lock(void)
 {
-	return readl(pmc + reg);
+	if (pg_ops && pg_ops->get_powergate_lock)
+		return pg_ops->get_powergate_lock();
+	else
+		WARN_ON_ONCE("This SOC does not export powergate lock");
+
+	return NULL;
 }
 
-static void pmc_write(u32 val, unsigned long reg)
-{
-	writel(val, pmc + reg);
-}
-
-static int tegra_powergate_set(int id, bool new_state)
+int tegra_powergate_set(int id, bool new_state)
 {
 	bool status;
 	unsigned long flags;
+	spinlock_t *lock;
+	u32 reg;
 
-	spin_lock_irqsave(&tegra_powergate_lock, flags);
+	/* 10us timeout for toggle operation if it takes affect*/
+	int toggle_timeout = 10;
 
-	status = pmc_read(PWRGATE_STATUS) & (1 << id);
+	/* 100 * 10 = 1000us timeout for toggle command to take affect in case
+	   of contention with h/w initiated CPU power gating */
+	int contention_timeout = 100;
+
+	if (tegra_cpu_is_asim())
+		return 0;
+
+	lock = tegra_get_powergate_lock();
+
+	spin_lock_irqsave(lock, flags);
+
+	status = !!(pmc_read(PWRGATE_STATUS) & (1 << id));
 
 	if (status == new_state) {
-		spin_unlock_irqrestore(&tegra_powergate_lock, flags);
+		spin_unlock_irqrestore(lock, flags);
 		return 0;
 	}
 
+	if (TEGRA_IS_CPU_POWERGATE_ID(id)) {
+		/* CPU ungated in s/w only during boot/resume with outer
+		   waiting loop and no contention from other CPUs */
+		pmc_write(PWRGATE_TOGGLE_START | id, PWRGATE_TOGGLE);
+		spin_unlock_irqrestore(lock, flags);
+		return 0;
+	}
+
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* Wait if PMC is already processing some other power gating request */
+	do {
+		udelay(1);
+		reg = pmc_read(PWRGATE_TOGGLE);
+		contention_timeout--;
+	} while ((contention_timeout > 0) && (reg & PWRGATE_TOGGLE_START));
+
+	if (contention_timeout <= 0)
+		pr_err(" Timed out waiting for PMC to submit \
+				new power gate request \n");
+	contention_timeout = 100;
+#endif
+
+	/* Submit power gate request */
 	pmc_write(PWRGATE_TOGGLE_START | id, PWRGATE_TOGGLE);
 
-	spin_unlock_irqrestore(&tegra_powergate_lock, flags);
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* Wait while PMC accepts the request */
+	do {
+		udelay(1);
+		reg = pmc_read(PWRGATE_TOGGLE);
+		contention_timeout--;
+	} while ((contention_timeout > 0) && (reg & PWRGATE_TOGGLE_START));
+
+	if (contention_timeout <= 0)
+		pr_err(" Timed out waiting for PMC to accept \
+				new power gate request \n");
+	contention_timeout = 100;
+#endif
+
+	/* Check power gate status */
+	do {
+		do {
+			udelay(1);
+			status = !!(pmc_read(PWRGATE_STATUS) & (1 << id));
+
+			toggle_timeout--;
+		} while ((status != new_state) && (toggle_timeout > 0));
+
+		contention_timeout--;
+	} while ((status != new_state) && (contention_timeout > 0));
+
+	spin_unlock_irqrestore(lock, flags);
+
+	if (status != new_state) {
+		WARN(1, "Could not set powergate %d to %d", id, new_state);
+		return -EBUSY;
+	}
+
+	trace_power_domain_target(tegra_powergate_get_name(id), new_state,
+			raw_smp_processor_id());
 
 	return 0;
 }
 
-int tegra_powergate_power_on(int id)
+int is_partition_clk_disabled(struct powergate_partition_info *pg_info)
 {
-	if (id < 0 || id >= tegra_num_powerdomains)
+	u32 idx;
+	struct clk *clk;
+	struct partition_clk_info *clk_info;
+	int ret = 0;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		clk_info = &pg_info->clk_info[idx];
+		clk = clk_info->clk_ptr;
+
+		if (!clk)
+			break;
+
+		if (clk_info->clk_type != RST_ONLY) {
+			if (tegra_is_clk_enabled(clk)) {
+				ret = -1;
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
+int powergate_module(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains)
+		return -EINVAL;
+
+	tegra_powergate_mc_flush(id);
+
+	return tegra_powergate_set(id, false);
+}
+
+int unpowergate_module(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains)
 		return -EINVAL;
 
 	return tegra_powergate_set(id, true);
 }
 
-int tegra_powergate_power_off(int id)
+int partition_clk_enable(struct powergate_partition_info *pg_info)
 {
-	if (id < 0 || id >= tegra_num_powerdomains)
-		return -EINVAL;
+	int ret;
+	u32 idx;
+	struct clk *clk;
+	struct partition_clk_info *clk_info;
 
-	return tegra_powergate_set(id, false);
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		clk_info = &pg_info->clk_info[idx];
+		clk = clk_info->clk_ptr;
+		if (!clk)
+			break;
+
+		if (clk_info->clk_type != RST_ONLY) {
+			ret = tegra_clk_prepare_enable(clk);
+			if (ret)
+				goto err_clk_en;
+		}
+	}
+
+	return 0;
+
+err_clk_en:
+	WARN(1, "Could not enable clk %s, error %d", clk->name, ret);
+	while (idx--) {
+		clk_info = &pg_info->clk_info[idx];
+		if (clk_info->clk_type != RST_ONLY)
+			tegra_clk_disable_unprepare(clk_info->clk_ptr);
+	}
+
+	return ret;
 }
 
-int tegra_powergate_is_powered(int id)
+void partition_clk_disable(struct powergate_partition_info *pg_info)
 {
-	u32 status;
+	u32 idx;
+	struct clk *clk;
+	struct partition_clk_info *clk_info;
 
-	if (id < 0 || id >= tegra_num_powerdomains)
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		clk_info = &pg_info->clk_info[idx];
+		clk = clk_info->clk_ptr;
+
+		if (!clk)
+			break;
+
+		if (clk_info->clk_type != RST_ONLY)
+			tegra_clk_disable_unprepare(clk);
+	}
+}
+
+void get_clk_info(struct powergate_partition_info *pg_info)
+{
+	int idx;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		if (!pg_info->clk_info[idx].clk_name)
+			break;
+
+		pg_info->clk_info[idx].clk_ptr = tegra_get_clock_by_name(
+			pg_info->clk_info[idx].clk_name);
+	}
+}
+
+void powergate_partition_assert_reset(struct powergate_partition_info *pg_info)
+{
+	u32 idx;
+	struct clk *clk_ptr;
+	struct partition_clk_info *clk_info;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		clk_info = &pg_info->clk_info[idx];
+		clk_ptr = clk_info->clk_ptr;
+
+		if (!clk_ptr)
+			break;
+
+		if (clk_info->clk_type != CLK_ONLY)
+			tegra_periph_reset_assert(clk_ptr);
+	}
+}
+
+void powergate_partition_deassert_reset(struct powergate_partition_info *pg_info)
+{
+	u32 idx;
+	struct clk *clk_ptr;
+	struct partition_clk_info *clk_info;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		clk_info = &pg_info->clk_info[idx];
+		clk_ptr = clk_info->clk_ptr;
+
+		if (!clk_ptr)
+			break;
+
+		if (clk_info->clk_type != CLK_ONLY)
+			tegra_periph_reset_deassert(clk_ptr);
+	}
+}
+
+int tegra_powergate_reset_module(struct powergate_partition_info *pg_info)
+{
+	int ret;
+
+	powergate_partition_assert_reset(pg_info);
+
+	udelay(10);
+
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		return ret;
+
+	udelay(10);
+
+	powergate_partition_deassert_reset(pg_info);
+
+	partition_clk_disable(pg_info);
+
+	return 0;
+}
+
+bool tegra_powergate_check_clamping(int id)
+{
+	if (!pg_ops || !pg_ops->powergate_check_clamping) {
+		pr_info("This SOC can't check clamping status\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains)
 		return -EINVAL;
 
-	status = pmc_read(PWRGATE_STATUS) & (1 << id);
-	return !!status;
+	return pg_ops->powergate_check_clamping(id);
 }
 
 int tegra_powergate_remove_clamping(int id)
 {
 	u32 mask;
+	int contention_timeout = 100;
 
-	if (id < 0 || id >= tegra_num_powerdomains)
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains)
 		return -EINVAL;
 
 	/*
-	 * Tegra 2 has a bug where PCIE and VDE clamping masks are
-	 * swapped relatively to the partition ids
+	 * PCIE and VDE clamping masks are swapped with respect to their
+	 * partition ids
 	 */
 	if (id ==  TEGRA_POWERGATE_VDEC)
 		mask = (1 << TEGRA_POWERGATE_PCIE);
-	else if	(id == TEGRA_POWERGATE_PCIE)
+	else if (id == TEGRA_POWERGATE_PCIE)
 		mask = (1 << TEGRA_POWERGATE_VDEC);
 	else
 		mask = (1 << id);
 
 	pmc_write(mask, REMOVE_CLAMPING);
+	/* Wait until clamp is removed */
+	do {
+		udelay(1);
+		contention_timeout--;
+	} while ((contention_timeout > 0)
+			&& (pmc_read(PWRGATE_CLAMP_STATUS) & BIT(id)));
+
+	WARN(contention_timeout <= 0, "Couldn't remove clamping");
 
 	return 0;
 }
 
-/* Must be called with clk disabled, and returns with clk enabled */
-int tegra_powergate_sequence_power_up(int id, struct clk *clk)
+static inline bool tegra_powergate_check_skip_list(int id)
 {
-	int ret;
-
-	tegra_periph_reset_assert(clk);
-
-	ret = tegra_powergate_power_on(id);
-	if (ret)
-		goto err_power;
-
-	ret = clk_prepare_enable(clk);
-	if (ret)
-		goto err_clk;
-
-	udelay(10);
-
-	ret = tegra_powergate_remove_clamping(id);
-	if (ret)
-		goto err_clamp;
-
-	udelay(10);
-	tegra_periph_reset_deassert(clk);
-
-	return 0;
-
-err_clamp:
-	clk_disable_unprepare(clk);
-err_clk:
-	tegra_powergate_power_off(id);
-err_power:
-	return ret;
+	return pg_ops->powergate_skip ?
+		pg_ops->powergate_skip(id) : false;
 }
-EXPORT_SYMBOL(tegra_powergate_sequence_power_up);
+
+/* EXTERNALY VISIBLE APIS */
+
+bool tegra_powergate_is_powered(int id)
+{
+	u32 status;
+
+	if (!pg_ops) {
+		pr_debug("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains)
+		return -EINVAL;
+
+	if (pg_ops->powergate_is_powered)
+		return pg_ops->powergate_is_powered(id);
+	else
+		status = pmc_read(PWRGATE_STATUS) & (1 << id);
+
+	status = pmc_read(PWRGATE_STATUS) & (1 << id);
+
+	return !!status;
+}
+EXPORT_SYMBOL(tegra_powergate_is_powered);
 
 int tegra_cpu_powergate_id(int cpuid)
 {
-	if (cpuid > 0 && cpuid < tegra_num_cpu_domains)
-		return tegra_cpu_domains[cpuid];
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (cpuid < 0 || cpuid >= pg_ops->num_cpu_domains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (pg_ops->cpu_domains)
+		return pg_ops->cpu_domains[cpuid];
+	else
+		WARN_ON_ONCE("This SOC does not support CPU powergate\n");
 
 	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_cpu_powergate_id);
+
+int tegra_powergate_partition(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (tegra_powergate_check_skip_list(id))
+		printk_once("%s: %s is in powergate skip list\n", __func__,
+			tegra_powergate_get_name(id));
+
+	if (pg_ops->powergate_partition)
+		return pg_ops->powergate_partition(id);
+	else
+		WARN_ON_ONCE("This SOC doesn't support powergating");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_partition);
+
+int tegra_unpowergate_partition(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (tegra_powergate_check_skip_list(id))
+		printk_once("%s: %s is in powergate skip list\n", __func__,
+			tegra_powergate_get_name(id));
+
+	if (pg_ops->unpowergate_partition)
+		return pg_ops->unpowergate_partition(id);
+	else
+		WARN_ON_ONCE("This SOC doesn't support un-powergating");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_unpowergate_partition);
+
+int tegra_powergate_partition_with_clk_off(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (tegra_powergate_check_skip_list(id))
+		printk_once("%s: %s is in powergate skip list\n", __func__,
+			tegra_powergate_get_name(id));
+
+	if (pg_ops->powergate_partition_with_clk_off)
+		return pg_ops->powergate_partition_with_clk_off(id);
+	else
+		WARN_ON_ONCE("This SOC doesn't support powergating with clk off");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_partition_with_clk_off);
+
+int tegra_unpowergate_partition_with_clk_on(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (tegra_powergate_check_skip_list(id))
+		printk_once("%s: %s is in powergate skip list\n", __func__,
+			tegra_powergate_get_name(id));
+
+	if (pg_ops->unpowergate_partition_with_clk_on)
+		return pg_ops->unpowergate_partition_with_clk_on(id);
+	else
+		WARN_ON_ONCE("This SOC doesn't support power un-gating with clk on");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_unpowergate_partition_with_clk_on);
+
+int tegra_powergate_mc_enable(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (pg_ops->powergate_mc_enable)
+		return pg_ops->powergate_mc_enable(id);
+	else
+		WARN_ON_ONCE("This SOC does not support powergate mc enable");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_mc_enable);
+
+int tegra_powergate_mc_disable(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (pg_ops->powergate_mc_disable)
+		return pg_ops->powergate_mc_disable(id);
+	else
+		WARN_ON_ONCE("This SOC does not support powergate mc disable");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_mc_disable);
+
+int tegra_powergate_mc_flush(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (pg_ops->powergate_mc_flush)
+		return pg_ops->powergate_mc_flush(id);
+	else
+		WARN_ON_ONCE("This SOC does not support powergate mc flush");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_mc_flush);
+
+int tegra_powergate_mc_flush_done(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("%s: invalid powergate id\n", __func__);
+		return -EINVAL;
+	}
+
+	if (pg_ops->powergate_mc_flush_done)
+		return pg_ops->powergate_mc_flush_done(id);
+	else
+		WARN_ON_ONCE("This SOC does not support powergate mc flush done");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_mc_flush_done);
+
+const char *tegra_powergate_get_name(int id)
+{
+	if (!pg_ops) {
+		pr_info("This SOC doesn't support powergating\n");
+		return NULL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains) {
+		pr_info("invalid powergate id\n");
+		return "invalid";
+	}
+
+	if (pg_ops->get_powergate_domain_name)
+		return pg_ops->get_powergate_domain_name(id);
+	else
+		WARN_ON_ONCE("This SOC does not support CPU powergate");
+
+	return "invalid";
+}
+EXPORT_SYMBOL(tegra_powergate_get_name);
+
+int tegra_powergate_init_refcount(void)
+{
+	if ((!pg_ops) || (!pg_ops->powergate_init_refcount))
+		return 0;
+
+	return pg_ops->powergate_init_refcount();
 }
 
 int __init tegra_powergate_init(void)
 {
-	switch (tegra_chip_id) {
-	case TEGRA20:
-		tegra_num_powerdomains = 7;
-		break;
-	case TEGRA30:
-		tegra_num_powerdomains = 14;
-		tegra_num_cpu_domains = 4;
-		tegra_cpu_domains = tegra30_cpu_domains;
-		break;
-	default:
-		/* Unknown Tegra variant. Disable powergating */
-		tegra_num_powerdomains = 0;
-		break;
+	switch (tegra_get_chip_id()) {
+		case TEGRA_CHIPID_TEGRA2:
+			pg_ops = tegra2_powergate_init_chip_support();
+			break;
+
+		case TEGRA_CHIPID_TEGRA3:
+			pg_ops = tegra3_powergate_init_chip_support();
+			break;
+
+		case TEGRA_CHIPID_TEGRA11:
+			pg_ops = tegra11x_powergate_init_chip_support();
+			break;
+
+		case TEGRA_CHIPID_TEGRA14:
+			pg_ops = tegra14x_powergate_init_chip_support();
+			break;
+
+		case TEGRA_CHIPID_TEGRA12:
+			pg_ops = tegra12x_powergate_init_chip_support();
+			break;
+
+		default:
+			pg_ops = NULL;
+			pr_info("%s: Unknown Tegra variant. Disabling powergate\n", __func__);
+			break;
 	}
 
-	return 0;
+	tegra_powergate_init_refcount();
+
+	pr_info("%s: DONE\n", __func__);
+
+	return (pg_ops ? 0 : -EINVAL);
 }
 
 #ifdef CONFIG_DEBUG_FS
 
-static const char * const *powergate_name;
-
-static const char * const powergate_name_t20[] = {
-	[TEGRA_POWERGATE_CPU]	= "cpu",
-	[TEGRA_POWERGATE_3D]	= "3d",
-	[TEGRA_POWERGATE_VENC]	= "venc",
-	[TEGRA_POWERGATE_VDEC]	= "vdec",
-	[TEGRA_POWERGATE_PCIE]	= "pcie",
-	[TEGRA_POWERGATE_L2]	= "l2",
-	[TEGRA_POWERGATE_MPE]	= "mpe",
-};
-
-static const char * const powergate_name_t30[] = {
-	[TEGRA_POWERGATE_CPU]	= "cpu0",
-	[TEGRA_POWERGATE_3D]	= "3d0",
-	[TEGRA_POWERGATE_VENC]	= "venc",
-	[TEGRA_POWERGATE_VDEC]	= "vdec",
-	[TEGRA_POWERGATE_PCIE]	= "pcie",
-	[TEGRA_POWERGATE_L2]	= "l2",
-	[TEGRA_POWERGATE_MPE]	= "mpe",
-	[TEGRA_POWERGATE_HEG]	= "heg",
-	[TEGRA_POWERGATE_SATA]	= "sata",
-	[TEGRA_POWERGATE_CPU1]	= "cpu1",
-	[TEGRA_POWERGATE_CPU2]	= "cpu2",
-	[TEGRA_POWERGATE_CPU3]	= "cpu3",
-	[TEGRA_POWERGATE_CELP]	= "celp",
-	[TEGRA_POWERGATE_3D1]	= "3d1",
-};
-
 static int powergate_show(struct seq_file *s, void *data)
 {
 	int i;
+	const char *name;
+	bool is_pg_skip;
+
+	if (!pg_ops) {
+		seq_printf(s, "This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
 
 	seq_printf(s, " powergate powered\n");
 	seq_printf(s, "------------------\n");
 
-	for (i = 0; i < tegra_num_powerdomains; i++)
-		seq_printf(s, " %9s %7s\n", powergate_name[i],
-			tegra_powergate_is_powered(i) ? "yes" : "no");
+	for (i = 0; i < pg_ops->num_powerdomains; i++) {
+		name = tegra_powergate_get_name(i);
+		if (name) {
+			is_pg_skip = tegra_powergate_check_skip_list(i);
+			seq_printf(s, " %9s %7s\n", name,
+				(is_pg_skip ? "skip" : \
+				(tegra_powergate_is_powered(i) ? \
+				"yes" : "no")));
+		}
+	}
+
 	return 0;
 }
 
@@ -258,21 +716,10 @@ int __init tegra_powergate_debugfs_init(void)
 {
 	struct dentry *d;
 
-	switch (tegra_chip_id) {
-	case TEGRA20:
-		powergate_name = powergate_name_t20;
-		break;
-	case TEGRA30:
-		powergate_name = powergate_name_t30;
-		break;
-	}
-
-	if (powergate_name) {
-		d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
-			&powergate_fops);
-		if (!d)
-			return -ENOMEM;
-	}
+	d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
+		&powergate_fops);
+	if (!d)
+		return -ENOMEM;
 
 	return 0;
 }

@@ -43,10 +43,10 @@
 #include <linux/termios.h>
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
-
+#include <linux/platform_data/serial-tegra.h>
 #include <linux/clk/tegra.h>
 
-#define TEGRA_UART_TYPE				"TEGRA_UART"
+#define TEGRA_UART_TYPE				"SERIAL_TEGRA"
 #define TX_EMPTY_STATUS				(UART_LSR_TEMT | UART_LSR_THRE)
 #define BYTES_TO_ALIGN(x)			((unsigned long)(x) & 0x3)
 
@@ -483,12 +483,15 @@ static void tegra_uart_stop_tx(struct uart_port *u)
 	struct dma_tx_state state;
 	int count;
 
-	dmaengine_terminate_all(tup->tx_dma_chan);
-	dmaengine_tx_status(tup->tx_dma_chan, tup->tx_cookie, &state);
-	count = tup->tx_bytes_requested - state.residue;
-	async_tx_ack(tup->tx_dma_desc);
-	xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
-	tup->tx_in_progress = 0;
+	if (tup->tx_in_progress == TEGRA_UART_TX_DMA) {
+		dmaengine_terminate_all(tup->tx_dma_chan);
+		dmaengine_tx_status(tup->tx_dma_chan, tup->tx_cookie, &state);
+		count = tup->tx_bytes_requested - state.residue;
+		async_tx_ack(tup->tx_dma_desc);
+		xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
+		tup->tx_in_progress = 0;
+	}
+
 	return;
 }
 
@@ -596,6 +599,7 @@ static void tegra_uart_handle_rx_dma(struct tegra_uart_port *tup)
 
 	dmaengine_terminate_all(tup->rx_dma_chan);
 	dmaengine_tx_status(tup->rx_dma_chan,  tup->rx_cookie, &state);
+	async_tx_ack(tup->rx_dma_desc);
 	count = tup->rx_bytes_requested - state.residue;
 
 	/* If we are here, DMA is stopped */
@@ -1206,7 +1210,7 @@ static struct uart_ops tegra_uart_ops = {
 
 static struct uart_driver tegra_uart_driver = {
 	.owner		= THIS_MODULE,
-	.driver_name	= "tegra_hsuart",
+	.driver_name	= "serial-hs-tegra",
 	.dev_name	= "ttyTHS",
 	.cons		= 0,
 	.nr		= TEGRA_UART_MAXIMUM,
@@ -1251,6 +1255,12 @@ struct tegra_uart_chip_data tegra30_uart_chip_data = {
 	.support_clk_src_div		= true,
 };
 
+struct tegra_uart_chip_data tegra114_uart_chip_data = {
+	.tx_fifo_full_status		= true,
+	.allow_txfifo_reset_fifo_mode	= false,
+	.support_clk_src_div		= true,
+};
+
 static struct of_device_id tegra_uart_of_match[] = {
 	{
 		.compatible	= "nvidia,tegra30-hsuart",
@@ -1258,6 +1268,18 @@ static struct of_device_id tegra_uart_of_match[] = {
 	}, {
 		.compatible	= "nvidia,tegra20-hsuart",
 		.data		= &tegra20_uart_chip_data,
+	}, {
+		.compatible     = "nvidia,tegra114-hsuart",
+		.data		= &tegra114_uart_chip_data,
+	}, {
+		.compatible	= "nvidia,tegra30-hs-serial",
+		.data		= &tegra30_uart_chip_data,
+	}, {
+		.compatible	= "nvidia,tegra20-hs-serial",
+		.data		= &tegra20_uart_chip_data,
+	}, {
+		.compatible     = "nvidia,tegra114-hs-serial",
+		.data		= &tegra114_uart_chip_data,
 	}, {
 	},
 };
@@ -1269,25 +1291,37 @@ static int tegra_uart_probe(struct platform_device *pdev)
 	struct uart_port *u;
 	struct resource *resource;
 	int ret;
-	const struct tegra_uart_chip_data *cdata;
-	const struct of_device_id *match;
+	const struct tegra_uart_chip_data *cdata = &tegra30_uart_chip_data;
+	const struct of_device_id *match = NULL;
+	struct tegra_serial_platform_data *pdata = pdev->dev.platform_data;
 
-	match = of_match_device(tegra_uart_of_match, &pdev->dev);
+	if (!pdev->dev.of_node)
+		goto board_file;
+
+	match = of_match_device(of_match_ptr(tegra_uart_of_match),
+				&pdev->dev);
 	if (!match) {
 		dev_err(&pdev->dev, "Error: No device match found\n");
 		return -ENODEV;
 	}
 	cdata = match->data;
 
+board_file:
 	tup = devm_kzalloc(&pdev->dev, sizeof(*tup), GFP_KERNEL);
 	if (!tup) {
 		dev_err(&pdev->dev, "Failed to allocate memory for tup\n");
 		return -ENOMEM;
 	}
 
-	ret = tegra_uart_parse_dt(pdev, tup);
-	if (ret < 0)
-		return ret;
+	if (match) {
+		ret = tegra_uart_parse_dt(pdev, tup);
+		if (ret < 0)
+			return ret;
+	} else {
+		tup->uport.line = pdev->id;
+		tup->enable_modem_interrupt = pdata->modem_interrupt;
+		tup->dma_req_sel = pdata->dma_req_selector;
+	}
 
 	u = &tup->uport;
 	u->dev = &pdev->dev;
@@ -1361,7 +1395,7 @@ static struct platform_driver tegra_uart_platform_driver = {
 	.remove		= tegra_uart_remove,
 	.driver		= {
 		.name	= "serial-tegra",
-		.of_match_table = tegra_uart_of_match,
+		.of_match_table = of_match_ptr(tegra_uart_of_match),
 		.pm	= &tegra_uart_pm_ops,
 	},
 };

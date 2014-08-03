@@ -30,7 +30,7 @@
 #include <linux/workqueue.h>
 
 #define THERMAL_TRIPS_NONE	-1
-#define THERMAL_MAX_TRIPS	12
+#define THERMAL_MAX_TRIPS	48
 #define THERMAL_NAME_LENGTH	20
 
 /* invalid cooling state */
@@ -175,6 +175,7 @@ struct thermal_zone_device {
 	const struct thermal_zone_device_ops *ops;
 	const struct thermal_zone_params *tzp;
 	struct thermal_governor *governor;
+	void *governor_data;
 	struct list_head thermal_instances;
 	struct idr idr;
 	struct mutex lock; /* protect thermal_instances list */
@@ -185,6 +186,16 @@ struct thermal_zone_device {
 /* Structure that holds thermal governor information */
 struct thermal_governor {
 	char name[THERMAL_NAME_LENGTH];
+
+	/*
+	 * The start and stop operations will be called when thermal zone is
+	 * registered and when change governor via sysfs. They will not be
+	 * called when cooling devices are registered or when cooling devices
+	 * are bound to thermal zones.
+	 */
+	int (*start)(struct thermal_zone_device *tz);
+	void (*stop)(struct thermal_zone_device *tz);
+
 	int (*throttle)(struct thermal_zone_device *tz, int trip);
 	struct list_head	governor_list;
 };
@@ -206,7 +217,7 @@ struct thermal_bind_params {
 	 * thermal zone and cdev, for a particular trip point.
 	 * See Documentation/thermal/sysfs-api.txt for more information.
 	 */
-	int trip_mask;
+	u64 trip_mask;
 	int (*match) (struct thermal_zone_device *tz,
 			struct thermal_cooling_device *cdev);
 };
@@ -214,6 +225,7 @@ struct thermal_bind_params {
 /* Structure to define Thermal Zone parameters */
 struct thermal_zone_params {
 	char governor_name[THERMAL_NAME_LENGTH];
+	void *governor_params;
 	int num_tbps;	/* Number of tbp entries */
 	struct thermal_bind_params *tbp;
 };
@@ -221,10 +233,11 @@ struct thermal_zone_params {
 struct thermal_genl_event {
 	u32 orig;
 	enum events event;
+	int temp;
 };
 
 /* Function declarations */
-struct thermal_zone_device *thermal_zone_device_register(const char *, int, int,
+struct thermal_zone_device *thermal_zone_device_register(const char *, int, u64,
 		void *, const struct thermal_zone_device_ops *,
 		const struct thermal_zone_params *, int, int);
 void thermal_zone_device_unregister(struct thermal_zone_device *);
@@ -241,6 +254,9 @@ struct thermal_cooling_device *thermal_cooling_device_register(char *, void *,
 void thermal_cooling_device_unregister(struct thermal_cooling_device *);
 struct thermal_zone_device *thermal_zone_get_zone_by_name(const char *name);
 int thermal_zone_get_temp(struct thermal_zone_device *tz, unsigned long *temp);
+struct thermal_zone_device *thermal_zone_device_find(void *data,
+	int (*match)(struct thermal_zone_device *, void *));
+struct thermal_zone_device *thermal_zone_device_find_by_name(const char *name);
 
 int get_tz_trend(struct thermal_zone_device *, int);
 struct thermal_instance *get_thermal_instance(struct thermal_zone_device *,
@@ -250,10 +266,10 @@ void thermal_notify_framework(struct thermal_zone_device *, int);
 
 #ifdef CONFIG_NET
 extern int thermal_generate_netlink_event(struct thermal_zone_device *tz,
-						enum events event);
+						enum events event, int temp);
 #else
 static inline int thermal_generate_netlink_event(struct thermal_zone_device *tz,
-						enum events event)
+						enum events event, int temp)
 {
 	return 0;
 }

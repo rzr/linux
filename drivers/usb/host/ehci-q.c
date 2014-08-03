@@ -319,6 +319,7 @@ qh_completions (struct ehci_hcd *ehci, struct ehci_qh *qh)
 	qh->qh_state = QH_STATE_COMPLETING;
 	stopped = (state == QH_STATE_IDLE);
 
+	ehci_sync_qh(ehci, qh);
  rescan:
 	last = NULL;
 	last_status = -EINPROGRESS;
@@ -351,6 +352,7 @@ qh_completions (struct ehci_hcd *ehci, struct ehci_qh *qh)
 		if (qtd == end)
 			break;
 
+		ehci_sync_qtd(ehci, qtd);
 		/* hardware copies qtd out of qh overlay */
 		rmb ();
 		token = hc32_to_cpu(ehci, qtd->hw_token);
@@ -994,6 +996,7 @@ static void qh_link_async (struct ehci_hcd *ehci, struct ehci_qh *qh)
 	qh->qh_state = QH_STATE_LINKED;
 	qh->xacterrs = 0;
 	qh->exception = 0;
+	wmb();
 	/* qtd completions reported later by interrupt */
 
 	enable_async(ehci);

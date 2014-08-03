@@ -100,6 +100,8 @@ source "drivers/memstick/Kconfig"
 
 source "drivers/leds/Kconfig"
 
+source "drivers/switch/Kconfig"
+
 source "drivers/accessibility/Kconfig"
 
 source "drivers/infiniband/Kconfig"
@@ -149,6 +151,8 @@ source "drivers/rpmsg/Kconfig"
 source "drivers/devfreq/Kconfig"
 
 source "drivers/extcon/Kconfig"
+
+source "drivers/mipi_bif/Kconfig"
 
 source "drivers/memory/Kconfig"
 

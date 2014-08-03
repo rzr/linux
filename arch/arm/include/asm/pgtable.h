@@ -45,6 +45,8 @@
 #define LIBRARY_TEXT_START	0x0c000000
 
 #ifndef __ASSEMBLY__
+#include <linux/spinlock.h>
+
 extern void __pte_error(const char *file, int line, pte_t);
 extern void __pmd_error(const char *file, int line, pmd_t);
 extern void __pgd_error(const char *file, int line, pgd_t);
@@ -119,7 +121,7 @@ extern pgprot_t		pgprot_s2_device;
 #define pgprot_stronglyordered(prot) \
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_UNCACHED)
 
-#ifdef CONFIG_ARM_DMA_MEM_BUFFERABLE
+#if defined(CONFIG_ARM_DMA_MEM_BUFFERABLE) && !defined(CONFIG_OUTER_CACHE)
 #define pgprot_dmacoherent(prot) \
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_BUFFERABLE | L_PTE_XN)
 #define __HAVE_PHYS_MEM_ACCESS_PROT
@@ -130,6 +132,9 @@ extern pgprot_t phys_mem_access_prot(struct file *file, unsigned long pfn,
 #define pgprot_dmacoherent(prot) \
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_UNCACHED | L_PTE_XN)
 #endif
+
+#define pgprot_inner_writeback(prot) \
+	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_INNER_WB)
 
 #endif /* __ASSEMBLY__ */
 
@@ -181,6 +186,24 @@ extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
 #define pmd_none(pmd)		(!pmd_val(pmd))
 #define pmd_present(pmd)	(pmd_val(pmd))
 
+extern spinlock_t pgd_lock;
+extern struct list_head pgd_list;
+
+pte_t *lookup_address(unsigned long address, unsigned int *level);
+enum {
+	PG_LEVEL_NONE,
+	PG_LEVEL_4K,
+	PG_LEVEL_2M,
+	PG_LEVEL_NUM
+};
+
+#ifdef CONFIG_PROC_FS
+extern void update_page_count(int level, unsigned long pages);
+#else
+static inline void update_page_count(int level, unsigned long pages) { }
+#endif
+
+
 static inline pte_t *pmd_page_vaddr(pmd_t pmd)
 {
 	return __va(pmd_val(pmd) & PHYS_MASK & (s32)PAGE_MASK);
@@ -205,6 +228,9 @@ static inline pte_t *pmd_page_vaddr(pmd_t pmd)
 
 #define pte_pfn(pte)		((pte_val(pte) & PHYS_MASK) >> PAGE_SHIFT)
 #define pfn_pte(pfn,prot)	__pte(__pfn_to_phys(pfn) | pgprot_val(prot))
+
+#define pmd_pfn(pmd)		((pmd_val(pmd) & SECTION_MASK) >> PAGE_SHIFT)
+#define pte_pgprot(pte)		((pgprot_t)(pte_val(pte) & ~PAGE_MASK))
 
 #define pte_page(pte)		pfn_to_page(pte_pfn(pte))
 #define mk_pte(page,prot)	pfn_pte(page_to_pfn(page), prot)
@@ -251,6 +277,8 @@ PTE_BIT_FUNC(mkclean,   &= ~L_PTE_DIRTY);
 PTE_BIT_FUNC(mkdirty,   |= L_PTE_DIRTY);
 PTE_BIT_FUNC(mkold,     &= ~L_PTE_YOUNG);
 PTE_BIT_FUNC(mkyoung,   |= L_PTE_YOUNG);
+PTE_BIT_FUNC(mkinvalid, &= ~L_PTE_VALID);
+PTE_BIT_FUNC(mkvalid,   |= L_PTE_VALID);
 
 static inline pte_t pte_mkspecial(pte_t pte) { return pte; }
 

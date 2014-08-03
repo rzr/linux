@@ -4,6 +4,7 @@
  * Maintainer: Alan Stern <stern@rowland.harvard.edu>
  *
  * Copyright (c) 2000-2004 by David Brownell
+ * Copyright (c) 2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,6 +40,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -178,7 +180,10 @@ static int tdi_in_host_mode (struct ehci_hcd *ehci)
 {
 	u32		tmp;
 
-	tmp = ehci_readl(ehci, &ehci->regs->usbmode);
+	if (ehci->has_hostpc)
+		tmp = ehci_readl(ehci, &ehci->regs->usbmode_ex);
+	else
+		tmp = ehci_readl(ehci, &ehci->regs->usbmode);
 	return (tmp & 3) == USBMODE_CM_HC;
 }
 
@@ -248,7 +253,10 @@ static int ehci_reset (struct ehci_hcd *ehci)
 
 	command |= CMD_RESET;
 	dbg_cmd (ehci, "reset", command);
-	ehci_writel(ehci, command, &ehci->regs->command);
+#ifdef CONFIG_USB_EHCI_TEGRA
+	if (!ehci->controller_resets_phy)
+#endif
+		ehci_writel(ehci, command, &ehci->regs->command);
 	ehci->rh_state = EHCI_RH_HALTED;
 	ehci->next_statechange = jiffies;
 	retval = handshake (ehci, &ehci->regs->command,
@@ -268,8 +276,6 @@ static int ehci_reset (struct ehci_hcd *ehci)
 	if (ehci->debug)
 		dbgp_external_startup(ehci_to_hcd(ehci));
 
-	ehci->port_c_suspend = ehci->suspended_ports =
-			ehci->resuming_ports = 0;
 	return retval;
 }
 
@@ -794,10 +800,12 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 			 * like usb_port_resume() does.
 			 */
 			ehci->reset_done[i] = jiffies + msecs_to_jiffies(25);
-			set_bit(i, &ehci->resuming_ports);
 			ehci_dbg (ehci, "port %d remote wakeup\n", i + 1);
 			usb_hcd_start_port_resume(&hcd->self, i);
 			mod_timer(&hcd->rh_timer, ehci->reset_done[i]);
+#ifdef CONFIG_USB_EHCI_TEGRA
+			ehci->controller_remote_wakeup = true;
+#endif
 		}
 	}
 

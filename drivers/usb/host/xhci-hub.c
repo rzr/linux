@@ -640,6 +640,14 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				clear_bit(wIndex, &bus_state->resuming_ports);
 				xhci_set_link_state(xhci, port_array, wIndex,
 							XDEV_U0);
+
+				/* add reset/resume recovery time of 10ms
+				 * per usb2.0 spec section 9.2.6.2
+				 */
+				spin_unlock_irqrestore(&xhci->lock, flags);
+				msleep(10);
+				spin_lock_irqsave(&xhci->lock, flags);
+
 				xhci_dbg(xhci, "set port %d resume\n",
 					wIndex + 1);
 				slot_id = xhci_find_slot_id_by_port(hcd, xhci,
@@ -1107,6 +1115,14 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 			xhci_writel(xhci, tmp, addr);
 		}
 	}
+
+	/* Wait for port enter U3 state */
+	if (bus_state->bus_suspended) {
+		spin_unlock_irqrestore(&xhci->lock, flags);
+		msleep(10);
+		spin_lock_irqsave(&xhci->lock, flags);
+	}
+
 	hcd->state = HC_STATE_SUSPENDED;
 	bus_state->next_statechange = jiffies + msecs_to_jiffies(10);
 	spin_unlock_irqrestore(&xhci->lock, flags);
@@ -1152,7 +1168,8 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 		else
 			temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		if (test_bit(port_index, &bus_state->bus_suspended) &&
-		    (temp & PORT_PLS_MASK)) {
+		    (temp & PORT_PLS_MASK) &&
+		    !test_bit(port_index, &bus_state->resuming_ports)) {
 			if (DEV_SUPERSPEED(temp)) {
 				xhci_set_link_state(xhci, port_array,
 							port_index, XDEV_U0);
@@ -1182,8 +1199,16 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 					xhci, port_index + 1);
 			if (slot_id)
 				xhci_ring_device(xhci, slot_id);
-		} else
+		} else{
 			xhci_writel(xhci, temp, port_array[port_index]);
+			/* FIXME: Remove below 20ms delay when we have correct
+			* solution for error message
+			* "xhci_bus_suspend failed -16"
+			*/
+			spin_unlock_irqrestore(&xhci->lock, flags);
+			msleep(20);
+			spin_lock_irqsave(&xhci->lock, flags);
+		}
 
 		if (hcd->speed != HCD_USB3) {
 			/* disable remote wake up for USB 2.0 */

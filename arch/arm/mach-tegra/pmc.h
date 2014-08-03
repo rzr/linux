@@ -26,10 +26,8 @@ enum tegra_suspend_mode {
 	TEGRA_MAX_SUSPEND_MODE,
 };
 
-#ifdef CONFIG_PM_SLEEP
-enum tegra_suspend_mode tegra_pmc_get_suspend_mode(void);
-void tegra_pmc_pm_set(enum tegra_suspend_mode mode);
-void tegra_pmc_suspend_init(void);
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK) && defined(CONFIG_PM_SLEEP)
+void set_power_timers(unsigned long us_on, unsigned long us_off);
 #endif
 
 bool tegra_pmc_cpu_is_powered(int cpuid);
@@ -37,5 +35,21 @@ int tegra_pmc_cpu_power_on(int cpuid);
 int tegra_pmc_cpu_remove_clamping(int cpuid);
 
 void tegra_pmc_init(void);
+
+struct pmc_pm_data {
+	u32 cpu_good_time;	/* CPU power good time in uS */
+	u32 cpu_off_time;	/* CPU power off time in uS */
+	u32 core_osc_time;	/* Core power good osc time in uS */
+	u32 core_pmu_time;	/* Core power good pmu time in uS */
+	u32 core_off_time;	/* Core power off time in uS */
+	bool corereq_high;	/* Core power request active-high */
+	bool sysclkreq_high;	/* System clock request active-high */
+	bool combined_req;	/* Combined pwr req for CPU & Core */
+	bool cpu_pwr_good_en;	/* CPU power good signal is enabled */
+	u32 lp0_vec_phy_addr;	/* The phy addr of LP0 warm boot code */
+	u32 lp0_vec_size;	/* The size of LP0 warm boot code */
+	enum tegra_suspend_mode suspend_mode;
+};
+struct pmc_pm_data *tegra_get_pm_data(void);
 
 #endif

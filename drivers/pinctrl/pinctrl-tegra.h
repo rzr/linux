@@ -1,7 +1,7 @@
 /*
  * Driver for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -15,54 +15,6 @@
 
 #ifndef __PINMUX_TEGRA_H__
 #define __PINMUX_TEGRA_H__
-
-enum tegra_pinconf_param {
-	/* argument: tegra_pinconf_pull */
-	TEGRA_PINCONF_PARAM_PULL,
-	/* argument: tegra_pinconf_tristate */
-	TEGRA_PINCONF_PARAM_TRISTATE,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_ENABLE_INPUT,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_OPEN_DRAIN,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_LOCK,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_IORESET,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_RCV_SEL,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_SCHMITT,
-	/* argument: Boolean */
-	TEGRA_PINCONF_PARAM_LOW_POWER_MODE,
-	/* argument: Integer, range is HW-dependant */
-	TEGRA_PINCONF_PARAM_DRIVE_DOWN_STRENGTH,
-	/* argument: Integer, range is HW-dependant */
-	TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH,
-	/* argument: Integer, range is HW-dependant */
-	TEGRA_PINCONF_PARAM_SLEW_RATE_FALLING,
-	/* argument: Integer, range is HW-dependant */
-	TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
-	/* argument: Integer, range is HW-dependant */
-	TEGRA_PINCONF_PARAM_DRIVE_TYPE,
-};
-
-enum tegra_pinconf_pull {
-	TEGRA_PINCONFIG_PULL_NONE,
-	TEGRA_PINCONFIG_PULL_DOWN,
-	TEGRA_PINCONFIG_PULL_UP,
-};
-
-enum tegra_pinconf_tristate {
-	TEGRA_PINCONFIG_DRIVEN,
-	TEGRA_PINCONFIG_TRISTATE,
-};
-
-#define TEGRA_PINCONF_PACK(_param_, _arg_) ((_param_) << 16 | (_arg_))
-#define TEGRA_PINCONF_UNPACK_PARAM(_conf_) ((_conf_) >> 16)
-#define TEGRA_PINCONF_UNPACK_ARG(_conf_) ((_conf_) & 0xffff)
 
 /**
  * struct tegra_function - Tegra pinctrl mux function
@@ -120,6 +72,7 @@ struct tegra_function {
  * @drvtype_reg:	Drive type fields register offset. -1 if unsupported.
  * @drvtype_bank:	Drive type fields register bank. 0 if unsupported.
  * @drvtype_bit:	Drive type register bit. 0 if unsupported.
+ * @drvtype_width:	Drive type field width. 0 if unsupported.
  *
  * A representation of a group of pins (possibly just one pin) in the Tegra
  * pin controller. Each group allows some parameter or parameters to be
@@ -134,6 +87,8 @@ struct tegra_pingroup {
 	unsigned npins;
 	unsigned funcs[4];
 	unsigned func_safe;
+	unsigned funcs_non_dt[4];
+	unsigned func_safe_non_dt;
 	s16 mux_reg;
 	s16 pupd_reg;
 	s16 tri_reg;
@@ -174,6 +129,31 @@ struct tegra_pingroup {
 	u32 drvup_width:6;
 	u32 slwr_width:6;
 	u32 slwf_width:6;
+	u32 drvtype_width:6;
+	const char *dev_id;
+};
+
+/* struct tegra_pinctrl_driver_config_data: Drive pingroup default data.
+ * @name: Name of the group;
+ * @high_speed_mode: Enable high speed mode
+ * @schmitt: Enable schimit.
+ * @low_power_mode: Low power mode value.
+ * @pull_down_strength: Pull down strength.
+ * @pull_up_strength: Pull up strength.
+ * @slew_rate_rising: Rising slew rate.
+ * @slew_rate_falling: Falling slew rate.
+ * @drive_type: Drive type.
+ */
+struct tegra_pinctrl_group_config_data {
+	const char *name;
+	int high_speed_mode;
+	int schmitt;
+	int low_power_mode;
+	int pull_down_strength;
+	int pull_up_strength;
+	int slew_rate_rising;
+	int slew_rate_falling;
+	int drive_type;
 };
 
 /**
@@ -188,6 +168,8 @@ struct tegra_pingroup {
  * @nfunctions:	The numbmer of entries in @functions.
  * @groups:	An array describing all pin groups the pin SoC supports.
  * @ngroups:	The numbmer of entries in @groups.
+ * @config_data: List of configuration data which is SoC specific.
+ * @nconfig_data: Number of config data.
  */
 struct tegra_pinctrl_soc_data {
 	unsigned ngpios;
@@ -197,10 +179,33 @@ struct tegra_pinctrl_soc_data {
 	unsigned nfunctions;
 	const struct tegra_pingroup *groups;
 	unsigned ngroups;
+	struct tegra_pinctrl_group_config_data *config_data;
+	unsigned nconfig_data;
+	int (*suspend)(u32 *pg_data);
+	void (*resume)(u32 *pg_data);
 };
 
 int tegra_pinctrl_probe(struct platform_device *pdev,
 			const struct tegra_pinctrl_soc_data *soc_data);
 int tegra_pinctrl_remove(struct platform_device *pdev);
+
+u32 tegra_pinctrl_readl(u32 bank, u32 reg);
+void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg);
+
+/* Some macro for usage */
+#define TEGRA_PINCTRL_SET_DRIVE(_name, _hsm, _schmitt, _drive,		\
+	_pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew,	\
+	_drive_type)							\
+	{								\
+		.name = "drive_"#_name,					\
+		.high_speed_mode = _hsm,				\
+		.schmitt = _schmitt,					\
+		.low_power_mode = _drive,				\
+		.pull_down_strength = _pulldn_drive,			\
+		.pull_up_strength = _pullup_drive,			\
+		.slew_rate_rising = _pullup_slew,			\
+		.slew_rate_falling = _pulldn_slew,			\
+		.drive_type = _drive_type,				\
+	}
 
 #endif

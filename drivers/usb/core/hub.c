@@ -5,7 +5,7 @@
  * (C) Copyright 1999 Johannes Erdfelt
  * (C) Copyright 1999 Gregory P. Smith
  * (C) Copyright 2001 Brad Hards (bhards@bigpond.net.au)
- *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -1259,7 +1259,7 @@ static void hub_quiesce(struct usb_hub *hub, enum hub_quiescing_type type)
 	if (type != HUB_SUSPEND) {
 		/* Disconnect all the children */
 		for (i = 0; i < hdev->maxchild; ++i) {
-			if (hub->ports[i]->child)
+			if (hub->ports[i] && hub->ports[i]->child)
 				usb_disconnect(&hub->ports[i]->child);
 		}
 	}
@@ -1648,41 +1648,6 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 
 	desc = intf->cur_altsetting;
 	hdev = interface_to_usbdev(intf);
-
-	/*
-	 * Set default autosuspend delay as 0 to speedup bus suspend,
-	 * based on the below considerations:
-	 *
-	 * - Unlike other drivers, the hub driver does not rely on the
-	 *   autosuspend delay to provide enough time to handle a wakeup
-	 *   event, and the submitted status URB is just to check future
-	 *   change on hub downstream ports, so it is safe to do it.
-	 *
-	 * - The patch might cause one or more auto supend/resume for
-	 *   below very rare devices when they are plugged into hub
-	 *   first time:
-	 *
-	 *   	devices having trouble initializing, and disconnect
-	 *   	themselves from the bus and then reconnect a second
-	 *   	or so later
-	 *
-	 *   	devices just for downloading firmware, and disconnects
-	 *   	themselves after completing it
-	 *
-	 *   For these quite rare devices, their drivers may change the
-	 *   autosuspend delay of their parent hub in the probe() to one
-	 *   appropriate value to avoid the subtle problem if someone
-	 *   does care it.
-	 *
-	 * - The patch may cause one or more auto suspend/resume on
-	 *   hub during running 'lsusb', but it is probably too
-	 *   infrequent to worry about.
-	 *
-	 * - Change autosuspend delay of hub can avoid unnecessary auto
-	 *   suspend timer for hub, also may decrease power consumption
-	 *   of USB bus.
-	 */
-	pm_runtime_set_autosuspend_delay(&hdev->dev, 0);
 
 	/* Hubs have proper suspend/resume support. */
 	usb_enable_autosuspend(hdev);
@@ -2319,10 +2284,15 @@ int usb_new_device(struct usb_device *udev)
 	pm_runtime_use_autosuspend(&udev->dev);
 	pm_runtime_enable(&udev->dev);
 
+#ifdef CONFIG_USB_EHCI_TEGRA
+	/* enable autosuspend for all connected devices on tegra */
+	usb_enable_autosuspend(udev);
+#else
 	/* By default, forbid autosuspend for all devices.  It will be
 	 * allowed for hubs during binding.
 	 */
 	usb_disable_autosuspend(udev);
+#endif
 
 	err = usb_enumerate_device(udev);	/* Read descriptors */
 	if (err < 0)

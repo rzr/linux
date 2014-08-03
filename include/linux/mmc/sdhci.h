@@ -2,6 +2,7 @@
  *  linux/include/linux/mmc/sdhci.h - Secure Digital Host Controller Interface
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
+ *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +17,14 @@
 #include <linux/types.h>
 #include <linux/io.h>
 #include <linux/mmc/host.h>
+#include <linux/sysedp.h>
 
 struct sdhci_host {
 	/* Data set by hardware interface driver */
 	const char *hw_name;	/* Hardware bus name */
+	struct dentry           *debugfs_root;
 
-	unsigned int quirks;	/* Deviations from spec. */
+	u32 quirks;	/* Deviations from spec. */
 
 /* Controller doesn't honor resets unless we touch the clock register */
 #define SDHCI_QUIRK_CLOCK_BEFORE_RESET			(1<<0)
@@ -91,10 +94,27 @@ struct sdhci_host {
 	unsigned int quirks2;	/* More deviations from spec. */
 
 #define SDHCI_QUIRK2_HOST_OFF_CARD_ON			(1<<0)
+/* Controller cannot support CMD23 */
 #define SDHCI_QUIRK2_HOST_NO_CMD23			(1<<1)
 /* The system physically doesn't support 1.8v, even if the host does */
 #define SDHCI_QUIRK2_NO_1_8_V				(1<<2)
 #define SDHCI_QUIRK2_PRESET_VALUE_BROKEN		(1<<3)
+/* Controller clock should be ON for register access */
+#define SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK		(1<<4)
+/* Controller cannot report the line status in present state register */
+#define SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING		(1<<5)
+/* Controller doesn't follow the standard frequency tuning procedure */
+#define SDHCI_QUIRK2_NON_STANDARD_TUNING		(1<<6)
+/* Controller doesn't calculate max_discard_to */
+#define SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO		(1<<7)
+/* Controller needs a dummy write after INT_CLK_EN for clock to be stable */
+#define SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE	(1<<8)
+/* Controller supports 64 BIT DMA mode */
+#define SDHCI_QUIRK2_SUPPORT_64BIT_DMA			(1<<9)
+/* Use 64 BIT addressing */
+#define SDHCI_QUIRK2_USE_64BIT_ADDR			(1<<10)
+/* delayed clock gate */
+#define SDHCI_QUIRK2_DELAYED_CLK_GATE			(1<<11)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
@@ -160,6 +180,7 @@ struct sdhci_host {
 	struct tasklet_struct finish_tasklet;
 
 	struct timer_list timer;	/* Timer for timeouts */
+	unsigned int card_int_set;	/* card int status */
 
 	u32 caps;		/* Alternative CAPABILITY_0 */
 	u32 caps1;		/* Alternative CAPABILITY_1 */
@@ -176,6 +197,16 @@ struct sdhci_host {
 #define SDHCI_TUNING_MODE_1	0
 	struct timer_list	tuning_timer;	/* Timer for tuning */
 
+	struct sysedp_consumer *sysedpc;
+
+	struct delayed_work	delayed_clk_gate_wrk;
+	bool			sdio_clk_gate_init_done;
+	bool			is_clk_on;
+
 	unsigned long private[0] ____cacheline_aligned;
 };
+
+/* callback is registered during init */
+void delayed_clk_gate_cb(struct work_struct *work);
+
 #endif /* LINUX_MMC_SDHCI_H */

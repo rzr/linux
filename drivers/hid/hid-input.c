@@ -1,6 +1,7 @@
 /*
  *  Copyright (c) 2000-2001 Vojtech Pavlik
  *  Copyright (c) 2006-2010 Jiri Kosina
+ *  Copyright (c) 2014 NVIDIA Corporation. All rights reserved.
  *
  *  HID to Linux Input mapping
  */
@@ -31,6 +32,9 @@
 
 #include <linux/hid.h>
 #include <linux/hid-debug.h>
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/hid-input.h>
 
 #include "hid-ids.h"
 
@@ -993,6 +997,8 @@ void hidinput_hid_event(struct hid_device *hid, struct hid_field *field, struct 
 	if (!usage->type)
 		return;
 
+	trace_hidinput_hid_event("hid_event");
+
 	if (usage->hat_min < usage->hat_max || usage->hat_dir) {
 		int hat_dir = usage->hat_dir;
 		if (!hat_dir)
@@ -1338,8 +1344,9 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 				 * UGCI) cram a lot of unrelated inputs into the
 				 * same interface. */
 				hidinput->report = report;
-				if (drv->input_configured)
-					drv->input_configured(hid, hidinput);
+				if (drv->input_configured &&
+				    drv->input_configured(hid, hidinput))
+					goto out_cleanup;
 				if (input_register_device(hidinput->input))
 					goto out_cleanup;
 				hidinput = NULL;
@@ -1360,8 +1367,9 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 	}
 
 	if (hidinput) {
-		if (drv->input_configured)
-			drv->input_configured(hid, hidinput);
+		if (drv->input_configured &&
+		    drv->input_configured(hid, hidinput))
+			goto out_cleanup;
 		if (input_register_device(hidinput->input))
 			goto out_cleanup;
 	}
