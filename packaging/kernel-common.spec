@@ -45,6 +45,16 @@
 %define kernel_image zImage
 %define vdso_supported 0
 %define modules_supported 0
+
+%if ( "rcar-m2" == "%{platform}" )
+%define defconfig tizen_%{platform}_defconfig
+%define trace_supported 0
+%define dtbs_supported 1
+%define uboot_supported 1
+%define loadaddr 40008000
+%define kernel_image uImage
+%endif
+
 %endif
 
 
