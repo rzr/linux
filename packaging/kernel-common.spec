@@ -5,6 +5,8 @@
 
 %define upstream_version 3.14.14
 
+%define platform sunxi
+
 %if !%{defined platform}
 %define platform default
 %endif
