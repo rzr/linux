@@ -201,6 +201,11 @@ make -s ARCH=%{kernel_arch} INSTALL_MOD_PATH=%{buildroot} modules_install KERNEL
 make -s ARCH=%{kernel_arch} INSTALL_MOD_PATH=%{buildroot} vdso_install KERNELRELEASE=%{kernel_full_version}
 %endif
 
+%if %dtbs_supported
+install -d "%{buildroot}/boot/"
+find "arch/%{kernel_arch}/" -iname "*.dtb" -exec install "{}" "%{buildroot}/boot/" \;
+%endif
+
 rm -rf %{buildroot}/lib/firmware
 
 # And save the headers/makefiles etc for building modules against
@@ -333,6 +338,9 @@ fi
 
 %if %vdso_supported
 /lib/modules/%{kernel_full_version}/vdso
+%endif
+%if %dtbs_supported
+/boot/*.dtb
 %endif
 %ghost /boot/initrd-%{kernel_full_version}.img
 
