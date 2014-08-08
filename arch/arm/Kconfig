@@ -20,6 +20,7 @@ config ARM
 	select HAVE_FUNCTION_TRACER if (!XIP_KERNEL)
 	select HAVE_GENERIC_DMA_COHERENT
 	select HAVE_KERNEL_GZIP
+	select HAVE_KERNEL_LZ4
 	select HAVE_KERNEL_LZO
 	help
 	  The ARM series is a line of low-power-consumption RISC chip designs
@@ -55,6 +56,9 @@ config GENERIC_CLOCKEVENTS_BROADCAST
 config HAVE_TCM
 	bool
 	select GENERIC_ALLOCATOR
+
+config HAVE_PROC_CPU
+	bool
 
 config NO_IOPORT
 	bool
@@ -1207,6 +1211,7 @@ config ALIGNMENT_TRAP
 	bool
 	depends on CPU_CP15_MMU
 	default y if !ARCH_EBSA110
+	select HAVE_PROC_CPU if PROC_FS
 	help
 	  ARM processors cannot fetch/store information which is not
 	  naturally aligned on the bus, i.e., a 4 byte fetch must start at an
@@ -1330,6 +1335,18 @@ config ATAGS_PROC
 	help
 	  Should the atags used to boot the kernel be exported in an "atags"
 	  file in procfs. Useful with kexec.
+
+config CRASH_DUMP
+	bool "Build kdump crash kernel (EXPERIMENTAL)"
+	depends on EXPERIMENTAL
+	help
+	  Build a kernel suitable for use as kdump capture kernel. This should
+	  be set only on dump capture kernels. Note that dump capture kernel
+	  must be loaded into different physical address than the primary kernel
+	  (e.g set PHYS_OFFSET and related mach/Makefile.boot parameters
+	  to match value given in 'crashkernel=size@start').
+
+	  For more details see Documentation/kdump/kdump.txt
 
 config PL310_ERRATA_769419
 	bool "PL310 errata: no automatic Store Buffer drain"

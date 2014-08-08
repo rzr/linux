@@ -1015,7 +1015,7 @@ struct timespec get_monotonic_coarse(void)
 #ifdef CONFIG_HIGH_RES_TIMERS
 /**
  * ktime_get_update_offsets - hrtimer helper
- * @real:	pointer to storage for monotonic -> realtime offset
+ * @real:      pointer to storage for monotonic -> realtime offset
  *
  * Returns current monotonic time and updates the offsets
  * Called from hrtimer_interupt() or retrigger_next_event()
@@ -1043,3 +1043,39 @@ ktime_t ktime_get_update_offsets(ktime_t *real)
 	return now;
 }
 #endif
+
+/**
+ * get_xtime_and_monotonic_and_sleep_offset() - get xtime, wall_to_monotonic,
+ *    and sleep offsets.
+ * @xtim:	pointer to timespec to be set with xtime
+ * @wtom:	pointer to timespec to be set with wall_to_monotonic
+ * @sleep:	pointer to timespec to be set with time in suspend
+ */
+void get_xtime_and_monotonic_and_sleep_offset(struct timespec *xtim,
+				struct timespec *wtom, struct timespec *sleep)
+{
+	unsigned long seq;
+
+	do {
+		seq = read_seqbegin(&xtime_lock);
+		*xtim = xtime_cache;
+		*wtom = wall_to_monotonic;
+		*sleep = total_sleep_time;
+	} while (read_seqretry(&xtime_lock, seq));
+}
+
+/**
+ * get_monotonic_offset() - get wall_to_monotonic
+ */
+ktime_t get_monotonic_offset(void)
+{
+	unsigned long seq;
+	struct timespec wtom;
+
+	do {
+		seq = read_seqbegin(&xtime_lock);
+		wtom = wall_to_monotonic;
+	} while (read_seqretry(&xtime_lock, seq));
+	return timespec_to_ktime(wtom);
+}
+

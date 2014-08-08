@@ -384,7 +384,7 @@ static struct attribute *veth_cnx_default_attrs[] = {
 	NULL
 };
 
-static struct sysfs_ops veth_cnx_sysfs_ops = {
+static const struct sysfs_ops veth_cnx_sysfs_ops = {
 		.show = veth_cnx_attribute_show
 };
 
@@ -441,7 +441,7 @@ static struct attribute *veth_port_default_attrs[] = {
 	NULL
 };
 
-static struct sysfs_ops veth_port_sysfs_ops = {
+static const struct sysfs_ops veth_port_sysfs_ops = {
 	.show = veth_port_attribute_show
 };
 
@@ -1384,7 +1384,7 @@ static inline void veth_build_dma_list(struct dma_chunk *list,
 	unsigned long done;
 	int i = 1;
 
-	/* FIXME: skbs are continguous in real addresses.  Do we
+	/* FIXME: skbs are contiguous in real addresses.  Do we
 	 * really need to break it into PAGE_SIZE chunks, or can we do
 	 * it just at the granularity of iSeries real->absolute
 	 * mapping?  Indeed, given the way the allocator works, can we

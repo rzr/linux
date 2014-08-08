@@ -321,7 +321,7 @@ void sb_mark_dirty(struct super_block *sb)
 	if (likely(supers_dirty))
 		return;
 	supers_dirty = 1;
-	arm_supers_timer();
+	bdi_arm_supers_timer();
 }
 EXPORT_SYMBOL_GPL(sb_mark_dirty);
 
@@ -338,7 +338,7 @@ static int bdi_sync_supers(void *unused)
 	while (!kthread_should_stop()) {
 		set_current_state(TASK_INTERRUPTIBLE);
 		if (supers_dirty)
-			arm_supers_timer();
+			bdi_arm_supers_timer();
 		schedule();
 
 		supers_dirty = 0;
@@ -454,15 +454,9 @@ static int bdi_forker_thread(void *ptr)
 		list_for_each_entry(bdi, &bdi_list, bdi_list) {
 			bool have_dirty_io;
 
-			spin_unlock_bh(&bdi_lock);
-			wait = msecs_to_jiffies(dirty_writeback_interval * 10);
-			if (wait)
-				schedule_timeout(wait);
-			else
-				schedule();
-			try_to_freeze();
-			continue;
-		}
+			if (!bdi_cap_writeback_dirty(bdi) ||
+			     bdi_cap_flush_forker(bdi))
+				continue;
 
 			WARN(!test_bit(BDI_registered, &bdi->state),
 			     "bdi %p/%s is not registered!\n", bdi, bdi->name);

@@ -648,7 +648,7 @@ static bool ieee80211_sta_manage_reorder_buf(struct ieee80211_hw *hw,
 	index = seq_sub(tid_agg_rx->head_seq_num, tid_agg_rx->ssn) %
 						tid_agg_rx->buf_size;
 	if (!tid_agg_rx->reorder_buf[index] &&
-	    tid_agg_rx->stored_mpdu_num > 1) {
+	    tid_agg_rx->stored_mpdu_num) {
 		/*
 		 * No buffers ready to be released, but check whether any
 		 * frames in the reorder buffer have timed out.
@@ -2453,26 +2453,9 @@ static void __ieee80211_rx_handle_packet(struct ieee80211_hw *hw,
 			}
 		}
 	}
-
-	/* put the frame in the reordering buffer */
-	tid_agg_rx->reorder_buf[index] = skb;
-	tid_agg_rx->reorder_time[index] = jiffies;
-	tid_agg_rx->stored_mpdu_num++;
-	/* release the buffer until next missing frame */
-	index = seq_sub(tid_agg_rx->head_seq_num, tid_agg_rx->ssn)
-						% tid_agg_rx->buf_size;
-	if (!tid_agg_rx->reorder_buf[index] &&
-	    tid_agg_rx->stored_mpdu_num) {
-		/*
-		 * No buffers ready to be released, but check whether any
-		 * frames in the reorder buffer have timed out.
-		 */
-		int j;
-		int skipped = 1;
-		for (j = (index + 1) % tid_agg_rx->buf_size; j != index;
-		     j = (j + 1) % tid_agg_rx->buf_size) {
-			if (tid_agg_rx->reorder_buf[j] == NULL) {
-				skipped++;
+	if (!found_sta) {
+		list_for_each_entry_rcu(sdata, &local->interfaces, list) {
+			if (!ieee80211_sdata_running(sdata))
 				continue;
 
 			if (sdata->vif.type == NL80211_IFTYPE_MONITOR ||

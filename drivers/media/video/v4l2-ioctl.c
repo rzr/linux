@@ -460,6 +460,9 @@ __video_usercopy(struct file *file, unsigned int cmd, unsigned long arg,
 			err = -EINVAL;
 			if (p->count > V4L2_CID_MAX_CTRLS)
 				goto out_ext_ctrl;
+			err = -EINVAL;
+			if (p->count > V4L2_CID_MAX_CTRLS)
+				goto out_ext_ctrl;
 			ctrls_size = sizeof(struct v4l2_ext_control) * p->count;
 			/* Note: v4l2_ext_controls fits in sbuf[] so mbuf is still NULL. */
 			mbuf = kmalloc(ctrls_size, GFP_KERNEL);
@@ -1952,88 +1955,6 @@ long video_ioctl2(struct file *file,
 #ifdef __OLD_VIDIOC_
 	cmd = video_fix_command(cmd);
 #endif
-	is_ext_ctrl = (cmd == VIDIOC_S_EXT_CTRLS || cmd == VIDIOC_G_EXT_CTRLS ||
-		       cmd == VIDIOC_TRY_EXT_CTRLS);
-
-	/*  Copy arguments into temp kernel buffer  */
-	if (_IOC_DIR(cmd) != _IOC_NONE) {
-		if (_IOC_SIZE(cmd) <= sizeof(sbuf)) {
-			parg = sbuf;
-		} else {
-			/* too big to allocate from stack */
-			mbuf = kmalloc(_IOC_SIZE(cmd), GFP_KERNEL);
-			if (NULL == mbuf)
-				return -ENOMEM;
-			parg = mbuf;
-		}
-
-		err = -EFAULT;
-		if (_IOC_DIR(cmd) & _IOC_WRITE) {
-			unsigned long n = cmd_input_size(cmd);
-
-			if (copy_from_user(parg, (void __user *)arg, n))
-				goto out;
-
-			/* zero out anything we don't copy from userspace */
-			if (n < _IOC_SIZE(cmd))
-				memset((u8 *)parg + n, 0, _IOC_SIZE(cmd) - n);
-		} else {
-			/* read-only ioctl */
-			memset(parg, 0, _IOC_SIZE(cmd));
-		}
-	}
-
-	if (is_ext_ctrl) {
-		struct v4l2_ext_controls *p = parg;
-
-		/* In case of an error, tell the caller that it wasn't
-		   a specific control that caused it. */
-		p->error_idx = p->count;
-		user_ptr = (void __user *)p->controls;
-		if (p->count) {
-			err = -EINVAL;
-			if (p->count > V4L2_CID_MAX_CTRLS)
-				goto out_ext_ctrl;
-			ctrls_size = sizeof(struct v4l2_ext_control) * p->count;
-			/* Note: v4l2_ext_controls fits in sbuf[] so mbuf is still NULL. */
-			mbuf = kmalloc(ctrls_size, GFP_KERNEL);
-			err = -ENOMEM;
-			if (NULL == mbuf)
-				goto out_ext_ctrl;
-			err = -EFAULT;
-			if (copy_from_user(mbuf, user_ptr, ctrls_size))
-				goto out_ext_ctrl;
-			p->controls = mbuf;
-		}
-	}
-
-	/* Handles IOCTL */
-	err = __video_do_ioctl(file, cmd, parg);
-	if (err == -ENOIOCTLCMD)
-		err = -EINVAL;
-	if (is_ext_ctrl) {
-		struct v4l2_ext_controls *p = parg;
-
-		p->controls = (void *)user_ptr;
-		if (p->count && err == 0 && copy_to_user(user_ptr, mbuf, ctrls_size))
-			err = -EFAULT;
-		goto out_ext_ctrl;
-	}
-	if (err < 0)
-		goto out;
-
-out_ext_ctrl:
-	/*  Copy results into user buffer  */
-	switch (_IOC_DIR(cmd)) {
-	case _IOC_READ:
-	case (_IOC_WRITE | _IOC_READ):
-		if (copy_to_user((void __user *)arg, parg, _IOC_SIZE(cmd)))
-			err = -EFAULT;
-		break;
-	}
-
-out:
-	kfree(mbuf);
-	return err;
+	return __video_usercopy(file, cmd, arg, __video_do_ioctl);
 }
 EXPORT_SYMBOL(video_ioctl2);

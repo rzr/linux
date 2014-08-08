@@ -898,7 +898,9 @@ static int pep_sendmsg(struct kiocb *iocb, struct sock *sk,
 	if (len > 65535)
 		return -EMSGSIZE;
 
-	if (msg->msg_flags & MSG_OOB || !(msg->msg_flags & MSG_EOR))
+	if ((msg->msg_flags & ~(MSG_DONTWAIT|MSG_EOR|MSG_NOSIGNAL|
+				MSG_CMSG_COMPAT)) ||
+			!(msg->msg_flags & MSG_EOR))
 		return -EOPNOTSUPP;
 
 	skb = sock_alloc_send_skb(sk, MAX_PNPIPE_HEADER + len,

@@ -616,11 +616,14 @@ static int hrtimer_reprogram(struct hrtimer *timer,
 	return res;
 }
 
+static void
+hrtimer_expire_cancelable(struct hrtimer_cpu_base *cpu_base, ktime_t now);
+
 static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
 {
-	ktime_t *offs_real = &base->clock_base[CLOCK_REALTIME].offset;
+        ktime_t *offs_real = &base->clock_base[CLOCK_REALTIME].offset;
 
-	return ktime_get_update_offsets(offs_real);
+        return ktime_get_update_offsets(offs_real);
 }
 
 /*
@@ -639,6 +642,7 @@ static void retrigger_next_event(void *arg)
 
 	/* Adjust CLOCK_REALTIME offset */
 	spin_lock(&base->lock);
+
 	hrtimer_update_base(base);
 	hrtimer_force_reprogram(base, 0);
 	spin_unlock(&base->lock);
@@ -688,7 +692,6 @@ static inline void hrtimer_init_hres(struct hrtimer_cpu_base *base)
 static inline void hrtimer_init_timer_hres(struct hrtimer *timer)
 {
 }
-
 
 /*
  * When High resolution timers are active, try to reprogram. Note, that in case

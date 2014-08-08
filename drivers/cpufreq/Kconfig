@@ -53,6 +53,26 @@ config CPU_FREQ_STAT_DETAILS
 
 	  If in doubt, say N.
 
+config OVERCLOCKING
+	bool "Overclocking"
+	default N
+	help
+	  This choice enables "Opptimizer", which patches the OMAP PM OPP
+	  tables on-the-fly to enable under/overclocking and under/over-
+	  volting.
+
+	  Individual kernel modules will need to be loaded as modules
+	  in the following submenu.
+
+	  NOTE that this is a Nokia N9/50 "RM696/RM680" specific option,
+	  enabling it on other devices may cause them to malfunction!
+
+	  If in doubt, say N.
+
+if OVERCLOCKING
+source "drivers/cpufreq/opptimizer/Kconfig"
+endif
+
 choice
 	prompt "Default CPUFreq governor"
 	default CPU_FREQ_DEFAULT_GOV_USERSPACE if CPU_FREQ_SA1100 || CPU_FREQ_SA1110
@@ -110,6 +130,14 @@ config CPU_FREQ_DEFAULT_GOV_CONSERVATIVE
 	  Be aware that not all cpufreq drivers support the conservative
 	  governor. If unsure have a look at the help section of the
 	  driver. Fallback governor will be the performance governor.
+
+config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
+	bool "interactive"
+	select CPU_FREQ_GOV_INTERACTIVE
+	help
+	 Use the 'interactive' governor as default. This gets full cpu frequency
+	 scaling for workloads that are latency sensitive, typically interactive
+	 workloads..
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -166,6 +194,13 @@ config CPU_FREQ_GOV_ONDEMAND
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_INTERACTIVE
+	tristate "'interactive' cpufreq policy governor"
+	help
+	 'interactive' - This driver adds a dynamic cpufreq policy governor.
+	 Designed for low latency burst workloads. Scaling it done when coming
+	 out of idle instead of polling.
 
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
