@@ -1,15 +1,95 @@
-kernel (2.6.32-20112910+0m6) maverick; urgency=low
+kernel (2.6.32-20113701.10+0m6) natty; urgency=low
 
   * This entry has been added by BIFH queue processor
-    version has been changed to 2.6.32-20112910+0m6
+    version has been changed to 2.6.32-20113701.10+0m6
 
- -- BIFH Bot <sysint@maemo.research.nokia.com>  Fri, 19 Aug 2011 14:45:35 +0300
+ -- BIFH Bot <sysint@maemo.research.nokia.com>  Tue, 25 Oct 2011 14:08:28 +0300
 
-kernel (2.6.32-20112910) maverick; urgency=low
+kernel (2.6.32-20113701.10) natty; urgency=low
 
-  * Fixes: NB#278269 - Samsung OneNand using 104 MHz clock
+  * Fixes: NB#287160 - Answering call with ACI headset (WH-205 or WH-
+    207) doesn't work
 
- -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 19 Aug 2011 14:45:34 +0300
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 25 Oct 2011 14:08:27 +0300
+
+kernel (2.6.32-20113701) natty; urgency=low
+
+  * workaround for failing Samsung OneNAND synchronous timings
+  * Fixes: NB#281525 - Samsung OneNAND synchronous timings are failing
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 12 Sep 2011 11:14:39 +0300
+
+kernel (2.6.32-20113601) natty; urgency=low
+
+  * Fixes: NB#281306 - Incorrect queue handling in MADC
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 09 Sep 2011 14:11:23 +0300
+
+kernel (2.6.32-20113402) natty; urgency=low
+
+  * Fixes: NB#277328 - Fix rfcomm tty locking in connect-disconnect loop
+
+ -- Mika Vuorela <mika.k.vuorela@nokia.com>  Fri, 26 Aug 2011 09:14:26 +0300
+
+kernel (2.6.32-20113401) natty; urgency=low
+
+  * Fixes: NB#278476 - Samsung OneNand using 104 MHz clock
+  * Fixes: NB#258557 - Fix Kernel crash on SfS image
+
+ -- Mika Vuorela <mika.k.vuorela@nokia.com>  Tue, 23 Aug 2011 12:58:30 +0300
+
+kernel (2.6.32-20113305) maverick; urgency=low
+
+  * Fixes: NB#233108 - Don't corrupt camera when video capture fails
+  * Fixes: NB#260511 - Use the upstream userspace MC API in camera
+    drivers
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 19 Aug 2011 09:42:20 +0300
+
+kernel (2.6.32-20113304) maverick; urgency=low
+
+  * Fixes: NB#276257 - cgroup freezer: restrict movement of tasks only
+    between thawed partitions
+
+  * Fixes: NB#276373 - OOM: oom killer doesn't fire under low memory
+    conditions
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 17 Aug 2011 17:31:45 +0300
+
+kernel (2.6.32-20113303) maverick; urgency=low
+
+  * Fixes: NB#265316 - Fix the bogus mod_timer() in IBSS code
+
+  * Fixes: NB#274739 - Adds missing states in task_state_array[]
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 16 Aug 2011 15:10:46 +0300
+
+kernel (2.6.32-20113302) maverick; urgency=low
+
+  * Fixes: NB#277050 - reverting improvement of NFC response time
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 16 Aug 2011 10:47:05 +0300
+
+kernel (2.6.32-20113202) maverick; urgency=low
+
+  * Fixes: NB#260249 - [TASK] Improvement of NFC response time
+
+  * Fixes: NB#244741 - Don't sleep in interrupt context in the flash
+    driver
+  * Fixes: NB#265931 - Update flash driver to the mainline V4L2 flash
+    API
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 09 Aug 2011 09:54:06 +0300
+
+kernel (2.6.32-20113201) maverick; urgency=low
+
+  * Fixes: NB#271487 - rtc-twl4030 should be statically compiled into
+    the kernel
+
+  * Fixes: NB#259141 - [TASK] Requirement: Touch controller should be
+    able to take reference and delta data from sensor
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 08 Aug 2011 11:15:17 +0300
 
 kernel (2.6.32-20112901) maverick; urgency=low
 
