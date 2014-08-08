@@ -1,16 +1,252 @@
-kernel (2.6.32-20113701.10+0m6) natty; urgency=low
+kernel (2.6.32-20115101+0m7) natty; urgency=low
 
   * This entry has been added by BIFH queue processor
-    version has been changed to 2.6.32-20113701.10+0m6
+    version has been changed to 2.6.32-20115101+0m7
 
- -- BIFH Bot <sysint@maemo.research.nokia.com>  Tue, 25 Oct 2011 14:08:28 +0300
+ -- BIFH Bot <sysint@maemo.research.nokia.com>  Thu, 22 Dec 2011 14:30:46 +0200
 
-kernel (2.6.32-20113701.10) natty; urgency=low
+kernel (2.6.32-20115101) natty; urgency=low
 
-  * Fixes: NB#287160 - Answering call with ACI headset (WH-205 or WH-
+  * Fixes: NB#291334 - camera: Recover gracefully from ISP crash instead
+    of oopsing
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Thu, 22 Dec 2011 14:30:45 +0200
+
+kernel (2.6.32-20115001) natty; urgency=low
+
+  * Fixes: NB#292572 - visible stripes in continuous capture mode
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 16 Dec 2011 09:25:04 +0200
+
+kernel (2.6.32-20114904) natty; urgency=low
+
+  * Fixes: NB#294322 - (mtdoops) OneNAND/mtdoops driver reliability
+    fixes
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 09 Dec 2011 12:19:45 +0200
+
+kernel (2.6.32-20114903) natty; urgency=low
+
+  * Fixes: NB#291325 - Regression in CITA tests with Fujinon A-sensor
+    after PWM change
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Thu, 08 Dec 2011 13:38:39 +0200
+
+kernel (2.6.32-20114902) natty; urgency=low
+
+  * Fixes: NB#293523 - COREWEB: kernel '__bug policy_open_hook
+    bridge_open chrdev_open __dentry_open'
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 07 Dec 2011 15:52:13 +0200
+
+kernel (2.6.32-20114901) natty; urgency=low
+
+  * Fixes: NB#293167 - Camera continuous capture regression
+
+ -- Alexey Fomenko <ext-alexey.fomenko@nokia.com>  Mon, 05 Dec 2011 18:07:01 +0200
+
+kernel (2.6.32-20114812) natty; urgency=low
+
+  * Fixes: NB#272455 - cgroups improvement for strace
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 02 Dec 2011 08:43:10 +0200
+
+kernel (2.6.32-20114810) natty; urgency=low
+
+  * Fixes: NB#292469 - DSI measurement code is enabled by default
+
+  * Fixes: NB#291323 - OneNAND driver should report only non-correctable
+    ECC errors
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Thu, 01 Dec 2011 09:32:49 +0200
+
+kernel (2.6.32-20114802) natty; urgency=low
+
+  * Fixes: NB#291334 - camera: Recover gracefully from ISP crash instead
+    of oopsing
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 28 Nov 2011 14:56:27 +0200
+
+kernel (2.6.32-20114801) natty; urgency=low
+
+  * Fixes: NB#286111 - Glitches in LPM, shows lockscreen in LPM
+
+  * Fixes: NB#289277 - Null pointer dereferencing in pvr
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 28 Nov 2011 09:08:06 +0200
+
+kernel (2.6.32-20114603) natty; urgency=low
+
+  * Fixes: NB#275604 - Kernel is behind the mainline
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 16 Nov 2011 15:50:42 +0200
+
+kernel (2.6.32-20114602) natty; urgency=low
+
+  * omap2: add support for 4kb page memory ECC status
+  * Fixes: NB#290378 - 4kb page OneNAND chip new ECC register layout
+    (4bit correctable errors) should be fixed
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 15 Nov 2011 13:39:13 +0200
+
+kernel (2.6.32-20114601) natty; urgency=low
+
+  * Fixes: NB#275604 - Kernel is behind the mainline [partial fix]
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 14 Nov 2011 09:59:15 +0200
+
+kernel (2.6.32-20114504) natty; urgency=low
+
+  * Fixes: NB#288541 - dspbridge: integrate the kernel side changes,
+    which fix MMU registers access faults
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Thu, 10 Nov 2011 09:46:23 +0200
+
+kernel (2.6.32-20114503) natty; urgency=low
+
+  * Fixes: NB#253768 - Enable camera lens EMI settings for AD5817 ES >=3.0
+  * Fixes: NB#253757 - Enable camera lens protection for LadaT CS >=1.1
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 09 Nov 2011 11:12:48 +0200
+
+kernel (2.6.32-20114502) natty; urgency=low
+
+  [Alexey Fomenko]
+
+  * Fixes: NB#254321 - FM radio audio playback fails on first try after
+    boot
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 08 Nov 2011 11:29:53 +0200
+
+kernel (2.6.32-20114501) natty; urgency=low
+
+  * Fixes: NB#281680 - camera: Allow modifying frame time dynamically
+
+ -- Alexey Fomenko <ext-alexey.fomenko@nokia.com>  Mon, 07 Nov 2011 11:14:33 +0200
+
+kernel (2.6.32-20114405) natty; urgency=low
+
+  * Fixes: NB#283578 - ext4 journal remounted read-only due to eMMC
+    errors
+  * Fixes: NB#264283 - APE-CMT communication fails to start sometimes
+
+ -- Alexey Fomenko <ext-alexey.fomenko@nokia.com>  Fri, 04 Nov 2011 11:10:37 +0200
+
+kernel (2.6.32-20114404) natty; urgency=low
+
+  * Fixes: NB#286588 - Led doesn't "breath" while charging and screen locked
+  * Fixes: NB#287917 - Provide enablers to make RAM chip information
+    available for the user-space
+
+ -- Alexey Fomenko <ext-alexey.fomenko@nokia.com>  Thu, 03 Nov 2011 16:37:00 +0200
+
+kernel (2.6.32-20114403) natty; urgency=low
+
+  * Fixes: NB#281278 - Denial of service vulnerability in L2CAP
+
+ -- Alexey Fomenko <ext-alexey.fomenko@nokia.com>  Wed, 02 Nov 2011 20:16:24 +0200
+
+kernel (2.6.32-20114402) natty; urgency=low
+
+  * Fixes: NB#274143 - The first incoming call can not be answered after
+    pressed the answer key once from wired headset.
+  * Fixes: NB#261760 - A NULL pointer reference in drivers/mfd/twl5031-
+    aci.c
+  * Fixes: NB#287796 - Answering call with ACI headset (WH-205 or WH-
     207) doesn't work
 
- -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 25 Oct 2011 14:08:27 +0300
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 02 Nov 2011 10:53:25 +0200
+
+kernel (2.6.32-20114105) natty; urgency=low
+
+  * Fixes: NB#257858 - Fix potential buffer overflow in nl80211 scan
+    command
+
+  * usb: gadget: file_storage: fix race on unloading
+  * Fixes: NB#285473 - Kernel panic when switching from g_file_storage
+    to g_ncm
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 14 Oct 2011 15:01:00 +0300
+
+kernel (2.6.32-20114104) natty; urgency=low
+
+  * Fixes: NB#260249 - [TASK] Improvement of NFC response time
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Thu, 13 Oct 2011 14:31:42 +0300
+
+kernel (2.6.32-20114103) natty; urgency=low
+
+  * Fixes: NB#261776 - changes for improved configuration data file
+    protection
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 12 Oct 2011 14:12:27 +0300
+
+kernel (2.6.32-20114102) natty; urgency=low
+
+  * Fixes: NB#261906 - Support cropping at the preview engine input
+  * Fixes: NB#284371 - Clear camera flash driver faults when reading
+    them
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Tue, 11 Oct 2011 10:43:54 +0300
+
+kernel (2.6.32-20114101) natty; urgency=low
+
+  * Fixes: NB#279597 - Kprobes fixes (isn't enabled, so no impact on
+    current kernel binary)
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 10 Oct 2011 14:06:47 +0300
+
+kernel (2.6.32-20114005) natty; urgency=low
+
+  * Fixes: NB#264478 - Fix incorrect accelerometer selftest parameters.
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 07 Oct 2011 13:23:13 +0300
+
+kernel (2.6.32-20114004) natty; urgency=low
+
+  * usb: gadget: f_ncm: fix error path memory leack in ncm_unwrap_ntb()
+  * Fixes: NB#284968 - leaked_storage: Variable "skb2" goes out of scope
+    in the function ncm_unwrap_ntb()
+
+  * Fixes: NB#256678 - ECI headset not always detected at boot
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Fri, 07 Oct 2011 08:46:17 +0300
+
+kernel (2.6.32-20114003) natty; urgency=low
+
+  * Fixes: NB#240701 - Important binaries can be replaced from lower
+    ranked sources
+
+  * Fixes: NB#278886 - Enable OOM-killer when moving a task to a full
+    cgroup
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Wed, 05 Oct 2011 16:06:41 +0300
+
+kernel (2.6.32-20114001) natty; urgency=low
+
+  * mtd: mtdpart: disallow reading OOB past the end of the partition
+  * Fixes: NB#282698 - mtd_oobtest reports errors due incorrect bound
+    checks
+
+  * NCM stuff for Automotive
+  * usb: gadget: eem: fix echo command processing
+  * usb: musb: HACK: enable autoclear WA for g_ether and g_ncm
+  * Fixes: NB#243380 - leaked_storage: Variable "skb2" goes out of scope
+    in the function eem_unwrap()
+  * Fixes: NB#280499 - scp large file write to device stalls when
+    g_ether used
+  * Fixes: NB#270674 - [TASK] Integrate Car Mode (NCM) related kernel
+    changes
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Mon, 03 Oct 2011 09:23:43 +0300
+
+kernel (2.6.32-20113901) natty; urgency=low
+
+  * Fixes: NB#248675 - Reference hash list to contain partition
+    information
+  * Fixes: NB#272093 - hash calculation crashes
+
+ -- Eugene Lyubimkin <ext-lyubimkin.eugene@nokia.com>  Thu, 29 Sep 2011 16:31:08 +0300
 
 kernel (2.6.32-20113701) natty; urgency=low
 
