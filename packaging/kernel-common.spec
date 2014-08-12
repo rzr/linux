@@ -270,6 +270,10 @@ mv %{buildroot}/bin/* %{buildroot}%{_bindir}
 mv %{buildroot}/libexec/* %{buildroot}%{_libexecdir}
 rm %{buildroot}/etc/bash_completion.d/perf
 
+# Dont package debug files
+rm -rf %{buildroot}/usr/lib/debug/.build-id
+rm -rf %{buildroot}/usr/lib/debug/lib/traceevent/plugins/*.debug
+
 
 
 ###
