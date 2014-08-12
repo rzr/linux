@@ -100,6 +100,20 @@ Requires(post): /usr/bin/ln
 Requires(post): /usr/bin/sort
 Requires(post): rpm
 
+# We use 'setup-scripts-bootloader-conf' in post and postun, so ideally we need to
+# have the below here, but this causes gbs/obs build failures like this:
+#    "have choice for virtual-setup-scripts-bootloader needed by kernel-x86-scripts: setup-extlinux setup-gummiboot"
+# The reason is that it will try to install the kernel to the build root, and
+# fail with the above error. To fix it one would need to add 'setup-extlinux'
+# or 'setup-gummiboot' to 'review.tizen.org/gerrit/scm/meta/build-config'. But
+# it is probably not worth the trouble, so I commented out the below two lines.
+# -- Artem
+#Requires(post): virtual-setup-scripts-bootloader
+#Requires(postun): virtual-setup-scripts-bootloader
+
+#Requires(post): setup-gummiboot
+#Requires(postun): setup-gummiboot
+
 Requires(post): /usr/sbin/depmod
 Requires(post): /usr/bin/dracut
 Requires(post): /usr/bin/kmod
@@ -283,7 +297,15 @@ rm -rf %{buildroot}/usr/lib/debug/lib/traceevent/plugins/*.debug
 %post -n kernel-%{variant}
 if [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
-	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
+	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-scripts-gummiboot-conf
+    # "/etc/installerfw-environment" does not exist in MIC environment, when it
+    # builds the image. MIC will add boot-loader entries later using the
+    # 'setup-scripts-boot' script.
+    if [ -f "/etc/installerfw-environment" ] && \
+        [ -x "/usr/sbin/setup-scripts-bootloader-conf" ]; then
+            /usr/sbin/setup-scripts-bootloader-conf add -f vmlinuz-%{kernel_full_version}
+            /usr/sbin/setup-scripts-bootloader-conf default -f vmlinuz-%{kernel_full_version}
+    fi
 else
 	# Legacy boot
 	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
@@ -312,7 +334,12 @@ fi
 %postun -n kernel-%{variant}
 if [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
-	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
+	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-scripts-gummiboot-conf
+    if [ -f "/etc/installerfw-environment" ] && \
+        [ -x "/usr/sbin/setup-scripts-bootloader-conf" ]; then
+            /usr/sbin/setup-scripts-bootloader-conf remove -f vmlinuz-%{kernel_full_version}
+    fi
+
 else
 	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
 	if [ -n "$last_installed_ver" ]; then
