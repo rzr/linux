@@ -60,9 +60,9 @@ Version: %{upstream_version}
 #%#define release_ver 0
 #%#define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 #%if ! 0%{?opensuse_bs}
-#Release: %{rc_str}.%{release_ver}.0.0
+#Release: 0
 #%else
-#Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
+#Release: 0
 #%endif
 Release: 0
 
