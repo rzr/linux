@@ -3,8 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.14.14
-
+%define upstream_version 3.4.103
 %define platform sunxi
 
 %if !%{defined platform}
@@ -60,10 +59,12 @@
 
 %if ( "sunxi" == "%{platform}" )
 %define defconfig tizen_%{platform}_defconfig
-%define dtbs_supported 1
+%define dtbs_supported 0
 %define uboot_supported 1
 %define loadaddr 0x40008000
 %define kernel_image uImage
+%define modules_supported 0
+%define trace_supported 0
 %endif
 
 %endif
@@ -194,10 +195,6 @@ counter events as well as various kernel internal events.
 # Make sure EXTRAVERSION says what we want it to say
 sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
 
-# Build perf
-make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
-make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
-
 %if %{defined loadaddr}
 export LOADADDR=%{loadaddr}
 %endif
@@ -214,6 +211,12 @@ make -s ARCH=%{kernel_arch} %{?_smp_mflags} modules
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} dtbs
 %endif
 
+# Build perf
+%__make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
+
+%if %trace_supported
+%__make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
+%endif
 
 
 ###
@@ -303,7 +306,7 @@ install -d  %{buildroot}%{_bindir}
 install -d  %{buildroot}%{_libexecdir}
 mv %{buildroot}/bin/* %{buildroot}%{_bindir}
 mv %{buildroot}/libexec/* %{buildroot}%{_libexecdir}
-rm %{buildroot}/etc/bash_completion.d/perf
+rm -rf %{buildroot}/etc/bash_completion.d/perf
 
 # Dont package debug files
 rm -rf %{buildroot}/usr/lib/debug/.build-id
