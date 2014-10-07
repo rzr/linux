@@ -1,0 +1,43 @@
+How to bump kernel version
+==========================
+
+Parameters:
+-----------
+* branch to upgrade to (example: linux-3.14.y as defined on git.kernel.org)
+* tag to upgrade to (example: v3.14.20)
+* kernel version
+
+Define variables:
+# linux_branch=linux-3.14.y
+# linux_tag=v3.14.20
+
+1. Clone linux-stable from tizen.org
+------------------------------------
+
+# git clone review.tizen.org:platform/kernel/linux-stable
+# cd linux-stable
+
+2. add kernel.org as new origin and fetch it
+--------------------------------------------
+
+# git remote add kernel_org git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
+# git fetch kernel_org
+
+3. import on upstream branch until given revision and push to tizen.org
+-----------------------------------------------------------------------
+
+# git checkout upstream
+# git rebase kernel_org/${linux_branch}
+# git push origin HEAD:upstream
+# git push --tags origin HEAD:upstream
+
+4. rebase tizen branch
+----------------------
+
+# git checkout -B tizen origin/tizen
+# git rebase -i ${linux_tag}
+
+5. Bump the kernel version in the spec file
+-------------------------------------------
+
+# sed -ri "s/^(%define upstream_version).*$/\1 $(make kernelversion)/" packaging/*.spec
