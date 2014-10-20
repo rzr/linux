@@ -1,0 +1,58 @@
+How to bump kernel for a profile
+================================
+
+1. define your profile
+----------------------
+
+# profile=common
+or
+# profile=ivi
+..
+
+
+1. Clone kernel-$profile
+------------------------
+
+# git clone review.tizen.org:profile/$profile/kernel-$profile
+# cd kernel-$profile
+
+2. add platform/upstream/linux-stable as a new remote and fetch
+---------------------------------------------------------------
+
+# git remote add linux_stable review.tizen.org:platform/kernel/linux-stable.git
+# git fetch linux_stable
+
+3. import upstream and tizen branches and push to tizen.org
+-----------------------------------------------------------
+
+# git fetch origin
+# git checkout -B upstream linux_stable/upstream
+# git push --tags origin HEAD:upstream
+# git checkout -B tizen linux_stable/tizen
+# git push --tags origin HEAD:tizen
+
+4. rebase tizen_<profile> branch
+--------------------------------
+
+# git checkout tizen_${profile}
+# git rebase origin/tizen
+# git push origin HEAD:tizen_${profile}
+
+5. Updating kernel configurations (optional)
+--------------------------------------------
+
+# function adjustconfig() {
+  arch=$1
+  platform=$2
+
+  make ARCH=$arch ${platform}_defconfig || return $?
+  make menuconfig || return $?
+  make ARCH=$arch savedefconfig || return $?
+  mv -v defconfig arch/$arch/configs/${platform}_defconfig
+}
+
+# adjustconfig x86 i386
+# adjustconfig x86 x86_64
+# adjustconfig arm vexpress
+
+
