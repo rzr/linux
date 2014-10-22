@@ -31,7 +31,6 @@ Define variables:
 
 # git checkout upstream
 # git rebase kernel_org/${linux_branch}
-# git push origin HEAD:upstream
 # git push --tags origin HEAD:upstream
 
 
@@ -46,6 +45,7 @@ Define variables:
 -------------------------------------------
 
 # sed -ri "s/^(%define upstream_version).*$/\1 $(make kernelversion)/" packaging/*.spec
+# git commit -sam "packaging: bump to $(make kernelversion)"
 
 
 6. Push the tizen branch
