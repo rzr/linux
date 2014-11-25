@@ -58,18 +58,39 @@ Define variables:
 --------------------------------------------
 
 # function adjustconfig() {
-  arch=$1
-  platform=$2
+   arch=$1
 
-  rm -f .config
-  make ARCH=$arch ${platform}_defconfig || return $?
-  make ARCH=$arch menuconfig || return $?
-  make ARCH=$arch savedefconfig || return $?
-  mv -v defconfig arch/$arch/configs/${platform}_defconfig
+   case $arch in 
+      i386|i486|i586|i686|x86)
+         cfgpath=arch/x86/configs
+         arch=i386
+         platform=i386
+         ;;
+      x86_64)
+         cfgpath=arch/x86/configs
+         arch=x86_64
+         platform=x86_64
+         ;;
+      arm|vexpress)
+         cfgpath=arch/arm/configs
+         arch=arm
+         platform=vexpress
+         ;;
+      *)
+         echo "Unknown arch"
+         return 1
+         ;;
+   esac
+
+   rm -f .config
+   make ARCH=$arch ${platform}_defconfig || return $?
+   make ARCH=$arch menuconfig || return $?
+   make ARCH=$arch savedefconfig || return $?
+   mv -v defconfig $cfgpath/${platform}_defconfig
 }
 
-# adjustconfig x86 i386
-# adjustconfig x86 x86_64
-# adjustconfig arm vexpress
+# adjustconfig x86
+# adjustconfig x86_64
+# adjustconfig arm
 
 
