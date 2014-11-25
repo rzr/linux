@@ -36,7 +36,7 @@ or
 
 # git checkout tizen_${profile}
 # git rebase origin/tizen
-# git push origin HEAD:tizen_${profile}
+# git push origin +HEAD:tizen_${profile}
 
 5. Updating kernel configurations (optional)
 --------------------------------------------
@@ -45,8 +45,9 @@ or
   arch=$1
   platform=$2
 
+  rm -f .config*
   make ARCH=$arch ${platform}_defconfig || return $?
-  make menuconfig || return $?
+  make ARCH=$arch menuconfig || return $?
   make ARCH=$arch savedefconfig || return $?
   mv -v defconfig arch/$arch/configs/${platform}_defconfig
 }
