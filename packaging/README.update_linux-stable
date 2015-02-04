@@ -3,13 +3,11 @@ How to bump kernel version
 
 Parameters:
 -----------
-* branch to upgrade to (example: linux-3.14.y as defined on git.kernel.org)
-* tag to upgrade to (example: v3.14.20)
-* kernel version
+* ltsi tag to upgrade to (example: v3.14.28-ltsi)
 
 Define variables:
-# linux_branch=linux-3.14.y
-# linux_tag=v3.14.20
+
+# ltsi_tag=v3.14.28-ltsi
 
 
 1. Clone linux-stable from tizen.org
@@ -19,32 +17,54 @@ Define variables:
 # cd linux-stable
 
 
-2. add kernel.org as new origin and fetch it
---------------------------------------------
+2. add kernel.org and LTSI as new remotes and fetch them
+------------------------------------------------------
 
 # git remote add kernel_org git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 # git fetch kernel_org
 
+# git remote add kernel_ltsi http://git.linuxfoundation.org/ltsi-kernel.git
+# git fetch kernel_ltsi
 
-3. import on upstream branch until given revision and push to tizen.org
------------------------------------------------------------------------
+3. Update LTSI branch
+---------------------
 
-# git checkout upstream
-# git rebase kernel_org/${linux_branch}
+# git checkout -B upstream_ltsi ${ltsi_tag}
+# git push --tags origin HEAD:upstream_ltsi
+
+
+3. import upstream branch, apply LTSI patches and push to tizen.org
+-------------------------------------------------------------------
+
+# tmpdir=/tmp/ltsi ; rm -rf $tmpdir && mkdir -p $tmpdir
+# git archive ${ltsi_tag} | tar Cxvf $tmpdir -
+
+# linux_tag=v$(<$tmpdir/KERNEL_VERSION)
+# linux_branch=linux-$(sed -r 's/v([0-9]+)\.([0-9]+)\.([0-9]+)$/\1.\2/' <<<$linux_tag).y
+# echo $linux_branch $linux_tag
+
+# git checkout -B ${linux_branch} ${linux_tag}
+# git push --tags origin HEAD:${linux_branch}
+
+# $tmpdir/scripts/generate_git
+# git tag ${linux_tag}+ltsi
 # git push --tags origin HEAD:upstream
 
+Optional: delete local branch created by generate_git 
+# git checkout -B upstream origin/upstream
+# git branch -D ${ltsi_tag/#v/}
 
 4. rebase tizen branch
 ----------------------
 
 # git checkout -B tizen origin/tizen
-# git rebase -i ${linux_tag}
+# git rebase -i ${linux_tag}+ltsi
 
 
 5. Bump the kernel version in the spec file
 -------------------------------------------
 
-# sed -ri "s/^(%define upstream_version).*$/\1 $(make kernelversion)/" packaging/*.spec
+# sed -ri "s/^(%define upstream_version).*$/\1 $(make kernelversion | sed 's/-ltsi$/+ltsi/')/" packaging/*.spec
 # git commit -sam "packaging: bump to $(make kernelversion)"
 
 

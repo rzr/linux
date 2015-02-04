@@ -3,7 +3,8 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.14.25
+%define extraversion +ltsi
+%define upstream_version 3.14.28%{extraversion}
 
 %if !%{defined platform}
 %define platform default
@@ -171,7 +172,7 @@ counter events as well as various kernel internal events.
 ###
 %build
 # Make sure EXTRAVERSION says what we want it to say
-sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
+sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = %{extraversion}-%{release}-%{variant}/" Makefile
 
 # Build perf
 make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
