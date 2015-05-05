@@ -298,7 +298,10 @@ rm -rf %{buildroot}/usr/lib/debug/lib/traceevent/plugins/*.debug
 %post -n kernel-%{variant}
 if [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
-	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-scripts-gummiboot-conf
+	INSTALLERFW_MOUNT_PREFIX="/" /bin/sh /usr/sbin/setup-gummiboot-conf \
+	    add -f \
+	    "%{kernel_full_version}" "%{kernel_full_version}" "vmlinuz-%{kernel_full_version}" \
+	    "$(cat /proc/cmdline)"
     # "/etc/installerfw-environment" does not exist in MIC environment, when it
     # builds the image. MIC will add boot-loader entries later using the
     # 'setup-scripts-boot' script.
@@ -335,7 +338,8 @@ fi
 %postun -n kernel-%{variant}
 if [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
-	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-scripts-gummiboot-conf
+	INSTALLERFW_MOUNT_PREFIX="/" /bin/sh /usr/sbin/setup-gummiboot-conf \
+	    remove "vmlinuz-%{kernel_full_version}"
     if [ -f "/etc/installerfw-environment" ] && \
         [ -x "/usr/sbin/setup-scripts-bootloader-conf" ]; then
             /usr/sbin/setup-scripts-bootloader-conf remove -f vmlinuz-%{kernel_full_version}
