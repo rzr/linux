@@ -122,7 +122,10 @@
 #define MPP19_GIGE              MPP(19, 0x1, 0, 0, 1,   1,   1)
 #define MPP19_UART              MPP(19, 0x0, 0, 0, 0,   1,   1)
 
-#define MPP_MAX			19
+#define MPP22_GPIO		MPP(22, 0x5, 1, 1, 0,   1,   0)
+
+
+#define MPP_MAX			22
 
 void orion5x_mpp_conf(unsigned int *mpp_list);
 
