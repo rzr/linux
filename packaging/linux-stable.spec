@@ -3,8 +3,8 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define extraversion +ltsi
-%define upstream_version 3.14.28%{extraversion}
+%define extraversion 
+%define upstream_version 4.2+rc4
 
 %if !%{defined platform}
 %define platform default
@@ -61,11 +61,11 @@ Version: %{upstream_version}
 #%#define release_ver 0
 #%#define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 #%if ! 0%{?opensuse_bs}
-#Release: 0
+#Release: 20150728.152014pcoval
 #%else
-#Release: 0
+#Release: 20150728.152014pcoval
 #%endif
-Release: 0
+Release: 20150728.152014pcoval
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
