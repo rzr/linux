@@ -61,11 +61,11 @@ Version: %{upstream_version}
 #%#define release_ver 0
 #%#define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 #%if ! 0%{?opensuse_bs}
-#Release: 20150728.152014pcoval
+#Release: 20150728.152356pcoval
 #%else
-#Release: 20150728.152014pcoval
+#Release: 20150728.152356pcoval
 #%endif
-Release: 20150728.152014pcoval
+Release: 20150728.152356pcoval
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
