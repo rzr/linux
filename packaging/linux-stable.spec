@@ -3,7 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define extraversion 
+%define extraversion ""
 %define upstream_version 4.2+rc4
 
 %if !%{defined platform}
@@ -61,11 +61,11 @@ Version: %{upstream_version}
 #%#define release_ver 0
 #%#define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 #%if ! 0%{?opensuse_bs}
-#Release: 20150728.152356pcoval
+#Release: 0
 #%else
-#Release: 20150728.152356pcoval
+#Release: 0
 #%endif
-Release: 20150728.152356pcoval
+Release: 0
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
@@ -322,6 +322,10 @@ else
 		printf "%s\n" "Output of the \"rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant}\" is:" 1>&2
 		result="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant})"
 		printf "%s\n" "$result" 1>&2
+	fi
+	if [ -x "/usr/sbin/setup-scripts-bootloader-conf" ]; then
+            /usr/sbin/setup-scripts-bootloader-conf add -f vmlinuz-%{kernel_full_version}
+            /usr/sbin/setup-scripts-bootloader-conf default -f vmlinuz-%{kernel_full_version}
 	fi
 fi
 
