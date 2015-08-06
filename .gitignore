@@ -100,4 +100,5 @@ x509.genkey
 # generated files
 defconfig
 include/linux/version.h
+samples/*/*-example
 
