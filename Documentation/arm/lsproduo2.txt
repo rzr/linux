@@ -1,1 +1,16 @@
-Status: not booting
+Status: booting
+
+Netconsole is supported
+
+    ifconfig="sudo /sbin/ifconfig"
+    iface=eth0
+    mac_address=00:50:56:3F:FF:FF
+    ip=192.168.11.1
+    $ifconfig $iface down
+    $ifconfig ${iface} hw ether ${mac_address} up
+    sudo dhclient $iface
+    ifacealias=$iface:0
+
+    $ifconfig ${ifacealias} $ip up
+    ifconfig
+    nc -u  -l -p 6666 #@Host
