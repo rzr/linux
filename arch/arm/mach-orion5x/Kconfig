@@ -95,11 +95,11 @@ config MACH_LINKSTATION_PRODUO
          is no /R3 models, as /R1 stands for RAID1.
          There are two hardware revisions of the product.
        
-         The first revision has version 1.xx firmware, 64 MB RAM, 
+         The first revision has version 1.xx firmware, 64 MB RAM,
          a single USB port, a power BUTTON, an Auto/Manual
          power MODE SWITCH, and a RESET button.
        
-         The second revision has version 3.xx firmware, 128 MB RAM, 
+         The second revision has version 3.xx firmware, 128 MB RAM,
          two USB ports, an Off/On/Auto power SWITCH, and a FUNCTION button.
 
        choice
@@ -111,14 +111,14 @@ config MACH_LINKSTATION_PRODUO
                config MACH_LINKSTATION_PRODUO_REV1
                    bool "Revision 1"
                    help
-                     The first revision has version 1.xx firmware, 64 MB RAM, 
+                     The first revision has version 1.xx firmware, 64 MB RAM,
                      a single USB port, a power BUTTON, an Auto/Manual
                      power MODE SWITCH, and a RESET button.
 
                config MACH_LINKSTATION_PRODUO_REV2
                    bool "Revision 2"
                    help
-                     The second revision has version 3.xx firmware, 128 MB RAM, 
+                     The second revision has version 3.xx firmware, 128 MB RAM,
                      two USB ports, an Off/On/Auto power SWITCH, and a FUNCTION button.
        endchoice
 
