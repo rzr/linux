@@ -1,3 +1,4 @@
+Base: v4.2-rc5
 Status: booting
 
 Netconsole is supported
