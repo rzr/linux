@@ -1,14 +1,11 @@
-Base: 3.16.7-ckt9
+Subject: Linux support for buffalo's LS-WTGL/R1 (3) (aka lsproduo2)
+URL: http://rzr.online.fr/q/lsproduo
+Contact: Philippe Coval <rzr@gna.org>
+Base: 3.16.7-ckt11
 Status: booting
 
-cat /proc/version 
-Linux version 3.16.7-ckt9-orion5x+ (rzr@lap.lan.rzr.cloudns.org) (gcc version 4.9.3 (Debian 4.9.3-3) ) #1 Tue Aug 11 21:59:11 CEST 2015
 
-cat /proc/cmdline 
-netconsole=@192.168.11.10/,@192.168.11.1/00:50:56:3f:ff:ff console=ttyS0,115200 root=/dev/sda2 rw debug ignore_loglevel log_buf_len=10M print_fatal_signals=1 LOGLEVEL=8 console=ttyS0,115200 root=/dev/sda2 rw initrd=0x00800040,15M panic=5 func=0 BOOTVER=1.13
-
-
-Netconsole is supported
+=== Netconsole ===
 
     ifconfig="sudo /sbin/ifconfig"
     iface=eth0
@@ -22,3 +19,17 @@ Netconsole is supported
     $ifconfig ${ifacealias} $ip up
     ifconfig
     nc -u  -l -p 6666 #@Host
+
+
+=== Debian ===
+
+root@debian:/boot# cat /etc/flash-kernel/db
+Machine: Buffalo Linkstation Pro Duo - Revision 2
+Kernel-Flavors: orion5x-lsproduo2
+Machine-Id: 1831
+U-Boot-Kernel-Address: 0x00008000
+U-Boot-Initrd-Address: 0x0
+Boot-Kernel-Path: /boot/uImage.buffalo
+Boot-Initrd-Path: /boot/initrd.buffalo
+Required-Packages: u-boot-tools
+Bootloader-Sets-Incorrect-Root: yes
