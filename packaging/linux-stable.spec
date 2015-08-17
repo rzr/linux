@@ -4,7 +4,7 @@
 #
 
 %define extraversion ""
-%define upstream_version 4.2+rc4
+%define upstream_version 4.2.0
 
 %if !%{defined platform}
 %define platform default
