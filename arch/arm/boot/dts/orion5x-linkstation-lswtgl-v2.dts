@@ -1,7 +1,7 @@
 /*
- * Device Tree file for Buffalo Linkstation LS-WTGL
+ * Device Tree file for Buffalo Linkstation LS-WTGL v2
  *
- * Copyright (C) 2015, Roger Shimizu <rogershimizu@gmail.com>
+ * Copyright (C) 2015, Philippe Coval <rzr@gna.org>
  *
  * This file is dual-licensed: you can use it either under the terms
  * of the GPL or the X11 license, at your option. Note that this dual
@@ -49,12 +49,12 @@
 #include "orion5x-mv88f5182.dtsi"
 
 / {
-	model = "Buffalo Linkstation LS-WTGL Revision2";
-	compatible = "buffalo,lswtgl", "marvell,orion5x-88f5182", "marvell,orion5x";
+	model = "Buffalo Linkstation Pro Duo - Revision 2";
+	compatible = "buffalo,lswtgl-v2", "marvell,orion5x-88f5182", "marvell,orion5x";
 
-	memory { /* 64 MB */
+	memory { /* 128 MB */
 		device_type = "memory";
-		reg = <0x00000000 0x4000000>;
+                reg = <0x00000000 0x8000000>;
 	};
 
 	chosen {
@@ -69,7 +69,7 @@
 
 		internal-regs {
 			pinctrl: pinctrl@10000 {
-				pinctrl-0 = <&pmx_usb_power &pmx_power_hdd
+				pinctrl-0 = <&pmx_usb0_power &pmx_usb1_power &pmx_power_hdd
 					&pmx_fan_low &pmx_fan_high &pmx_fan_lock>;
 				pinctrl-names = "default";
 
@@ -88,13 +88,23 @@
 					marvell,function = "gpio";
 				};
 
+				pmx_led_func: pmx-leds {
+					marvell,pins = "mpp18";
+					marvell,function = "gpio";
+				};
+
 				pmx_power_hdd: pmx-power-hdd {
 					marvell,pins = "mpp1";
 					marvell,function = "gpio";
 				};
 
-				pmx_usb_power: pmx-usb-power {
-					marvell,pins = "mpp9";
+				pmx_usb0_power: pmx-usb0-power {
+					marvel,pins = "mpp9";
+					marvell,function = "gpio";
+				};
+
+				pmx_usb1_power: pmx-usb1-power {
+					marvell,pins = "mpp19";
 					marvell,function = "gpio";
 				};
 
@@ -124,7 +134,12 @@
 				};
 
 				pmx_power_switch: pmx-power-switch {
-					marvell,pins = "mpp8", "mpp10";
+					marvell,pins = "mpp10", "mpp22";
+					marvell,function = "gpio";
+				};
+
+				pmx_func_button: pmx-func-button {
+					marvell,pins = "mpp8";
 					marvell,function = "gpio";
 				};
 			};
@@ -135,7 +150,7 @@
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_switch>;
+		pinctrl-0 = <&pmx_power_switch &pmx_func_button>;
 		pinctrl-names = "default";
 
 		button@1 {
@@ -154,8 +169,7 @@
 
                 button@3 {
 			label = "Function Button";
-			linux,code = <KEY_ESC>;
-			linux,input-type = <5>;
+			linux,code = <KEY_OPTION>;
 			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -163,28 +177,29 @@
 	gpio_leds {
 		compatible = "gpio-leds";
 		pinctrl-0 = <&pmx_led_power &pmx_led_alarm
-			     &pmx_led_info,&pmx_led_func>;
+			     &pmx_led_info &pmx_led_func>;
 		pinctrl-names = "default";
 
 		led@1 {
-			label = "lswtgl:blue:power";
+			label = "lswtgl-v2:green:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
 		led@2 {
-			label = "lswtgl:red:alarm";
+			label = "lswtgl-v2:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
 		led@3 {
-			label = "lswtgl:amber:info";
+			label = "lswtgl-v2:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
 
 		led@4 {
-			label = "lswtgl:blue:func";
+			label = "lswtglv2:blue:func";
 			gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 		};
+
 	};
 
 	gpio_fan {
@@ -211,19 +226,31 @@
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_hdd &pmx_usb_power>;
+		pinctrl-0 = <&pmx_power_hdd &pmx_usb0_power &pmx_usb1_power>;
 		pinctrl-names = "default";
 
-		usb_power: regulator@1 {
+		usb0_power: regulator@0 {
 			compatible = "regulator-fixed";
-			reg = <1>;
-			regulator-name = "USB Power";
+			reg = <0>;
+			regulator-name = "USB0 Power";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
 			regulator-always-on;
 			regulator-boot-on;
 			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+		};
+
+		usb1_power: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "USB1 Power";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-always-on;
+			regulator-boot-on;
+			gpios = <&gpio0 19 GPIO_ACTIVE_HIGH>;
 		};
 
 		hdd_power: regulator@2 {
