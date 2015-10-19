@@ -52,9 +52,9 @@
 	model = "Buffalo Linkstation LS-WTGL Revision2";
 	compatible = "buffalo,lswtgl", "marvell,orion5x-88f5182", "marvell,orion5x";
 
-	memory {
+	memory { /* 128 MB */
 		device_type = "memory";
-                reg = <0x00000000 0x8000000>; /* 128 MB */
+                reg = <0x00000000 0x8000000>;
 	};
 
 	chosen {
@@ -69,7 +69,7 @@
 
 		internal-regs {
 			pinctrl: pinctrl@10000 {
-				pinctrl-0 = <&pmx_usb_power &pmx_power_hdd
+				pinctrl-0 = <&pmx_usb_power1 &pmx_usb_power2  &pmx_power_hdd
 					&pmx_fan_low &pmx_fan_high &pmx_fan_lock>;
 				pinctrl-names = "default";
 
@@ -88,7 +88,7 @@
 					marvell,function = "gpio";
 				};
 
-				pmx_led_info: pmx-leds {
+				pmx_led_func: pmx-leds {
 					marvell,pins = "mpp18";
 					marvell,function = "gpio";
 				};
@@ -98,12 +98,12 @@
 					marvell,function = "gpio";
 				};
 
-				pmx_usb_power: pmx-usb-power {
+				pmx_usb_power1: pmx-usb-power1 {
 					marvell,pins = "mpp9";
 					marvell,function = "gpio";
 				};
 
-				pmx_usb2_power: pmx-usb2-power {
+				pmx_usb_power2: pmx-usb2-power2 {
 					marvell,pins = "mpp19";
 					marvell,function = "gpio";
 				};
@@ -145,7 +145,7 @@
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_buttons>;
+		pinctrl-0 = <&pmx_power_switch>; //TODO
 		pinctrl-names = "default";
 
                 funct {
@@ -175,22 +175,22 @@
 			     &pmx_led_info &pmx_led_func>;
 		pinctrl-names = "default";
 
-		power {
+		led@1 {
 			label = "lswtgl:blue:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
-		alarm {
+		led@2 {
 			label = "lswtgl:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
-		info {
+		led@3 {
 			label = "lswtgl:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
 
-		func {
+		led@4 {
 			label = "lswtgl:blue:func";
 			gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 		};
@@ -220,7 +220,7 @@
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_hdd &pmx_usb_power>;
+		pinctrl-0 = <&pmx_power_hdd &pmx_usb_power1 &pmx_usb_power2>;
 		pinctrl-names = "default";
 
 		usb_power1: regulator@1 {
