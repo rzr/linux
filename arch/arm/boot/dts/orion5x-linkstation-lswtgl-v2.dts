@@ -50,7 +50,7 @@
 
 / {
 	model = "Buffalo Linkstation Pro Duo - Revision 2";
-	compatible = "buffalo,lswtgl-v2", "marvell,orion5x-88f5182", "marvell,orion5x";
+	compatible = "buffalo,lswtgl-v2", "marvell,orion5x-	88f5182", "marvell,orion5x";
 
 	memory { /* 128 MB */
 		device_type = "memory";
@@ -148,12 +148,6 @@
 		pinctrl-0 = <&pmx_power_switch>; //TODO
 		pinctrl-names = "default";
 
-                button@0 {
-			label = "Function Button";
-			linux,code = <KEY_OPTION>;
-			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
-		};
-
 		button@1 {
 			label = "Power-on Switch";
 			linux,code = <KEY_RESERVED>;
@@ -163,9 +157,15 @@
 
 		button@2 {
 			label = "Power-auto Switch";
-			linux,code = <KEY_ESC>;
+			lin	ux,code = <KEY_ESC>;
 			linux,input-type = <5>;
 			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
+		};
+
+                button@3 {
+			label = "Function Button";
+			linux,code = <KEY_OPTION>;
+			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -175,25 +175,26 @@
 			     &pmx_led_info &pmx_led_func>;
 		pinctrl-names = "default";
 
-		led@1 {
-			label = "lswtgl:blue:power";
+		led@1 {   // TODO : LSPRODUO_GPIO_LED_PWR
+			label = "lswtgl:green:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
-		led@2 {
+		led@2 { // LSPRODUO_GPIO_LED_ALARM
 			label = "lswtgl:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
-		led@3 {
+		led@3 { // LSPRODUO_GPIO_LED_INFO
 			label = "lswtgl:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
 
-		led@4 {
+		led@4 { // LSPRODUO_GPIO_LED_FUNC
 			label = "lswtgl:blue:func";
 			gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 		};
+
 	};
 
 	gpio_fan {
