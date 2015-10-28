@@ -69,7 +69,7 @@
 
 		internal-regs {
 			pinctrl: pinctrl@10000 {
-				pinctrl-0 = <&pmx_usb_power0 &pmx_usb_power1  &pmx_power_hdd
+				pinctrl-0 = <&pmx_usb0_power &pmx_usb1_power  &pmx_power_hdd
 					&pmx_fan_low &pmx_fan_high &pmx_fan_lock>;
 				pinctrl-names = "default";
 
@@ -98,12 +98,12 @@
 					marvell,function = "gpio";
 				};
 
-				pmx_usb_power0: pmx-usb-power0 {
+				pmx_usb0_power: pmx-usb0-power {
 					marvel,pins = "mpp9";
 					marvell,function = "gpio";
 				};
 
-				pmx_usb_power1: pmx-usb-power1 {
+				pmx_usb1_power: pmx-usb1-power {
 					marvell,pins = "mpp19";
 					marvell,function = "gpio";
 				};
@@ -148,20 +148,20 @@
 		pinctrl-0 = <&pmx_power_switch>; //TODO
 		pinctrl-names = "default";
 
-                button@1 {
+                button@0 {
 			label = "Function Button";
 			linux,code = <KEY_OPTION>;
 			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		};
 
-		button@2 {
+		button@1 {
 			label = "Power-on Switch";
 			linux,code = <KEY_RESERVED>;
 			linux,input-type = <5>;
 			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
 		};
 
-		button@3 {
+		button@2 {
 			label = "Power-auto Switch";
 			linux,code = <KEY_ESC>;
 			linux,input-type = <5>;
@@ -220,13 +220,14 @@
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_hdd &pmx_usb_power0 &pmx_usb_power1>;
+		pinctrl-0 = <&pmx_power_hdd
+			     &pmx_usb0_power &pmx_usb1_power>;
 		pinctrl-names = "default";
 
-		usb_power1: regulator@1 {
+		usb0_power: regulator@0 {
 			compatible = "regulator-fixed";
-			reg = <1>;
-			regulator-name = "USB Power 1";
+			reg = <0>;
+			regulator-name = "USB0 Power";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
@@ -235,10 +236,10 @@
 			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
 		};
 
-		usb_power2: regulator@2 {
+		usb1_power: regulator@1 {
 			compatible = "regulator-fixed";
-			reg = <2>;
-			regulator-name = "USB Power 2";
+			reg = <1>;
+			regulator-name = "USB1 Power";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
@@ -247,9 +248,9 @@
 			gpios = <&gpio0 19 GPIO_ACTIVE_HIGH>;
 		};
 
-		hdd_power: regulator@3 {
+		hdd_power: regulator@2 {
 			compatible = "regulator-fixed";
-			reg = <3>;
+			reg = <2>;
 			regulator-name = "HDD Power";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
