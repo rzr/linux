@@ -137,6 +137,11 @@
 					marvell,pins = "mpp10", "mpp22";
 					marvell,function = "gpio";
 				};
+
+				pmx_func_button: pmx-func-button {
+					marvell,pins = "mpp8";
+					marvell,function = "gpio";
+				};
 			};
 		};
 	};
@@ -145,7 +150,7 @@
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_switch>; //TODO
+		pinctrl-0 = <&pmx_power_switch &pmx_func_button>; //TODO
 		pinctrl-names = "default";
 
 		button@1 {
