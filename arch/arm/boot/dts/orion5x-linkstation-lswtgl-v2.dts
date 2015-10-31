@@ -50,7 +50,7 @@
 
 / {
 	model = "Buffalo Linkstation Pro Duo - Revision 2";
-	compatible = "buffalo,lswtgl-v2", "marvell,orion5x-88f5182", "marvell,orion5x";
+	compatible = "buffalo,lswtglv2", "marvell,orion5x-88f5182", "marvell,orion5x";
 
 	memory { /* 128 MB */
 		device_type = "memory";
@@ -181,22 +181,22 @@
 		pinctrl-names = "default";
 
 		led@1 {
-			label = "lswtgl:green:power";
+			label = "lswtglv2:green:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
 		led@2 {
-			label = "lswtgl:red:alarm";
+			label = "lswtglv2:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
 		led@3 {
-			label = "lswtgl:amber:info";
+			label = "lswtglv2:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
 
 		led@4 { // LSPRODUO_GPIO_LED_FUNC
-			label = "lswtgl:blue:func";
+			label = "lswtglv2:blue:func";
 			gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 		};
 
