@@ -50,7 +50,7 @@
 
 / {
 	model = "Buffalo Linkstation Pro Duo - Revision 2";
-	compatible = "buffalo,lswtgl-v2", "marvell,orion5x-	88f5182", "marvell,orion5x";
+	compatible = "buffalo,lswtgl-v2", "marvell,orion5x-88f5182", "marvell,orion5x";
 
 	memory { /* 128 MB */
 		device_type = "memory";
