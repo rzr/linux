@@ -1,7 +1,7 @@
 /*
  * Device Tree file for Buffalo Linkstation LS-WTGL
  *
- * Copyright (C) 2015, Roger Shimizu <rogershimizu@gmail.com>
+ * Copyright (C) 2015, Philippe Coval <rzr@gna.org>
  *
  * This file is dual-licensed: you can use it either under the terms
  * of the GPL or the X11 license, at your option. Note that this dual
@@ -69,7 +69,7 @@
 
 		internal-regs {
 			pinctrl: pinctrl@10000 {
-				pinctrl-0 = <&pmx_usb0_power &pmx_usb1_power  &pmx_power_hdd
+				pinctrl-0 = <&pmx_usb0_power &pmx_usb1_power &pmx_power_hdd
 					&pmx_fan_low &pmx_fan_high &pmx_fan_lock>;
 				pinctrl-names = "default";
 
@@ -181,21 +181,21 @@
 		pinctrl-names = "default";
 
 		led@1 {
-			label = "lswtglv2:green:power";
+			label = "lswtgl-v2:green:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
 		led@2 {
-			label = "lswtglv2:red:alarm";
+			label = "lswtgl-v2:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
 		led@3 {
-			label = "lswtglv2:amber:info";
+			label = "lswtgl-v2:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
 
-		led@4 { // LSPRODUO_GPIO_LED_FUNC
+		led@4 {
 			label = "lswtglv2:blue:func";
 			gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 		};
@@ -226,8 +226,7 @@
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_hdd
-			     &pmx_usb0_power &pmx_usb1_power>;
+		pinctrl-0 = <&pmx_power_hdd &pmx_usb0_power &pmx_usb1_power>;
 		pinctrl-names = "default";
 
 		usb0_power: regulator@0 {
