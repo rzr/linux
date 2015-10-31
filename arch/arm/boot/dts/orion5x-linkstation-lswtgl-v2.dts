@@ -162,7 +162,7 @@
 
 		button@2 {
 			label = "Power-auto Switch";
-			lin	ux,code = <KEY_ESC>;
+			linux,code = <KEY_ESC>;
 			linux,input-type = <5>;
 			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
 		};
