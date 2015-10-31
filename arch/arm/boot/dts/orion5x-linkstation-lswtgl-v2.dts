@@ -150,7 +150,7 @@
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pinctrl-0 = <&pmx_power_switch &pmx_func_button>; //TODO
+		pinctrl-0 = <&pmx_power_switch &pmx_func_button>;
 		pinctrl-names = "default";
 
 		button@1 {
@@ -180,17 +180,17 @@
 			     &pmx_led_info &pmx_led_func>;
 		pinctrl-names = "default";
 
-		led@1 {   // TODO : LSPRODUO_GPIO_LED_PWR
+		led@1 {
 			label = "lswtgl:green:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
-		led@2 { // LSPRODUO_GPIO_LED_ALARM
+		led@2 {
 			label = "lswtgl:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
-		led@3 { // LSPRODUO_GPIO_LED_INFO
+		led@3 {
 			label = "lswtgl:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
