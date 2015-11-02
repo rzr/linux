@@ -58,7 +58,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,115200n8 earlyprintk";
+		bootargs = "netconsole=@192.168.11.10/,@192.168.11.1/00:50:56:3f:00:1d console=ttyS0,115200 root=/dev/sda2 rw initrd=0x00800040,15M panic=5 func=0 BOOTVER=1.13";
 		linux,stdout-path = &uart0;
 	};
 
@@ -181,22 +181,22 @@
 		pinctrl-names = "default";
 
 		led@1 {
-			label = "lswtgl-v2:green:power";
+			label = "lswtgl:green:power";
 			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
 		led@2 {
-			label = "lswtgl-v2:red:alarm";
+			label = "lswtgl:red:alarm";
 			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 
 		led@3 {
-			label = "lswtgl-v2:amber:info";
+			label = "lswtgl:amber:info";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
 
 		led@4 {
-			label = "lswtglv2:blue:func";
+			label = "lswtgl:blue:func";
 			gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
 		};
 
