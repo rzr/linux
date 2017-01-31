@@ -511,6 +511,17 @@ config NSC_GPIO
 	  pc8736x_gpio drivers.  If those drivers are built as
 	  modules, this one will be too, named nsc_gpio
 
+config AM335X_GPIO
+	tristate "AM335x GPIO Support"
+	default y
+	# selected by SCx200_GPIO and PC8736x_GPIO
+	# what about 2 selectors differing: m != y
+	help
+	  Common support used (and needed) by scx200_gpio and
+	  pc8736x_gpio drivers.  If those drivers are built as
+	  modules, this one will be too, named nsc_gpio
+
+
 config RAW_DRIVER
 	tristate "RAW driver (/dev/raw/rawN)"
 	depends on BLOCK

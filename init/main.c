@@ -204,8 +204,15 @@ static int __init quiet_kernel(char *str)
 	return 0;
 }
 
+static int __init verbose_kernel(char *str)
+{
+    console_loglevel = 7;
+    return 0;
+}
+
 early_param("debug", debug_kernel);
 early_param("quiet", quiet_kernel);
+early_param("verbose", verbose_kernel);
 
 static int __init loglevel(char *str)
 {

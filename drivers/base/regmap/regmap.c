@@ -407,31 +407,43 @@ int regmap_bulk_write(struct regmap *map, unsigned int reg, const void *val,
 		     size_t val_count)
 {
 	int ret = 0, i;
+	unsigned int ival;
 	size_t val_bytes = map->format.val_bytes;
-	void *wval;
-
-	if (!map->format.parse_val)
-		return -EINVAL;
 
 	mutex_lock(&map->lock);
 
-	/* No formatting is require if val_byte is 1 */
-	if (val_bytes == 1) {
-		wval = (void *)val;
-	} else {
-		wval = kmemdup(val, val_count * val_bytes, GFP_KERNEL);
-		if (!wval) {
-			ret = -ENOMEM;
-			dev_err(map->dev, "Error in memory allocation\n");
-			goto out;
+	if (map->format.parse_val) {
+		void *wval;
+		/* No formatting is require if val_byte is 1 */
+		if (val_bytes == 1) {
+			wval = (void *)val;
+		} else {
+			wval = kmemdup(val, val_count * val_bytes, GFP_KERNEL);
+			if (!wval) {
+				ret = -ENOMEM;
+				dev_err(map->dev,
+					"Error in memory allocation\n");
+				goto out;
+			}
+			for (i = 0; i < val_count * val_bytes; i += val_bytes)
+				map->format.parse_val(wval + i);
 		}
-		for (i = 0; i < val_count * val_bytes; i += val_bytes)
-			map->format.parse_val(wval + i);
-	}
-	ret = _regmap_raw_write(map, reg, wval, val_bytes * val_count);
+		ret = _regmap_raw_write(map, reg, wval, val_bytes * val_count);
 
-	if (val_bytes != 1)
-		kfree(wval);
+		if (val_bytes != 1)
+			kfree(wval);
+	} else {
+		for (i = 0; i < val_count; i++) {
+			memcpy(&ival, val + (i * val_bytes), val_bytes);
+			ret = _regmap_write(map, reg + i, ival);
+			if (ret) {
+				dev_err(map->dev,
+				    "Error in register %u write, ret %d\n",
+						reg + i, ret);
+				break;
+			}
+		}
+	}
 
 out:
 	mutex_unlock(&map->lock);

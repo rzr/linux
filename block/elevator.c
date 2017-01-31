@@ -620,9 +620,9 @@ void elv_requeue_request(struct request_queue *q, struct request *rq)
 	}
 
 	rq->cmd_flags &= ~REQ_STARTED;
-
+#ifdef CONFIG_PM_RUNTIME
 	blk_pm_requeue_request(rq);
-
+#endif
 	__elv_add_request(q, rq, ELEVATOR_INSERT_REQUEUE);
 }
 
@@ -663,9 +663,9 @@ void elv_quiesce_end(struct request_queue *q)
 void __elv_add_request(struct request_queue *q, struct request *rq, int where)
 {
 	trace_block_rq_insert(q, rq);
-
+#ifdef CONFIG_PM_RUNTIME
 	blk_pm_add_request(q, rq);
-
+#endif
 	rq->q = q;
 
 	if (rq->cmd_flags & REQ_SOFTBARRIER) {

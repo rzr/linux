@@ -250,6 +250,9 @@ static int rpm_idle(struct device *dev, int rpmflags)
 	else
 		callback = NULL;
 
+	if (!callback && dev->driver && dev->driver->pm)
+		callback = dev->driver->pm->runtime_idle;
+
 	if (callback)
 		__rpm_callback(callback, dev);
 
@@ -385,7 +388,6 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 		goto repeat;
 	}
 
-	dev->power.deferred_resume = false;
 	if (dev->power.no_callbacks)
 		goto no_callback;	/* Assume success. */
 
@@ -413,28 +415,13 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 	else
 		callback = NULL;
 
-	retval = rpm_callback(callback, dev);
-	if (retval) {
-		__update_runtime_status(dev, RPM_ACTIVE);
-		dev->power.deferred_resume = false;
-		if (retval == -EAGAIN || retval == -EBUSY) {
-			dev->power.runtime_error = 0;
+	if (!callback && dev->driver && dev->driver->pm)
+		callback = dev->driver->pm->runtime_suspend;
 
-			/*
-			 * If the callback routine failed an autosuspend, and
-			 * if the last_busy time has been updated so that there
-			 * is a new autosuspend expiration time, automatically
-			 * reschedule another autosuspend.
-			 */
-			if ((rpmflags & RPM_AUTO) &&
-			    pm_runtime_autosuspend_expiration(dev) != 0)
-				goto repeat;
-		} else {
-			pm_runtime_cancel_pending(dev);
-		}
-		wake_up_all(&dev->power.wait_queue);
-		goto out;
-	}
+	retval = rpm_callback(callback, dev);
+	if (retval)
+		goto fail;
+
  no_callback:
 	__update_runtime_status(dev, RPM_SUSPENDED);
 	pm_runtime_deactivate_timer(dev);
@@ -446,6 +433,7 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 	wake_up_all(&dev->power.wait_queue);
 
 	if (dev->power.deferred_resume) {
+		dev->power.deferred_resume = false;
 		rpm_resume(dev, 0);
 		retval = -EAGAIN;
 		goto out;
@@ -466,6 +454,28 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 	trace_rpm_return_int(dev, _THIS_IP_, retval);
 
 	return retval;
+
+ fail:
+	__update_runtime_status(dev, RPM_ACTIVE);
+	dev->power.deferred_resume = false;
+	wake_up_all(&dev->power.wait_queue);
+
+	if (retval == -EAGAIN || retval == -EBUSY) {
+		dev->power.runtime_error = 0;
+
+		/*
+		 * If the callback routine failed an autosuspend, and
+		 * if the last_busy time has been updated so that there
+		 * is a new autosuspend expiration time, automatically
+		 * reschedule another autosuspend.
+		 */
+		if ((rpmflags & RPM_AUTO) &&
+		    pm_runtime_autosuspend_expiration(dev) != 0)
+			goto repeat;
+	} else {
+		pm_runtime_cancel_pending(dev);
+	}
+	goto out;
 }
 
 /**
@@ -497,6 +507,9 @@ static int rpm_resume(struct device *dev, int rpmflags)
  repeat:
 	if (dev->power.runtime_error)
 		retval = -EINVAL;
+	else if (dev->power.disable_depth == 1 && dev->power.is_suspended
+	    && dev->power.runtime_status == RPM_ACTIVE)
+		retval = 1;
 	else if (dev->power.disable_depth > 0)
 		retval = -EACCES;
 	if (retval)
@@ -568,6 +581,7 @@ static int rpm_resume(struct device *dev, int rpmflags)
 		    || dev->parent->power.runtime_status == RPM_ACTIVE) {
 			atomic_inc(&dev->parent->power.child_count);
 			spin_unlock(&dev->parent->power.lock);
+			retval = 1;
 			goto no_callback;	/* Assume success. */
 		}
 		spin_unlock(&dev->parent->power.lock);
@@ -633,6 +647,9 @@ static int rpm_resume(struct device *dev, int rpmflags)
 	else
 		callback = NULL;
 
+	if (!callback && dev->driver && dev->driver->pm)
+		callback = dev->driver->pm->runtime_resume;
+
 	retval = rpm_callback(callback, dev);
 	if (retval) {
 		__update_runtime_status(dev, RPM_SUSPENDED);
@@ -645,7 +662,7 @@ static int rpm_resume(struct device *dev, int rpmflags)
 	}
 	wake_up_all(&dev->power.wait_queue);
 
-	if (!retval)
+	if (retval >= 0)
 		rpm_idle(dev, RPM_ASYNC);
 
  out:

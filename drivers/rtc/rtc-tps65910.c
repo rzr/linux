@@ -255,21 +255,21 @@ static int __devinit tps65910_rtc_probe(struct platform_device *pdev)
 
 	pmic_plat_data = dev_get_platdata(tps65910->dev);
 	irq = pmic_plat_data->irq_base;
-	if (irq <= 0) {
-		dev_warn(&pdev->dev, "Wake up is not possible as irq = %d\n",
-			irq);
-		return ret;
-	}
+	//if (irq <= 0) {
+	//	dev_warn(&pdev->dev, "Wake up is not possible as irq = %d\n",
+	//		irq);
+	//	return ret;
+	//}
 
-	irq += TPS65910_IRQ_RTC_ALARM;
-	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
-		tps65910_rtc_interrupt, IRQF_TRIGGER_LOW,
-		dev_name(&tps_rtc->rtc->dev), &pdev->dev);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "IRQ is not free.\n");
-		return ret;
-	}
-	device_init_wakeup(&pdev->dev, 1);
+	//irq += TPS65910_IRQ_RTC_ALARM;
+	//ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+	//	tps65910_rtc_interrupt, IRQF_TRIGGER_LOW,
+	//	"rtc-tps65910", &pdev->dev);
+	//if (ret < 0) {
+	//	dev_err(&pdev->dev, "IRQ is not free.\n");
+	//	return ret;
+	//}
+	//device_init_wakeup(&pdev->dev, 1);
 
 	tps_rtc->rtc = rtc_device_register(pdev->name, &pdev->dev,
 		&tps65910_rtc_ops, THIS_MODULE);
@@ -299,8 +299,8 @@ static int __devexit tps65910_rtc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#if 0
 #ifdef CONFIG_PM_SLEEP
-
 static int tps65910_rtc_suspend(struct platform_device *pdev,
 		pm_message_t state)
 {
@@ -310,7 +310,7 @@ static int tps65910_rtc_suspend(struct platform_device *pdev,
 
 	/* Store current list of enabled interrupts*/
 	ret = regmap_read(tps->regmap, TPS65910_RTC_INTERRUPTS,
-		&tps->rtc.irqstat);
+		&tps->rtc->irqstat);
 	if (ret < 0)
 		return ret;
 
@@ -324,7 +324,7 @@ static int tps65910_rtc_resume(struct platform_device *pdev)
 
 	/* Restore list of enabled interrupts before suspend */
 	return regmap_write(tps->regmap, TPS65910_RTC_INTERRUPTS,
-		tps->rtc.irqstat);
+		tps->rtc->irqstat);
 }
 
 static const struct dev_pm_ops tps65910_rtc_pm_ops = {
@@ -336,6 +336,7 @@ static const struct dev_pm_ops tps65910_rtc_pm_ops = {
 #else
 #define DEV_PM_OPS     NULL
 #endif
+#endif
 
 static struct platform_driver tps65910rtc_driver = {
 	.probe		= tps65910_rtc_probe,
@@ -343,7 +344,7 @@ static struct platform_driver tps65910rtc_driver = {
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "tps65910-rtc",
-		.pm	= DEV_PM_OPS,
+		/*.pm	= DEV_PM_OPS,*/
 	},
 };
 
