@@ -139,6 +139,19 @@ config HW_RANDOM_OMAP
 
  	  If unsure, say Y.
 
+config HW_RANDOM_OMAP4
+	tristate "OMAP4 Random Number Generator support"
+	depends on HW_RANDOM && SOC_OMAPAM33XX
+	default HW_RANDOM
+	---help---
+	  This driver provides kernel-side support for the Random Number
+	  Generator hardware found on OMAP4 derived processors.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called omap4-rng.
+
+	  If unsure, say Y.
+
 config HW_RANDOM_OCTEON
 	tristate "Octeon Random Number Generator support"
 	depends on HW_RANDOM && CPU_CAVIUM_OCTEON

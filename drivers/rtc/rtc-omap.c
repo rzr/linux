@@ -19,7 +19,9 @@
 #include <linux/delay.h>
 #include <linux/rtc.h>
 #include <linux/bcd.h>
+#include <linux/rtc/rtc-omap.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 
 #include <asm/io.h>
 
@@ -37,6 +39,8 @@
  * low power modes) for OMAP1 boards (OMAP-L138 has this built into
  * the SoC). See the BOARD-SPECIFIC CUSTOMIZATION comment.
  */
+
+#define DRIVER_NAME			"omap_rtc"
 
 #define OMAP_RTC_BASE			0xfffb4800
 
@@ -64,6 +68,16 @@
 #define OMAP_RTC_COMP_MSB_REG		0x50
 #define OMAP_RTC_OSC_REG		0x54
 
+#define OMAP_RTC_ALARM2_SECONDS_REG	0x80
+#define OMAP_RTC_ALARM2_MINUTES_REG	0x84
+#define OMAP_RTC_ALARM2_HOURS_REG	0x88
+#define OMAP_RTC_ALARM2_DAYS_REG	0x8c
+#define OMAP_RTC_ALARM2_MONTHS_REG	0x90
+#define OMAP_RTC_ALARM2_YEARS_REG	0x94
+#define OMAP_RTC_PMIC_REG		0x98
+
+#define OMAP_RTC_IRQWAKEEN		0x7C
+
 /* OMAP_RTC_CTRL_REG bit fields: */
 #define OMAP_RTC_CTRL_SPLIT		(1<<7)
 #define OMAP_RTC_CTRL_DISABLE		(1<<6)
@@ -85,8 +99,26 @@
 #define OMAP_RTC_STATUS_BUSY            (1<<0)
 
 /* OMAP_RTC_INTERRUPTS_REG bit fields: */
+#define OMAP_RTC_INTERRUPTS_IT_ALARM2	(1<<4)
 #define OMAP_RTC_INTERRUPTS_IT_ALARM    (1<<3)
 #define OMAP_RTC_INTERRUPTS_IT_TIMER    (1<<2)
+
+/* OMAP_RTC_PMIC_REG bit fields: */
+#define OMAP_RTC_PMIC_POWER_EN_EN	(1<<16)
+
+#define SHUTDOWN_TIME_SEC		2
+#define SECS_IN_MIN			60
+#define WAIT_AFTER			(SECS_IN_MIN - SHUTDOWN_TIME_SEC)
+#define WAIT_TIME_MS			(SHUTDOWN_TIME_SEC * 1000)
+
+/* OMAP_RTC_IRQWAKEEN bit fields: */
+#define OMAP_RTC_IRQWAKEEN_ALARM_WAKEEN    (1<<1)
+
+/*
+ * Few RTC IP revision has special WAKEEN Register to enable Wakeup
+ * generation for event Alarm.
+ */
+#define	OMAP_RTC_HAS_IRQWAKEEN		0x2
 
 static void __iomem	*rtc_base;
 
@@ -274,6 +306,53 @@ static int omap_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	return 0;
 }
 
+/*
+ * rtc_power_off: Set the pmic power off sequence. The RTC generates
+ * pmic_pwr_enable control, which can be used to control an external
+ * PMIC.
+ */
+static void rtc_power_off(void)
+{
+	u32 val;
+	struct rtc_time tm;
+
+	/* Set PMIC power enable */
+	val = readl(rtc_base + OMAP_RTC_PMIC_REG);
+	writel(val | OMAP_RTC_PMIC_POWER_EN_EN, rtc_base + OMAP_RTC_PMIC_REG);
+
+	/* Wait few seconds instead of rollover */
+	do {
+		omap_rtc_read_time(NULL, &tm);
+		if (WAIT_AFTER <= tm.tm_sec)
+			mdelay(WAIT_TIME_MS);
+	} while (WAIT_AFTER <= tm.tm_sec);
+
+	/* Add shutdown time to the current value */
+	tm.tm_sec += SHUTDOWN_TIME_SEC;
+
+	if (tm2bcd(&tm) < 0)
+		return;
+
+	pr_info("System will go to power_off state in approx. %d secs\n",
+			SHUTDOWN_TIME_SEC);
+
+	/* Set the ALARM2 time */
+	rtc_write(tm.tm_sec, OMAP_RTC_ALARM2_SECONDS_REG);
+	rtc_write(tm.tm_min, OMAP_RTC_ALARM2_MINUTES_REG);
+	rtc_write(tm.tm_hour, OMAP_RTC_ALARM2_HOURS_REG);
+	rtc_write(tm.tm_mday, OMAP_RTC_ALARM2_DAYS_REG);
+	rtc_write(tm.tm_mon, OMAP_RTC_ALARM2_MONTHS_REG);
+	rtc_write(tm.tm_year, OMAP_RTC_ALARM2_YEARS_REG);
+
+	/* Enable alarm2 interrupt */
+	val = readl(rtc_base + OMAP_RTC_INTERRUPTS_REG);
+	writel(val | OMAP_RTC_INTERRUPTS_IT_ALARM2,
+				rtc_base + OMAP_RTC_INTERRUPTS_REG);
+
+	/* Do not allow to execute any other task */
+	while (1);
+}
+
 static struct rtc_class_ops omap_rtc_ops = {
 	.read_time	= omap_rtc_read_time,
 	.set_time	= omap_rtc_set_time,
@@ -285,8 +364,20 @@ static struct rtc_class_ops omap_rtc_ops = {
 static int omap_rtc_alarm;
 static int omap_rtc_timer;
 
+static struct platform_device_id omap_rtc_devtype[] = {
+	{
+		.name	= DRIVER_NAME,
+	}, {
+		.name	= "am33xx-rtc",
+		.driver_data = OMAP_RTC_HAS_IRQWAKEEN,
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(platform, omap_rtc_devtype);
+
 static int __init omap_rtc_probe(struct platform_device *pdev)
 {
+	struct omap_rtc_pdata	*pdata = pdev->dev.platform_data;
 	struct resource		*res, *mem;
 	struct rtc_device	*rtc;
 	u8			reg, new_ctrl;
@@ -322,6 +413,10 @@ static int __init omap_rtc_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
+	/* Enable the clock/module so that we can access the registers */
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
+
 	rtc = rtc_device_register(pdev->name, &pdev->dev,
 			&omap_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc)) {
@@ -331,6 +426,10 @@ static int __init omap_rtc_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, rtc);
 	dev_set_drvdata(&rtc->dev, mem);
+
+	/* RTC power off */
+	if (pdata && pdata->pm_off && !pm_power_off)
+		pm_power_off = rtc_power_off;
 
 	/* clear pending irqs, and set 1/second periodic,
 	 * which we'll use instead of update irqs
@@ -391,6 +490,9 @@ static int __init omap_rtc_probe(struct platform_device *pdev)
 	if (reg != new_ctrl)
 		rtc_write(new_ctrl, OMAP_RTC_CTRL_REG);
 
+	if (pdata->wakeup_capable)
+		device_init_wakeup(&pdev->dev, 1);
+
 	return 0;
 
 fail2:
@@ -398,6 +500,8 @@ fail2:
 fail1:
 	rtc_device_unregister(rtc);
 fail0:
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	iounmap(rtc_base);
 fail:
 	release_mem_region(mem->start, resource_size(mem));
@@ -420,6 +524,11 @@ static int __exit omap_rtc_remove(struct platform_device *pdev)
 		free_irq(omap_rtc_alarm, rtc);
 
 	rtc_device_unregister(rtc);
+
+	/* Disable the clock/module */
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
+
 	iounmap(rtc_base);
 	release_mem_region(mem->start, resource_size(mem));
 	return 0;
@@ -431,26 +540,54 @@ static u8 irqstat;
 
 static int omap_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	u8 irqwake_stat;
+	const struct platform_device_id *id_entry =
+				platform_get_device_id(pdev);
+
 	irqstat = rtc_read(OMAP_RTC_INTERRUPTS_REG);
 
 	/* FIXME the RTC alarm is not currently acting as a wakeup event
 	 * source, and in fact this enable() call is just saving a flag
 	 * that's never used...
 	 */
-	if (device_may_wakeup(&pdev->dev))
+	if (device_may_wakeup(&pdev->dev)) {
 		enable_irq_wake(omap_rtc_alarm);
-	else
+
+		if (id_entry->driver_data & OMAP_RTC_HAS_IRQWAKEEN) {
+			irqwake_stat = rtc_read(OMAP_RTC_IRQWAKEEN);
+			irqwake_stat |= OMAP_RTC_IRQWAKEEN_ALARM_WAKEEN;
+			rtc_write(irqwake_stat, OMAP_RTC_IRQWAKEEN);
+		}
+	} else {
 		rtc_write(0, OMAP_RTC_INTERRUPTS_REG);
+	}
+
+	/* Disable the clock/module */
+	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
 }
 
 static int omap_rtc_resume(struct platform_device *pdev)
 {
-	if (device_may_wakeup(&pdev->dev))
+	u8 irqwake_stat;
+	const struct platform_device_id *id_entry =
+				platform_get_device_id(pdev);
+
+	/* Enable the clock/module so that we can access the registers */
+	pm_runtime_get_sync(&pdev->dev);
+
+	if (device_may_wakeup(&pdev->dev)) {
 		disable_irq_wake(omap_rtc_alarm);
-	else
+
+		if (id_entry->driver_data & OMAP_RTC_HAS_IRQWAKEEN) {
+			irqwake_stat = rtc_read(OMAP_RTC_IRQWAKEEN);
+			irqwake_stat &= ~OMAP_RTC_IRQWAKEEN_ALARM_WAKEEN;
+			rtc_write(irqwake_stat, OMAP_RTC_IRQWAKEEN);
+		}
+	} else {
 		rtc_write(irqstat, OMAP_RTC_INTERRUPTS_REG);
+	}
 	return 0;
 }
 
@@ -471,9 +608,10 @@ static struct platform_driver omap_rtc_driver = {
 	.resume		= omap_rtc_resume,
 	.shutdown	= omap_rtc_shutdown,
 	.driver		= {
-		.name	= "omap_rtc",
+		.name	= DRIVER_NAME,
 		.owner	= THIS_MODULE,
 	},
+	.id_table	= omap_rtc_devtype,
 };
 
 static int __init rtc_init(void)

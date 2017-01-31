@@ -3,8 +3,15 @@
 #
 
 # Common support
-obj-y := common.o sram.o clock.o devices.o dma.o mux.o \
-	 usb.o fb.o io.o counter_32k.o
+obj-y := common.o sram.o clock.o devices.o mux.o \
+	 usb.o fb.o counter_32k.o
+
+ifeq ($(CONFIG_OMAP3_EDMA),y)
+ obj-y += sdma2edma.o
+else
+ obj-y += dma.o
+endif
+
 obj-m :=
 obj-n :=
 obj-  :=
@@ -19,7 +26,6 @@ obj-$(CONFIG_ARCH_OMAP4) += omap_device.o
 
 obj-$(CONFIG_OMAP_MCBSP) += mcbsp.o
 
-obj-$(CONFIG_CPU_FREQ) += cpu-omap.o
 obj-$(CONFIG_OMAP_DM_TIMER) += dmtimer.o
 obj-$(CONFIG_OMAP_DEBUG_DEVICES) += debug-devices.o
 obj-$(CONFIG_OMAP_DEBUG_LEDS) += debug-leds.o

@@ -250,7 +250,7 @@ config CRYPTO_DEV_PPC4XX
 
 config CRYPTO_DEV_OMAP_SHAM
 	tristate "Support for OMAP SHA1/MD5 hw accelerator"
-	depends on ARCH_OMAP2 || ARCH_OMAP3
+	depends on (ARCH_OMAP2) || (ARCH_OMAP3) && (!SOC_OMAPAM33XX)
 	select CRYPTO_SHA1
 	select CRYPTO_MD5
 	help
@@ -259,11 +259,29 @@ config CRYPTO_DEV_OMAP_SHAM
 
 config CRYPTO_DEV_OMAP_AES
 	tristate "Support for OMAP AES hw engine"
-	depends on ARCH_OMAP2 || ARCH_OMAP3
+	depends on (ARCH_OMAP2) || (ARCH_OMAP3) && (!SOC_OMAPAM33XX)
 	select CRYPTO_AES
 	help
 	  OMAP processors have AES module accelerator. Select this if you
 	  want to use the OMAP module for AES algorithms.
+
+config CRYPTO_DEV_OMAP4_AES
+	tristate "Support for OMAP4 AES hw engine"
+	depends on SOC_OMAPAM33XX
+	select CRYPTO_AES
+	help
+	  OMAP4 -based processors have AES module accelerators. Select this if you
+	  want to use the OMAP4 module for AES algorithms.
+
+config CRYPTO_DEV_OMAP4_SHAM
+	tristate "Support for OMAP4 SHA/MD5 hw engine"
+	depends on SOC_OMAPAM33XX
+	select CRYPTO_SHA1
+	select CRYPTO_SHA256
+	select CRYPTO_MD5
+	help
+	  OMAP4 -based processors have SHA/MD5 module accelerators. Select this if you
+	  want to use the OMAP4 module for SHA/MD5 algorithms.
 
 config CRYPTO_DEV_PICOXCELL
 	tristate "Support for picoXcell IPSEC and Layer2 crypto engines"

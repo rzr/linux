@@ -47,6 +47,7 @@
 
 /* timer interrupt enable bits */
 #define OMAP_TIMER_INT_CAPTURE			(1 << 2)
+#define OMAP_TIMER_INT_CAPTURE_RESET		(0 << 2)
 #define OMAP_TIMER_INT_OVERFLOW			(1 << 1)
 #define OMAP_TIMER_INT_MATCH			(1 << 0)
 
@@ -54,6 +55,10 @@
 #define OMAP_TIMER_TRIGGER_NONE			0x00
 #define OMAP_TIMER_TRIGGER_OVERFLOW		0x01
 #define OMAP_TIMER_TRIGGER_OVERFLOW_AND_COMPARE	0x02
+
+/* posted mode types */
+#define OMAP_TIMER_NONPOSTED			0x00
+#define OMAP_TIMER_POSTED			0x01
 
 /*
  * IP revision identifier so that Highlander IP
@@ -70,13 +75,22 @@ struct omap_timer_capability_dev_attr {
 	u32 timer_capability;
 };
 
+/*
+ * timer errata flags
+ *
+ * Errata i103/i767 impacts all OMAP3/4/5 devices including AM33xx. This
+ * errata prevents us from using posted mode on these devices, unless the
+ * timer counter register is never read. For more details please refer to
+ * the OMAP3/4/5 errata documents.
+ */
+#define OMAP_TIMER_ERRATA_I103_I767			0x80000000
+
+
 struct omap_dm_timer;
 struct clk;
 
 struct timer_regs {
 	u32 tidr;
-	u32 tiocp_cfg;
-	u32 tistat;
 	u32 tisr;
 	u32 tier;
 	u32 twer;
@@ -99,6 +113,7 @@ struct timer_regs {
 struct dmtimer_platform_data {
 	int (*set_timer_src)(struct platform_device *pdev, int source);
 	int timer_ip_version;
+	u32 timer_errata;
 	u32 needs_manual_reset:1;
 	bool reserved;
 
@@ -127,6 +142,8 @@ int omap_dm_timer_set_load(struct omap_dm_timer *timer, int autoreload, unsigned
 int omap_dm_timer_set_load_start(struct omap_dm_timer *timer, int autoreload, unsigned int value);
 int omap_dm_timer_set_match(struct omap_dm_timer *timer, int enable, unsigned int match);
 int omap_dm_timer_set_pwm(struct omap_dm_timer *timer, int def_on, int toggle, int trigger);
+int omap_dm_timer_set_capture(struct omap_dm_timer *timer,
+				bool lht, bool hlt, bool cm);
 int omap_dm_timer_set_prescaler(struct omap_dm_timer *timer, int prescaler);
 
 int omap_dm_timer_set_int_enable(struct omap_dm_timer *timer, unsigned int value);
@@ -276,6 +293,7 @@ struct omap_dm_timer {
 	bool loses_context;
 	int ctx_loss_count;
 	int revision;
+	u32 errata;
 	struct platform_device *pdev;
 	struct list_head node;
 
@@ -350,9 +368,30 @@ static inline void __omap_dm_timer_reset(struct omap_dm_timer *timer,
 
 	__raw_writel(l, timer->io_base + OMAP_TIMER_OCP_CFG_OFFSET);
 
-	/* Match hardware reset default of posted mode */
+}
+
+/*
+ * __omap_dm_timer_enable_posted - enables write posted mode
+ * @timer:      pointer to timer instance handle
+ *
+ * Enables the write posted mode for the timer. When posted mode is enabled
+ * writes to certain timer registers are immediately acknowledged by the
+ * internal bus and hence prevents stalling the CPU waiting for the write to
+ * complete. Enabling this feature can improve performance for writing to the
+ * timer registers.
+ */
+static inline void __omap_dm_timer_enable_posted(struct omap_dm_timer *timer)
+{
+	if (timer->posted)
+		return;
+
+	if (timer->errata & OMAP_TIMER_ERRATA_I103_I767)
+		return;
+
 	__omap_dm_timer_write(timer, OMAP_TIMER_IF_CTRL_REG,
-					OMAP_TIMER_CTRL_POSTED, 0);
+			OMAP_TIMER_CTRL_POSTED, 0);
+	timer->context.tsicr = OMAP_TIMER_CTRL_POSTED;
+	timer->posted = OMAP_TIMER_POSTED;
 }
 
 static inline int __omap_dm_timer_set_source(struct clk *timer_fck,
@@ -372,6 +411,23 @@ static inline int __omap_dm_timer_set_source(struct clk *timer_fck,
 
 	return ret;
 }
+
+/**
+ * __omap_dm_timer_override_errata - override errata flags for a timer
+ * @timer:      pointer to timer handle
+ * @errata:    errata flags to be ignored
+ *
+ * For a given timer, override a timer errata by clearing the flags
+ * specified by the errata argument. A specific erratum should only be
+ * overridden for a timer if the timer is used in such a way the erratum
+ * has no impact.
+ */
+static inline void __omap_dm_timer_override_errata(struct omap_dm_timer *timer,
+		u32 errata)
+{
+       timer->errata &= ~errata;
+}
+
 
 static inline void __omap_dm_timer_stop(struct omap_dm_timer *timer,
 					int posted, unsigned long rate)

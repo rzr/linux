@@ -938,6 +938,7 @@ config ARCH_OMAP
 	select ARCH_REQUIRE_GPIOLIB
 	select ARCH_HAS_CPUFREQ
 	select CLKSRC_MMIO
+	select GENERIC_ALLOCATOR
 	select GENERIC_CLOCKEVENTS
 	select HAVE_SCHED_CLOCK
 	select ARCH_HAS_HOLES_MEMORYMODEL
@@ -1699,6 +1700,7 @@ source "mm/Kconfig"
 config FORCE_MAX_ZONEORDER
 	int "Maximum zone order" if ARCH_SHMOBILE
 	range 11 64 if ARCH_SHMOBILE
+	default "12" if  SOC_OMAPAM33XX
 	default "9" if SA1111
 	default "11"
 	help

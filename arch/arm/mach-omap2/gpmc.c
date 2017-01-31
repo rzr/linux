@@ -14,6 +14,8 @@
  */
 #undef DEBUG
 
+#include <linux/platform_device.h>
+
 #include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -24,9 +26,11 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
+#include <linux/pm_runtime.h>
 
 #include <asm/mach-types.h>
 #include <plat/gpmc.h>
+#include <plat/nand.h>
 
 #include <plat/sdrc.h>
 
@@ -49,6 +53,7 @@
 #define GPMC_ECC_CONTROL	0x1f8
 #define GPMC_ECC_SIZE_CONFIG	0x1fc
 #define GPMC_ECC1_RESULT        0x200
+#define GPMC_ECC_BCH_RESULT_0	0x240
 
 #define GPMC_CS0_OFFSET		0x60
 #define GPMC_CS_SIZE		0x30
@@ -91,58 +96,99 @@ struct omap3_gpmc_regs {
 	struct gpmc_cs_config cs_context[GPMC_CS_NUM];
 };
 
-static struct resource	gpmc_mem_root;
-static struct resource	gpmc_cs_mem[GPMC_CS_NUM];
-static DEFINE_SPINLOCK(gpmc_mem_lock);
-static unsigned int gpmc_cs_map;	/* flag for cs which are initialized */
-static int gpmc_ecc_used = -EINVAL;	/* cs using ecc engine */
 
-static void __iomem *gpmc_base;
+#define	DRIVER_NAME	"omap-gpmc"
 
-static struct clk *gpmc_l3_clk;
+struct gpmc {
+	struct device	*dev;
+	void __iomem	*io_base;
+	unsigned long	phys_base;
+	u32		memsize;
+	unsigned int	cs_map;
+	int		ecc_used;
+	spinlock_t	mem_lock;
+	struct resource	mem_root;
+	struct resource	cs_mem[GPMC_CS_NUM];
+};
 
-static irqreturn_t gpmc_handle_irq(int irq, void *dev);
+static struct gpmc *gpmc;
 
 static void gpmc_write_reg(int idx, u32 val)
 {
-	__raw_writel(val, gpmc_base + idx);
+	writel(val, gpmc->io_base + idx);
 }
 
 static u32 gpmc_read_reg(int idx)
 {
-	return __raw_readl(gpmc_base + idx);
+	return readl(gpmc->io_base + idx);
 }
 
 static void gpmc_cs_write_byte(int cs, int idx, u8 val)
 {
 	void __iomem *reg_addr;
 
-	reg_addr = gpmc_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
-	__raw_writeb(val, reg_addr);
+	reg_addr = gpmc->io_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
+	writeb(val, reg_addr);
 }
 
 static u8 gpmc_cs_read_byte(int cs, int idx)
 {
 	void __iomem *reg_addr;
 
-	reg_addr = gpmc_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
-	return __raw_readb(reg_addr);
+	reg_addr = gpmc->io_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
+	return readb(reg_addr);
 }
 
 void gpmc_cs_write_reg(int cs, int idx, u32 val)
 {
 	void __iomem *reg_addr;
 
-	reg_addr = gpmc_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
-	__raw_writel(val, reg_addr);
+	if (!gpmc) {
+		pr_err("%s invoked without initializing GPMC\n", __func__);
+		return;
+	}
+
+	reg_addr = gpmc->io_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
+	writel(val, reg_addr);
 }
 
 u32 gpmc_cs_read_reg(int cs, int idx)
 {
 	void __iomem *reg_addr;
 
-	reg_addr = gpmc_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
-	return __raw_readl(reg_addr);
+	if (!gpmc) {
+		pr_err("%s invoked without initializing GPMC\n", __func__);
+		return 0;
+	}
+
+	reg_addr = gpmc->io_base + GPMC_CS0_OFFSET + (cs * GPMC_CS_SIZE) + idx;
+	return readl(reg_addr);
+}
+
+static struct clk *gpmc_l3_clk;
+
+static void __devinit gpmc_clk_init(struct device *dev)
+{
+	char *ck = NULL;
+
+	if (cpu_is_omap24xx())
+		ck = "core_l3_ck";
+	else if (cpu_is_omap34xx())
+		ck = "gpmc_fck";
+	else if (cpu_is_omap44xx())
+		ck = "gpmc_ck";
+
+	if (WARN_ON(!ck))
+		return;
+
+	gpmc_l3_clk = clk_get(NULL, ck);
+	if (IS_ERR(gpmc_l3_clk)) {
+		printk(KERN_ERR "Could not get GPMC clock %s\n", ck);
+		BUG();
+	}
+
+	pm_runtime_enable(dev);
+	pm_runtime_get_sync(dev);
 }
 
 /* TODO: Add support for gpmc_fck to clock framework and use it */
@@ -341,6 +387,11 @@ static void gpmc_cs_get_memconf(int cs, u32 *base, u32 *size)
 	*base = (l & 0x3f) << GPMC_CHUNK_SHIFT;
 	mask = (l >> 8) & 0x0f;
 	*size = (1 << GPMC_SECTION_SHIFT) - (mask << GPMC_CHUNK_SHIFT);
+
+	if (cpu_is_am33xx()) {
+		*base = 0x8000000;
+		*size = 0x10000000;
+	}
 }
 
 static int gpmc_cs_mem_enabled(int cs)
@@ -356,8 +407,8 @@ int gpmc_cs_set_reserved(int cs, int reserved)
 	if (cs > GPMC_CS_NUM)
 		return -ENODEV;
 
-	gpmc_cs_map &= ~(1 << cs);
-	gpmc_cs_map |= (reserved ? 1 : 0) << cs;
+	gpmc->cs_map &= ~(1 << cs);
+	gpmc->cs_map |= (reserved ? 1 : 0) << cs;
 
 	return 0;
 }
@@ -367,7 +418,7 @@ int gpmc_cs_reserved(int cs)
 	if (cs > GPMC_CS_NUM)
 		return -ENODEV;
 
-	return gpmc_cs_map & (1 << cs);
+	return gpmc->cs_map & (1 << cs);
 }
 
 static unsigned long gpmc_mem_align(unsigned long size)
@@ -386,22 +437,22 @@ static unsigned long gpmc_mem_align(unsigned long size)
 
 static int gpmc_cs_insert_mem(int cs, unsigned long base, unsigned long size)
 {
-	struct resource	*res = &gpmc_cs_mem[cs];
+	struct resource	*res = &gpmc->cs_mem[cs];
 	int r;
 
 	size = gpmc_mem_align(size);
-	spin_lock(&gpmc_mem_lock);
+	spin_lock(&gpmc->mem_lock);
 	res->start = base;
 	res->end = base + size - 1;
-	r = request_resource(&gpmc_mem_root, res);
-	spin_unlock(&gpmc_mem_lock);
+	r = request_resource(&gpmc->mem_root, res);
+	spin_unlock(&gpmc->mem_lock);
 
 	return r;
 }
 
 int gpmc_cs_request(int cs, unsigned long size, unsigned long *base)
 {
-	struct resource *res = &gpmc_cs_mem[cs];
+	struct resource *res = &gpmc->cs_mem[cs];
 	int r = -1;
 
 	if (cs > GPMC_CS_NUM)
@@ -411,7 +462,7 @@ int gpmc_cs_request(int cs, unsigned long size, unsigned long *base)
 	if (size > (1 << GPMC_SECTION_SHIFT))
 		return -ENOMEM;
 
-	spin_lock(&gpmc_mem_lock);
+	spin_lock(&gpmc->mem_lock);
 	if (gpmc_cs_reserved(cs)) {
 		r = -EBUSY;
 		goto out;
@@ -419,7 +470,7 @@ int gpmc_cs_request(int cs, unsigned long size, unsigned long *base)
 	if (gpmc_cs_mem_enabled(cs))
 		r = adjust_resource(res, res->start & ~(size - 1), size);
 	if (r < 0)
-		r = allocate_resource(&gpmc_mem_root, res, size, 0, ~0,
+		r = allocate_resource(&gpmc->mem_root, res, size, 0, ~0,
 				      size, NULL, NULL);
 	if (r < 0)
 		goto out;
@@ -428,24 +479,24 @@ int gpmc_cs_request(int cs, unsigned long size, unsigned long *base)
 	*base = res->start;
 	gpmc_cs_set_reserved(cs, 1);
 out:
-	spin_unlock(&gpmc_mem_lock);
+	spin_unlock(&gpmc->mem_lock);
 	return r;
 }
 EXPORT_SYMBOL(gpmc_cs_request);
 
 void gpmc_cs_free(int cs)
 {
-	spin_lock(&gpmc_mem_lock);
+	spin_lock(&gpmc->mem_lock);
 	if (cs >= GPMC_CS_NUM || cs < 0 || !gpmc_cs_reserved(cs)) {
 		printk(KERN_ERR "Trying to free non-reserved GPMC CS%d\n", cs);
 		BUG();
-		spin_unlock(&gpmc_mem_lock);
+		spin_unlock(&gpmc->mem_lock);
 		return;
 	}
 	gpmc_cs_disable_mem(cs);
-	release_resource(&gpmc_cs_mem[cs]);
+	release_resource(&gpmc->cs_mem[cs]);
 	gpmc_cs_set_reserved(cs, 0);
-	spin_unlock(&gpmc_mem_lock);
+	spin_unlock(&gpmc->mem_lock);
 }
 EXPORT_SYMBOL(gpmc_cs_free);
 
@@ -662,7 +713,7 @@ int gpmc_prefetch_reset(int cs)
 }
 EXPORT_SYMBOL(gpmc_prefetch_reset);
 
-static void __init gpmc_mem_init(void)
+static void __devinit gpmc_mem_init(void)
 {
 	int cs;
 	unsigned long boot_rom_space = 0;
@@ -674,8 +725,8 @@ static void __init gpmc_mem_init(void)
 	/* In apollon the CS0 is mapped as 0x0000 0000 */
 	if (machine_is_omap_apollon())
 		boot_rom_space = 0;
-	gpmc_mem_root.start = GPMC_MEM_START + boot_rom_space;
-	gpmc_mem_root.end = GPMC_MEM_END;
+	gpmc->mem_root.start = GPMC_MEM_START + boot_rom_space;
+	gpmc->mem_root.end = GPMC_MEM_END;
 
 	/* Reserve all regions that has been set up by bootloader */
 	for (cs = 0; cs < GPMC_CS_NUM; cs++) {
@@ -689,85 +740,107 @@ static void __init gpmc_mem_init(void)
 	}
 }
 
-static int __init gpmc_init(void)
+struct device *gpmc_dev;
+
+static int __devinit gpmc_probe(struct platform_device *pdev)
 {
-	u32 l, irq;
-	int cs, ret = -EINVAL;
-	int gpmc_irq;
-	char *ck = NULL;
+	u32 l;
+	int ret = -EINVAL;
+	struct resource *res = NULL;
+	struct gpmc_devices_info *gpmc_device = pdev->dev.platform_data;
+	void *p;
 
-	if (cpu_is_omap24xx()) {
-		ck = "core_l3_ck";
-		if (cpu_is_omap2420())
-			l = OMAP2420_GPMC_BASE;
-		else
-			l = OMAP34XX_GPMC_BASE;
-		gpmc_irq = INT_34XX_GPMC_IRQ;
-	} else if (cpu_is_omap34xx()) {
-		ck = "gpmc_fck";
-		l = OMAP34XX_GPMC_BASE;
-		gpmc_irq = INT_34XX_GPMC_IRQ;
-	} else if (cpu_is_omap44xx()) {
-		ck = "gpmc_ck";
-		l = OMAP44XX_GPMC_BASE;
-		gpmc_irq = OMAP44XX_IRQ_GPMC;
+	/* XXX: This should go away with HWMOD & runtime PM adaptation */
+	gpmc_clk_init(&pdev->dev);
+
+	gpmc_dev = &pdev->dev;
+
+	gpmc = devm_kzalloc(&pdev->dev, sizeof(struct gpmc), GFP_KERNEL);
+	if (!gpmc)
+		return -ENOMEM;
+
+	gpmc->dev = &pdev->dev;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		ret = -ENOENT;
+		dev_err(gpmc->dev, "Failed to get resource: memory\n");
+		goto err_res;
+	}
+	gpmc->phys_base = res->start;
+	gpmc->memsize = resource_size(res);
+
+	if (request_mem_region(gpmc->phys_base,
+		gpmc->memsize, DRIVER_NAME) == NULL) {
+		ret = -ENOMEM;
+		dev_err(gpmc->dev, "Failed to request memory region\n");
+		goto err_mem;
 	}
 
-	if (WARN_ON(!ck))
-		return ret;
-
-	gpmc_l3_clk = clk_get(NULL, ck);
-	if (IS_ERR(gpmc_l3_clk)) {
-		printk(KERN_ERR "Could not get GPMC clock %s\n", ck);
-		BUG();
+	gpmc->io_base = ioremap(gpmc->phys_base, gpmc->memsize);
+	if (!gpmc->io_base) {
+		ret = -ENOMEM;
+		dev_err(gpmc->dev, "Failed to ioremap memory\n");
+		goto err_remap;
 	}
 
-	gpmc_base = ioremap(l, SZ_4K);
-	if (!gpmc_base) {
-		clk_put(gpmc_l3_clk);
-		printk(KERN_ERR "Could not get GPMC register memory\n");
-		BUG();
-	}
-
-	clk_enable(gpmc_l3_clk);
+	gpmc->ecc_used = -EINVAL;
+	spin_lock_init(&gpmc->mem_lock);
+	platform_set_drvdata(pdev, gpmc);
 
 	l = gpmc_read_reg(GPMC_REVISION);
-	printk(KERN_INFO "GPMC revision %d.%d\n", (l >> 4) & 0x0f, l & 0x0f);
-	/* Set smart idle mode and automatic L3 clock gating */
-	l = gpmc_read_reg(GPMC_SYSCONFIG);
-	l &= 0x03 << 3;
-	l |= (0x02 << 3) | (1 << 0);
-	gpmc_write_reg(GPMC_SYSCONFIG, l);
+	dev_info(gpmc->dev, "GPMC revision %d.%d\n", (l >> 4) & 0x0f, l & 0x0f);
+
 	gpmc_mem_init();
 
-	/* initalize the irq_chained */
-	irq = OMAP_GPMC_IRQ_BASE;
-	for (cs = 0; cs < GPMC_CS_NUM; cs++) {
-		irq_set_chip_and_handler(irq, &dummy_irq_chip,
-						handle_simple_irq);
-		set_irq_flags(irq, IRQF_VALID);
-		irq++;
-	}
+	for (p = gpmc_device->pdata; p; gpmc_device++, p = gpmc_device->pdata)
+		if (gpmc_device->flag & GPMC_DEVICE_NAND)
+			gpmc_nand_init((struct omap_nand_platform_data *) p);
+	return 0;
 
-	ret = request_irq(gpmc_irq,
-			gpmc_handle_irq, IRQF_SHARED, "gpmc", gpmc_base);
-	if (ret)
-		pr_err("gpmc: irq-%d could not claim: err %d\n",
-						gpmc_irq, ret);
+err_remap:
+	release_mem_region(gpmc->phys_base, gpmc->memsize);
+err_mem:
+err_res:
+	devm_kfree(&pdev->dev, gpmc);
 	return ret;
 }
-postcore_initcall(gpmc_init);
 
-static irqreturn_t gpmc_handle_irq(int irq, void *dev)
+static int __devexit gpmc_remove(struct platform_device *pdev)
 {
-	u8 cs;
+	struct gpmc *gpmc = platform_get_drvdata(pdev);
 
-	/* check cs to invoke the irq */
-	cs = ((gpmc_read_reg(GPMC_PREFETCH_CONFIG1)) >> CS_NUM_SHIFT) & 0x7;
-	if (OMAP_GPMC_IRQ_BASE+cs <= OMAP_GPMC_IRQ_END)
-		generic_handle_irq(OMAP_GPMC_IRQ_BASE+cs);
+	platform_set_drvdata(pdev, NULL);
+	iounmap(gpmc->io_base);
+	release_mem_region(gpmc->phys_base, gpmc->memsize);
+	devm_kfree(&pdev->dev, gpmc);
 
-	return IRQ_HANDLED;
+	return 0;
+}
+
+static struct platform_driver gpmc_driver = {
+	.probe		= gpmc_probe,
+	.remove		= __devexit_p(gpmc_remove),
+	.driver		= {
+		.name	= DRIVER_NAME,
+		.owner	= THIS_MODULE,
+	},
+};
+
+module_platform_driver(gpmc_driver);
+
+int gpmc_suspend(void)
+{
+	omap3_gpmc_save_context();
+	pm_runtime_put_sync(gpmc_dev);
+	return 0;
+}
+
+int gpmc_resume(void)
+{
+	pm_runtime_get_sync(gpmc_dev);
+	omap3_gpmc_restore_context();
+	return 0;
 }
 
 #ifdef CONFIG_ARCH_OMAP3
@@ -839,52 +912,74 @@ void omap3_gpmc_restore_context(void)
 
 /**
  * gpmc_enable_hwecc - enable hardware ecc functionality
+ * @ecc_type: ecc type e.g. Hamming, BCH
  * @cs: chip select number
  * @mode: read/write mode
  * @dev_width: device bus width(1 for x16, 0 for x8)
  * @ecc_size: bytes for which ECC will be generated
  */
-int gpmc_enable_hwecc(int cs, int mode, int dev_width, int ecc_size)
+int gpmc_enable_hwecc(int ecc_type, int cs, int mode,
+			int dev_width, int ecc_size)
 {
-	unsigned int val;
-
-	/* check if ecc module is in used */
-	if (gpmc_ecc_used != -EINVAL)
-		return -EINVAL;
-
-	gpmc_ecc_used = cs;
-
-	/* clear ecc and enable bits */
-	val = ((0x00000001<<8) | 0x00000001);
-	gpmc_write_reg(GPMC_ECC_CONTROL, val);
-
-	/* program ecc and result sizes */
-	val = ((((ecc_size >> 1) - 1) << 22) | (0x0000000F));
-	gpmc_write_reg(GPMC_ECC_SIZE_CONFIG, val);
+	unsigned int bch_mod = 0, bch_wrapmode = 0, eccsize1 = 0, eccsize0 = 0;
+	unsigned int ecc_conf_val = 0, ecc_size_conf_val = 0;
 
 	switch (mode) {
 	case GPMC_ECC_READ:
-		gpmc_write_reg(GPMC_ECC_CONTROL, 0x101);
+		if (ecc_type == OMAP_ECC_BCH4_CODE_HW) {
+			eccsize1 = 0xD; eccsize0 = 0x48;
+			bch_mod = 0;
+			bch_wrapmode = 0x09;
+		} else if (ecc_type == OMAP_ECC_BCH8_CODE_HW) {
+			eccsize1 = 0x2; eccsize0 = 0x1A;
+			bch_mod = 1;
+			bch_wrapmode = 0x01;
+		} else
+			eccsize1 = ((ecc_size >> 1) - 1);
 		break;
 	case GPMC_ECC_READSYN:
-		 gpmc_write_reg(GPMC_ECC_CONTROL, 0x100);
 		break;
 	case GPMC_ECC_WRITE:
-		gpmc_write_reg(GPMC_ECC_CONTROL, 0x101);
+		if (ecc_type == OMAP_ECC_BCH4_CODE_HW) {
+			eccsize1 = 0x20; eccsize0 = 0x00;
+			bch_mod = 0;
+			bch_wrapmode = 0x06;
+		} else if (ecc_type == OMAP_ECC_BCH8_CODE_HW) {
+			eccsize1 = 0x00; eccsize0 = 0x00;
+			bch_mod = 1;
+			bch_wrapmode = 0x01;
+		} else
+			eccsize1 = ((ecc_size >> 1) - 1);
 		break;
 	default:
 		printk(KERN_INFO "Error: Unrecognized Mode[%d]!\n", mode);
 		break;
 	}
 
-	/* (ECC 16 or 8 bit col) | ( CS  )  | ECC Enable */
-	val = (dev_width << 7) | (cs << 1) | (0x1);
-	gpmc_write_reg(GPMC_ECC_CONFIG, val);
+	/* clear ecc and enable bits */
+	if ((ecc_type == OMAP_ECC_BCH4_CODE_HW) ||
+		(ecc_type == OMAP_ECC_BCH8_CODE_HW)) {
+		gpmc_write_reg(GPMC_ECC_CONTROL, 0x00000001);
+		ecc_size_conf_val = (eccsize1 << 22) | (eccsize0 << 12);
+		ecc_conf_val = ((0x01 << 16) | (bch_mod << 12)
+			| (bch_wrapmode << 8) | (dev_width << 7)
+			| (0x00 << 4) | (cs << 1) | (0x1));
+	} else {
+		gpmc_write_reg(GPMC_ECC_CONTROL, 0x00000101);
+		ecc_size_conf_val = (eccsize1 << 22) | 0x0000000F;
+		ecc_conf_val = (dev_width << 7) | (cs << 1) | (0x1);
+	}
+
+	gpmc_write_reg(GPMC_ECC_SIZE_CONFIG, ecc_size_conf_val);
+	gpmc_write_reg(GPMC_ECC_CONFIG, ecc_conf_val);
+	gpmc_write_reg(GPMC_ECC_CONTROL, 0x00000101);
 	return 0;
 }
+EXPORT_SYMBOL(gpmc_enable_hwecc);
 
 /**
  * gpmc_calculate_ecc - generate non-inverted ecc bytes
+ * @ecc_type: ecc type e.g. Hamming, BCH
  * @cs: chip select number
  * @dat: data pointer over which ecc is computed
  * @ecc_code: ecc code buffer
@@ -895,20 +990,51 @@ int gpmc_enable_hwecc(int cs, int mode, int dev_width, int ecc_size)
  * an erased page will produce an ECC mismatch between generated and read
  * ECC bytes that has to be dealt with separately.
  */
-int gpmc_calculate_ecc(int cs, const u_char *dat, u_char *ecc_code)
+int gpmc_calculate_ecc(int ecc_type, int cs,
+		const u_char *dat, u_char *ecc_code)
 {
-	unsigned int val = 0x0;
+	unsigned int reg;
+	unsigned int val1 = 0x0, val2 = 0x0;
+	unsigned int val3 = 0x0, val4 = 0x0;
+	int i;
 
-	if (gpmc_ecc_used != cs)
-		return -EINVAL;
+	if ((ecc_type == OMAP_ECC_BCH4_CODE_HW) ||
+		(ecc_type == OMAP_ECC_BCH8_CODE_HW)) {
+		for (i = 0; i < 1; i++) {
+			/*
+			 * Reading HW ECC_BCH_Results
+			 * 0x240-0x24C, 0x250-0x25C, 0x260-0x26C, 0x270-0x27C
+			 */
+			reg =  GPMC_ECC_BCH_RESULT_0 + (0x10 * i);
+			val1 = gpmc_read_reg(reg);
+			val2 = gpmc_read_reg(reg + 4);
+			if (ecc_type == OMAP_ECC_BCH8_CODE_HW) {
+				val3 = gpmc_read_reg(reg + 8);
+				val4 = gpmc_read_reg(reg + 12);
 
-	/* read ecc result */
-	val = gpmc_read_reg(GPMC_ECC1_RESULT);
-	*ecc_code++ = val;          /* P128e, ..., P1e */
-	*ecc_code++ = val >> 16;    /* P128o, ..., P1o */
-	/* P2048o, P1024o, P512o, P256o, P2048e, P1024e, P512e, P256e */
-	*ecc_code++ = ((val >> 8) & 0x0f) | ((val >> 20) & 0xf0);
-
-	gpmc_ecc_used = -EINVAL;
+				*ecc_code++ = (val4 & 0xFF);
+				*ecc_code++ = ((val3 >> 24) & 0xFF);
+				*ecc_code++ = ((val3 >> 16) & 0xFF);
+				*ecc_code++ = ((val3 >> 8) & 0xFF);
+				*ecc_code++ = (val3 & 0xFF);
+				*ecc_code++ = ((val2 >> 24) & 0xFF);
+			}
+			*ecc_code++ = ((val2 >> 16) & 0xFF);
+			*ecc_code++ = ((val2 >> 8) & 0xFF);
+			*ecc_code++ = (val2 & 0xFF);
+			*ecc_code++ = ((val1 >> 24) & 0xFF);
+			*ecc_code++ = ((val1 >> 16) & 0xFF);
+			*ecc_code++ = ((val1 >> 8) & 0xFF);
+			*ecc_code++ = (val1 & 0xFF);
+		}
+	} else {
+		/* read ecc result */
+		val1 = gpmc_read_reg(GPMC_ECC1_RESULT);
+		*ecc_code++ = val1;          /* P128e, ..., P1e */
+		*ecc_code++ = val1 >> 16;    /* P128o, ..., P1o */
+		/* P2048o, P1024o, P512o, P256o, P2048e, P1024e, P512e, P256e */
+		*ecc_code++ = ((val1 >> 8) & 0x0f) | ((val1 >> 20) & 0xf0);
+	}
 	return 0;
 }
+EXPORT_SYMBOL(gpmc_calculate_ecc);

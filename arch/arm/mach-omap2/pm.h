@@ -21,6 +21,7 @@ extern void omap_sram_idle(void);
 extern int omap3_can_sleep(void);
 extern int omap_set_pwrdm_state(struct powerdomain *pwrdm, u32 state);
 extern int omap3_idle_init(void);
+extern int omap4_idle_init(void);
 
 #if defined(CONFIG_PM_OPP)
 extern int omap3_opp_init(void);
@@ -94,6 +95,16 @@ extern int save_secure_ram_context(u32 *addr);
 extern unsigned int save_secure_ram_context_sz;
 
 extern void omap3_save_scratchpad_contents(void);
+
+/* 33xx */
+/* am33xx_do_wfi function pointer and size, for copy to SRAM */
+extern void am33xx_do_wfi(void);
+extern unsigned int am33xx_do_wfi_sz;
+extern unsigned int am33xx_resume_offset;
+/* ... and its pointer from SRAM after copy */
+extern void (*am33xx_do_wfi_sram)(u32 *);
+/* The resume location */
+extern void am33xx_resume_vector(void);
 
 #define PM_RTA_ERRATUM_i608		(1 << 0)
 #define PM_SDRC_WAKEUP_ERRATUM_i583	(1 << 1)

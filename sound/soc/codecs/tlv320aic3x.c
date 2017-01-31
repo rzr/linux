@@ -963,7 +963,7 @@ static int aic3x_hw_params(struct snd_pcm_substream *substream,
 	}
 
 found:
-	data = snd_soc_read(codec, AIC3X_PLL_PROGA_REG);
+	data = snd_soc_read(codec, AIC3X_PLL_PROGA_REG) & ~PLLP_MASK;
 	snd_soc_write(codec, AIC3X_PLL_PROGA_REG,
 		      data | (pll_p << PLLP_SHIFT));
 	snd_soc_write(codec, AIC3X_OVRF_STATUS_AND_PLLR_REG,
@@ -1147,6 +1147,11 @@ static int aic3x_set_power(struct snd_soc_codec *codec, int power)
 		codec->cache_only = 1;
 		ret = regulator_bulk_disable(ARRAY_SIZE(aic3x->supplies),
 					     aic3x->supplies);
+		/* Enable cache sync if regulator disable
+		 * event is not triggerd.
+		 * ToDo : Revisit later to fix it
+		 */
+		codec->cache_sync = 1;
 	}
 out:
 	return ret;

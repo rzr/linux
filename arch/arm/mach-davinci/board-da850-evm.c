@@ -32,7 +32,6 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 #include <linux/delay.h>
-#include <linux/wl12xx.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -794,11 +793,13 @@ static const short da850_evm_mmcsd0_pins[] __initconst = {
 
 static void da850_panel_power_ctrl(int val)
 {
-	/* lcd backlight */
-	gpio_set_value(DA850_LCD_BL_PIN, val);
-
 	/* lcd power */
 	gpio_set_value(DA850_LCD_PWR_PIN, val);
+
+	mdelay(200);
+
+	/* lcd backlight */
+	gpio_set_value(DA850_LCD_BL_PIN, val);
 }
 
 static int da850_lcd_hw_init(void)
@@ -817,12 +818,6 @@ static int da850_lcd_hw_init(void)
 
 	gpio_direction_output(DA850_LCD_BL_PIN, 0);
 	gpio_direction_output(DA850_LCD_PWR_PIN, 0);
-
-	/* Switch off panel power and backlight */
-	da850_panel_power_ctrl(0);
-
-	/* Switch on panel power and backlight */
-	da850_panel_power_ctrl(1);
 
 	return 0;
 }
@@ -1253,6 +1248,17 @@ static __init int da850_wl12xx_init(void)
 #endif /* CONFIG_DA850_WL12XX */
 
 #define DA850EVM_SATA_REFCLKPN_RATE	(100 * 1000 * 1000)
+
+#ifdef CONFIG_UIO_PRUSS
+struct uio_pruss_pdata da8xx_pruss_uio_pdata = {
+	.pintc_base	= 0x4000,
+};
+
+	ret = da8xx_register_pruss_uio(&da8xx_pruss_uio_pdata);
+	if (ret)
+		pr_warning("%s: pruss_uio initialization failed: %d\n",
+				__func__, ret);
+#endif
 
 static __init void da850_evm_init(void)
 {

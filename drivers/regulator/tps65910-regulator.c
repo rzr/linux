@@ -25,30 +25,6 @@
 #include <linux/gpio.h>
 #include <linux/mfd/tps65910.h>
 
-#define TPS65910_REG_VRTC		0
-#define TPS65910_REG_VIO		1
-#define TPS65910_REG_VDD1		2
-#define TPS65910_REG_VDD2		3
-#define TPS65910_REG_VDD3		4
-#define TPS65910_REG_VDIG1		5
-#define TPS65910_REG_VDIG2		6
-#define TPS65910_REG_VPLL		7
-#define TPS65910_REG_VDAC		8
-#define TPS65910_REG_VAUX1		9
-#define TPS65910_REG_VAUX2		10
-#define TPS65910_REG_VAUX33		11
-#define TPS65910_REG_VMMC		12
-
-#define TPS65911_REG_VDDCTRL		4
-#define TPS65911_REG_LDO1		5
-#define TPS65911_REG_LDO2		6
-#define TPS65911_REG_LDO3		7
-#define TPS65911_REG_LDO4		8
-#define TPS65911_REG_LDO5		9
-#define TPS65911_REG_LDO6		10
-#define TPS65911_REG_LDO7		11
-#define TPS65911_REG_LDO8		12
-
 #define TPS65910_SUPPLY_STATE_ENABLED	0x1
 
 /* supported VIO voltages in milivolts */
@@ -508,9 +484,15 @@ static int tps65910_get_voltage_dcdc(struct regulator_dev *dev)
 	switch (id) {
 	case TPS65910_REG_VDD1:
 		opvsel = tps65910_reg_read(pmic, TPS65910_VDD1_OP);
+		if (opvsel < 0)
+			return opvsel;
 		mult = tps65910_reg_read(pmic, TPS65910_VDD1);
+		if (mult < 0)
+			return mult;
 		mult = (mult & VDD1_VGAIN_SEL_MASK) >> VDD1_VGAIN_SEL_SHIFT;
 		srvsel = tps65910_reg_read(pmic, TPS65910_VDD1_SR);
+		if (srvsel < 0)
+			return srvsel;
 		sr = opvsel & VDD1_OP_CMD_MASK;
 		opvsel &= VDD1_OP_SEL_MASK;
 		srvsel &= VDD1_SR_SEL_MASK;
@@ -661,6 +643,7 @@ static int tps65910_set_voltage_dcdc(struct regulator_dev *dev,
 	struct tps65910_reg *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev), vsel;
 	int dcdc_mult = 0;
+	int ret = 0;
 
 	switch (id) {
 	case TPS65910_REG_VDD1:
@@ -669,10 +652,11 @@ static int tps65910_set_voltage_dcdc(struct regulator_dev *dev,
 			dcdc_mult--;
 		vsel = (selector % VDD1_2_NUM_VOLT_FINE) + 3;
 
-		tps65910_modify_bits(pmic, TPS65910_VDD1,
+		ret = tps65910_modify_bits(pmic, TPS65910_VDD1,
 				(dcdc_mult << VDD1_VGAIN_SEL_SHIFT),
 						VDD1_VGAIN_SEL_MASK);
-		tps65910_reg_write(pmic, TPS65910_VDD1_OP, vsel);
+		if (!ret)
+			ret = tps65910_reg_write(pmic, TPS65910_VDD1_OP, vsel);
 		break;
 	case TPS65910_REG_VDD2:
 		dcdc_mult = (selector / VDD1_2_NUM_VOLT_FINE) + 1;
@@ -690,7 +674,7 @@ static int tps65910_set_voltage_dcdc(struct regulator_dev *dev,
 		tps65910_reg_write(pmic, TPS65911_VDDCTRL_OP, vsel);
 	}
 
-	return 0;
+	return ret;
 }
 
 static int tps65910_set_voltage(struct regulator_dev *dev, unsigned selector)
@@ -885,8 +869,6 @@ static __devinit int tps65910_probe(struct platform_device *pdev)
 	if (!pmic_plat_data)
 		return -EINVAL;
 
-	reg_data = pmic_plat_data->tps65910_pmic_init_data;
-
 	pmic = kzalloc(sizeof(*pmic), GFP_KERNEL);
 	if (!pmic)
 		return -ENOMEM;
@@ -937,7 +919,16 @@ static __devinit int tps65910_probe(struct platform_device *pdev)
 		goto err_free_info;
 	}
 
-	for (i = 0; i < pmic->num_regulators; i++, info++, reg_data++) {
+	for (i = 0; i < pmic->num_regulators && i < TPS65910_NUM_REGS;
+			i++, info++) {
+
+		reg_data = pmic_plat_data->tps65910_pmic_init_data[i];
+
+		/* Regulator API handles empty constraints but not NULL
+		 * constraints */
+		if (!reg_data)
+			continue;
+
 		/* Register the regulators */
 		pmic->info[i] = info;
 

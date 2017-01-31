@@ -43,7 +43,7 @@
 
 #include <plat/board.h>
 #include <plat/usb.h>
-#include <plat/common.h>
+#include "common.h"
 #include <plat/mcspi.h>
 #include <video/omapdss.h>
 #include <video/omap-panel-dvi.h>
@@ -637,7 +637,7 @@ static void __init omap3_evm_init(void)
 	omap_sdrc_init(mt46h32m32lf6_sdrc_params, NULL);
 
 	/* OMAP3EVM uses ISP1504 phy and so register nop transceiver */
-	usb_nop_xceiv_register();
+	usb_nop_xceiv_register(0);
 
 	if (get_omap3_evm_rev() >= OMAP3EVM_BOARD_GEN_2) {
 		/* enable EHCI VBUS using GPIO22 */
@@ -672,6 +672,12 @@ static void __init omap3_evm_init(void)
 		pr_err("error setting wl12xx data\n");
 	platform_device_register(&omap3evm_wlan_regulator);
 #endif
+	/* NAND */
+	omap_nand_init(omap3_evm_nand_partitions,
+			ARRAY_SIZE(omap3_evm_nand_partitions),
+			0, NAND_BUSWIDTH_16, &nand_default_timings);
+	board_onenand_init(omap3_evm_onenand_partitions,
+			ARRAY_SIZE(omap3_evm_onenand_partitions), 0);
 }
 
 MACHINE_START(OMAP3EVM, "OMAP3 EVM")
@@ -681,6 +687,7 @@ MACHINE_START(OMAP3EVM, "OMAP3 EVM")
 	.map_io		= omap3_map_io,
 	.init_early	= omap35xx_init_early,
 	.init_irq	= omap3_init_irq,
+	.handle_irq	= omap3_intc_handle_irq,
 	.init_machine	= omap3_evm_init,
 	.timer		= &omap3_timer,
 MACHINE_END

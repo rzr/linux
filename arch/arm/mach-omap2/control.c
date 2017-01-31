@@ -13,9 +13,10 @@
 #undef DEBUG
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/io.h>
 
-#include <plat/common.h>
+#include "common.h"
 #include <plat/sdrc.h>
 
 #include "cm-regbits-34xx.h"
@@ -190,6 +191,7 @@ void omap_ctrl_writel(u32 val, u16 offset)
 {
 	__raw_writel(val, OMAP_CTRL_REGADDR(offset));
 }
+EXPORT_SYMBOL_GPL(omap_ctrl_writel);
 
 /*
  * On OMAP4 control pad are not addressable from control

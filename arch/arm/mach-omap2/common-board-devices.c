@@ -33,7 +33,6 @@
 	defined(CONFIG_TOUCHSCREEN_ADS7846_MODULE)
 static struct omap2_mcspi_device_config ads7846_mcspi_config = {
 	.turbo_mode	= 0,
-	.single_channel	= 1,	/* 0: slave, 1: master */
 };
 
 static struct ads7846_platform_data ads7846_config = {
@@ -89,52 +88,6 @@ void __init omap_ads7846_init(int bus_num, int gpio_pendown, int gpio_debounce,
 #else
 void __init omap_ads7846_init(int bus_num, int gpio_pendown, int gpio_debounce,
 			      struct ads7846_platform_data *board_pdata)
-{
-}
-#endif
-
-#if defined(CONFIG_MTD_NAND_OMAP2) || defined(CONFIG_MTD_NAND_OMAP2_MODULE)
-static struct omap_nand_platform_data nand_data;
-
-void __init omap_nand_flash_init(int options, struct mtd_partition *parts,
-				 int nr_parts)
-{
-	u8 cs = 0;
-	u8 nandcs = GPMC_CS_NUM + 1;
-
-	/* find out the chip-select on which NAND exists */
-	while (cs < GPMC_CS_NUM) {
-		u32 ret = 0;
-		ret = gpmc_cs_read_reg(cs, GPMC_CS_CONFIG1);
-
-		if ((ret & 0xC00) == 0x800) {
-			printk(KERN_INFO "Found NAND on CS%d\n", cs);
-			if (nandcs > GPMC_CS_NUM)
-				nandcs = cs;
-		}
-		cs++;
-	}
-
-	if (nandcs > GPMC_CS_NUM) {
-		printk(KERN_INFO "NAND: Unable to find configuration "
-				 "in GPMC\n ");
-		return;
-	}
-
-	if (nandcs < GPMC_CS_NUM) {
-		nand_data.cs = nandcs;
-		nand_data.parts = parts;
-		nand_data.nr_parts = nr_parts;
-		nand_data.devsize = options;
-
-		printk(KERN_INFO "Registering NAND on CS%d\n", nandcs);
-		if (gpmc_nand_init(&nand_data) < 0)
-			printk(KERN_ERR "Unable to register NAND device\n");
-	}
-}
-#else
-void __init omap_nand_flash_init(int options, struct mtd_partition *parts,
-				 int nr_parts)
 {
 }
 #endif

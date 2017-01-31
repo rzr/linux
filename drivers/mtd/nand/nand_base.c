@@ -724,6 +724,8 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 		chip->cmd_ctrl(mtd, NAND_CMD_NONE,
 			       NAND_NCE | NAND_CTRL_CHANGE);
 
+		dmb();
+
 		/* This applies to read commands */
 	default:
 		/*
@@ -1993,6 +1995,7 @@ static void nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 	const uint8_t *p = buf;
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
 
+	memset(ecc_calc, 0, eccsteps * eccbytes);
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 		chip->ecc.hwctl(mtd, NAND_ECC_WRITE);
 		chip->write_buf(mtd, p, eccsize);

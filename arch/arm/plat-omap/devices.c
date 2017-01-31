@@ -26,6 +26,7 @@
 #include <plat/mmc.h>
 #include <plat/menelaus.h>
 #include <plat/omap44xx.h>
+#include <plat/am33xx.h>
 
 #if defined(CONFIG_MMC_OMAP) || defined(CONFIG_MMC_OMAP_MODULE) || \
 	defined(CONFIG_MMC_OMAP_HS) || defined(CONFIG_MMC_OMAP_HS_MODULE)

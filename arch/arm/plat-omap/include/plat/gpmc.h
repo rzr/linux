@@ -92,6 +92,8 @@ enum omap_ecc {
 	OMAP_ECC_HAMMING_CODE_HW, /* gpmc to detect the error */
 		/* 1-bit ecc: stored at beginning of spare area as romcode */
 	OMAP_ECC_HAMMING_CODE_HW_ROMCODE, /* gpmc method & romcode layout */
+	OMAP_ECC_BCH4_CODE_HW, /* gpmc bch detection & s/w method correction */
+	OMAP_ECC_BCH8_CODE_HW, /* gpmc bch detection & s/w method correction */
 };
 
 /*
@@ -131,6 +133,21 @@ struct gpmc_timings {
 	u16 wr_data_mux_bus;	/* WRDATAONADMUXBUS */
 };
 
+
+struct gpmc_devices_info {
+	void	*pdata;
+	int	flag;
+};
+
+#define	GPMC_DEVICE_NAND	(1 << 0)
+#define	GPMC_DEVICE_ONENAND	(1 << 1)
+#define	GPMC_DEVICE_NOR		(1 << 2)
+#define	GPMC_DEVICE_SMC91X	(1 << 3)
+#define	GPMC_DEVICE_SMS911X	(1 << 4)
+#define	GPMC_DEVICE_TUSB6010	(1 << 5)
+
+extern int omap_init_gpmc(struct gpmc_devices_info *pdata, int pdata_len);
+
 extern unsigned int gpmc_ns_to_ticks(unsigned int time_ns);
 extern unsigned int gpmc_ps_to_ticks(unsigned int time_ps);
 extern unsigned int gpmc_ticks_to_ns(unsigned int ticks);
@@ -155,6 +172,8 @@ extern int gpmc_cs_configure(int cs, int cmd, int wval);
 extern int gpmc_nand_read(int cs, int cmd);
 extern int gpmc_nand_write(int cs, int cmd, int wval);
 
-int gpmc_enable_hwecc(int cs, int mode, int dev_width, int ecc_size);
-int gpmc_calculate_ecc(int cs, const u_char *dat, u_char *ecc_code);
+int gpmc_enable_hwecc(int ecc, int cs, int mode, int dev_width, int ecc_size);
+int gpmc_calculate_ecc(int ecc, int cs, const u_char *dat, u_char *ecc_code);
+int gpmc_suspend(void);
+int gpmc_resume(void);
 #endif

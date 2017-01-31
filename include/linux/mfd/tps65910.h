@@ -17,9 +17,16 @@
 #ifndef __LINUX_MFD_TPS65910_H
 #define __LINUX_MFD_TPS65910_H
 
+#include <linux/gpio.h>
+#include <linux/regulator/machine.h>
+
 /* TPS chip id list */
 #define TPS65910			0
 #define TPS65911			1
+
+/* I2C Slave Address 7-bit */
+#define TPS65910_I2C_ID0 0x12 /* Smart Reflex */
+#define TPS65910_I2C_ID1 0x2D /* general-purpose control */
 
 /* TPS regulator type list */
 #define REGULATOR_LDO			0
@@ -740,6 +747,34 @@
 #define TPS65910_GPIO_STS				BIT(1)
 #define TPS65910_GPIO_SET				BIT(0)
 
+/* Regulator Index Definitions */
+#define TPS65910_REG_VRTC				0
+#define TPS65910_REG_VIO				1
+#define TPS65910_REG_VDD1				2
+#define TPS65910_REG_VDD2				3
+#define TPS65910_REG_VDD3				4
+#define TPS65910_REG_VDIG1				5
+#define TPS65910_REG_VDIG2				6
+#define TPS65910_REG_VPLL				7
+#define TPS65910_REG_VDAC				8
+#define TPS65910_REG_VAUX1				9
+#define TPS65910_REG_VAUX2				10
+#define TPS65910_REG_VAUX33				11
+#define TPS65910_REG_VMMC				12
+
+#define TPS65911_REG_VDDCTRL				4
+#define TPS65911_REG_LDO1				5
+#define TPS65911_REG_LDO2				6
+#define TPS65911_REG_LDO3				7
+#define TPS65911_REG_LDO4				8
+#define TPS65911_REG_LDO5				9
+#define TPS65911_REG_LDO6				10
+#define TPS65911_REG_LDO7				11
+#define TPS65911_REG_LDO8				12
+
+/* Max number of TPS65910/11 regulators */
+#define TPS65910_NUM_REGS				13
+
 /**
  * struct tps65910_board
  * Board platform data may be used to initialize regulators.
@@ -751,7 +786,7 @@ struct tps65910_board {
 	int irq_base;
 	int vmbch_threshold;
 	int vmbch2_threshold;
-	struct regulator_init_data *tps65910_pmic_init_data;
+	struct regulator_init_data *tps65910_pmic_init_data[TPS65910_NUM_REGS];
 };
 
 /**

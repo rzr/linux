@@ -34,6 +34,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/pm_runtime.h>
 #include <linux/davinci_emac.h>
 
 /*
@@ -47,6 +48,10 @@
 #define PHY_ID_MASK		0x1f
 
 #define DEF_OUT_FREQ		2200000		/* 2.2 MHz */
+
+#define CPGMAC_CLK_CTRL_REG	0x44E00014
+#define CPGMAC_CLK_SYSC         0x4A101208
+#define CPSW_NO_IDLE_NO_STDBY   0xA
 
 struct davinci_mdio_regs {
 	u32	version;
@@ -181,6 +186,11 @@ static inline int wait_for_user_access(struct davinci_mdio_data *data)
 		__davinci_mdio_reset(data);
 		return -EAGAIN;
 	}
+
+	reg = __raw_readl(&regs->user[0].access);
+	if ((reg & USERACCESS_GO) == 0)
+		return 0;
+
 	dev_err(data->dev, "timed out waiting for user access\n");
 	return -ETIMEDOUT;
 }
@@ -315,15 +325,15 @@ static int __devinit davinci_mdio_probe(struct platform_device *pdev)
 	data->bus->priv		= data;
 	snprintf(data->bus->id, MII_BUS_ID_SIZE, "%x", pdev->id);
 
-	data->clk = clk_get(dev, NULL);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
+	data->clk = clk_get(&pdev->dev, "fck");
 	if (IS_ERR(data->clk)) {
 		data->clk = NULL;
 		dev_err(dev, "failed to get device clock\n");
 		ret = PTR_ERR(data->clk);
 		goto bail_out;
 	}
-
-	clk_enable(data->clk);
 
 	dev_set_drvdata(dev, data);
 	data->dev = dev;
@@ -371,11 +381,10 @@ static int __devinit davinci_mdio_probe(struct platform_device *pdev)
 bail_out:
 	if (data->bus)
 		mdiobus_free(data->bus);
-
-	if (data->clk) {
-		clk_disable(data->clk);
+	if (data->clk)
 		clk_put(data->clk);
-	}
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	kfree(data);
 
@@ -387,18 +396,47 @@ static int __devexit davinci_mdio_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct davinci_mdio_data *data = dev_get_drvdata(dev);
 
-	if (data->bus)
+	if (data->bus) {
+		mdiobus_unregister(data->bus);
 		mdiobus_free(data->bus);
-
-	if (data->clk) {
-		clk_disable(data->clk);
-		clk_put(data->clk);
 	}
+
+	if (data->clk)
+		clk_put(data->clk);
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	dev_set_drvdata(dev, NULL);
 
 	kfree(data);
 
+	return 0;
+}
+
+static inline int wait_for_clock_enable(struct davinci_mdio_data *data)
+{
+	unsigned long timeout = jiffies + msecs_to_jiffies(MDIO_TIMEOUT);
+	u32 __iomem *cpgmac_clk = ioremap(CPGMAC_CLK_CTRL_REG, 4);
+	u32 __iomem *cpgmac_sysc = ioremap(CPGMAC_CLK_SYSC, 4);
+	u32 reg = 0;
+
+	while (time_after(timeout, jiffies)) {
+		reg = readl(cpgmac_clk);
+		if ((reg & 0x30000) == 0) {
+			writel(CPSW_NO_IDLE_NO_STDBY, cpgmac_sysc);
+			goto iounmap_ret;
+                }
+	}
+	dev_err(data->dev,
+		"timed out waiting for CPGMAC clock enable, value = 0x%x\n",
+		reg);
+	iounmap(cpgmac_sysc);
+	iounmap(cpgmac_clk);
+	return -ETIMEDOUT;
+
+iounmap_ret:
+	iounmap(cpgmac_sysc);
+	iounmap(cpgmac_clk);
 	return 0;
 }
 
@@ -415,8 +453,7 @@ static int davinci_mdio_suspend(struct device *dev)
 	__raw_writel(ctrl, &data->regs->control);
 	wait_for_idle(data);
 
-	if (data->clk)
-		clk_disable(data->clk);
+	pm_runtime_put_sync(data->dev);
 
 	data->suspended = true;
 	spin_unlock(&data->lock);
@@ -430,15 +467,17 @@ static int davinci_mdio_resume(struct device *dev)
 	u32 ctrl;
 
 	spin_lock(&data->lock);
-	if (data->clk)
-		clk_enable(data->clk);
+	pm_runtime_put_sync(data->dev);
+
+	/* Need to wait till Module is enabled */
+	wait_for_clock_enable(data);
 
 	/* restart the scan state machine */
 	ctrl = __raw_readl(&data->regs->control);
 	ctrl |= CONTROL_ENABLE;
 	__raw_writel(ctrl, &data->regs->control);
-
 	data->suspended = false;
+
 	spin_unlock(&data->lock);
 
 	return 0;

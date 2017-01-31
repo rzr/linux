@@ -16,40 +16,48 @@
 #include <linux/err.h>
 #include <linux/io.h>
 
-#include <plat/common.h>
+#include "common.h"
 
 #include "prm44xx.h"
+#include "prm33xx.h"
 #include "prminst44xx.h"
 #include "prm-regbits-44xx.h"
 #include "prcm44xx.h"
 #include "prcm_mpu44xx.h"
 
-static u32 _prm_bases[OMAP4_MAX_PRCM_PARTITIONS] = {
+static u32 **_prm_bases;
+static u32 max_prm_partitions;
+
+static u32 *omap44xx_prm_bases[] = {
 	[OMAP4430_INVALID_PRCM_PARTITION]	= 0,
-	[OMAP4430_PRM_PARTITION]		= OMAP4430_PRM_BASE,
+	[OMAP4430_PRM_PARTITION]		= OMAP2_L4_IO_ADDRESS(OMAP4430_PRM_BASE),
 	[OMAP4430_CM1_PARTITION]		= 0,
 	[OMAP4430_CM2_PARTITION]		= 0,
 	[OMAP4430_SCRM_PARTITION]		= 0,
-	[OMAP4430_PRCM_MPU_PARTITION]		= OMAP4430_PRCM_MPU_BASE,
+	[OMAP4430_PRCM_MPU_PARTITION]		= OMAP2_L4_IO_ADDRESS(OMAP4430_PRCM_MPU_BASE),
+};
+
+static u32 *am33xx_prm_bases[] = {
+	[OMAP4430_INVALID_PRCM_PARTITION]	= 0,
+	[AM33XX_PRM_PARTITION]			= AM33XX_L4_WK_IO_ADDRESS(AM33XX_PRM_BASE),
 };
 
 /* Read a register in a PRM instance */
 u32 omap4_prminst_read_inst_reg(u8 part, s16 inst, u16 idx)
 {
-	BUG_ON(part >= OMAP4_MAX_PRCM_PARTITIONS ||
+	BUG_ON(part >= max_prm_partitions ||
 	       part == OMAP4430_INVALID_PRCM_PARTITION ||
 	       !_prm_bases[part]);
-	return __raw_readl(OMAP2_L4_IO_ADDRESS(_prm_bases[part] + inst +
-					       idx));
+	return __raw_readl(_prm_bases[part] + ((inst + idx)/sizeof(u32)));
 }
 
 /* Write into a register in a PRM instance */
 void omap4_prminst_write_inst_reg(u32 val, u8 part, s16 inst, u16 idx)
 {
-	BUG_ON(part >= OMAP4_MAX_PRCM_PARTITIONS ||
+	BUG_ON(part >= max_prm_partitions ||
 	       part == OMAP4430_INVALID_PRCM_PARTITION ||
 	       !_prm_bases[part]);
-	__raw_writel(val, OMAP2_L4_IO_ADDRESS(_prm_bases[part] + inst + idx));
+	__raw_writel(val, _prm_bases[part] + ((inst + idx)/sizeof(u32)));
 }
 
 /* Read-modify-write a register in PRM. Caller must lock */
@@ -121,6 +129,7 @@ int omap4_prminst_assert_hardreset(u8 shift, u8 part, s16 inst,
  * wait
  * @rstctrl_reg: RM_RSTCTRL register address for this module
  * @shift: register bit shift corresponding to the reset line to deassert
+ * @st_shift: register bit shift corresponding to the reset line to deassert
  *
  * Some IPs like dsp, ipu or iva contain processors that require an HW
  * reset line to be asserted / deasserted in order to fully enable the
@@ -131,12 +140,14 @@ int omap4_prminst_assert_hardreset(u8 shift, u8 part, s16 inst,
  * -EINVAL upon an argument error, -EEXIST if the submodule was already out
  * of reset, or -EBUSY if the submodule did not exit reset promptly.
  */
-int omap4_prminst_deassert_hardreset(u8 shift, u8 part, s16 inst,
-				     u16 rstctrl_offs)
+int omap4_prminst_deassert_hardreset(u8 shift, u8 st_shift, u8 part,
+				s16 inst, u16 rstctrl_offs, u16 rstst_offs)
 {
 	int c;
-	u32 mask = 1 << shift;
-	u16 rstst_offs = rstctrl_offs + OMAP4_RST_CTRL_ST_OFFSET;
+
+	rstst_offs = rstst_offs ? rstst_offs :
+			(rstctrl_offs + OMAP4_RST_CTRL_ST_OFFSET);
+	st_shift = st_shift ? st_shift : shift;
 
 	/* Check the current status to avoid de-asserting the line twice */
 	if (omap4_prminst_is_hardreset_asserted(shift, part, inst,
@@ -144,13 +155,13 @@ int omap4_prminst_deassert_hardreset(u8 shift, u8 part, s16 inst,
 		return -EEXIST;
 
 	/* Clear the reset status by writing 1 to the status bit */
-	omap4_prminst_rmw_inst_reg_bits(0xffffffff, mask, part, inst,
+	omap4_prminst_rmw_inst_reg_bits(0xffffffff, (1 << st_shift), part, inst,
 					rstst_offs);
 	/* de-assert the reset control line */
-	omap4_prminst_rmw_inst_reg_bits(mask, 0, part, inst, rstctrl_offs);
+	omap4_prminst_rmw_inst_reg_bits((1 << shift), 0, part, inst, rstctrl_offs);
 	/* wait the status to be set */
-	omap_test_timeout(omap4_prminst_is_hardreset_asserted(shift, part, inst,
-							      rstst_offs),
+	omap_test_timeout(omap4_prminst_is_hardreset_asserted(st_shift,
+					part, inst, rstst_offs),
 			  MAX_MODULE_HARDRESET_WAIT, c);
 
 	return (c == MAX_MODULE_HARDRESET_WAIT) ? -EBUSY : 0;
@@ -173,4 +184,15 @@ void omap4_prminst_global_warm_sw_reset(void)
 	v = omap4_prminst_read_inst_reg(OMAP4430_PRM_PARTITION,
 				    OMAP4430_PRM_DEVICE_INST,
 				    OMAP4_PRM_RSTCTRL_OFFSET);
+}
+
+void __init omap44xx_prminst_init(void)
+{
+	if (cpu_is_omap44xx()) {
+		_prm_bases = omap44xx_prm_bases;
+		max_prm_partitions = ARRAY_SIZE(omap44xx_prm_bases);
+	} else if (cpu_is_am33xx()) {
+		_prm_bases = am33xx_prm_bases;
+		max_prm_partitions = ARRAY_SIZE(am33xx_prm_bases);
+	}
 }

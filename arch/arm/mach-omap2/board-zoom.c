@@ -21,7 +21,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
-#include <plat/common.h>
+#include "common.h"
 #include <plat/board.h>
 #include <plat/usb.h>
 
@@ -114,8 +114,9 @@ static void __init omap_zoom_init(void)
 		usbhs_init(&usbhs_bdata);
 	}
 
-	board_nand_init(zoom_nand_partitions, ARRAY_SIZE(zoom_nand_partitions),
-						ZOOM_NAND_CS, NAND_BUSWIDTH_16);
+	omap_nand_init(zoom_nand_partitions,
+			ARRAY_SIZE(zoom_nand_partitions), ZOOM_NAND_CS,
+			NAND_BUSWIDTH_16, &nand_default_timings);
 	zoom_debugboard_init();
 	zoom_peripherals_init();
 
@@ -135,6 +136,7 @@ MACHINE_START(OMAP_ZOOM2, "OMAP Zoom2 board")
 	.map_io		= omap3_map_io,
 	.init_early	= omap3430_init_early,
 	.init_irq	= omap3_init_irq,
+	.handle_irq	= omap3_intc_handle_irq,
 	.init_machine	= omap_zoom_init,
 	.timer		= &omap3_timer,
 MACHINE_END
@@ -145,6 +147,7 @@ MACHINE_START(OMAP_ZOOM3, "OMAP Zoom3 board")
 	.map_io		= omap3_map_io,
 	.init_early	= omap3630_init_early,
 	.init_irq	= omap3_init_irq,
+	.handle_irq	= omap3_intc_handle_irq,
 	.init_machine	= omap_zoom_init,
 	.timer		= &omap3_timer,
 MACHINE_END

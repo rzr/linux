@@ -49,6 +49,37 @@ config TI_DAVINCI_CPDMA
 	  To compile this driver as a module, choose M here: the module
 	  will be called davinci_cpdma.  This is recommended.
 
+config TI_CPSW
+	tristate "TI CPSW Switch Support"
+	depends on ARM && (ARCH_DAVINCI || SOC_OMAPAM33XX)
+	select TI_DAVINCI_CPDMA
+	select TI_DAVINCI_MDIO
+	---help---
+	  This driver supports TI's CPSW Ethernet Switch.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called cpsw.
+
+config TI_CPTS
+	boolean "TI Common Platform Time Sync (CPTS) Support"
+	depends on TI_CPSW
+	select PTP_1588_CLOCK
+	select PPS
+	---help---
+	  This driver supports the Common Platform Time Sync unit of
+	  the CPSW Ethernet Switch.
+
+	  The unit can time stamp PTP UDP/IPv4
+	  and Layer 2 packets, and the driver offers a PTP Hardware Clock.
+
+config TI_CPSW_DUAL_EMAC
+	bool "TI CPSW Switch as Dual EMAC"
+	depends on TI_CPSW
+	help
+	  This driver makes TI's CPSW Ethernet Switch as Dual EMAC. Switch
+	  features will not be available in this mode, Dual Emac default
+	  VLAN ids should not be used in VLAN configuration
+
 config TLAN
 	tristate "TI ThunderLAN support"
 	depends on (PCI || EISA)

@@ -18,7 +18,7 @@
 
 #include <plat/omap-pm.h>
 #include <plat/omap_device.h>
-#include <plat/common.h>
+#include "common.h"
 
 #include "voltage.h"
 #include "powerdomain.h"
@@ -198,7 +198,7 @@ exit:
 
 static void __init omap3_init_voltages(void)
 {
-	if (!cpu_is_omap34xx())
+	if (!cpu_is_omap34xx() || cpu_is_am33xx())
 		return;
 
 	omap2_set_init_voltage("mpu_iva", "dpll1_ck", "mpu");

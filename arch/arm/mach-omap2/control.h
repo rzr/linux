@@ -29,6 +29,8 @@
 		OMAP2_L4_IO_ADDRESS(OMAP243X_CTRL_BASE + (reg))
 #define OMAP343X_CTRL_REGADDR(reg)					\
 		OMAP2_L4_IO_ADDRESS(OMAP343X_CTRL_BASE + (reg))
+#define AM33XX_CTRL_REGADDR(reg)					\
+		AM33XX_L4_WK_IO_ADDRESS(AM33XX_SCM_BASE + (reg))
 #else
 #define OMAP242X_CTRL_REGADDR(reg)					\
 		OMAP2_L4_IO_ADDRESS(OMAP242X_CTRL_BASE + (reg))
@@ -36,6 +38,8 @@
 		OMAP2_L4_IO_ADDRESS(OMAP243X_CTRL_BASE + (reg))
 #define OMAP343X_CTRL_REGADDR(reg)					\
 		OMAP2_L4_IO_ADDRESS(OMAP343X_CTRL_BASE + (reg))
+#define AM33XX_CTRL_REGADDR(reg)					\
+		AM33XX_L4_WK_IO_ADDRESS(AM33XX_SCM_BASE + (reg))
 #endif /* __ASSEMBLY__ */
 
 /*
@@ -52,8 +56,14 @@
 #define OMAP343X_CONTROL_PADCONFS_WKUP	0xa00
 #define OMAP343X_CONTROL_GENERAL_WKUP	0xa60
 
-/* TI816X spefic control submodules */
-#define TI816X_CONTROL_DEVCONF		0x600
+/* TI81XX spefic control submodules */
+#define TI81XX_CONTROL_DEVCONF		0x600
+
+/* TI81XX CONTROL_DEVCONF register offsets */
+#define TI81XX_CONTROL_MAC_ID0_LO       (TI81XX_CONTROL_DEVCONF + 0x030)
+#define TI81XX_CONTROL_MAC_ID0_HI       (TI81XX_CONTROL_DEVCONF + 0x034)
+#define TI81XX_CONTROL_MAC_ID1_LO       (TI81XX_CONTROL_DEVCONF + 0x038)
+#define TI81XX_CONTROL_MAC_ID1_HI       (TI81XX_CONTROL_DEVCONF + 0x03c)
 
 /* Control register offsets - read/write with omap_ctrl_{read,write}{bwl}() */
 
@@ -244,8 +254,8 @@
 #define OMAP3_PADCONF_SAD2D_MSTANDBY   0x250
 #define OMAP3_PADCONF_SAD2D_IDLEACK    0x254
 
-/* TI816X CONTROL_DEVCONF register offsets */
-#define TI816X_CONTROL_DEVICE_ID	(TI816X_CONTROL_DEVCONF + 0x000)
+/* TI81XX CONTROL_DEVCONF register offsets */
+#define TI81XX_CONTROL_DEVICE_ID	(TI81XX_CONTROL_DEVCONF + 0x000)
 
 /*
  * REVISIT: This list of registers is not comprehensive - there are more
@@ -337,6 +347,45 @@
 #define AM35XX_VPFE_VBUSP_SW_RST	BIT(2)
 #define AM35XX_HECC_SW_RST		BIT(3)
 #define AM35XX_VPFE_PCLK_SW_RST		BIT(4)
+
+/* AM33XX CONTROL_STATUS bits */
+#define AM33XX_SYSBOOT0			(0xff << 0)
+#define AM33XX_DEVTYPE			(1 << 8)
+#define AM33XX_GPMC_CS0_BW		(1 << 16)
+#define AM33XX_GPMC_CS0_WAITEN		(1 << 17)
+#define AM33XX_GPMC_CS0_ADMUX		(0x3 << 18)
+#define AM33XX_SYSBOOT1			(0x3 << 22)
+
+/*
+ * CONTROL AM33XX STATUS register to identify boot-time configurations
+ */
+#define AM33XX_CONTROL_STATUS_OFF	0x040
+#define AM33XX_CONTROL_STATUS		AM33XX_L4_WK_IO_ADDRESS(AM33XX_CTRL_BASE + \
+						AM33XX_CONTROL_STATUS_OFF)
+#define AM33XX_DEV_FEATURE		0x604
+#define AM33XX_SGX_SHIFT		29
+#define AM33XX_SGX_MASK			(1 << AM33XX_SGX_SHIFT)
+
+/*
+ * CONTROL AM33XX GMII_SEL register for MII mode selection
+ */
+#define AM33XX_CONTROL_GMII_SEL_OFFSET	0x650
+#define AM33XX_RGMII_DISABLE_INT_DLY	(BIT(4) | BIT(5))
+#define AM33XX_MII_MODE_EN		0x0
+#define AM33XX_RMII_MODE_EN		((1 << 0) | (1 << 2))
+#define AM33XX_RGMII_MODE_EN		((0x2 << 0) | (0x2 << 2) | \
+					(AM33XX_RGMII_DISABLE_INT_DLY))
+
+/*
+ * CONTROL AM33XX PWMSS_CTRL register to enable time base clock Enable
+ */
+
+#define AM33XX_CONTROL_PWMSS_CTRL_OFS	0x664
+#define AM33XX_PWMSS0_TBCLKEN		0x0
+#define AM33XX_PWMSS1_TBCLKEN		0x1
+#define AM33XX_PWMSS2_TBCLKEN		0x2
+#define AM33XX_CONTROL_PWMSS_CTRL	AM33XX_L4_WK_IO_ADDRESS( \
+		AM33XX_CTRL_BASE + AM33XX_CONTROL_PWMSS_CTRL_OFS)
 
 /*
  * CONTROL OMAP STATUS register to identify OMAP3 features

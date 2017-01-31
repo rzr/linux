@@ -50,6 +50,11 @@
 #define OMAP_HSMMC_SUPPORTS_DUAL_VOLT		BIT(0)
 #define OMAP_HSMMC_BROKEN_MULTIBLOCK_READ	BIT(1)
 
+enum {
+	MMC_CTRL_VERSION_1 = 0, /* OMAP class devicess */
+	MMC_CTRL_VERSION_2	/* AM33XX class devices */
+};
+
 struct omap_mmc_dev_attr {
 	u8 flags;
 };
@@ -96,6 +101,7 @@ struct omap_mmc_platform_data {
 		 */
 		u8  wires;	/* Used for the MMC driver on omap1 and 2420 */
 		u32 caps;	/* Used for the MMC driver on 2430 and later */
+		u32 pm_caps;	/* PM capabilities of the mmc */
 
 		/*
 		 * nomux means "standard" muxing is wrong on this board, and
@@ -166,6 +172,8 @@ struct omap_mmc_platform_data {
 		unsigned int ban_openended:1;
 
 	} slots[OMAP_MMC_MAX_SLOTS];
+
+	u8 version;
 };
 
 /* called from board-specific card detection service routine */

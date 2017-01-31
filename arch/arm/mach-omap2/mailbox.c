@@ -20,25 +20,29 @@
 #include <mach/irqs.h>
 
 #define MAILBOX_REVISION		0x000
-#define MAILBOX_MESSAGE(m)		(0x040 + 4 * (m))
-#define MAILBOX_FIFOSTATUS(m)		(0x080 + 4 * (m))
-#define MAILBOX_MSGSTATUS(m)		(0x0c0 + 4 * (m))
-#define MAILBOX_IRQSTATUS(u)		(0x100 + 8 * (u))
-#define MAILBOX_IRQENABLE(u)		(0x104 + 8 * (u))
+#define MAILBOX_MESSAGE(m)		(0x040 + 0x4 * (m))
+#define MAILBOX_FIFOSTATUS(m)		(0x080 + 0x4 * (m))
+#define MAILBOX_MSGSTATUS(m)		(0x0c0 + 0x4 * (m))
+#define MAILBOX_IRQSTATUS(u)		(0x100 + 0x8 * (u))
+#define MAILBOX_IRQENABLE(u)		(0x104 + 0x8 * (u))
 
-#define OMAP4_MAILBOX_IRQSTATUS(u)	(0x104 + 10 * (u))
-#define OMAP4_MAILBOX_IRQENABLE(u)	(0x108 + 10 * (u))
-#define OMAP4_MAILBOX_IRQENABLE_CLR(u)	(0x10c + 10 * (u))
+#define OMAP4_MAILBOX_IRQSTATUS(u)	(0x104 + 0x10 * (u))
+#define OMAP4_MAILBOX_IRQENABLE(u)	(0x108 + 0x10 * (u))
+#define OMAP4_MAILBOX_IRQENABLE_CLR(u)	(0x10c + 0x10 * (u))
 
 #define MAILBOX_IRQ_NEWMSG(m)		(1 << (2 * (m)))
 #define MAILBOX_IRQ_NOTFULL(m)		(1 << (2 * (m) + 1))
 
+/* TODO: This can and should be based on #users and #sub-modules */
 #define MBOX_REG_SIZE			0x120
 
 #define OMAP4_MBOX_REG_SIZE		0x130
 
+#define AM33XX_MBOX_REG_SIZE		0x140
+
 #define MBOX_NR_REGS			(MBOX_REG_SIZE / sizeof(u32))
 #define OMAP4_MBOX_NR_REGS		(OMAP4_MBOX_REG_SIZE / sizeof(u32))
+#define AM33XX_MBOX_NR_REGS		(AM33XX_MBOX_REG_SIZE / sizeof(u32))
 
 static void __iomem *mbox_base;
 
@@ -123,6 +127,20 @@ static int omap2_mbox_fifo_full(struct omap_mbox *mbox)
 	return mbox_read_reg(fifo->fifo_stat);
 }
 
+static int omap2_mbox_fifo_needs_flush(struct omap_mbox *mbox)
+{
+	struct omap_mbox2_fifo *fifo =
+		&((struct omap_mbox2_priv *)mbox->priv)->tx_fifo;
+	return (mbox_read_reg(fifo->msg_stat) == 0);
+}
+
+static mbox_msg_t omap2_mbox_fifo_readback(struct omap_mbox *mbox)
+{
+	struct omap_mbox2_fifo *fifo =
+		&((struct omap_mbox2_priv *)mbox->priv)->tx_fifo;
+	return (mbox_msg_t) mbox_read_reg(fifo->msg);
+}
+
 /* Mailbox IRQ handle functions */
 static void omap2_mbox_enable_irq(struct omap_mbox *mbox,
 		omap_mbox_type_t irq)
@@ -141,7 +159,7 @@ static void omap2_mbox_disable_irq(struct omap_mbox *mbox,
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
 
-	if (!cpu_is_omap44xx())
+	if (!cpu_is_omap44xx() && !cpu_is_am33xx())
 		bit = mbox_read_reg(p->irqdisable) & ~bit;
 
 	mbox_write_reg(bit, p->irqdisable);
@@ -205,19 +223,21 @@ static void omap2_mbox_restore_ctx(struct omap_mbox *mbox)
 }
 
 static struct omap_mbox_ops omap2_mbox_ops = {
-	.type		= OMAP_MBOX_TYPE2,
-	.startup	= omap2_mbox_startup,
-	.shutdown	= omap2_mbox_shutdown,
-	.fifo_read	= omap2_mbox_fifo_read,
-	.fifo_write	= omap2_mbox_fifo_write,
-	.fifo_empty	= omap2_mbox_fifo_empty,
-	.fifo_full	= omap2_mbox_fifo_full,
-	.enable_irq	= omap2_mbox_enable_irq,
-	.disable_irq	= omap2_mbox_disable_irq,
-	.ack_irq	= omap2_mbox_ack_irq,
-	.is_irq		= omap2_mbox_is_irq,
-	.save_ctx	= omap2_mbox_save_ctx,
-	.restore_ctx	= omap2_mbox_restore_ctx,
+	.type			= OMAP_MBOX_TYPE2,
+	.startup		= omap2_mbox_startup,
+	.shutdown		= omap2_mbox_shutdown,
+	.fifo_read		= omap2_mbox_fifo_read,
+	.fifo_write		= omap2_mbox_fifo_write,
+	.fifo_empty		= omap2_mbox_fifo_empty,
+	.fifo_full		= omap2_mbox_fifo_full,
+	.fifo_needs_flush	= omap2_mbox_fifo_needs_flush,
+	.fifo_readback		= omap2_mbox_fifo_readback,
+	.enable_irq		= omap2_mbox_enable_irq,
+	.disable_irq		= omap2_mbox_disable_irq,
+	.ack_irq		= omap2_mbox_ack_irq,
+	.is_irq			= omap2_mbox_is_irq,
+	.save_ctx		= omap2_mbox_save_ctx,
+	.restore_ctx		= omap2_mbox_restore_ctx,
 };
 
 /*
@@ -229,7 +249,6 @@ static struct omap_mbox_ops omap2_mbox_ops = {
 
 /* FIXME: the following structs should be filled automatically by the user id */
 
-#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP2)
 /* DSP */
 static struct omap_mbox2_priv omap2_mbox_dsp_priv = {
 	.tx_fifo = {
@@ -252,13 +271,9 @@ struct omap_mbox mbox_dsp_info = {
 	.ops	= &omap2_mbox_ops,
 	.priv	= &omap2_mbox_dsp_priv,
 };
-#endif
 
-#if defined(CONFIG_ARCH_OMAP3)
 struct omap_mbox *omap3_mboxes[] = { &mbox_dsp_info, NULL };
-#endif
 
-#if defined(CONFIG_SOC_OMAP2420)
 /* IVA */
 static struct omap_mbox2_priv omap2_mbox_iva_priv = {
 	.tx_fifo = {
@@ -283,9 +298,34 @@ static struct omap_mbox mbox_iva_info = {
 };
 
 struct omap_mbox *omap2_mboxes[] = { &mbox_dsp_info, &mbox_iva_info, NULL };
-#endif
 
-#if defined(CONFIG_ARCH_OMAP4)
+/* A8 -> Wakeup-M3 */
+static struct omap_mbox2_priv omap2_mbox_m3_priv = {
+	.tx_fifo = {
+		.msg		= MAILBOX_MESSAGE(0),
+		.fifo_stat	= MAILBOX_FIFOSTATUS(0),
+		.msg_stat	= MAILBOX_MSGSTATUS(0),
+	},
+	/* TODO: No M3->A8 so this needs to be removed */
+	.rx_fifo = {
+		.msg		= MAILBOX_MESSAGE(1),
+		.msg_stat	= MAILBOX_MSGSTATUS(1),
+	},
+	.irqenable	= OMAP4_MAILBOX_IRQENABLE(3),
+	.irqstatus	= OMAP4_MAILBOX_IRQSTATUS(3),
+	.notfull_bit	= MAILBOX_IRQ_NOTFULL(0),
+	.newmsg_bit	= MAILBOX_IRQ_NEWMSG(0),
+	.irqdisable	= OMAP4_MAILBOX_IRQENABLE_CLR(3),
+};
+
+struct omap_mbox wkup_m3_info = {
+	.name	= "wkup_m3",
+	.ops	= &omap2_mbox_ops,
+	.priv	= &omap2_mbox_m3_priv,
+};
+
+struct omap_mbox *am33xx_mboxes[] = { &wkup_m3_info, NULL };
+
 /* OMAP4 */
 static struct omap_mbox2_priv omap2_mbox_1_priv = {
 	.tx_fifo = {
@@ -332,7 +372,6 @@ struct omap_mbox mbox_2_info = {
 };
 
 struct omap_mbox *omap4_mboxes[] = { &mbox_1_info, &mbox_2_info, NULL };
-#endif
 
 static int __devinit omap2_mbox_probe(struct platform_device *pdev)
 {
@@ -342,14 +381,15 @@ static int __devinit omap2_mbox_probe(struct platform_device *pdev)
 
 	if (false)
 		;
-#if defined(CONFIG_ARCH_OMAP3)
-	else if (cpu_is_omap34xx()) {
+	else if (cpu_is_omap34xx() && !cpu_is_am33xx()) {
 		list = omap3_mboxes;
 
 		list[0]->irq = platform_get_irq(pdev, 0);
+	} else if (cpu_is_am33xx()) {
+		list = am33xx_mboxes;
+
+		list[0]->irq = platform_get_irq(pdev, 0);
 	}
-#endif
-#if defined(CONFIG_ARCH_OMAP2)
 	else if (cpu_is_omap2430()) {
 		list = omap2_mboxes;
 
@@ -360,14 +400,11 @@ static int __devinit omap2_mbox_probe(struct platform_device *pdev)
 		list[0]->irq = platform_get_irq_byname(pdev, "dsp");
 		list[1]->irq = platform_get_irq_byname(pdev, "iva");
 	}
-#endif
-#if defined(CONFIG_ARCH_OMAP4)
 	else if (cpu_is_omap44xx()) {
 		list = omap4_mboxes;
 
 		list[0]->irq = list[1]->irq = platform_get_irq(pdev, 0);
 	}
-#endif
 	else {
 		pr_err("%s: platform not supported\n", __func__);
 		return -ENODEV;
@@ -412,7 +449,7 @@ static void __exit omap2_mbox_exit(void)
 	platform_driver_unregister(&omap2_mbox_driver);
 }
 
-module_init(omap2_mbox_init);
+device_initcall(omap2_mbox_init);
 module_exit(omap2_mbox_exit);
 
 MODULE_LICENSE("GPL v2");

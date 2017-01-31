@@ -21,7 +21,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <linux/clk.h>
+#include <linux/pm_runtime.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -108,6 +108,10 @@
 #define DAVINCI_MCASP_WFIFOSTS		(0x1014)
 #define DAVINCI_MCASP_RFIFOCTL		(0x1018)
 #define DAVINCI_MCASP_RFIFOSTS		(0x101C)
+#define MCASP_VER3_WFIFOCTL		(0x1000)
+#define MCASP_VER3_WFIFOSTS		(0x1004)
+#define MCASP_VER3_RFIFOCTL		(0x1008)
+#define MCASP_VER3_RFIFOSTS		(0x100C)
 
 /*
  * DAVINCI_MCASP_PWREMUMGT_REG - Power Down and Emulation Management
@@ -380,14 +384,34 @@ static void mcasp_start_tx(struct davinci_audio_dev *dev)
 static void davinci_mcasp_start(struct davinci_audio_dev *dev, int stream)
 {
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		if (dev->txnumevt)	/* enable FIFO */
-			mcasp_set_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+		if (dev->txnumevt) {	/* flush and enable FIFO */
+			if (dev->version == MCASP_VERSION_3) {
+				mcasp_clr_bits(dev->base + MCASP_VER3_WFIFOCTL,
 								FIFO_ENABLE);
+				mcasp_set_bits(dev->base + MCASP_VER3_WFIFOCTL,
+								FIFO_ENABLE);
+			} else {
+				mcasp_clr_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+								FIFO_ENABLE);
+				mcasp_set_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+								FIFO_ENABLE);
+			}
+		}
 		mcasp_start_tx(dev);
 	} else {
-		if (dev->rxnumevt)	/* enable FIFO */
-			mcasp_set_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+		if (dev->rxnumevt) {	/* flush and enable FIFO */
+			if (dev->version == MCASP_VERSION_3) {
+				mcasp_clr_bits(dev->base + MCASP_VER3_RFIFOCTL,
 								FIFO_ENABLE);
+				mcasp_set_bits(dev->base + MCASP_VER3_RFIFOCTL,
+								FIFO_ENABLE);
+			} else {
+				mcasp_clr_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+								FIFO_ENABLE);
+				mcasp_set_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+								FIFO_ENABLE);
+			}
+		}
 		mcasp_start_rx(dev);
 	}
 }
@@ -407,14 +431,24 @@ static void mcasp_stop_tx(struct davinci_audio_dev *dev)
 static void davinci_mcasp_stop(struct davinci_audio_dev *dev, int stream)
 {
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		if (dev->txnumevt)	/* disable FIFO */
-			mcasp_clr_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
-								FIFO_ENABLE);
+		if (dev->txnumevt) {	/* disable FIFO */
+			if (dev->version == MCASP_VERSION_3)
+				mcasp_clr_bits(dev->base + MCASP_VER3_WFIFOCTL,
+						FIFO_ENABLE);
+			else
+				mcasp_clr_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+						FIFO_ENABLE);
+		}
 		mcasp_stop_tx(dev);
 	} else {
-		if (dev->rxnumevt)	/* disable FIFO */
-			mcasp_clr_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
-								FIFO_ENABLE);
+		if (dev->rxnumevt) {	/* disable FIFO */
+			if (dev->version == MCASP_VERSION_3)
+				mcasp_clr_bits(dev->base + MCASP_VER3_RFIFOCTL,
+						FIFO_ENABLE);
+			else
+				mcasp_clr_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+						FIFO_ENABLE);
+		}
 		mcasp_stop_rx(dev);
 	}
 }
@@ -565,7 +599,7 @@ static int davinci_config_channel_size(struct davinci_audio_dev *dev,
 					TXSSZ(fmt), TXSSZ(0x0F));
 	mcasp_mod_bits(dev->base + DAVINCI_MCASP_TXFMT_REG, TXROT(rotate),
 							TXROT(7));
-	mcasp_mod_bits(dev->base + DAVINCI_MCASP_RXFMT_REG, RXROT(rotate),
+	mcasp_mod_bits(dev->base + DAVINCI_MCASP_RXFMT_REG, RXROT(0),
 							RXROT(7));
 	mcasp_set_reg(dev->base + DAVINCI_MCASP_TXMASK_REG, mask);
 	mcasp_set_reg(dev->base + DAVINCI_MCASP_RXMASK_REG, mask);
@@ -613,20 +647,36 @@ static void davinci_hw_common_param(struct davinci_audio_dev *dev, int stream)
 		if (dev->txnumevt * tx_ser > 64)
 			dev->txnumevt = 1;
 
-		mcasp_mod_bits(dev->base + DAVINCI_MCASP_WFIFOCTL, tx_ser,
+		if (dev->version == MCASP_VERSION_3) {
+			mcasp_mod_bits(dev->base + MCASP_VER3_WFIFOCTL, tx_ser,
 								NUMDMA_MASK);
-		mcasp_mod_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+			mcasp_mod_bits(dev->base + MCASP_VER3_WFIFOCTL,
 				((dev->txnumevt * tx_ser) << 8), NUMEVT_MASK);
+		} else {
+			mcasp_mod_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+							tx_ser, NUMDMA_MASK);
+			mcasp_mod_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+				((dev->txnumevt * tx_ser) << 8), NUMEVT_MASK);
+		}
 	}
 
 	if (dev->rxnumevt && stream == SNDRV_PCM_STREAM_CAPTURE) {
 		if (dev->rxnumevt * rx_ser > 64)
 			dev->rxnumevt = 1;
 
-		mcasp_mod_bits(dev->base + DAVINCI_MCASP_RFIFOCTL, rx_ser,
+		if (dev->version == MCASP_VERSION_3) {
+			mcasp_mod_bits(dev->base + MCASP_VER3_RFIFOCTL, rx_ser,
 								NUMDMA_MASK);
-		mcasp_mod_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
-				((dev->rxnumevt * rx_ser) << 8), NUMEVT_MASK);
+			mcasp_mod_bits(dev->base + MCASP_VER3_RFIFOCTL,
+					((dev->rxnumevt * rx_ser) << 8),
+					NUMEVT_MASK);
+		} else {
+			mcasp_mod_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+							rx_ser,	NUMDMA_MASK);
+			mcasp_mod_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+					((dev->rxnumevt * rx_ser) << 8),
+					NUMEVT_MASK);
+		}
 	}
 }
 
@@ -776,20 +826,18 @@ static int davinci_mcasp_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (!dev->clk_active) {
-			clk_enable(dev->clk);
-			dev->clk_active = 1;
-		}
+		ret = pm_runtime_get_sync(dev->dev);
+		if (ret < 0)
+			dev_err(dev->dev, "failed to get runtime pm\n");
+
 		davinci_mcasp_start(dev, substream->stream);
 		break;
 
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		davinci_mcasp_stop(dev, substream->stream);
-		if (dev->clk_active) {
-			clk_disable(dev->clk);
-			dev->clk_active = 0;
-		}
-
+		ret = pm_runtime_put_sync(dev->dev);
+		if (ret < 0)
+			dev_err(dev->dev, "failed to put runtime pm\n");
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -887,14 +935,13 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 	}
 
 	pdata = pdev->dev.platform_data;
-	dev->clk = clk_get(&pdev->dev, NULL);
-	if (IS_ERR(dev->clk)) {
-		ret = -ENODEV;
+	pm_runtime_enable(&pdev->dev);
+
+	ret = pm_runtime_get_sync(&pdev->dev);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "failed to get runtime pm\n");
 		goto err_release_region;
 	}
-
-	clk_enable(dev->clk);
-	dev->clk_active = 1;
 
 	dev->base = ioremap(mem->start, resource_size(mem));
 	if (!dev->base) {
@@ -911,16 +958,35 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 	dev->version = pdata->version;
 	dev->txnumevt = pdata->txnumevt;
 	dev->rxnumevt = pdata->rxnumevt;
+	dev->dev	= &pdev->dev;
+
+	if (dev->version == MCASP_VERSION_3) {
+		dev->xrsrctl = kzalloc((sizeof(unsigned int) *
+							dev->num_serializer),
+							GFP_KERNEL);
+		if (!dev->xrsrctl) {
+			ret = -ENOMEM;
+			dev_err(&pdev->dev, "err: mem alloc xrsrctl\n");
+			goto err_release_clk;
+		}
+	}
 
 	dma_data = &dev->dma_params[SNDRV_PCM_STREAM_PLAYBACK];
 	dma_data->asp_chan_q = pdata->asp_chan_q;
 	dma_data->ram_chan_q = pdata->ram_chan_q;
 	dma_data->sram_size = pdata->sram_size_playback;
-	dma_data->dma_addr = (dma_addr_t) (pdata->tx_dma_offset +
+	if (dev->version == MCASP_VERSION_3)
+		dma_data->dma_addr = (dma_addr_t) (pdata->tx_dma_offset);
+	else
+		dma_data->dma_addr = (dma_addr_t) (pdata->tx_dma_offset +
 							mem->start);
 
-	/* first TX, then RX */
-	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
+	if (dev->version == MCASP_VERSION_3)
+		res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "tx");
+	else
+		/* first TX, then RX */
+		res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
+
 	if (!res) {
 		dev_err(&pdev->dev, "no DMA resource\n");
 		ret = -ENODEV;
@@ -933,10 +999,17 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 	dma_data->asp_chan_q = pdata->asp_chan_q;
 	dma_data->ram_chan_q = pdata->ram_chan_q;
 	dma_data->sram_size = pdata->sram_size_capture;
-	dma_data->dma_addr = (dma_addr_t)(pdata->rx_dma_offset +
+	if (dev->version == MCASP_VERSION_3)
+		dma_data->dma_addr = (dma_addr_t) (pdata->rx_dma_offset);
+	else
+		dma_data->dma_addr = (dma_addr_t)(pdata->rx_dma_offset +
 							mem->start);
 
-	res = platform_get_resource(pdev, IORESOURCE_DMA, 1);
+	if (dev->version == MCASP_VERSION_3)
+		res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "rx");
+	else
+		res = platform_get_resource(pdev, IORESOURCE_DMA, 1);
+
 	if (!res) {
 		dev_err(&pdev->dev, "no DMA resource\n");
 		ret = -ENODEV;
@@ -952,11 +1025,13 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 	return 0;
 
 err_iounmap:
+	if (dev->version == MCASP_VERSION_3)
+		kfree(dev->xrsrctl);
 	iounmap(dev->base);
 err_release_clk:
-	clk_disable(dev->clk);
-	clk_put(dev->clk);
+	pm_runtime_put_sync(&pdev->dev);
 err_release_region:
+	pm_runtime_disable(&pdev->dev);
 	release_mem_region(mem->start, resource_size(mem));
 err_release_data:
 	kfree(dev);
@@ -970,21 +1045,146 @@ static int davinci_mcasp_remove(struct platform_device *pdev)
 	struct resource *mem;
 
 	snd_soc_unregister_dai(&pdev->dev);
-	clk_disable(dev->clk);
-	clk_put(dev->clk);
-	dev->clk = NULL;
-
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	release_mem_region(mem->start, resource_size(mem));
-
+	if (dev->version == MCASP_VERSION_3)
+		kfree(dev->xrsrctl);
 	kfree(dev);
 
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int davinci_mcasp_suspend(struct platform_device *pdev,
+							pm_message_t state)
+{
+	int ret = 0, idx;
+	struct davinci_audio_dev *dev = dev_get_drvdata(&pdev->dev);
+	struct snd_platform_data *pdata = pdev->dev.platform_data;
+
+	if (pdata->get_context_loss_count)
+		dev->context_loss_cnt =
+			pdata->get_context_loss_count(&pdev->dev);
+
+	if (dev->version == MCASP_VERSION_3) {
+		dev->gblctlx = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_GBLCTLX_REG);
+		dev->txmask = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_TXMASK_REG);
+		dev->txfmt = mcasp_get_reg(dev->base + DAVINCI_MCASP_TXFMT_REG);
+		dev->txfmctl = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_TXFMCTL_REG);
+		dev->aclkxctl = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_ACLKXCTL_REG);
+		dev->ahclkxctl = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_AHCLKXCTL_REG);
+		dev->txtdm = mcasp_get_reg(dev->base + DAVINCI_MCASP_TXTDM_REG);
+		dev->wfifoctl = mcasp_get_reg(dev->base + MCASP_VER3_WFIFOCTL);
+
+		dev->gblctlr = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_GBLCTLR_REG);
+		dev->rxmask = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_RXMASK_REG);
+		dev->rxfmt = mcasp_get_reg(dev->base + DAVINCI_MCASP_RXFMT_REG);
+		dev->rxfmctl = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_RXFMCTL_REG);
+		dev->aclkrctl = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_ACLKRCTL_REG);
+		dev->ahclkrctl = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_AHCLKRCTL_REG);
+		dev->rxtdm = mcasp_get_reg(dev->base + DAVINCI_MCASP_RXTDM_REG);
+		dev->rfifoctl = mcasp_get_reg(dev->base + MCASP_VER3_RFIFOCTL);
+
+		for (idx = 0; idx < dev->num_serializer; idx++) {
+			dev->xrsrctl[idx] = mcasp_get_reg(dev->base +
+						DAVINCI_MCASP_XRSRCTL_REG(idx));
+		}
+
+		dev->pfunc = mcasp_get_reg(dev->base + DAVINCI_MCASP_PFUNC_REG);
+		dev->pdir = mcasp_get_reg(dev->base + DAVINCI_MCASP_PDIR_REG);
+	}
+
+	ret = pm_runtime_put_sync(&pdev->dev);
+	if (ret < 0)
+		dev_err(&pdev->dev, "failed to get runtime pm\n");
+
+	/* only values < 0 indicate errors */
+	return IS_ERR_VALUE(ret) ? ret : 0;
+}
+
+static int davinci_mcasp_resume(struct platform_device *pdev)
+{
+	int ret = 0, idx, loss_cnt;
+	struct davinci_audio_dev *dev = dev_get_drvdata(&pdev->dev);
+	struct snd_platform_data *pdata = pdev->dev.platform_data;
+
+	ret = pm_runtime_get_sync(&pdev->dev);
+	if (ret < 0)
+		dev_err(&pdev->dev, "failed to get runtime pm\n");
+
+	if (pdata->get_context_loss_count) {
+		loss_cnt = pdata->get_context_loss_count(&pdev->dev);
+		if (loss_cnt < 0) {
+			dev_err(&pdev->dev,
+				"%s failed, context loss count = %d\n",
+				__func__, loss_cnt);
+		} else if (dev->context_loss_cnt == loss_cnt) {
+			return 0;
+		}
+	}
+
+	if (dev->version == MCASP_VERSION_3) {
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_GBLCTLX_REG,
+								dev->gblctlx);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_TXMASK_REG,
+								dev->txmask);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_TXFMT_REG, dev->txfmt);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_TXFMCTL_REG,
+								dev->txfmctl);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_ACLKXCTL_REG,
+								dev->aclkxctl);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_AHCLKXCTL_REG,
+								dev->ahclkxctl);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_TXTDM_REG, dev->txtdm);
+		mcasp_set_reg(dev->base + MCASP_VER3_WFIFOCTL, dev->wfifoctl);
+
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_GBLCTLR_REG,
+								dev->gblctlr);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_RXMASK_REG,
+								dev->rxmask);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_RXFMT_REG, dev->rxfmt);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_RXFMCTL_REG,
+								dev->rxfmctl);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_ACLKRCTL_REG,
+								dev->aclkrctl);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_AHCLKRCTL_REG,
+								dev->ahclkrctl);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_RXTDM_REG, dev->rxtdm);
+		mcasp_set_reg(dev->base + MCASP_VER3_RFIFOCTL, dev->rfifoctl);
+
+		for (idx = 0; idx < dev->num_serializer; idx++) {
+			mcasp_set_reg((dev->base +
+						DAVINCI_MCASP_XRSRCTL_REG(idx)),
+						dev->xrsrctl[idx]);
+		}
+
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_PFUNC_REG, dev->pfunc);
+		mcasp_set_reg(dev->base + DAVINCI_MCASP_PDIR_REG, dev->pdir);
+	}
+	/* only values < 0 indicate errors */
+	return IS_ERR_VALUE(ret) ? ret : 0;
+}
+#endif
+
 static struct platform_driver davinci_mcasp_driver = {
 	.probe		= davinci_mcasp_probe,
 	.remove		= davinci_mcasp_remove,
+#ifdef CONFIG_PM
+	.suspend	= davinci_mcasp_suspend,
+	.resume		= davinci_mcasp_resume,
+#endif
 	.driver		= {
 		.name	= "davinci-mcasp",
 		.owner	= THIS_MODULE,

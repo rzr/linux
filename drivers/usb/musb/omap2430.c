@@ -29,7 +29,6 @@
 #include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/list.h>
-#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
@@ -96,6 +95,7 @@ static void musb_do_idle(unsigned long _musb)
 	spin_unlock_irqrestore(&musb->lock, flags);
 }
 
+#define MUSB_TIMEOUT_A_WAIT_BCON	1100
 
 static void omap2430_musb_try_idle(struct musb *musb, unsigned long timeout)
 {
@@ -228,21 +228,25 @@ static int musb_otg_notifications(struct notifier_block *nb,
 		unsigned long event, void *unused)
 {
 	struct musb	*musb = container_of(nb, struct musb, nb);
+
+	musb->xceiv_event = event;
+	schedule_work(&musb->otg_notifier_work);
+
+	return 0;
+}
+
+static void musb_otg_notifier_work(struct work_struct *data_notifier_work)
+{
+	struct musb *musb = container_of(data_notifier_work, struct musb, otg_notifier_work);
 	struct device *dev = musb->controller;
 	struct musb_hdrc_platform_data *pdata = dev->platform_data;
 	struct omap_musb_board_data *data = pdata->board_data;
 
-	switch (event) {
+	switch (musb->xceiv_event) {
 	case USB_EVENT_ID:
 		dev_dbg(musb->controller, "ID GND\n");
 
-		if (is_otg_enabled(musb)) {
-			if (musb->gadget_driver) {
-				pm_runtime_get_sync(musb->controller);
-				otg_init(musb->xceiv);
-				omap2430_musb_set_vbus(musb, 1);
-			}
-		} else {
+		if (!is_otg_enabled(musb) || musb->gadget_driver) {
 			pm_runtime_get_sync(musb->controller);
 			otg_init(musb->xceiv);
 			omap2430_musb_set_vbus(musb, 1);
@@ -274,10 +278,7 @@ static int musb_otg_notifications(struct notifier_block *nb,
 		break;
 	default:
 		dev_dbg(musb->controller, "ID float\n");
-		return NOTIFY_DONE;
 	}
-
-	return NOTIFY_OK;
 }
 
 static int omap2430_musb_init(struct musb *musb)
@@ -291,11 +292,13 @@ static int omap2430_musb_init(struct musb *musb)
 	 * up through ULPI.  TWL4030-family PMICs include one,
 	 * which needs a driver, drivers aren't always needed.
 	 */
-	musb->xceiv = otg_get_transceiver();
+	musb->xceiv = otg_get_transceiver(musb->id);
 	if (!musb->xceiv) {
 		pr_err("HS USB OTG: no transceiver configured\n");
 		return -ENODEV;
 	}
+
+	INIT_WORK(&musb->otg_notifier_work, musb_otg_notifier_work);
 
 	status = pm_runtime_get_sync(dev);
 	if (status < 0) {
@@ -329,12 +332,12 @@ static int omap2430_musb_init(struct musb *musb)
 	if (status)
 		dev_dbg(musb->controller, "notification register failed\n");
 
+	musb->a_wait_bcon = MUSB_TIMEOUT_A_WAIT_BCON;
 	setup_timer(&musb_idle_timer, musb_do_idle, (unsigned long) musb);
 
 	return 0;
 
 err1:
-	pm_runtime_disable(dev);
 	return status;
 }
 
@@ -350,20 +353,19 @@ static void omap2430_musb_enable(struct musb *musb)
 
 	case USB_EVENT_ID:
 		otg_init(musb->xceiv);
-		if (data->interface_type == MUSB_INTERFACE_UTMI) {
-			devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
-			/* start the session */
-			devctl |= MUSB_DEVCTL_SESSION;
-			musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
-			while (musb_readb(musb->mregs, MUSB_DEVCTL) &
-						MUSB_DEVCTL_BDEVICE) {
-				cpu_relax();
+		if (data->interface_type != MUSB_INTERFACE_UTMI)
+			break;
+		devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
+		/* start the session */
+		devctl |= MUSB_DEVCTL_SESSION;
+		musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
+		while (musb_readb(musb->mregs, MUSB_DEVCTL) &
+				MUSB_DEVCTL_BDEVICE) {
+			cpu_relax();
 
-				if (time_after(jiffies, timeout)) {
-					dev_err(musb->controller,
-					"configured as A device timeout");
-					break;
-				}
+			if (time_after(jiffies, timeout)) {
+				dev_err(dev, "configured as A device timeout");
+				break;
 			}
 		}
 		break;
@@ -394,8 +396,14 @@ static int omap2430_musb_exit(struct musb *musb)
 }
 
 static const struct musb_platform_ops omap2430_ops = {
+	.fifo_mode	= 4,
+	.flags		= MUSB_GLUE_EP_ADDR_FLAT_MAPPING |
+				MUSB_GLUE_DMA_INVENTRA,
 	.init		= omap2430_musb_init,
 	.exit		= omap2430_musb_exit,
+
+	.read_fifo      = musb_read_fifo,
+	.write_fifo     = musb_write_fifo,
 
 	.set_mode	= omap2430_musb_set_mode,
 	.try_idle	= omap2430_musb_try_idle,
@@ -404,6 +412,9 @@ static const struct musb_platform_ops omap2430_ops = {
 
 	.enable		= omap2430_musb_enable,
 	.disable	= omap2430_musb_disable,
+
+	.dma_controller_create = inventra_dma_controller_create,
+	.dma_controller_destroy = inventra_dma_controller_destroy,
 };
 
 static u64 omap2430_dmamask = DMA_BIT_MASK(32);
@@ -421,12 +432,13 @@ static int __init omap2430_probe(struct platform_device *pdev)
 		goto err0;
 	}
 
-	musb = platform_device_alloc("musb-hdrc", -1);
+	musb = platform_device_alloc("musb-hdrc", pdev->id);
 	if (!musb) {
 		dev_err(&pdev->dev, "failed to allocate musb device\n");
 		goto err1;
 	}
 
+	ev_set_name(&pdev->dev, "musb-omap2430");
 	musb->dev.parent		= &pdev->dev;
 	musb->dev.dma_mask		= &omap2430_dmamask;
 	musb->dev.coherent_dma_mask	= omap2430_dmamask;
@@ -478,7 +490,6 @@ static int __exit omap2430_remove(struct platform_device *pdev)
 	platform_device_del(glue->musb);
 	platform_device_put(glue->musb);
 	pm_runtime_put(&pdev->dev);
-	pm_runtime_disable(&pdev->dev);
 	kfree(glue);
 
 	return 0;
@@ -490,6 +501,9 @@ static int omap2430_runtime_suspend(struct device *dev)
 {
 	struct omap2430_glue		*glue = dev_get_drvdata(dev);
 	struct musb			*musb = glue_to_musb(glue);
+
+	musb->context.otg_interfsel = musb_readl(musb->mregs,
+						OTG_INTERFSEL);
 
 	omap2430_low_level_exit(musb);
 	otg_set_suspend(musb->xceiv, 1);
@@ -503,6 +517,9 @@ static int omap2430_runtime_resume(struct device *dev)
 	struct musb			*musb = glue_to_musb(glue);
 
 	omap2430_low_level_init(musb);
+	musb_writel(musb->mregs, OTG_INTERFSEL,
+					musb->context.otg_interfsel);
+
 	otg_set_suspend(musb->xceiv, 0);
 
 	return 0;

@@ -18,6 +18,7 @@
  * GNU General Public License for more details.
  */
 #include <linux/module.h>
+#include <linux/io.h>
 
 #include <plat/cpu.h>
 
@@ -150,12 +151,116 @@ static struct omap_opp_def __initdata omap36xx_opp_def_list[] = {
 	OPP_INITIALIZER("iva", false, 800000000, OMAP3630_VDD_MPU_OPP1G_UV),
 };
 
+/* 33xx */
+
+/* VDD1 */
+
+/*
+ * Errata 1.0.15: OPP50 Operation on MPU Domain is Not Supported.
+ *
+ * To minimize power consumption, the ARM Cortex-A8 may be operated at
+ * the lower frequency defined by OPP50, but the respective voltage
+ * domain VDD_MPU must be operated as defined by OPP100. So MPU OPP50
+ * definition is modified to 275MHz, 1.1V.
+ */
+#define AM33XX_VDD_MPU_OPP50_UV		1100000
+#define AM33XX_VDD_MPU_OPP100_UV	1100000
+#define AM33XX_VDD_MPU_OPP120_UV	1200000
+#define AM33XX_VDD_MPU_OPPTURBO_UV	1260000
+
+static struct omap_opp_def __initdata am33xx_es1_0_opp_def_list[] = {
+	/* MPU OPP1 - OPP50 */
+	OPP_INITIALIZER("mpu", true,  275000000, AM33XX_VDD_MPU_OPP50_UV),
+	/* MPU OPP2 - OPP100 */
+	OPP_INITIALIZER("mpu", true,  500000000, AM33XX_VDD_MPU_OPP100_UV),
+	/* MPU OPP3 - OPP120 */
+	OPP_INITIALIZER("mpu", true,  600000000, AM33XX_VDD_MPU_OPP120_UV),
+	/* MPU OPP4 - OPPTurbo */
+	OPP_INITIALIZER("mpu", true,  720000000, AM33XX_VDD_MPU_OPPTURBO_UV),
+};
+
+#define AM33XX_ES2_0_VDD_MPU_OPP50_UV		950000
+#define AM33XX_ES2_0_VDD_MPU_OPP100_UV		1100000
+#define AM33XX_ES2_0_VDD_MPU_OPP120_UV		1200000
+#define AM33XX_ES2_0_VDD_MPU_OPPTURBO_UV	1260000
+#define AM33XX_ES2_0_VDD_MPU_OPPNITRO_UV	1325000
+
+static struct omap_opp_def __initdata am33xx_es2_0_opp_def_list[] = {
+	/* MPU OPP1 - OPP50 */
+	OPP_INITIALIZER("mpu", true,  300000000, AM33XX_ES2_0_VDD_MPU_OPP50_UV),
+	/* MPU OPP2 - OPP100 */
+	OPP_INITIALIZER("mpu", true,  600000000,
+				AM33XX_ES2_0_VDD_MPU_OPP100_UV),
+	/* MPU OPP3 - OPP120 */
+	OPP_INITIALIZER("mpu", true,  720000000,
+				AM33XX_ES2_0_VDD_MPU_OPP120_UV),
+	/* MPU OPP4 - OPPTurbo */
+	OPP_INITIALIZER("mpu", true, 800000000,
+				AM33XX_ES2_0_VDD_MPU_OPPTURBO_UV),
+	/* MPU OPP5 - OPPNitro */
+	OPP_INITIALIZER("mpu", false, 1000000000,
+				AM33XX_ES2_0_VDD_MPU_OPPNITRO_UV),
+};
+
+#define AM33XX_ES2_1_VDD_MPU_OPP50_UV		950000
+#define AM33XX_ES2_1_VDD_MPU_OPP100_UV		1100000
+#define AM33XX_ES2_1_VDD_MPU_OPP120_UV		1200000
+#define AM33XX_ES2_1_VDD_MPU_OPPTURBO_UV	1260000
+#define AM33XX_ES2_1_VDD_MPU_OPPNITRO_UV	1325000
+
+#define OPP_50_300_INDEX	0
+#define OPP_100_300_INDEX	1
+#define OPP_100_600_INDEX	2
+#define OPP_120_720_INDEX	3
+#define OPP_TURBO_800_INDEX	4
+#define OPP_NITRO_1GHZ_INDEX	5
+
+/* From AM335x TRM, SPRUH73H, Section 9.3.50 */
+#define AM33XX_EFUSE_SMA_OFFSET	0x7fc
+
+/*
+ * Bits [12:0] are OPP Disabled bits,
+ * 1 = OPP is disabled and not available,
+ * 0 = OPP available.
+ */
+#define MAX_FREQ_MASK		0x1fff
+#define MAX_FREQ_SHFT		0
+
+#define OPP_50_300MHZ_BIT		(0x1 << 4)
+#define OPP_100_300MHZ_BIT		(0x1 << 5)
+#define OPP_100_600MHZ_BIT		(0x1 << 6)
+#define OPP_120_720MHZ_BIT		(0x1 << 7)
+#define OPP_TURBO_800MHZ_BIT		(0x1 << 8)
+#define OPP_NITRO_1GHZ_BIT		(0x1 << 9)
+
+static struct omap_opp_def __initdata am33xx_es2_1_opp_list[] = {
+	/* MPU OPP1 - OPP50-300MHz */
+	OPP_INITIALIZER("mpu", false,  300000000,
+				AM33XX_ES2_1_VDD_MPU_OPP50_UV),
+	/* MPU OPP1 - OPP100-300MHz (used for ZCE) */
+	OPP_INITIALIZER("mpu", false,  300000000,
+				AM33XX_ES2_1_VDD_MPU_OPP100_UV),
+	/* MPU OPP2 - OPP100 */
+	OPP_INITIALIZER("mpu", false,  600000000,
+				AM33XX_ES2_1_VDD_MPU_OPP100_UV),
+	/* MPU OPP3 - OPP120 */
+	OPP_INITIALIZER("mpu", false,  720000000,
+				AM33XX_ES2_1_VDD_MPU_OPP120_UV),
+	/* MPU OPP3 - OPPTurbo */
+	OPP_INITIALIZER("mpu", false, 800000000,
+				AM33XX_ES2_1_VDD_MPU_OPPTURBO_UV),
+	/* MPU OPP4 - OPPNitro */
+	OPP_INITIALIZER("mpu", false, 1000000000,
+				AM33XX_ES2_1_VDD_MPU_OPPNITRO_UV),
+};
+
 /**
  * omap3_opp_init() - initialize omap3 opp table
  */
 int __init omap3_opp_init(void)
 {
 	int r = -ENODEV;
+	u32 rev, val, max_freq;
 
 	if (!cpu_is_omap34xx())
 		return r;
@@ -163,9 +268,77 @@ int __init omap3_opp_init(void)
 	if (cpu_is_omap3630())
 		r = omap_init_opp_table(omap36xx_opp_def_list,
 			ARRAY_SIZE(omap36xx_opp_def_list));
-	else
+	else if (cpu_is_am33xx()) {
+		rev = omap_rev();
+		switch (rev) {
+		case AM335X_REV_ES1_0:
+			r = omap_init_opp_table(am33xx_es1_0_opp_def_list,
+				ARRAY_SIZE(am33xx_es1_0_opp_def_list));
+			break;
+
+		case AM335X_REV_ES2_1:
+			/*
+			 * First read efuse sma reg to detect package type and
+			 * supported frequency
+			 */
+			val =
+			readl(AM33XX_CTRL_REGADDR(AM33XX_EFUSE_SMA_OFFSET));
+
+			if (!(val & MAX_FREQ_MASK)) {
+				/*
+				* if mpu max freq is not populated, fall back to
+				* PG 2.0 OPP settings.
+				*/
+				r =
+				omap_init_opp_table(am33xx_es2_0_opp_def_list,
+					ARRAY_SIZE(am33xx_es2_0_opp_def_list));
+				break;
+			}
+
+			/*
+			 * 1 = OPP is disabled and not available,
+			 * 0 = OPP available.
+			 */
+			max_freq = (~val & MAX_FREQ_MASK);
+
+			if (max_freq & OPP_50_300MHZ_BIT)
+				am33xx_es2_1_opp_list[OPP_50_300_INDEX].
+					default_available = true;
+
+			if (max_freq & OPP_100_300MHZ_BIT)
+				am33xx_es2_1_opp_list[OPP_100_300_INDEX].
+					default_available = true;
+
+			if (max_freq & OPP_100_600MHZ_BIT)
+				am33xx_es2_1_opp_list[OPP_100_600_INDEX].
+					default_available = true;
+
+			if (max_freq & OPP_120_720MHZ_BIT)
+				am33xx_es2_1_opp_list[OPP_120_720_INDEX].
+					default_available = true;
+
+			if (max_freq & OPP_TURBO_800MHZ_BIT)
+				am33xx_es2_1_opp_list[OPP_TURBO_800_INDEX].
+					default_available = true;
+
+			if (max_freq & OPP_NITRO_1GHZ_BIT)
+				am33xx_es2_1_opp_list[OPP_NITRO_1GHZ_INDEX].
+					default_available = true;
+
+			r = omap_init_opp_table(am33xx_es2_1_opp_list,
+				ARRAY_SIZE(am33xx_es2_1_opp_list));
+			break;
+
+		case AM335X_REV_ES2_0:
+		/* FALLTHROUGH */
+		default:
+			r = omap_init_opp_table(am33xx_es2_0_opp_def_list,
+				ARRAY_SIZE(am33xx_es2_0_opp_def_list));
+		}
+	} else {
 		r = omap_init_opp_table(omap34xx_opp_def_list,
 			ARRAY_SIZE(omap34xx_opp_def_list));
+	}
 
 	return r;
 }

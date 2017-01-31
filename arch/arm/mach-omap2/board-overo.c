@@ -43,7 +43,7 @@
 #include <asm/mach/map.h>
 
 #include <plat/board.h>
-#include <plat/common.h>
+#include "common.h"
 #include <video/omapdss.h>
 #include <video/omap-panel-generic-dpi.h>
 #include <video/omap-panel-dvi.h>
@@ -57,6 +57,7 @@
 #include "mux.h"
 #include "sdram-micron-mt46h32m32lf-6.h"
 #include "hsmmc.h"
+#include "board-flash.h"
 #include "common-board-devices.h"
 
 #define OVERO_GPIO_BT_XGATE	15
@@ -510,8 +511,8 @@ static void __init overo_init(void)
 	omap_serial_init();
 	omap_sdrc_init(mt46h32m32lf6_sdrc_params,
 				  mt46h32m32lf6_sdrc_params);
-	omap_nand_flash_init(0, overo_nand_partitions,
-			     ARRAY_SIZE(overo_nand_partitions));
+	omap_nand_init(overo_nand_partitions,
+		ARRAY_SIZE(overo_nand_partitions), GPMC_CS_NUM + 1, 0, NULL);
 	usb_musb_init(NULL);
 	usbhs_init(&usbhs_bdata);
 	overo_spi_init();
@@ -562,6 +563,7 @@ MACHINE_START(OVERO, "Gumstix Overo")
 	.map_io		= omap3_map_io,
 	.init_early	= omap35xx_init_early,
 	.init_irq	= omap3_init_irq,
+	.handle_irq	= omap3_intc_handle_irq,
 	.init_machine	= overo_init,
 	.timer		= &omap3_timer,
 MACHINE_END

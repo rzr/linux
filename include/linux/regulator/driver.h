@@ -204,7 +204,7 @@ struct regulator_dev {
 	int deferred_disables;
 
 	void *reg_data;		/* regulator_dev data */
-
+        int ignore_check_consumers;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs;
 #endif

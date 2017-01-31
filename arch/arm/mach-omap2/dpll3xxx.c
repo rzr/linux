@@ -142,7 +142,8 @@ static int _omap3_noncore_dpll_lock(struct clk *clk)
 
 	ai = omap3_dpll_autoidle_read(clk);
 
-	omap3_dpll_deny_idle(clk);
+	if (ai)
+		omap3_dpll_deny_idle(clk);
 
 	_omap3_dpll_write_clken(clk, DPLL_LOCKED);
 
@@ -186,8 +187,6 @@ static int _omap3_noncore_dpll_bypass(struct clk *clk)
 
 	if (ai)
 		omap3_dpll_allow_idle(clk);
-	else
-		omap3_dpll_deny_idle(clk);
 
 	return r;
 }
@@ -216,8 +215,6 @@ static int _omap3_noncore_dpll_stop(struct clk *clk)
 
 	if (ai)
 		omap3_dpll_allow_idle(clk);
-	else
-		omap3_dpll_deny_idle(clk);
 
 	return 0;
 }
@@ -301,10 +298,10 @@ static int omap3_noncore_dpll_program(struct clk *clk, u16 m, u8 n, u16 freqsel)
 	_omap3_noncore_dpll_bypass(clk);
 
 	/*
-	 * Set jitter correction. No jitter correction for OMAP4 and 3630
-	 * since freqsel field is no longer present
+	 * Set jitter correction. No jitter correction for OMAP4, 3630
+	 * and AM33XX since freqsel field is no longer present
 	 */
-	if (!cpu_is_omap44xx() && !cpu_is_omap3630()) {
+	if (!cpu_is_omap44xx() && !cpu_is_omap3630() && !cpu_is_am33xx()) {
 		v = __raw_readl(dd->control_reg);
 		v &= ~dd->freqsel_mask;
 		v |= freqsel << __ffs(dd->freqsel_mask);
@@ -463,8 +460,9 @@ int omap3_noncore_dpll_set_rate(struct clk *clk, unsigned long rate)
 		if (dd->last_rounded_rate == 0)
 			return -EINVAL;
 
-		/* No freqsel on OMAP4 and OMAP3630 */
-		if (!cpu_is_omap44xx() && !cpu_is_omap3630()) {
+		/* No freqsel on OMAP4, OMAP3630 and AM33XX */
+		if (!cpu_is_omap44xx() && !cpu_is_omap3630() &&
+			!cpu_is_am33xx()) {
 			freqsel = _omap3_dpll_compute_freqsel(clk,
 						dd->last_rounded_n);
 			if (!freqsel)
@@ -519,6 +517,9 @@ u32 omap3_dpll_autoidle_read(struct clk *clk)
 
 	dd = clk->dpll_data;
 
+	if (!dd->autoidle_reg)
+		return -EINVAL;
+
 	v = __raw_readl(dd->autoidle_reg);
 	v &= dd->autoidle_mask;
 	v >>= __ffs(dd->autoidle_mask);
@@ -545,6 +546,12 @@ void omap3_dpll_allow_idle(struct clk *clk)
 
 	dd = clk->dpll_data;
 
+	if (!dd->autoidle_reg) {
+		pr_debug("clock: DPLL %s: autoidle not supported\n",
+			clk->name);
+		return;
+	}
+
 	/*
 	 * REVISIT: CORE DPLL can optionally enter low-power bypass
 	 * by writing 0x5 instead of 0x1.  Add some mechanism to
@@ -554,6 +561,7 @@ void omap3_dpll_allow_idle(struct clk *clk)
 	v &= ~dd->autoidle_mask;
 	v |= DPLL_AUTOIDLE_LOW_POWER_STOP << __ffs(dd->autoidle_mask);
 	__raw_writel(v, dd->autoidle_reg);
+
 }
 
 /**
@@ -571,6 +579,12 @@ void omap3_dpll_deny_idle(struct clk *clk)
 		return;
 
 	dd = clk->dpll_data;
+
+	if (!dd->autoidle_reg) {
+		pr_debug("clock: DPLL %s: autoidle not supported\n",
+			clk->name);
+		return;
+	}
 
 	v = __raw_readl(dd->autoidle_reg);
 	v &= ~dd->autoidle_mask;

@@ -32,6 +32,8 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
 
 #include <asm/system.h>
 
@@ -39,6 +41,8 @@
 
 #include "control.h"
 #include "mux.h"
+#include "mux33xx.h"
+#include "prm.h"
 
 #define OMAP_MUX_BASE_OFFSET		0x30	/* Offset from CTRL_BASE */
 #define OMAP_MUX_BASE_SZ		0x5ca
@@ -215,8 +219,7 @@ static int __init _omap_mux_get_by_name(struct omap_mux_partition *partition,
 	return -ENODEV;
 }
 
-static int __init
-omap_mux_get_by_name(const char *muxname,
+int omap_mux_get_by_name(const char *muxname,
 			struct omap_mux_partition **found_partition,
 			struct omap_mux **found_mux)
 {
@@ -306,7 +309,8 @@ omap_hwmod_mux_init(struct omap_device_pad *bpads, int nr_pads)
 		pad->idle = bpad->idle;
 		pad->off = bpad->off;
 
-		if (pad->flags & OMAP_DEVICE_PAD_REMUX)
+		if (pad->flags &
+		    (OMAP_DEVICE_PAD_REMUX | OMAP_DEVICE_PAD_WAKEUP))
 			nr_pads_dynamic++;
 
 		pr_debug("%s: Initialized %s\n", __func__, pad->name);
@@ -331,7 +335,8 @@ omap_hwmod_mux_init(struct omap_device_pad *bpads, int nr_pads)
 	for (i = 0; i < hmux->nr_pads; i++) {
 		struct omap_device_pad *pad = &hmux->pads[i];
 
-		if (pad->flags & OMAP_DEVICE_PAD_REMUX) {
+		if (pad->flags &
+		    (OMAP_DEVICE_PAD_REMUX | OMAP_DEVICE_PAD_WAKEUP)) {
 			pr_debug("%s: pad %s tagged dynamic\n",
 					__func__, pad->name);
 			hmux->pads_dynamic[nr_pads_dynamic] = pad;
@@ -349,6 +354,78 @@ err1:
 	pr_err("%s: Could not allocate device mux entry\n", __func__);
 
 	return NULL;
+}
+
+/**
+ * omap_hwmod_mux_scan_wakeups - omap hwmod scan wakeup pads
+ * @hmux: Pads for a hwmod
+ * @mpu_irqs: MPU irq array for a hwmod
+ *
+ * Scans the wakeup status of pads for a single hwmod.  If an irq
+ * array is defined for this mux, the parser will call the registered
+ * ISRs for corresponding pads, otherwise the parser will stop at the
+ * first wakeup active pad and return.  Returns true if there is a
+ * pending and non-served wakeup event for the mux, otherwise false.
+ */
+static bool omap_hwmod_mux_scan_wakeups(struct omap_hwmod_mux_info *hmux,
+		struct omap_hwmod_irq_info *mpu_irqs)
+{
+	int i, irq;
+	unsigned int val;
+	u32 handled_irqs = 0;
+
+	for (i = 0; i < hmux->nr_pads_dynamic; i++) {
+		struct omap_device_pad *pad = hmux->pads_dynamic[i];
+
+		if (!(pad->flags & OMAP_DEVICE_PAD_WAKEUP) ||
+		    !(pad->idle & OMAP_WAKEUP_EN))
+			continue;
+
+		val = omap_mux_read(pad->partition, pad->mux->reg_offset);
+		if (!(val & OMAP_WAKEUP_EVENT))
+			continue;
+
+		if (!hmux->irqs)
+			return true;
+
+		irq = hmux->irqs[i];
+		/* make sure we only handle each irq once */
+		if (handled_irqs & 1 << irq)
+			continue;
+
+		handled_irqs |= 1 << irq;
+
+		generic_handle_irq(mpu_irqs[irq].irq);
+	}
+
+	return false;
+}
+
+/**
+ * _omap_hwmod_mux_handle_irq - Process wakeup events for a single hwmod
+ *
+ * Checks a single hwmod for every wakeup capable pad to see if there is an
+ * active wakeup event. If this is the case, call the corresponding ISR.
+ */
+static int _omap_hwmod_mux_handle_irq(struct omap_hwmod *oh, void *data)
+{
+	if (!oh->mux || !oh->mux->enabled)
+		return 0;
+	if (omap_hwmod_mux_scan_wakeups(oh->mux, oh->mpu_irqs))
+		generic_handle_irq(oh->mpu_irqs[0].irq);
+	return 0;
+}
+
+/**
+ * omap_hwmod_mux_handle_irq - Process pad wakeup irqs.
+ *
+ * Calls a function for each registered omap_hwmod to check
+ * pad wakeup statuses.
+ */
+static irqreturn_t omap_hwmod_mux_handle_irq(int irq, void *unused)
+{
+	omap_hwmod_for_each(_omap_hwmod_mux_handle_irq, NULL);
+	return IRQ_HANDLED;
 }
 
 /* Assumes the calling function takes care of locking */
@@ -489,6 +566,48 @@ static inline void omap_mux_decode(struct seq_file *s, u16 val)
 	} while (i-- > 0);
 }
 
+static inline void am33xx_mux_decode(struct seq_file *s, u16 val)
+{
+	char *flags[OMAP_MUX_MAX_NR_FLAGS];
+	char mode[sizeof("OMAP_MUX_MODE") + 1];
+	int i , j;
+
+	i = j = 0;
+	sprintf(mode, "OMAP_MUX_MODE%d", val & 0x7);
+	flags[i] = mode;
+
+	if (val & AM33XX_INPUT_EN) {
+		j = 1;
+		if (val & AM33XX_PULL_DISA) {
+			OMAP_MUX_TEST_FLAG(val, AM33XX_PIN_INPUT);
+		} else if (!(val & AM33XX_PULL_UP)) {
+			OMAP_MUX_TEST_FLAG(val, AM33XX_PIN_INPUT_PULLDOWN);
+		} else {
+			OMAP_MUX_TEST_FLAG(val, AM33XX_PIN_INPUT_PULLUP);
+		}
+	}
+	if (val & AM33XX_SLEWCTRL_SLOW) {
+		j = 1;
+		OMAP_MUX_TEST_FLAG(val, AM33XX_SLEWCTRL_SLOW);
+	} else if (!(val & AM33XX_INPUT_EN)) {
+		if (val & AM33XX_PIN_OUTPUT_PULLUP) {
+			j = 1;
+			OMAP_MUX_TEST_FLAG(val, AM33XX_PIN_OUTPUT_PULLUP);
+		} else if (val & AM33XX_PULL_DISA) {
+			j = 1;
+			OMAP_MUX_TEST_FLAG(val, AM33XX_PULL_DISA);
+		}
+	}
+	if (j == 0)
+		OMAP_MUX_TEST_FLAG(val, AM33XX_PIN_OUTPUT);
+
+	for (j = 0; j <= i; j++) {
+		seq_printf(s, "%s", flags[j]);
+		if (j != i)
+			seq_printf(s, " | ");
+	}
+}
+
 #define OMAP_MUX_DEFNAME_LEN	32
 
 static int omap_mux_dbg_board_show(struct seq_file *s, void *unused)
@@ -525,7 +644,10 @@ static int omap_mux_dbg_board_show(struct seq_file *s, void *unused)
 		 * same OMAP generation.
 		 */
 		seq_printf(s, "OMAP%d_MUX(%s, ", omap_gen, m0_def);
-		omap_mux_decode(s, val);
+		if (cpu_is_am335x())
+			am33xx_mux_decode(s, val);
+		else
+			omap_mux_decode(s, val);
 		seq_printf(s, "),\n");
 	}
 
@@ -584,7 +706,10 @@ static int omap_mux_dbg_signal_show(struct seq_file *s, void *unused)
 			m->balls[0] ? m->balls[0] : none,
 			m->balls[1] ? m->balls[1] : none);
 	seq_printf(s, "mode: ");
-	omap_mux_decode(s, val);
+	if (cpu_is_am335x())
+		am33xx_mux_decode(s, val);
+	else
+		omap_mux_decode(s, val);
 	seq_printf(s, "\n");
 	seq_printf(s, "signals: %s | %s | %s | %s | %s | %s | %s | %s\n",
 			m->muxnames[0] ? m->muxnames[0] : none,
@@ -689,6 +814,10 @@ static void __init omap_mux_dbg_init(void)
 					  mux_dbg_board_dir, partition,
 					  &omap_mux_dbg_board_fops);
 	}
+
+#ifdef CONFIG_SOC_OMAPAM33XX
+	(void)am33xx_mux_dbg_create_entry(mux_dbg_board_dir);
+#endif
 }
 
 #else
@@ -715,6 +844,7 @@ static void __init omap_mux_free_names(struct omap_mux *m)
 static int __init omap_mux_late_init(void)
 {
 	struct omap_mux_partition *partition;
+	int ret;
 
 	list_for_each_entry(partition, &mux_partitions, node) {
 		struct omap_mux_entry *e, *tmp;
@@ -734,6 +864,13 @@ static int __init omap_mux_late_init(void)
 #endif
 		}
 	}
+
+	ret = request_irq(omap_prcm_event_to_irq("io"),
+		omap_hwmod_mux_handle_irq, IRQF_SHARED | IRQF_NO_SUSPEND,
+			"hwmod_io", omap_mux_late_init);
+
+	if (ret)
+		pr_warning("mux: Failed to setup hwmod io irq %d\n", ret);
 
 	omap_mux_dbg_init();
 
