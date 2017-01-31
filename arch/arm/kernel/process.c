@@ -58,6 +58,7 @@ static const char *isa_modes[] = {
 };
 
 extern void setup_mm_for_reboot(void);
+extern void am335x_power_off(void);
 
 static volatile int hlt_counter;
 
@@ -234,6 +235,8 @@ void machine_shutdown(void)
 #ifdef CONFIG_SMP
 	smp_send_stop();
 #endif
+    printk("Before am335x_power_off\n");
+    am335x_power_off();
 }
 
 void machine_halt(void)

@@ -50,6 +50,7 @@
 #include <linux/string_helpers.h>
 #include <linux/async.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
 
@@ -370,15 +371,23 @@ static struct class sd_disk_class = {
 	.dev_attrs	= sd_disk_attrs,
 };
 
+static const struct dev_pm_ops sd_pm_ops = {
+	.suspend		= sd_suspend,
+	.resume			= sd_resume,
+	.poweroff		= sd_suspend,
+	.restore		= sd_resume,
+	.runtime_suspend	= sd_suspend,
+	.runtime_resume		= sd_resume,
+};
+
 static struct scsi_driver sd_template = {
 	.owner			= THIS_MODULE,
 	.gendrv = {
 		.name		= "sd",
 		.probe		= sd_probe,
 		.remove		= sd_remove,
-		.suspend	= sd_suspend,
-		.resume		= sd_resume,
 		.shutdown	= sd_shutdown,
+		.pm		= &sd_pm_ops,
 	},
 	.rescan			= sd_rescan,
 	.done			= sd_done,
@@ -936,10 +945,6 @@ static int sd_open(struct block_device *bdev, fmode_t mode)
 
 	sdev = sdkp->device;
 
-	retval = scsi_autopm_get_device(sdev);
-	if (retval)
-		goto error_autopm;
-
 	/*
 	 * If the device is in error recovery, wait until it is done.
 	 * If the device is offline, then disallow any access to it.
@@ -984,8 +989,6 @@ static int sd_open(struct block_device *bdev, fmode_t mode)
 	return 0;
 
 error_out:
-	scsi_autopm_put_device(sdev);
-error_autopm:
 	scsi_disk_put(sdkp);
 	return retval;	
 }
@@ -1020,7 +1023,6 @@ static int sd_release(struct gendisk *disk, fmode_t mode)
 	 * XXX is followed by a "rmmod sd_mod"?
 	 */
 
-	scsi_autopm_put_device(sdev);
 	scsi_disk_put(sdkp);
 	return 0;
 }
@@ -1230,11 +1232,20 @@ static int sd_sync_cache(struct scsi_disk *sdkp)
 		 * Leave the rest of the command zero to indicate
 		 * flush everything.
 		 */
+#if CONFIG_PM_RUNTIME
+		res = scsi_execute_req_flags(sdp, cmd, DMA_NONE, NULL, 0,
+					     &sshdr, SD_FLUSH_TIMEOUT,
+					     SD_MAX_RETRIES, NULL, REQ_PM);
+		if (res == 0)
+			break;
+	}
+#else
 		res = scsi_execute_req(sdp, cmd, DMA_NONE, NULL, 0, &sshdr,
 				       SD_FLUSH_TIMEOUT, SD_MAX_RETRIES, NULL);
 		if (res == 0)
 			break;
 	}
+#endif
 
 	if (res) {
 		sd_print_result(sdkp, res);
@@ -1243,7 +1254,9 @@ static int sd_sync_cache(struct scsi_disk *sdkp)
 	}
 
 	if (res)
+#ifndef CONFIG_PM_RUNTIME
 		return -EIO;
+#endif
 	return 0;
 }
 
@@ -2165,8 +2178,13 @@ bad_sense:
 		sd_printk(KERN_ERR, sdkp, "Asking for cache data failed\n");
 
 defaults:
-	sd_printk(KERN_ERR, sdkp, "Assuming drive cache: write through\n");
-	sdkp->WCE = 0;
+	if (sdp->wce_default_on) {
+		sd_printk(KERN_NOTICE, sdkp, "Assuming drive cache: write back\n");
+		sdkp->WCE = 1;
+	} else {
+		sd_printk(KERN_ERR, sdkp, "Assuming drive cache: write through\n");
+		sdkp->WCE = 0;
+	}
 	sdkp->RCD = 0;
 	sdkp->DPOFUA = 0;
 }
@@ -2536,6 +2554,9 @@ static void sd_probe_async(void *data, async_cookie_t cookie)
 
 	sd_printk(KERN_NOTICE, sdkp, "Attached SCSI %sdisk\n",
 		  sdp->removable ? "removable " : "");
+#ifdef CONFIG_PM_RUNTIME
+	blk_pm_runtime_init(sdp->request_queue, dev);
+#endif
 	scsi_autopm_put_device(sdp);
 	put_device(&sdkp->dev);
 }
@@ -2717,9 +2738,13 @@ static int sd_start_stop_device(struct scsi_disk *sdkp, int start)
 
 	if (!scsi_device_online(sdp))
 		return -ENODEV;
-
+#ifdef CONFIG_PM_RUNTIME
+	res = scsi_execute_req_flags(sdp, cmd, DMA_NONE, NULL, 0, &sshdr,
+			       SD_TIMEOUT, SD_MAX_RETRIES, NULL, REQ_PM);
+#else
 	res = scsi_execute_req(sdp, cmd, DMA_NONE, NULL, 0, &sshdr,
 			       SD_TIMEOUT, SD_MAX_RETRIES, NULL);
+#endif
 	if (res) {
 		sd_printk(KERN_WARNING, sdkp, "START_STOP FAILED\n");
 		sd_print_result(sdkp, res);
@@ -2741,7 +2766,10 @@ static void sd_shutdown(struct device *dev)
 
 	if (!sdkp)
 		return;         /* this can happen */
-
+#ifdef CONFIG_PM_RUNTIME
+	if (pm_runtime_suspended(dev))
+		goto exit;
+#endif
 	if (sdkp->WCE) {
 		sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
 		sd_sync_cache(sdkp);
@@ -2752,8 +2780,12 @@ static void sd_shutdown(struct device *dev)
 		sd_start_stop_device(sdkp, 0);
 	}
 
+exit:
 	scsi_disk_put(sdkp);
 }
+
+#define HDD_PROTECT_TIME 48
+unsigned long last_stop_time=0;
 
 static int sd_suspend(struct device *dev, pm_message_t mesg)
 {
@@ -2774,6 +2806,24 @@ static int sd_suspend(struct device *dev, pm_message_t mesg)
 		sd_printk(KERN_NOTICE, sdkp, "Stopping disk\n");
 		ret = sd_start_stop_device(sdkp, 0);
 	}
+#ifdef CONFIG_PM_RUNTIME
+	else{
+		unsigned long long t;
+		unsigned long nanosec_rem;
+
+		t = cpu_clock(smp_processor_id());
+		nanosec_rem = do_div(t, 1000000000);
+		if((t-last_stop_time) < HDD_PROTECT_TIME){
+			printk("Spindown omitted for HDD head protection\n");
+			ret = -EBUSY;
+			goto done;
+		}
+		last_stop_time = (unsigned long)t;
+		
+		sd_printk(KERN_NOTICE, sdkp, "Stopping disk anyway\n");
+		ret = sd_start_stop_device(sdkp, 0);
+	}
+#endif
 
 done:
 	scsi_disk_put(sdkp);

@@ -400,10 +400,31 @@ int fat_setattr(struct dentry *dentry, struct iattr *attr)
 		inode_dio_wait(inode);
 
 		if (attr->ia_size > inode->i_size) {
+#if 1
+			loff_t size;
+			size = attr->ia_size;
+			/* FAT cannot truncate to a longer file (Samba hack) */
+            return 0;
+			if (size & 0xe0000000) {
+				if (size > (loff_t)0xfffffffeL)
+				{
+					printk("VFAT larger than 4GB");
+					error = -EFBIG;
+				}else
+					error = -EPERM;
+				goto out;
+			}else{
+				error = fat_cont_expand(inode, attr->ia_size);
+				if (error || attr->ia_valid == ATTR_SIZE)
+					goto out;
+				attr->ia_valid &= ~ATTR_SIZE;
+			}
+#else
 			error = fat_cont_expand(inode, attr->ia_size);
 			if (error || attr->ia_valid == ATTR_SIZE)
 				goto out;
 			attr->ia_valid &= ~ATTR_SIZE;
+#endif
 		}
 	}
 

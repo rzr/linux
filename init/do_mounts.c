@@ -23,6 +23,24 @@
 
 #include "do_mounts.h"
 
+extern void kernel_corrupt(void);
+extern void emergency_restart(void);
+void send_mcu_reset_notice(void)
+{
+	char cmdbuf[3]={0xb0, 0x1F, 0x00};
+	int fd=0;
+	struct termios tio;
+
+	printk("Send reset notice to ttySO1\n");
+	fd = sys_open("/dev/ttySO1", O_RDWR | O_NOCTTY, 0);
+	if(fd < 0){
+		printk("Cannot open ttySO1\n");
+		return;
+	}
+	
+	sys_write(fd, cmdbuf, 3);
+}
+
 int __initdata rd_doload;	/* 1 = load RAM disk, 0 = don't load */
 
 int root_mountflags = MS_RDONLY | MS_SILENT;
@@ -380,6 +398,10 @@ retry:
 		printk("DEBUG_BLOCK_EXT_DEVT is enabled, you need to specify "
 		       "explicit textual name for \"root=\" boot option.\n");
 #endif
+		printk("VFS: Unable to mount root fs on %s", b);
+		send_mcu_reset_notice();
+		kernel_corrupt();
+		emergency_restart();
 		panic("VFS: Unable to mount root fs on %s", b);
 	}
 
@@ -392,6 +414,10 @@ retry:
 #ifdef CONFIG_BLOCK
 	__bdevname(ROOT_DEV, b);
 #endif
+	printk("VFS: Unable to mount root fs on %s", b);
+	send_mcu_reset_notice();
+	kernel_corrupt();
+	emergency_restart();
 	panic("VFS: Unable to mount root fs on %s", b);
 out:
 	putname(fs_names);

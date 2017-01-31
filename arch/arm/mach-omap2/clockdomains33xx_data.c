@@ -217,7 +217,7 @@ static struct clockdomain *clockdomains_am33xx[] __initdata = {
 	&l3_aon_am33xx_clkdm,
 	&l4_wkup_aon_am33xx_clkdm,
 	&mpu_am33xx_clkdm,
-	&l4_rtc_am33xx_clkdm,
+	//&l4_rtc_am33xx_clkdm,
 	&gfx_l3_am33xx_clkdm,
 	&gfx_l4ls_gfx_am33xx_clkdm,
 	&l4_cefuse_am33xx_clkdm,

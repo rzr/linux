@@ -17,17 +17,10 @@
 #include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps65910.h>
-
-static struct resource rtc_resources[] = {
-	{
-		.start  = TPS65910_IRQ_RTC_ALARM,
-		.end    = TPS65910_IRQ_RTC_ALARM,
-		.flags  = IORESOURCE_IRQ,
-	}
-};
 
 static struct mfd_cell tps65910s[] = {
 	{
@@ -35,14 +28,54 @@ static struct mfd_cell tps65910s[] = {
 	},
 	{
 		.name = "tps65910-rtc",
-		.num_resources = ARRAY_SIZE(rtc_resources),
-		.resources = &rtc_resources[0],
 	},
 	{
 		.name = "tps65910-power",
 	},
 };
 
+static struct i2c_client *tps65910_i2c_client;
+static void tps65910_power_off(void)
+{
+	struct tps65910 *tps65910;
+	tps65910 = dev_get_drvdata(&tps65910_i2c_client->dev);
+
+	if (tps65910_set_bits(tps65910, TPS65910_DEVCTRL,
+		DEVCTRL_PWR_OFF_MASK) < 0)
+	return;
+
+	tps65910_clear_bits(tps65910, TPS65910_DEVCTRL,
+		DEVCTRL_DEV_ON_MASK);
+
+}
+
+static bool is_volatile_reg(struct device *dev, unsigned int reg)
+{
+	struct tps65910 *tps65910 = dev_get_drvdata(dev);
+
+	/*
+	 * Caching all regulator registers.
+	 * All regualator register address range is same for
+	 * TPS65910 and TPS65911
+	 */
+	if ((reg >= TPS65910_VIO) && (reg <= TPS65910_VDAC)) {
+		/* Check for non-existing register */
+		if (tps65910_chip_id(tps65910) == TPS65910)
+			if ((reg == TPS65911_VDDCTRL_OP) ||
+				(reg == TPS65911_VDDCTRL_SR))
+				return true;
+		return false;
+	}
+	return true;
+}
+
+static const struct regmap_config tps65910_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.volatile_reg = is_volatile_reg,
+	.max_register = TPS65910_MAX_REGISTER - 1,
+	.cache_type = REGCACHE_RBTREE,
+};
 
 static int tps65910_i2c_read(struct tps65910 *tps65910, u8 reg,
 				  int bytes, void *dest)
@@ -140,6 +173,33 @@ out:
 }
 EXPORT_SYMBOL_GPL(tps65910_clear_bits);
 
+static void tps65910_init(struct tps65910 *g_tps65910)
+{
+	u8 data;
+
+	/*dev on*/
+	data = 1 << DEVCTRL_DEV_ON_SHIFT;
+	tps65910_i2c_write(g_tps65910, TPS65910_DEVCTRL, 1, &data);
+	/*dev on*/
+	data = 0x04;
+	tps65910_i2c_write(g_tps65910, TPS65910_DEVCTRL2, 1, &data);
+	/*write 1 to clear int*/
+	data = 0xff;
+	tps65910_i2c_write(g_tps65910, TPS65910_INT_STS, 1, &data);
+	/*run*/
+	data = TPS65910_RTC_CTRL_STOP_RTC;
+	tps65910_i2c_write(g_tps65910, TPS65910_RTC_CTRL, 1, &data);
+	/*unmask all int*/
+	data = 0x0;
+	tps65910_i2c_write(g_tps65910, TPS65910_INT_MSK, 1, &data);
+	/*Back-up battery charger at 3v*/
+	data = 1 << BBCH_BBCHEN_SHIFT;
+	tps65910_i2c_write(g_tps65910, TPS65910_BBCH, 1, &data);
+	/*enable alarm*/
+	data = TPS65910_RTC_INTERRUPTS_IT_ALARM;
+	tps65910_i2c_write(g_tps65910, TPS65910_RTC_INTERRUPTS, 1, &data);
+}
+
 static int tps65910_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
@@ -172,7 +232,7 @@ static int tps65910_i2c_probe(struct i2c_client *i2c,
 	mutex_init(&tps65910->io_mutex);
 
 	/* Check that the device is actually there */
-	ret = tps65910_i2c_read(tps65910, 0x0, 1, &buff);
+	ret = tps65910_i2c_read(tps65910, TPS65910_JTAGVERNUM, 1, &buff);
 	if (ret < 0) {
 		dev_err(tps65910->dev, "could not be detected\n");
 		ret = -ENODEV;
@@ -187,6 +247,15 @@ static int tps65910_i2c_probe(struct i2c_client *i2c,
 		goto err;
 	}
 
+	tps65910->regmap = regmap_init_i2c(i2c, &tps65910_regmap_config);
+	if (IS_ERR(tps65910->regmap)) {
+		ret = PTR_ERR(tps65910->regmap);
+		dev_err(&i2c->dev, "regmap initialization failed: %d\n", ret);
+		return ret;
+	}
+
+	tps65910_init(tps65910);
+
 	ret = mfd_add_devices(tps65910->dev, -1, tps65910s,
 			ARRAY_SIZE(tps65910s), NULL, 0);
 	if (ret < 0)
@@ -199,6 +268,11 @@ static int tps65910_i2c_probe(struct i2c_client *i2c,
 
 	tps65910_irq_init(tps65910, init_data->irq, init_data);
 
+	if (!pm_power_off) {
+		tps65910_i2c_client = i2c;
+		pm_power_off = tps65910_power_off;
+	}
+	tps65910_power_off(); //Turn off control of PMIC
 	kfree(init_data);
 	return ret;
 
