@@ -18,6 +18,7 @@
 #define __LINUX_MFD_TPS65910_H
 
 #include <linux/gpio.h>
+#include <linux/regmap.h>
 #include <linux/regulator/machine.h>
 
 /* TPS chip id list */
@@ -135,7 +136,16 @@
  * List of register bitfields for component TPS65910
  *
  */
+/* RTC_CTRL_REG bitfields */
+#define TPS65910_RTC_CTRL_STOP_RTC			0x01 /*0=stop, 1=run*/
+#define TPS65910_RTC_CTRL_GET_TIME			0x40
 
+/* RTC_STATUS_REG bitfields */
+#define TPS65910_RTC_STATUS_ALARM			0x40
+
+/* RTC_INTERRUPTS_REG bitfields */
+#define TPS65910_RTC_INTERRUPTS_EVERY			0x03
+#define TPS65910_RTC_INTERRUPTS_IT_ALARM		0x08
 
 /*Register BCK1  (0x80) register.RegisterDescription */
 #define BCK1_BCKUP_MASK					0xFF
@@ -370,6 +380,8 @@
 
 
 /*Register DEVCTRL  (0x80) register.RegisterDescription */
+#define DEVCTRL_PWR_OFF_MASK                0x80
+#define DEVCTRL_PWR_OFF_SHIFT               7
 #define DEVCTRL_RTC_PWDN_MASK				0x40
 #define DEVCTRL_RTC_PWDN_SHIFT				6
 #define DEVCTRL_CK32K_CTRL_MASK				0x20
@@ -801,6 +813,7 @@ struct tps65910 {
 	int (*read)(struct tps65910 *tps65910, u8 reg, int size, void *dest);
 	int (*write)(struct tps65910 *tps65910, u8 reg, int size, void *src);
 
+	struct regmap *regmap;
 	/* Client devices */
 	struct tps65910_pmic *pmic;
 	struct tps65910_rtc *rtc;
@@ -815,6 +828,7 @@ struct tps65910 {
 	int irq_base;
 	int irq_num;
 	u32 irq_mask;
+	struct irq_domain *domain;
 };
 
 struct tps65910_platform_data {

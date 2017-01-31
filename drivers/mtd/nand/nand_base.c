@@ -32,6 +32,7 @@
  *
  */
 
+#include <linux/export.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -48,6 +49,8 @@
 #include <linux/leds.h>
 #include <linux/io.h>
 #include <linux/mtd/partitions.h>
+
+static struct mtd_info *gp_mtd;
 
 /* Define default oob placement schemes for large and small page devices */
 static struct nand_ecclayout nand_oob_8 = {
@@ -141,7 +144,6 @@ static int check_offs_len(struct mtd_info *mtd,
 static void nand_release_device(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
-
 	/* De-select the NAND device */
 	chip->select_chip(mtd, -1);
 
@@ -1588,6 +1590,7 @@ static int nand_read(struct mtd_info *mtd, loff_t from, size_t len,
 	struct mtd_oob_ops ops;
 	int ret;
 
+	gp_mtd = mtd;
 	/* Do not allow reads past end of device */
 	if ((from + len) > mtd->size)
 		return -EINVAL;
@@ -2319,6 +2322,42 @@ static int panic_nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 	return ret;
 }
 
+/*
+ * kernel_corrupt - corrupt kernel to make kernel enter recovery mode
+ *
+ *
+ */
+void kernel_corrupt(void)
+{
+	struct nand_chip *chip = gp_mtd->priv;
+	struct mtd_oob_ops ops;
+	int ret, i;
+	
+	unsigned long long size = 0x8000000; //128MB nand flash
+	loff_t write_to = 0x280000; //Kernel start addr
+	size_t len = 2048; //block size
+	const uint8_t buf[3] = {0x31, 0x30, 0x30};//corrupt data
+
+	for(i=0;i<10;i++){
+		printk("kc: size %llu writeto %llu\n", size, write_to);
+		
+		nand_get_device(chip, gp_mtd, FL_WRITING);
+
+		ops.len = len;
+		ops.datbuf = (uint8_t *)buf;
+		ops.oobbuf = NULL;
+		ops.mode = 0;
+
+		ret = nand_do_write_ops(gp_mtd, write_to , &ops);
+
+		nand_release_device(gp_mtd);
+
+		write_to+=len;
+	}
+	printk("Result : %d\n", ret);
+
+} 
+EXPORT_SYMBOL_GPL(kernel_corrupt);
 /**
  * nand_write - [MTD Interface] NAND write with ECC
  * @mtd: MTD device structure
@@ -2336,6 +2375,8 @@ static int nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 	struct mtd_oob_ops ops;
 	int ret;
 
+	gp_mtd = mtd;
+	
 	/* Do not allow reads past end of device */
 	if ((to + len) > mtd->size)
 		return -EINVAL;

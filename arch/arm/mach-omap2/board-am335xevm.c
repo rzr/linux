@@ -39,6 +39,7 @@
 #include <linux/input/ti_tsc.h>
 #include <linux/platform_data/ti_adc.h>
 #include <linux/mfd/ti_tscadc.h>
+#include <linux/regulator/machine.h>
 #include <linux/reboot.h>
 #include <linux/pwm/pwm.h>
 #include <linux/rtc/rtc-omap.h>
@@ -456,7 +457,7 @@ static struct pinmux_config lcdc_pin_mux[] = {
 	{"gpmc_ad15.lcd_data23",	OMAP_MUX_MODE1 | AM33XX_PIN_OUTPUT},
 	{"lcd_vsync.lcd_vsync",		OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
 	{"lcd_hsync.lcd_hsync",		OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
-	{"lcd_pclk.lcd_pclk",		OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
+//	{"lcd_pclk.lcd_pclk",		OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
 	{"lcd_ac_bias_en.lcd_ac_bias_en", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
 	{NULL, 0},
 };
@@ -471,6 +472,7 @@ static struct pinmux_config nand_pin_mux[] = {
 	{"gpmc_ad5.gpmc_ad5",	  OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
 	{"gpmc_ad6.gpmc_ad6",	  OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
 	{"gpmc_ad7.gpmc_ad7",	  OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
+	{"gpmc_ad11.gpio0_27",	OMAP_MUX_MODE7 | AM33XX_PIN_INPUT_PULLUP}, //Brent: Avatar SB/D1 sdcdn pin
 	{"gpmc_wait0.gpmc_wait0", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
 	{"gpmc_wpn.gpmc_wpn",	  OMAP_MUX_MODE7 | AM33XX_PIN_INPUT_PULLUP},
 	{"gpmc_csn0.gpmc_csn0",	  OMAP_MUX_MODE0 | AM33XX_PULL_DISA},
@@ -478,6 +480,10 @@ static struct pinmux_config nand_pin_mux[] = {
 	{"gpmc_oen_ren.gpmc_oen_ren",	 OMAP_MUX_MODE0 | AM33XX_PULL_DISA},
 	{"gpmc_wen.gpmc_wen",     OMAP_MUX_MODE0 | AM33XX_PULL_DISA},
 	{"gpmc_ben0_cle.gpmc_ben0_cle",	 OMAP_MUX_MODE0 | AM33XX_PULL_DISA},
+	{"mdio_data.gpio0_0", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT},//Add and mark others for Avatar D2 
+	{"mdio_clk.gpio0_1", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT},//Add and mark others for Avatar D2
+	{"rmii1_refclk.gpio0_29", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT},//Add and mark others for Avatar D2
+	{"lcd_pclk.gpio2_24",	OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT_PULLUP},//Add and mark others for Avatar D2
 	{NULL, 0},
 };
 
@@ -521,8 +527,8 @@ static struct pinmux_config rgmii1_pin_mux[] = {
 	{"mii1_rxd2.rgmii1_rd2", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_rxd1.rgmii1_rd1", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_rxd0.rgmii1_rd0", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLDOWN},
-	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
-	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
+//	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
+//	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
 	{NULL, 0},
 };
 
@@ -540,8 +546,8 @@ static struct pinmux_config rgmii2_pin_mux[] = {
 	{"gpmc_a9.rgmii2_rd2", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"gpmc_a10.rgmii2_rd1", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"gpmc_a11.rgmii2_rd0", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLDOWN},
-	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
-	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
+//	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
+//	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
 	{NULL, 0},
 };
 
@@ -560,8 +566,8 @@ static struct pinmux_config mii1_pin_mux[] = {
 	{"mii1_rxd2.mii1_rxd2", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_rxd1.mii1_rxd1", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_rxd0.mii1_rxd0", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
-	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
-	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
+//	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
+//	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
 	{NULL, 0},
 };
 
@@ -574,9 +580,9 @@ static struct pinmux_config rmii1_pin_mux[] = {
 	{"mii1_txd0.mii1_txd0", OMAP_MUX_MODE1 | AM33XX_PIN_OUTPUT},
 	{"mii1_rxd1.mii1_rxd1", OMAP_MUX_MODE1 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_rxd0.mii1_rxd0", OMAP_MUX_MODE1 | AM33XX_PIN_INPUT_PULLDOWN},
-	{"rmii1_refclk.rmii1_refclk", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
-	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
-	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
+//	{"rmii1_refclk.rmii1_refclk", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
+//	{"mdio_data.mdio_data", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP},
+//	{"mdio_clk.mdio_clk", OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT_PULLUP},
 	{NULL, 0},
 };
 
@@ -601,8 +607,7 @@ static struct pinmux_config mcasp1_pin_mux[] = {
 	{"mii1_crs.mcasp1_aclkx", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_rxerr.mcasp1_fsx", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_col.mcasp1_axr2", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
-	{"rmii1_refclk.mcasp1_axr3", OMAP_MUX_MODE4 |
-						AM33XX_PIN_INPUT_PULLDOWN},
+//	{"rmii1_refclk.mcasp1_axr3", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
 	{NULL, 0},
 };
 
@@ -668,6 +673,12 @@ static struct pinmux_config d_can_gp_pin_mux[] = {
 	{"uart0_ctsn.d_can1_tx", OMAP_MUX_MODE2 | AM33XX_PULL_ENBL},
 	{"uart0_rtsn.d_can1_rx", OMAP_MUX_MODE2 | AM33XX_PIN_INPUT_PULLUP},
 	{NULL, 0},
+};
+
+static struct pinmux_config wd_hwid_pin_mux[] = {
+    {"uart0_ctsn.d_can1_tx", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT},
+    {"uart0_rtsn.d_can1_rx", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT},
+    {NULL, 0},
 };
 
 static struct pinmux_config d_can_ia_pin_mux[] = {
@@ -886,6 +897,7 @@ static void _configure_device(int evm_id, struct evm_dev_cfg *dev_cfg,
 /* pinmux for usb0 drvvbus */
 static struct pinmux_config usb0_pin_mux[] = {
 	{"usb0_drvvbus.usb0_drvvbus",    OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT},
+	{"lcd_hsync.gpio2_23", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT_PULLUP},
 	{NULL, 0},
 };
 
@@ -918,6 +930,7 @@ static struct pinmux_config ecap2_pin_mux[] = {
 
 #define AM335XEVM_WLAN_PMENA_GPIO	GPIO_TO_PIN(1, 30)
 #define AM335XEVM_WLAN_IRQ_GPIO		GPIO_TO_PIN(3, 17)
+#define AM335XEVM_PCTM_WLAN_IRQ_GPIO	GPIO_TO_PIN(0, 28)
 #define AM335XEVM_SK_WLAN_IRQ_GPIO      GPIO_TO_PIN(0, 31)
 
 struct wl12xx_platform_data am335xevm_wlan_data = {
@@ -925,6 +938,13 @@ struct wl12xx_platform_data am335xevm_wlan_data = {
 	.board_ref_clock = WL12XX_REFCLOCK_38_XTAL, /* 38.4Mhz */
 	.bt_enable_gpio = GPIO_TO_PIN(3, 21),
 	.wlan_enable_gpio = GPIO_TO_PIN(1, 16),
+};
+
+struct wl12xx_platform_data am335xevm_wlan_data_pctm = {
+	.irq = OMAP_GPIO_IRQ(AM335XEVM_PCTM_WLAN_IRQ_GPIO),
+	.board_ref_clock = WL12XX_REFCLOCK_38_XTAL, /* 38.4Mhz */
+	.board_tcxo_clock = WL12XX_TCXOCLOCK_26,
+	.wlan_enable_gpio = GPIO_TO_PIN(0, 21),
 };
 
 /* Module pin mux for wlan and bluetooth */
@@ -935,6 +955,16 @@ static struct pinmux_config mmc2_wl12xx_pin_mux[] = {
 	{"gpmc_ben1.mmc2_dat3", OMAP_MUX_MODE3 | AM33XX_PIN_INPUT_PULLUP},
 	{"gpmc_csn3.mmc2_cmd", OMAP_MUX_MODE3 | AM33XX_PIN_INPUT_PULLUP},
 	{"gpmc_clk.mmc2_clk", OMAP_MUX_MODE3 | AM33XX_PIN_INPUT_PULLUP},
+	{NULL, 0},
+};
+
+static struct pinmux_config mmc2_wl12xx_pin_mux_pctm[] = {
+	{"mii1_rxdv.mmc2_dat0", OMAP_MUX_MODE5 | AM33XX_PIN_INPUT_PULLUP},
+	{"mii1_txd3.mmc2_dat1", OMAP_MUX_MODE5 | AM33XX_PIN_INPUT_PULLUP},
+	{"mii1_txd2.mmc2_dat2", OMAP_MUX_MODE5 | AM33XX_PIN_INPUT_PULLUP},
+	{"mii1_col.mmc2_dat3", OMAP_MUX_MODE5 | AM33XX_PIN_INPUT_PULLUP},
+	{"mii1_txen.mmc2_cmd", OMAP_MUX_MODE6 | AM33XX_PIN_INPUT_PULLUP},
+	{"mii1_rxd1.mmc2_clk", OMAP_MUX_MODE6 | AM33XX_PIN_INPUT_PULLUP},
 	{NULL, 0},
 };
 
@@ -950,6 +980,12 @@ static struct pinmux_config wl12xx_pin_mux[] = {
 	{"gpmc_a0.gpio1_16", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT},
 	{"mcasp0_ahclkr.gpio3_17", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT},
 	{"mcasp0_ahclkx.gpio3_21", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT_PULLUP},
+	{NULL, 0},
+ };
+
+static struct pinmux_config wl12xx_pin_mux_pctm[] = {
+	{"mii1_txd0.gpio0_28", OMAP_MUX_MODE7 | AM33XX_PIN_INPUT},
+	{"mii1_txd1.gpio0_21", OMAP_MUX_MODE7 | AM33XX_PIN_OUTPUT_PULLUP},
 	{NULL, 0},
  };
 
@@ -1158,6 +1194,8 @@ static void haptics_init(int evm_id, int profile)
 }
 
 /* NAND partition information */
+#define MTDPART_SZ_DEFCFG	8*SZ_128K
+#define MTDPART_SZ_RECOVERY	32*SZ_128K
 static struct mtd_partition am335x_nand_partitions[] = {
 /* All the partition sizes are listed in terms of NAND block size */
 	{
@@ -1198,8 +1236,20 @@ static struct mtd_partition am335x_nand_partitions[] = {
 	{
 		.name           = "File System",
 		.offset         = MTDPART_OFS_APPEND,   /* Offset = 0x780000 */
-		.size           = MTDPART_SIZ_FULL,
+		.size           = 924 * SZ_128K,//MTDPART_SIZ_FULL,// - MTDPART_SZ_DEFCFG - MTDPART_SZ_RECOVERY,
 	},
+
+	{
+		.name           = "DefCfg",
+		.offset         = MTDPART_OFS_APPEND,   /* Offset = 0x780000 */
+		.size           = MTDPART_SZ_DEFCFG,
+	},
+	{
+		.name           = "Recovery",
+		.offset         = MTDPART_OFS_APPEND,   /* Offset = 0x780000 */
+		.size           = MTDPART_SZ_RECOVERY,
+	},
+
 };
 
 /* SPI 0/1 Platform Data */
@@ -1671,7 +1721,8 @@ static void mmc1_emmc_init(int evm_id, int profile)
 
 static void mmc2_wl12xx_init(int evm_id, int profile)
 {
-	setup_pin_mux(mmc2_wl12xx_pin_mux);
+	//setup_pin_mux(mmc2_wl12xx_pin_mux);
+	setup_pin_mux(mmc2_wl12xx_pin_mux_pctm);
 
 	am335x_mmc[1].mmc = 3;
 	am335x_mmc[1].name = "wl1271";
@@ -1735,6 +1786,32 @@ static int wl12xx_set_power(struct device *dev, int slot, int on, int vdd)
 	return 0;
 }
 
+#define AM33XX_CONTROL_PADCONF_MII1_TXD1_OFFSET			0x0924
+static int wl12xx_set_power_pctm(struct device *dev, int slot, int on, int vdd)
+{
+	int pad_mux_value;
+
+	if (on) {
+		gpio_direction_output(am335xevm_wlan_data.wlan_enable_gpio, 1);
+
+		/* Enable pullup on the WLAN enable pin for keeping wlan active during suspend
+		   in wowlan mode */
+		pad_mux_value = readl(AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_MII1_TXD1_OFFSET));
+		pad_mux_value &= (~AM33XX_PULL_DISA);
+		writel(pad_mux_value, AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_MII1_TXD1_OFFSET));
+
+		mdelay(70);
+	} else {
+		gpio_direction_output(am335xevm_wlan_data.wlan_enable_gpio, 0);
+		/* Disable pullup on the WLAN enable when WLAN is off */
+		pad_mux_value = readl(AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_MII1_TXD1_OFFSET));
+		pad_mux_value |= AM33XX_PULL_DISA;
+		writel(pad_mux_value, AM33XX_CTRL_REGADDR(AM33XX_CONTROL_PADCONF_MII1_TXD1_OFFSET));
+	}
+
+	return 0;
+}
+
 static void wl12xx_init(int evm_id, int profile)
 {
 	struct device *dev;
@@ -1781,6 +1858,48 @@ out:
 	return;
 }
 
+static void wl12xx_init_pctm(int evm_id, int profile)
+{
+	struct device *dev;
+	struct omap_mmc_platform_data *pdata;
+	int ret;
+
+	am335xevm_wlan_data.wlan_enable_gpio = GPIO_TO_PIN(0, 21);
+	am335xevm_wlan_data.irq =
+			OMAP_GPIO_IRQ(AM335XEVM_PCTM_WLAN_IRQ_GPIO);
+	setup_pin_mux(wl12xx_pin_mux_pctm);
+
+	am335xevm_wlan_data.platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ;
+//	wl12xx_bluetooth_enable();
+
+	if (wl12xx_set_platform_data(&am335xevm_wlan_data_pctm))
+		pr_err("<alfred kernel debug> error setting wl18xx data\n");
+
+	dev = am335x_mmc[1].dev;
+	if (!dev) {
+		pr_err("<alfred kernel debug> wl18xx mmc device initialization failed\n");
+		goto out;
+	}
+
+	pdata = dev->platform_data;
+	if (!pdata) {
+		pr_err("<alfred kernel debug> Platfrom data of wl18xx device not set\n");
+		goto out;
+	}
+
+	ret = gpio_request_one(am335xevm_wlan_data.wlan_enable_gpio,
+		GPIOF_OUT_INIT_LOW, "wlan_en");
+	if (ret) {
+		pr_err("<alfred kernel debug> Error requesting wlan enable gpio: %d\n", ret);
+		goto out;
+	}
+
+
+	pdata->slots[0].set_power = wl12xx_set_power_pctm;
+out:
+	return;
+}
+
 static void d_can_init(int evm_id, int profile)
 {
 	switch (evm_id) {
@@ -1802,6 +1921,13 @@ static void d_can_init(int evm_id, int profile)
 	default:
 		break;
 	}
+}
+
+/* setup wd_hwid */
+static void wd_hwid_init(int evm_id, int profile)
+{
+    setup_pin_mux(wd_hwid_pin_mux);
+    return;
 }
 
 static void mmc0_init(int evm_id, int profile)
@@ -2027,6 +2153,8 @@ static void am335x_rtc_init(int evm_id, int profile)
 	struct platform_device *pdev;
 	char *dev_name = "am33xx-rtc";
 
+	return;
+	
 	clk = clk_get(NULL, "rtc_fck");
 	if (IS_ERR(clk)) {
 		pr_err("rtc : Failed to get RTC clock\n");
@@ -2126,9 +2254,8 @@ static struct evm_dev_cfg gen_purp_evm_dev_cfg[] = {
 						PROFILE_4 | PROFILE_6) },
 	{usb0_init,	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{usb1_init,	DEV_ON_BASEBOARD, PROFILE_ALL},
-	{evm_nand_init, DEV_ON_DGHTR_BRD,
-		(PROFILE_ALL & ~PROFILE_2 & ~PROFILE_3)},
-	{i2c1_init,     DEV_ON_DGHTR_BRD, (PROFILE_ALL & ~PROFILE_2)},
+    {evm_nand_init, DEV_ON_BASEBOARD, PROFILE_ALL},
+    {i2c1_init,     DEV_ON_DGHTR_BRD, (PROFILE_ALL & ~PROFILE_2)},
 	{lis331dlh_init, DEV_ON_DGHTR_BRD, (PROFILE_ALL & ~PROFILE_2)},
 	{mcasp1_init,	DEV_ON_DGHTR_BRD, (PROFILE_0 | PROFILE_3 | PROFILE_7)},
 	{mmc1_init,	DEV_ON_DGHTR_BRD, PROFILE_2},
@@ -2139,8 +2266,10 @@ static struct evm_dev_cfg gen_purp_evm_dev_cfg[] = {
 	{spi0_init,	DEV_ON_DGHTR_BRD, PROFILE_2},
 	{uart1_wl12xx_init,	DEV_ON_BASEBOARD, (PROFILE_0 | PROFILE_3 |
 								PROFILE_5)},
-	{wl12xx_init,	DEV_ON_BASEBOARD, (PROFILE_0 | PROFILE_3 | PROFILE_5)},
+	//{wl12xx_init,	DEV_ON_BASEBOARD, (PROFILE_0 | PROFILE_3 | PROFILE_5)},
+	{wl12xx_init_pctm,	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{d_can_init,	DEV_ON_DGHTR_BRD, PROFILE_1},
+    {wd_hwid_init, DEV_ON_BASEBOARD, PROFILE_ALL},
 	{matrix_keypad_init, DEV_ON_DGHTR_BRD, PROFILE_0},
 	{volume_keys_init,  DEV_ON_DGHTR_BRD, PROFILE_0},
 	{uart2_init,	DEV_ON_DGHTR_BRD, PROFILE_3},
@@ -2338,6 +2467,9 @@ static void setup_general_purpose_evm(void)
 	u32 prof_sel = am335x_get_profile_selection();
 	u32 boardid = GEN_PURP_EVM;
 
+	am335x_mmc[0].gpio_wp = -EINVAL;
+	am335x_mmc[0].gpio_cd = -EINVAL;
+	
 	if (!strncmp("1.5A", config.version, 4))
 		boardid = GEN_PURP_DDR3_EVM;
 
@@ -2476,7 +2608,7 @@ static void am335x_evm_setup(struct memory_accessor *mem_acc, void *context)
 
 	if (ret != sizeof(am335x_mac_addr)) {
 		pr_warning("AM335X: EVM Config read fail: %d\n", ret);
-		return;
+		//return;
 	}
 
 	/* Fillup global mac id */
@@ -2484,55 +2616,55 @@ static void am335x_evm_setup(struct memory_accessor *mem_acc, void *context)
 				&am335x_mac_addr[1][0]);
 
 	/* get board specific data */
-	ret = mem_acc->read(mem_acc, (char *)&config, 0, sizeof(config));
-	if (ret != sizeof(config)) {
-		pr_err("AM335X EVM config read fail, read %d bytes\n", ret);
-		pr_err("This likely means that there either is no/or a failed EEPROM\n");
-		goto out;
-	}
+//	ret = mem_acc->read(mem_acc, (char *)&config, 0, sizeof(config));
+//	if (ret != sizeof(config)) {
+//		pr_err("AM335X EVM config read fail, read %d bytes\n", ret);
+//		pr_err("This likely means that there either is no/or a failed EEPROM\n");
+//		goto out;
+//	}
+	strcpy(config.name,"A335GPBD");
+//	if (config.header != AM335X_EEPROM_HEADER) {
+//		pr_err("AM335X: wrong header 0x%x, expected 0x%x\n",
+//			config.header, AM335X_EEPROM_HEADER);
+//		goto out;
+//	}
+//
+//	if (strncmp("A335", config.name, 4)) {
+//		pr_err("Board %s\ndoesn't look like an AM335x board\n",
+//			config.name);
+//		goto out;
+//	}
+//
+//	snprintf(tmp, sizeof(config.name) + 1, "%s", config.name);
+//	pr_info("Board name: %s\n", tmp);
+//	snprintf(tmp, sizeof(config.version) + 1, "%s", config.version);
+//	pr_info("Board version: %s\n", tmp);
 
-	if (config.header != AM335X_EEPROM_HEADER) {
-		pr_err("AM335X: wrong header 0x%x, expected 0x%x\n",
-			config.header, AM335X_EEPROM_HEADER);
-		goto out;
-	}
-
-	if (strncmp("A335", config.name, 4)) {
-		pr_err("Board %s\ndoesn't look like an AM335x board\n",
-			config.name);
-		goto out;
-	}
-
-	snprintf(tmp, sizeof(config.name) + 1, "%s", config.name);
-	pr_info("Board name: %s\n", tmp);
-	snprintf(tmp, sizeof(config.version) + 1, "%s", config.version);
-	pr_info("Board version: %s\n", tmp);
-
-	if (!strncmp("A335BONE", config.name, 8)) {
-		daughter_brd_detected = false;
-		if(!strncmp("00A1", config.version, 4) ||
-		   !strncmp("00A2", config.version, 4))
-			setup_beaglebone_old();
-		else
-			setup_beaglebone();
-	} else if (!strncmp("A335BNLT", config.name, 8)) {
-		setup_beagleboneblack();
-	} else if (!strncmp("A335X_SK", config.name, 8)) {
-		daughter_brd_detected = false;
-		setup_starterkit();
-	} else {
-		/* only 6 characters of options string used for now */
-		snprintf(tmp, 7, "%s", config.opt);
-		pr_info("SKU: %s\n", tmp);
-
-		if (!strncmp("SKU#01", config.opt, 6))
-			setup_general_purpose_evm();
-		else if (!strncmp("SKU#02", config.opt, 6))
-			setup_ind_auto_motor_ctrl_evm();
-		else
-			goto out;
-	}
-
+//	if (!strncmp("A335BONE", config.name, 8)) {
+//		daughter_brd_detected = false;
+//		if(!strncmp("00A1", config.version, 4) ||
+//		   !strncmp("00A2", config.version, 4))
+//			setup_beaglebone_old();
+//		else
+//			setup_beaglebone();
+//	} else if (!strncmp("A335BNLT", config.name, 8)) {
+//		setup_beagleboneblack();
+//	} else if (!strncmp("A335X_SK", config.name, 8)) {
+//		daughter_brd_detected = false;
+//		setup_starterkit();
+//	} else {
+//		/* only 6 characters of options string used for now */
+//		snprintf(tmp, 7, "%s", config.opt);
+//		pr_info("SKU: %s\n", tmp);
+//
+//		if (!strncmp("SKU#01", config.opt, 6))
+//			setup_general_purpose_evm();
+//		else if (!strncmp("SKU#02", config.opt, 6))
+//			setup_ind_auto_motor_ctrl_evm();
+//		else
+//			goto out;
+//	}
+	setup_general_purpose_evm();
 	am335x_opp_update();
 
 	/*
@@ -2681,7 +2813,7 @@ static struct omap_musb_board_data musb_board_data = {
 	 * mode[4:7] = USB1PORT's mode
 	 * AM335X beta EVM has USB0 in OTG mode and USB1 in host mode.
 	 */
-	.mode           = (MUSB_HOST << 4) | MUSB_OTG,
+	.mode           = (MUSB_HOST << 4) | MUSB_HOST,
 	.power		= 500,
 	.instances	= 1,
 };
@@ -2791,8 +2923,21 @@ static void __init am33xx_cpuidle_init(void)
 
 }
 
+void am335x_power_off(void)
+{
+	
+	int pwr_off = GPIO_TO_PIN(0, 4);
+	
+	printk("Goodbye AM33XX!\n");
+	if (gpio_request_one(pwr_off, GPIOF_OUT_INIT_LOW, "SOC_MONITOR") < 0)
+		printk("Unable to set SOC_MONITOR low\n");
+}
+EXPORT_SYMBOL(am335x_power_off);
+
 static void __init am335x_evm_init(void)
 {
+	//int pwr_off = GPIO_TO_PIN(0, 4);
+	
 	am33xx_cpuidle_init();
 	am33xx_mux_init(board_mux);
 	omap_serial_init();
@@ -2807,6 +2952,9 @@ static void __init am335x_evm_init(void)
 	/* Create an alias for gfx/sgx clock */
 	if (clk_add_alias("sgx_ck", NULL, "gfx_fclk", NULL))
 		pr_warn("failed to create an alias: gfx_fclk --> sgx_ck\n");
+
+	//if (gpio_request_one(pwr_off, GPIOF_OUT_INIT_HIGH, "SOC_MONITOR") < 0)
+	//	printk("Unable to set SOC_MONITOR high\n");
 }
 
 static void __init am335x_evm_map_io(void)

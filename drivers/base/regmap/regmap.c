@@ -389,6 +389,68 @@ int regmap_raw_write(struct regmap *map, unsigned int reg,
 }
 EXPORT_SYMBOL_GPL(regmap_raw_write);
 
+/*
+ * regmap_bulk_write(): Write multiple registers to the device
+ *
+ * @map: Register map to write to
+ * @reg: First register to be write from
+ * @val: Block of data to be written, in native register size for device
+ * @val_count: Number of registers to write
+ *
+ * This function is intended to be used for writing a large block of
+ * data to be device either in single transfer or multiple transfer.
+ *
+ * A value of zero will be returned on success, a negative errno will
+ * be returned in error cases.
+ */
+int regmap_bulk_write(struct regmap *map, unsigned int reg, const void *val,
+		     size_t val_count)
+{
+	int ret = 0, i;
+	unsigned int ival;
+	size_t val_bytes = map->format.val_bytes;
+
+	mutex_lock(&map->lock);
+
+	if (map->format.parse_val) {
+		void *wval;
+		/* No formatting is require if val_byte is 1 */
+		if (val_bytes == 1) {
+			wval = (void *)val;
+		} else {
+			wval = kmemdup(val, val_count * val_bytes, GFP_KERNEL);
+			if (!wval) {
+				ret = -ENOMEM;
+				dev_err(map->dev,
+					"Error in memory allocation\n");
+				goto out;
+			}
+			for (i = 0; i < val_count * val_bytes; i += val_bytes)
+				map->format.parse_val(wval + i);
+		}
+		ret = _regmap_raw_write(map, reg, wval, val_bytes * val_count);
+
+		if (val_bytes != 1)
+			kfree(wval);
+	} else {
+		for (i = 0; i < val_count; i++) {
+			memcpy(&ival, val + (i * val_bytes), val_bytes);
+			ret = _regmap_write(map, reg + i, ival);
+			if (ret) {
+				dev_err(map->dev,
+				    "Error in register %u write, ret %d\n",
+						reg + i, ret);
+				break;
+			}
+		}
+	}
+
+out:
+	mutex_unlock(&map->lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(regmap_bulk_write);
+
 static int _regmap_raw_read(struct regmap *map, unsigned int reg, void *val,
 			    unsigned int val_len)
 {

@@ -254,6 +254,7 @@ int __init omap_mux_init_signal(const char *muxname, int val)
 	old_mode = omap_mux_read(partition, mux->reg_offset);
 	mux_mode |= val;
 	pr_debug("%s: Setting signal %s 0x%04x -> 0x%04x\n",
+	//printk("%s: Setting signal %s 0x%04x -> 0x%04x\n",
 			 __func__, muxname, old_mode, mux_mode);
 	omap_mux_write(partition, mux_mode, mux->reg_offset);
 
@@ -1200,6 +1201,7 @@ int __init omap_mux_init(const char *name, u32 flags,
 	list_add_tail(&partition->node, &mux_partitions);
 	mux_partitions_cnt++;
 	pr_info("%s: Add partition: #%d: %s, flags: %x\n", __func__,
+	//printk("%s: Add partition: #%d: %s, flags: %x\n", __func__,
 		mux_partitions_cnt, partition->name, partition->flags);
 
 	omap_mux_init_package(superset, package_subset, package_balls);

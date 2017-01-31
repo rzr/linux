@@ -49,12 +49,14 @@ enum {
 struct wl12xx_platform_data {
 	void (*set_power)(bool enable);
 	/* SDIO only: IRQ number if WLAN_IRQ line is used, 0 for SDIO IRQs */
-	int irq;
+    int gpio;
+    int irq;
 	bool use_eeprom;
 	int board_ref_clock;
 	int board_tcxo_clock;
-	unsigned long platform_quirks;
-	int bt_enable_gpio;
+    u32 platform_quirks;
+    bool pwr_in_suspend;
+    int bt_enable_gpio;
 	int wlan_enable_gpio;
 };
 
